@@ -58,7 +58,23 @@ build-electron/
 
 # ---------- Modelos, datasets y evidencia pesada ----------
 models/
-datasets/
+
+# Los datasets no se versionan (pesan y suelen ser audio), PERO el manifiesto y
+# la procedencia son texto de unos pocos kilobytes y son lo que hace que un
+# experimento se pueda reproducir: llevan los hashes de cada muestra y de donde
+# salio. Sin ellos, los numeros de un spike no los puede comprobar nadie.
+#
+# Se excluye el CONTENIDO y no la carpeta: git no puede volver a incluir un
+# archivo si su carpeta esta excluida.
+datasets/**
+!datasets/**/
+!datasets/**/manifest.csv
+!datasets/**/provenance.json
+!datasets/**/README.md
+
+# Resultados medidos: JSON pequeno y es la evidencia del experimento.
+# Lo que no entra son los artefactos pesados que los generan.
+!results/*.json
 *.onnx
 *.pt
 *.pth
