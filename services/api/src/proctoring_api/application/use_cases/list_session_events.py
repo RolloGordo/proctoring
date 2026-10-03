@@ -6,6 +6,8 @@ from collections.abc import Sequence
 from uuid import UUID
 
 from proctoring_api.application.ports.event_repository import EventRepository
+from proctoring_api.application.ports.session_repository import SessionRepository
+from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.domain.event import ProctoringEvent
 from proctoring_api.domain.user import AuthenticatedUser
 
@@ -18,8 +20,9 @@ class ListSessionEvents:
     el repositorio.
     """
 
-    def __init__(self, events: EventRepository) -> None:
+    def __init__(self, events: EventRepository, sessions: SessionRepository | None = None) -> None:
         self._events = events
+        self._sessions = sessions
 
     def execute(
         self,
@@ -35,11 +38,13 @@ class ListSessionEvents:
         significa que este filtro es lo unico que impide que un estudiante lea la
         evidencia de sus companeros.
 
-        Un **docente** ve toda la sesion.
+        Un **docente** ve toda la sesion, pero solo si es suya.
 
         `actor` es `None` solo con la autenticacion desactivada en desarrollo
         local (ver `Settings.auth_enabled`).
         """
+        ensure_teacher_owns_session(self._sessions, session_id, actor)
+
         if actor is not None and actor.is_student:
             student_id = actor.id
 

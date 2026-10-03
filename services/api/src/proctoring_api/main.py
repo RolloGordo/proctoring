@@ -24,6 +24,7 @@ from proctoring_api.application.ports.event_repository import EventRepository
 from proctoring_api.application.ports.job_queue import JobQueue
 from proctoring_api.application.ports.profile_repository import ProfileRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
+from proctoring_api.application.ports.session_repository import SessionRepository
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
 from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
@@ -122,6 +123,23 @@ def _build_question_repository(
     return None
 
 
+def _build_session_repository(
+    settings: Settings, client: object | None
+) -> SessionRepository | None:
+    """`None` en modo memoria: no hay sesiones creadas con las que comprobar."""
+    if settings.event_repository == "supabase":
+        from supabase import Client
+
+        from proctoring_api.adapters.outbound.supabase.session_repository import (
+            SupabaseSessionRepository,
+        )
+
+        assert isinstance(client, Client)
+        return SupabaseSessionRepository(client)
+
+    return None
+
+
 def _build_job_queue(settings: Settings) -> JobQueue:
     # El adaptador de Redis llega en la Fase 5 (ADR-0006). Hasta entonces la cola
     # en memoria deja el flujo completo funcionando y las pruebas verdes.
@@ -193,6 +211,7 @@ def create_app(
     event_repository = _build_event_repository(settings, client)
     alert_repository = _build_alert_repository(settings, client)
     question_repository = _build_question_repository(settings, client)
+    session_repository = _build_session_repository(settings, client)
     profile_repository = _build_profile_repository(settings, client)
     job_queue = _build_job_queue(settings)
     clock = clock or SystemClock()
@@ -206,8 +225,8 @@ def create_app(
     app.state.register_event = RegisterEvent(
         event_repository, job_queue, clock, alert_repository, question_repository
     )
-    app.state.list_session_events = ListSessionEvents(event_repository)
-    app.state.list_session_alerts = ListSessionAlerts(alert_repository)
+    app.state.list_session_events = ListSessionEvents(event_repository, session_repository)
+    app.state.list_session_alerts = ListSessionAlerts(alert_repository, session_repository)
 
     register_error_handlers(app)
     app.include_router(health.router)

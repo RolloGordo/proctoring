@@ -6,6 +6,8 @@ from collections.abc import Sequence
 from uuid import UUID
 
 from proctoring_api.application.ports.alert_repository import AlertRepository
+from proctoring_api.application.ports.session_repository import SessionRepository
+from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.errors import AuthorizationError
 from proctoring_api.domain.user import AuthenticatedUser
@@ -19,8 +21,9 @@ class ListSessionAlerts:
     abrio.
     """
 
-    def __init__(self, alerts: AlertRepository) -> None:
+    def __init__(self, alerts: AlertRepository, sessions: SessionRepository | None = None) -> None:
         self._alerts = alerts
+        self._sessions = sessions
 
     def execute(
         self,
@@ -39,5 +42,7 @@ class ListSessionAlerts:
         """
         if actor is not None and not actor.is_teacher:
             raise AuthorizationError("Solo el docente puede ver las alertas de una sesion")
+
+        ensure_teacher_owns_session(self._sessions, session_id, actor)
 
         return self._alerts.list_by_session(session_id, student_id)
