@@ -69,6 +69,19 @@ export interface Alert {
   created_at: string
 }
 
+/** Lo que el estudiante recibe al teclear su codigo de acceso. */
+export interface JoinedExam {
+  session_id: string
+  title: string
+  description: string | null
+  starts_at: string
+  ends_at: string
+  duration_minutes: number
+  entry_tolerance_minutes: number
+  can_enter_now: boolean
+  modules: Record<string, Record<string, unknown>>
+}
+
 export interface NewExamSession {
   title: string
   starts_at: string
@@ -140,6 +153,13 @@ export const api = {
 
   createSession: (data: NewExamSession, token?: string): Promise<ExamSession> =>
     request('/api/v1/sessions', { method: 'POST', body: JSON.stringify(data) }, token),
+
+  joinExam: (accessCode: string, token?: string): Promise<JoinedExam> =>
+    request(
+      '/api/v1/sessions/join',
+      { method: 'POST', body: JSON.stringify({ access_code: accessCode }) },
+      token
+    ),
 
   listEvents: (sessionId: string, token?: string): Promise<ProctoringEvent[]> =>
     request(`/api/v1/sessions/${sessionId}/events`, undefined, token),

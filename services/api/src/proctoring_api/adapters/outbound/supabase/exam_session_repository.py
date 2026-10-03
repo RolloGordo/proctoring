@@ -114,6 +114,21 @@ class SupabaseExamSessionRepository:
         # por sesion. El detalle (`find_by_id`) si los incluye.
         return [_to_entity(row, {}) for row in rows]
 
+    def find_by_access_code(self, access_code: str) -> ExamSession | None:
+        response = (
+            self._client.table(SESSIONS_TABLE)
+            .select(COLUMNS)
+            .eq("access_code", access_code)
+            .limit(1)
+            .execute()
+        )
+        rows = cast("list[dict[str, Any]]", response.data)
+        if not rows:
+            return None
+
+        session = _to_entity(rows[0], {})
+        return _to_entity(rows[0], self._modules_of(session.id))
+
     def access_code_exists(self, access_code: str) -> bool:
         response = (
             self._client.table(SESSIONS_TABLE)

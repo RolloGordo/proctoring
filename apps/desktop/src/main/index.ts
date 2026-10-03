@@ -116,6 +116,9 @@ app.whenReady().then(() => {
 
   ipcMain.handle('events:list', () => events)
   ipcMain.handle('displays:count', () => screen.getAllDisplays().length)
+  // El panel avisa en pantalla si no hay contexto: sin el, los eventos no
+  // salen de la app y conviene que se vea sin abrir la consola.
+  ipcMain.handle('context:get', () => examContext)
   ipcMain.handle('auth:set-session', (_event, session: unknown) => {
     if (session !== null && !isAuthSession(session)) {
       throw new TypeError('La sesion de autenticacion de Supabase no es valida')

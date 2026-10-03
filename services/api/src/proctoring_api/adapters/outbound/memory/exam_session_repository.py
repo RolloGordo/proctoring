@@ -38,6 +38,13 @@ class InMemoryExamSessionRepository:
         # es el examen que viene.
         return sorted(mine, key=lambda session: session.starts_at, reverse=True)
 
+    def find_by_access_code(self, access_code: str) -> ExamSession | None:
+        with self._lock:
+            for sesion in self._sessions.values():
+                if sesion.access_code == access_code:
+                    return sesion
+        return None
+
     def access_code_exists(self, access_code: str) -> bool:
         with self._lock:
             return any(session.access_code == access_code for session in self._sessions.values())

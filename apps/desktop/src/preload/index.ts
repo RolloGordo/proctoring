@@ -12,6 +12,8 @@ const api = {
   setAuthSession: (session: AuthSession | null): Promise<void> =>
     ipcRenderer.invoke('auth:set-session', session),
   getDisplayCount: (): Promise<number> => ipcRenderer.invoke('displays:count'),
+  getExamContext: (): Promise<{ session_id: string; student_id: string }> =>
+    ipcRenderer.invoke('context:get'),
   onDisplayCountChange: (callback: (count: number) => void): (() => void) => {
     const listener = (_: unknown, count: number): void => callback(count)
     ipcRenderer.on('displays:changed', listener)
