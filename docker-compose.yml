@@ -1,0 +1,81 @@
+# Entorno de desarrollo local: API + Redis.
+#
+#   cp .env.example .env
+#   docker compose up --build
+#
+# La API arranca con adaptadores en memoria (EVENT_REPOSITORY=memory), asi que
+# funciona sin credenciales de Supabase. Para persistir de verdad, pon
+# EVENT_REPOSITORY=supabase y las claves en tu .env.
+
+services:
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    container_name: proctoring-api
+    ports:
+      - "${API_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      # Dentro de la red de compose, Redis se llama "redis", no "localhost".
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: proctoring-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Servicio de IA (Pierreluiggi) y su worker. Se activan en la Fase 5, cuando
+  # exista el adaptador de cola con RQ (ADR-0006). Hasta entonces la API usa la
+  # cola en memoria y todo el flujo funciona sin esto.
+  # ---------------------------------------------------------------------------
+  # ai:
+  #   build:
+  #     context: ./services/ai
+  #   container_name: proctoring-ai
+  #   ports:
+  #     - "8001:8001"
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #
+  # ai-worker:
+  #   build:
+  #     context: ./services/ai
+  #   container_name: proctoring-ai-worker
+  #   command: ["python", "worker_stub.py"]
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+
+networks:
+  default:
+    name: proctoring

@@ -54,8 +54,11 @@ uv sync
 ```
 
 ```bash
-uv run uvicorn proctoring_api.main:app --reload --port 8000
+uv run uvicorn proctoring_api.main:create_app --factory --reload --port 8000
 ```
+
+`--factory` es necesario: la app se construye al arrancar, no al importar el módulo, para que
+los adaptadores se elijan con las variables de entorno del proceso.
 
 Swagger en <http://localhost:8000/docs>. Con la configuración por defecto
 (`EVENT_REPOSITORY=memory`, `JOB_QUEUE=memory`) **no necesita Supabase ni Redis**: se levanta y

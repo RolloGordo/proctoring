@@ -123,8 +123,11 @@ En PowerShell el primer comando es `Copy-Item .env.example .env`.
 ### Opción B — Solo la API, sin Docker
 
 ```bash
-cd services/api && uv sync && uv run uvicorn proctoring_api.main:app --reload --port 8000
+cd services/api && uv sync && uv run uvicorn proctoring_api.main:create_app --factory --reload --port 8000
 ```
+
+Arranca con adaptadores en memoria, así que **no necesita Supabase ni Redis** para
+funcionar: `uv sync` y listo.
 
 ### Comprobar que funciona
 
