@@ -71,6 +71,7 @@ corra y demuestre el resultado. Cada spike es un archivo que se ejecuta solo y e
 
 ```python
 from faster_whisper import WhisperModel
+
 model = WhisperModel("small", device="cpu", compute_type="int8")
 segments, info = model.transcribe("muestra.wav", language="es", vad_filter=True)
 ```
@@ -84,9 +85,10 @@ Si no alcanza para el presupuesto de 10 s, prueba `base` y anótalo.
 
 ```python
 from sentence_transformers import SentenceTransformer, util
+
 model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 emb = model.encode([enunciado, transcripcion])
-score = util.cos_sim(emb[0], emb[1]).item()   # alerta si > 0.6
+score = util.cos_sim(emb[0], emb[1]).item()  # alerta si > 0.6
 ```
 
 Prueba el umbral **0.6** con casos a favor y en contra: la pregunta leída literal, la pregunta
