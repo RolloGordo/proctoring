@@ -25,13 +25,13 @@ from proctoring_api.domain.user import AuthenticatedUser
 #: `unique` en la base y fallar ahi daria un error incomprensible al docente.
 MAX_ACCESS_CODE_ATTEMPTS = 10
 
-#: Docente ficticio que se usa cuando la autenticacion esta desactivada.
+#: Docente ficticio por defecto cuando la autenticacion esta desactivada.
 #:
-#: Es fijo y no aleatorio para que en desarrollo todas las sesiones pertenezcan
-#: al mismo "docente" y el listado funcione. Con `EVENT_REPOSITORY=supabase` este
-#: id no existe en `profiles` y el insert falla por la clave foranea, que es el
-#: aviso correcto: contra la base de verdad hay que autenticarse.
-DEV_TEACHER_ID = UUID("00000000-0000-4000-8000-000000000001")
+#: Fijo y no aleatorio para que en desarrollo todas las sesiones pertenezcan al
+#: mismo "docente" y el listado funcione. Se puede sustituir por el id de un
+#: docente real con la variable DEV_TEACHER_ID, que es lo que permite probar el
+#: camino completo contra Supabase antes de que exista el login.
+DEFAULT_DEV_TEACHER_ID = UUID("00000000-0000-4000-8000-000000000001")
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,8 +54,13 @@ class CreateExamSessionInput:
 class CreateExamSession:
     """Crea la sesion con un codigo de acceso libre y sus modulos resueltos."""
 
-    def __init__(self, sessions: ExamSessionRepository) -> None:
+    def __init__(
+        self,
+        sessions: ExamSessionRepository,
+        dev_teacher_id: UUID = DEFAULT_DEV_TEACHER_ID,
+    ) -> None:
         self._sessions = sessions
+        self._dev_teacher_id = dev_teacher_id
 
     def execute(
         self, data: CreateExamSessionInput, *, actor: AuthenticatedUser | None = None
@@ -91,7 +96,7 @@ class CreateExamSession:
     def _authorize(self, actor: AuthenticatedUser | None) -> UUID:
         if actor is None:
             # Modo sin autenticacion, que solo se permite en local y en pruebas.
-            return DEV_TEACHER_ID
+            return self._dev_teacher_id
 
         if not actor.is_teacher:
             raise AuthorizationError("Solo un docente puede crear una sesion de examen")

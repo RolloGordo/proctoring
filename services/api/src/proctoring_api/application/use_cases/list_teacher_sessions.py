@@ -7,7 +7,7 @@ from uuid import UUID
 
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
-from proctoring_api.application.use_cases.create_exam_session import DEV_TEACHER_ID
+from proctoring_api.application.use_cases.create_exam_session import DEFAULT_DEV_TEACHER_ID
 from proctoring_api.domain.errors import AuthorizationError
 from proctoring_api.domain.exam_session import ExamSession
 from proctoring_api.domain.user import AuthenticatedUser
@@ -16,12 +16,17 @@ from proctoring_api.domain.user import AuthenticatedUser
 class ListTeacherSessions:
     """Sesiones del docente que pregunta. Nunca las de otro."""
 
-    def __init__(self, sessions: ExamSessionRepository) -> None:
+    def __init__(
+        self,
+        sessions: ExamSessionRepository,
+        dev_teacher_id: UUID = DEFAULT_DEV_TEACHER_ID,
+    ) -> None:
         self._sessions = sessions
+        self._dev_teacher_id = dev_teacher_id
 
     def execute(self, *, actor: AuthenticatedUser | None = None) -> Sequence[ExamSession]:
         if actor is None:
-            return self._sessions.list_by_teacher(DEV_TEACHER_ID)
+            return self._sessions.list_by_teacher(self._dev_teacher_id)
 
         if not actor.is_teacher:
             raise AuthorizationError("Solo un docente tiene sesiones de examen propias")

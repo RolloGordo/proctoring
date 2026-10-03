@@ -9,6 +9,7 @@ tocar una linea de logica.
 from __future__ import annotations
 
 from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -48,6 +49,18 @@ class Settings(BaseSettings):
     #: escritorio y el spike de vision necesitan mandar eventos antes de que su
     #: pantalla de login este hecha.
     auth_enabled: bool = True
+
+    #: Docente al que se atribuyen las sesiones cuando la autenticacion esta
+    #: desactivada.
+    #:
+    #: Es configurable porque `exam_sessions.teacher_id` tiene clave foranea a
+    #: `profiles`: con EVENT_REPOSITORY=supabase, el id ficticio por defecto no
+    #: existe y el insert falla. Poniendo aqui el id de un docente real se puede
+    #: probar el camino completo contra la base sin montar antes el login.
+    #:
+    #: Solo se usa con AUTH_ENABLED=false, que a su vez solo se permite con
+    #: ENV local o test.
+    dev_teacher_id: UUID = UUID("00000000-0000-4000-8000-000000000001")
 
     # --- Seleccion de adaptadores ---
     event_repository: RepositoryBackend = "memory"
