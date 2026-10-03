@@ -17,6 +17,12 @@ RepositoryBackend = Literal["memory", "supabase"]
 JobQueueBackend = Literal["memory", "redis"]
 EvidenceStorageBackend = Literal["memory", "supabase"]
 
+#: Unicos entornos donde se permite correr sin autenticacion. Ninguno es un
+#: despliegue: `local` es la maquina de cada integrante y `test` la suite.
+#: Cualquier otro valor de ENV hace que la API se niegue a arrancar con
+#: AUTH_ENABLED=false.
+ENVS_WITHOUT_AUTH = frozenset({"local", "test"})
+
 
 class Settings(BaseSettings):
     """Ajustes del servicio."""
@@ -32,6 +38,16 @@ class Settings(BaseSettings):
 
     env: str = "local"
     api_port: int = 8000
+
+    # --- Seguridad ---
+    #: Por defecto **activada**. Si la variable no existe, se protege: es el caso
+    #: de un despliegue donde alguien olvido configurarla.
+    #:
+    #: Desactivarla solo se permite con ENV=local (lo comprueba `create_app`, que
+    #: se niega a arrancar en cualquier otro entorno). Existe porque la app de
+    #: escritorio y el spike de vision necesitan mandar eventos antes de que su
+    #: pantalla de login este hecha.
+    auth_enabled: bool = True
 
     # --- Seleccion de adaptadores ---
     event_repository: RepositoryBackend = "memory"
@@ -94,3 +110,16 @@ class Settings(BaseSettings):
                 "Copia .env.example a .env y rellenalas, o deja EVENT_REPOSITORY=memory."
             )
         return self.supabase_url, self.supabase_service_role_key
+
+    def require_supabase_url(self) -> str:
+        """URL del proyecto, necesaria para verificar tokens.
+
+        Verificar firmas no necesita ningun secreto: las claves son asimetricas
+        (ES256) y la parte publica se lee del JWKS del proyecto.
+        """
+        if not self.supabase_url:
+            raise ValueError(
+                "Falta SUPABASE_URL, necesaria para verificar los tokens. "
+                "Rellenala en .env, o usa AUTH_ENABLED=false con ENV=local."
+            )
+        return self.supabase_url

@@ -135,6 +135,12 @@ funcionar: `uv sync` y listo.
 curl http://localhost:8000/health
 ```
 
+Responde `{"status":"ok","env":"local","version":"0.1.0","auth":"disabled"}`. Ese `auth` es
+intencional: en local la autenticación viene desactivada para que los clientes puedan mandar
+eventos antes de tener su pantalla de login. **La API se niega a arrancar sin autenticación en
+cualquier entorno que no sea `local` o `test`**, y si la variable no existe, la autenticación queda
+activada.
+
 ```bash
 curl -X POST http://localhost:8000/api/v1/events -H "Content-Type: application/json" --data-binary @packages/contracts/examples/focus_lost.json
 ```

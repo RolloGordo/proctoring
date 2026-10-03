@@ -7,6 +7,7 @@ from uuid import UUID
 
 from proctoring_api.application.ports.event_repository import EventRepository
 from proctoring_api.domain.event import ProctoringEvent
+from proctoring_api.domain.user import AuthenticatedUser
 
 
 class ListSessionEvents:
@@ -21,6 +22,25 @@ class ListSessionEvents:
         self._events = events
 
     def execute(
-        self, session_id: UUID, student_id: UUID | None = None
+        self,
+        session_id: UUID,
+        *,
+        actor: AuthenticatedUser | None = None,
+        student_id: UUID | None = None,
     ) -> Sequence[ProctoringEvent]:
+        """Eventos de la sesion que el actor tiene derecho a ver.
+
+        Un **estudiante** solo ve los suyos: se ignora el filtro que pida y se
+        fuerza a su propio id. Que la API escriba con service role y omita RLS
+        significa que este filtro es lo unico que impide que un estudiante lea la
+        evidencia de sus companeros.
+
+        Un **docente** ve toda la sesion.
+
+        `actor` es `None` solo con la autenticacion desactivada en desarrollo
+        local (ver `Settings.auth_enabled`).
+        """
+        if actor is not None and actor.is_student:
+            student_id = actor.id
+
         return self._events.list_by_session(session_id, student_id)

@@ -11,9 +11,10 @@ from uuid import UUID
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.event_repository import EventRepository
 from proctoring_api.application.ports.job_queue import JobQueue
-from proctoring_api.domain.errors import InvalidEventError
+from proctoring_api.domain.errors import AuthorizationError, InvalidEventError
 from proctoring_api.domain.event import EventType, ProctoringEvent
 from proctoring_api.domain.severity import Severity, default_severity
+from proctoring_api.domain.user import AuthenticatedUser
 
 #: Margen que se le concede al reloj del cliente.
 #:
@@ -51,7 +52,7 @@ class RegisterEventOutput:
 
 
 class RegisterEvent:
-    """Valida, persiste y, si hace falta, encola el analisis de audio."""
+    """Autoriza, valida, persiste y, si hace falta, encola el analisis de audio."""
 
     def __init__(
         self,
@@ -63,13 +64,23 @@ class RegisterEvent:
         self._job_queue = job_queue
         self._clock = clock
 
-    def execute(self, data: RegisterEventInput) -> RegisterEventOutput:
+    def execute(
+        self, data: RegisterEventInput, *, actor: AuthenticatedUser | None = None
+    ) -> RegisterEventOutput:
         """Registra el evento y devuelve su id y su severidad inicial.
 
+        `actor` es quien hace la peticion. Es `None` **solo** cuando la
+        autenticacion esta desactivada, que la configuracion unicamente permite en
+        desarrollo local (ver `Settings.auth_enabled`): con `None` no se comprueba
+        nada.
+
         Raises:
-            InvalidEventError: si el evento viola una regla de dominio o de
-                aplicacion. El adaptador HTTP lo traduce a 400.
+            AuthorizationError: si el actor no puede registrar este evento.
+            InvalidEventError: si el evento viola una regla de dominio.
         """
+        if actor is not None:
+            self._authorize(data, actor)
+
         self._reject_if_from_the_future(data.started_at)
 
         event = ProctoringEvent.create(
@@ -94,6 +105,25 @@ class RegisterEvent:
             id=event.id,
             severity=default_severity(event.event_type, event.duration_ms),
         )
+
+    @staticmethod
+    def _authorize(data: RegisterEventInput, actor: AuthenticatedUser) -> None:
+        """Solo el propio estudiante puede reportar eventos sobre si mismo.
+
+        Esta comprobacion **no la cubre la base de datos**. RLS si la hace para
+        escrituras directas desde el cliente, pero la API escribe con la service
+        role key y omite RLS por completo. Si esto no estuviera aqui, cualquiera
+        con un token valido podria fabricar evidencia contra otro estudiante, y
+        esa evidencia termina delante de un docente que decide sobre una nota.
+        """
+        if actor.is_teacher:
+            raise AuthorizationError(
+                "Un docente no registra eventos de proctoring: los reporta el "
+                "cliente del estudiante"
+            )
+
+        if actor.id != data.student_id:
+            raise AuthorizationError("No puedes registrar eventos a nombre de otro estudiante")
 
     def _reject_if_from_the_future(self, started_at: datetime) -> None:
         if started_at.tzinfo is None or started_at.utcoffset() is None:

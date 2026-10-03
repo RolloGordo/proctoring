@@ -16,12 +16,15 @@ from proctoring_api.adapters.inbound.http.routers import events, health
 from proctoring_api.adapters.outbound.clock import SystemClock
 from proctoring_api.adapters.outbound.memory.event_repository import InMemoryEventRepository
 from proctoring_api.adapters.outbound.memory.job_queue import InMemoryJobQueue
+from proctoring_api.adapters.outbound.memory.profile_repository import InMemoryProfileRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.event_repository import EventRepository
 from proctoring_api.application.ports.job_queue import JobQueue
+from proctoring_api.application.ports.profile_repository import ProfileRepository
+from proctoring_api.application.use_cases.identify_user import IdentifyUser
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
 from proctoring_api.application.use_cases.register_event import RegisterEvent
-from proctoring_api.config import Settings
+from proctoring_api.config import ENVS_WITHOUT_AUTH, Settings
 
 DESCRIPTION = """
 API principal del sistema de proctoring para examenes remotos (UPAO, Taller Integrador 1).
@@ -34,21 +37,49 @@ fragmento de audio, que el cliente sube directo con una URL firmada.
 
 El sistema es un auditor, no un juez: calcula riesgo y entrega evidencia; la
 decision final es del docente, con justificacion obligatoria.
+
+## Autenticacion
+
+Token de Supabase Auth en `Authorization: Bearer <token>`. Un estudiante solo
+puede registrar eventos sobre si mismo y solo puede leer los suyos.
 """
 
 
-def _build_event_repository(settings: Settings) -> EventRepository:
+def _build_supabase_client(settings: Settings) -> object:
+    from supabase import create_client
+
+    url, key = settings.require_supabase()
+    return create_client(url, key)
+
+
+def _build_event_repository(settings: Settings, client: object | None) -> EventRepository:
     if settings.event_repository == "supabase":
-        from supabase import create_client
+        from supabase import Client
 
         from proctoring_api.adapters.outbound.supabase.event_repository import (
             SupabaseEventRepository,
         )
 
-        url, key = settings.require_supabase()
-        return SupabaseEventRepository(create_client(url, key))
+        assert isinstance(client, Client)
+        return SupabaseEventRepository(client)
 
     return InMemoryEventRepository()
+
+
+def _build_profile_repository(settings: Settings, client: object | None) -> ProfileRepository:
+    # Los perfiles viven en la misma base que los eventos, asi que siguen el mismo
+    # adaptador: no tiene sentido leer eventos de Supabase y perfiles de memoria.
+    if settings.event_repository == "supabase":
+        from supabase import Client
+
+        from proctoring_api.adapters.outbound.supabase.profile_repository import (
+            SupabaseProfileRepository,
+        )
+
+        assert isinstance(client, Client)
+        return SupabaseProfileRepository(client)
+
+    return InMemoryProfileRepository()
 
 
 def _build_job_queue(settings: Settings) -> JobQueue:
@@ -61,11 +92,40 @@ def _build_job_queue(settings: Settings) -> JobQueue:
     return InMemoryJobQueue()
 
 
-def create_app(settings: Settings | None = None, clock: Clock | None = None) -> FastAPI:
+def _build_identify_user(settings: Settings, profiles: ProfileRepository) -> IdentifyUser | None:
+    """`None` significa autenticacion desactivada.
+
+    Solo se permite en desarrollo local. En cualquier otro entorno el servicio se
+    niega a arrancar: es preferible un despliegue que falla a uno que acepta
+    evidencia de cualquiera.
+    """
+    if not settings.auth_enabled:
+        if settings.env not in ENVS_WITHOUT_AUTH:
+            raise ValueError(
+                f"AUTH_ENABLED=false solo se permite con ENV en "
+                f"{sorted(ENVS_WITHOUT_AUTH)} (ENV={settings.env!r}). "
+                "Desplegar la API sin autenticacion dejaria que cualquiera "
+                "fabricara evidencia contra cualquier estudiante."
+            )
+        return None
+
+    from proctoring_api.adapters.outbound.supabase.token_verifier import (
+        SupabaseTokenVerifier,
+    )
+
+    return IdentifyUser(SupabaseTokenVerifier(settings.require_supabase_url()), profiles)
+
+
+def create_app(
+    settings: Settings | None = None,
+    clock: Clock | None = None,
+    identify_user: IdentifyUser | None = None,
+) -> FastAPI:
     """Arma la aplicacion con los adaptadores que indique la configuracion.
 
-    `clock` se puede sustituir para que las pruebas de integracion no dependan de
-    la hora a la que se ejecuten.
+    `clock` e `identify_user` se pueden sustituir para que las pruebas de
+    integracion no dependan de la hora a la que se ejecuten ni de un proyecto de
+    Supabase real. Si se pasa `identify_user`, manda sobre `AUTH_ENABLED`.
     """
     settings = settings or Settings()
 
@@ -88,13 +148,18 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None) -> 
     )
 
     # --- Cableado: adaptadores -> casos de uso ---
-    event_repository = _build_event_repository(settings)
+    client = _build_supabase_client(settings) if settings.event_repository == "supabase" else None
+
+    event_repository = _build_event_repository(settings, client)
+    profile_repository = _build_profile_repository(settings, client)
     job_queue = _build_job_queue(settings)
     clock = clock or SystemClock()
 
     app.state.settings = settings
     app.state.event_repository = event_repository
+    app.state.profile_repository = profile_repository
     app.state.job_queue = job_queue
+    app.state.identify_user = identify_user or _build_identify_user(settings, profile_repository)
     app.state.register_event = RegisterEvent(event_repository, job_queue, clock)
     app.state.list_session_events = ListSessionEvents(event_repository)
 

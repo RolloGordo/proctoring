@@ -53,7 +53,7 @@ def test_filters_by_student(
     event_repository.save(an_event(student_id=LUIS))
 
     assert len(use_case.execute(SESSION)) == 2
-    assert len(use_case.execute(SESSION, ANA)) == 1
+    assert len(use_case.execute(SESSION, student_id=ANA)) == 1
 
 
 def test_is_ordered_chronologically(

@@ -94,7 +94,16 @@ Todos los eventos usan el contrato de [`packages/contracts`](../../packages/cont
 ```
 POST http://localhost:8000/api/v1/events
 Content-Type: application/json
+Authorization: Bearer <access_token de Supabase Auth>
 ```
+
+**Sobre el token:** la API comprueba que el `student_id` del cuerpo sea el mismo del token, así que
+no puedes reportar eventos a nombre de otro. Si no mandas token recibes `401`; si mandas el de otro
+estudiante, `403`.
+
+Mientras no tengas la pantalla de login, arranca la API con `AUTH_ENABLED=false` en tu `.env` (ya
+viene así en `.env.example`) y los eventos entran sin cabecera. En cuanto el login exista, pon
+`AUTH_ENABLED=true` y empieza a mandar el token.
 
 Hay un ejemplo válido por tipo de evento en `packages/contracts/examples/`. La respuesta es
 `201` con `{ "id": "...", "severity": "low|medium|high" }`.

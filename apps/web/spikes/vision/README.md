@@ -82,9 +82,14 @@ Contrato en [`packages/contracts`](../../../../packages/contracts/), con un ejem
 
 ```
 POST http://localhost:8000/api/v1/events
+Authorization: Bearer <access_token de Supabase Auth>
 ```
 
-Ojo: `gaze_away` **exige** `question_id` (lo valida el dominio de la API y devuelve 400 si falta).
+Dos cosas que te van a morder si no las sabes:
+
+- `gaze_away` **exige** `question_id`. Lo valida el dominio de la API y devuelve `400` si falta.
+- La API exige token y comprueba que el `student_id` sea el tuyo. Para el spike, arranca la API con
+  `AUTH_ENABLED=false` en tu `.env` (ya viene así en `.env.example`) y te ahorras el login.
 
 ## Criterios de aceptación
 

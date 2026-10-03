@@ -17,7 +17,7 @@ verdad compartida con la app de escritorio y el servicio de IA.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -86,6 +86,7 @@ class HealthResponse(BaseModel):
     status: str
     env: str
     version: str
+    auth: Literal["enabled", "disabled"]
 
 
 class ErrorResponse(BaseModel):
