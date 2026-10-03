@@ -1,5 +1,7 @@
 # Proctoring — Supervisión de exámenes remotos
 
+[![CI](https://github.com/RolloGordo/proctoring/actions/workflows/ci.yml/badge.svg)](https://github.com/RolloGordo/proctoring/actions/workflows/ci.yml)
+
 > Taller Integrador 1 — Universidad Privada Antenor Orrego (UPAO)
 > Product Owner / Portfolio Manager: Walter Cueva Chávez
 
@@ -100,11 +102,31 @@ proctoring/
 | [Docker Desktop](https://www.docker.com/products/docker-desktop/) | reciente | levantar api + redis |
 | [Git](https://git-scm.com/) | 2.40+ | control de versiones |
 
+### Instalación en Windows
+
+El equipo trabaja en Windows. Con `winget` (ya viene en Windows 11), en un terminal:
+
+```bash
+winget install astral-sh.uv Git.Git GitHub.cli OpenJS.NodeJS.LTS
+```
+
+Docker Desktop se instala aparte desde su web, porque pide reiniciar.
+
+> **Después de instalar, abre un terminal nuevo.** El `PATH` solo se refresca en las ventanas que
+> se abren después; si sigues en la de antes, verás `uv no se reconoce como un comando`.
+
 Si no tienes Python 3.12, `uv` lo descarga por ti:
 
 ```bash
 uv python install 3.12
 ```
+
+### Qué terminal usar
+
+Usa el terminal de **Git Bash** o `cmd`. **No uses PowerShell** para los comandos de este README:
+la versión que trae Windows 11 por defecto (5.1) no entiende `&&` y te dará
+`El token '&&' no es un separador de instrucciones válido`, que parece un error del proyecto y no
+lo es. Si tienes que usar PowerShell, reemplaza `A && B` por `A; if ($?) { B }`.
 
 ## Levantar todo en local
 
