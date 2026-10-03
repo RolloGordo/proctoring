@@ -261,8 +261,10 @@ def create_app(
     )
     app.state.list_session_events = ListSessionEvents(event_repository, session_repository)
     app.state.list_session_alerts = ListSessionAlerts(alert_repository, session_repository)
-    app.state.create_exam_session = CreateExamSession(session_repository)
-    app.state.list_teacher_sessions = ListTeacherSessions(session_repository)
+    app.state.create_exam_session = CreateExamSession(session_repository, settings.dev_teacher_id)
+    app.state.list_teacher_sessions = ListTeacherSessions(
+        session_repository, settings.dev_teacher_id
+    )
     app.state.get_exam_session = GetExamSession(session_repository)
     app.state.create_evidence_upload_url = CreateEvidenceUploadUrl(
         evidence_storage,
