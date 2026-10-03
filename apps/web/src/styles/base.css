@@ -619,3 +619,53 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Pantallas de una sola columna (estudiante) ---------- */
+.centrado-estrecho {
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+/* El código de acceso se teclea leyéndolo: monoespaciada, espaciada y grande,
+   para que un 8 no se confunda con una B al revisarlo. */
+.entrada-codigo {
+  font-family: var(--mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-align: center;
+  text-transform: uppercase;
+  padding: var(--e4);
+}
+
+.entrada-codigo::placeholder {
+  color: var(--linea-fuerte);
+  letter-spacing: 0.28em;
+}
+
+.lista-modulos {
+  list-style: none;
+  margin: var(--e4) 0;
+  padding: 0;
+}
+
+.lista-modulos li {
+  position: relative;
+  padding: var(--e2) 0 var(--e2) var(--e5);
+  border-bottom: 1px solid var(--linea);
+  font-size: 0.9375rem;
+}
+
+.lista-modulos li:last-child {
+  border-bottom: none;
+}
+
+.lista-modulos li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.95em;
+  width: 10px;
+  height: 2px;
+  background: var(--amarillo);
+}

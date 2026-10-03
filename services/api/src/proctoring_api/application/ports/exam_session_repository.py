@@ -34,6 +34,13 @@ class ExamSessionRepository(Protocol):
         """Sesiones de un docente, de la mas proxima a la mas antigua."""
         ...
 
+    def find_by_access_code(self, access_code: str) -> ExamSession | None:
+        """La sesion con ese codigo de acceso, o `None` si no existe.
+
+        Es como entra el estudiante: teclea el codigo que le dio el docente.
+        """
+        ...
+
     def access_code_exists(self, access_code: str) -> bool:
         """Si ese codigo de acceso ya esta en uso."""
         ...

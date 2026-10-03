@@ -232,6 +232,32 @@ class ExamSessionResponse(BaseModel):
         )
 
 
+class JoinExamRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/sessions/join`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    access_code: str = Field(min_length=4, max_length=16)
+
+
+class JoinExamResponse(BaseModel):
+    """Lo que el estudiante necesita para prepararse.
+
+    No incluye las preguntas ni las respuestas correctas: eso llega cuando
+    empieza el examen, y siempre servido por la API.
+    """
+
+    session_id: UUID
+    title: str
+    description: str | None
+    starts_at: datetime
+    ends_at: datetime
+    duration_minutes: int
+    entry_tolerance_minutes: int
+    can_enter_now: bool
+    modules: dict[SupervisionModule, dict[str, Any]]
+
+
 class HealthResponse(BaseModel):
     """Respuesta de `GET /health`."""
 

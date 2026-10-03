@@ -35,6 +35,7 @@ from proctoring_api.application.use_cases.create_evidence_upload_url import (
 )
 from proctoring_api.application.use_cases.create_exam_session import CreateExamSession
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
+from proctoring_api.application.use_cases.join_exam_session import JoinExamSession
 from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
 from proctoring_api.application.use_cases.list_teacher_sessions import (
@@ -266,6 +267,7 @@ def create_app(
         session_repository, settings.dev_teacher_id
     )
     app.state.get_exam_session = GetExamSession(session_repository)
+    app.state.join_exam_session = JoinExamSession(session_repository, clock)
     app.state.create_evidence_upload_url = CreateEvidenceUploadUrl(
         evidence_storage,
         {

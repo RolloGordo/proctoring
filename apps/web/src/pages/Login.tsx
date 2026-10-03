@@ -3,8 +3,13 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth-context'
 import { authEnabled } from '../lib/supabase'
 
+/** A donde va cada quien al entrar. */
+function inicioSegunRol(rol?: 'teacher' | 'student'): string {
+  return rol === 'student' ? '/examen' : '/sesiones'
+}
+
 export function Login() {
-  const { entrar, token, cargando } = useAuth()
+  const { entrar, token, cargando, rol } = useAuth()
   const navegar = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -12,7 +17,8 @@ export function Login() {
   const [enviando, setEnviando] = useState(false)
 
   // Sin Supabase configurado no hay a quién pedirle credenciales.
-  if (!authEnabled || (!cargando && token)) return <Navigate to="/sesiones" replace />
+  if (!authEnabled || (!cargando && token))
+    return <Navigate to={inicioSegunRol(rol)} replace />
 
   async function enviar(evento: FormEvent): Promise<void> {
     evento.preventDefault()
@@ -20,7 +26,9 @@ export function Login() {
     setEnviando(true)
     try {
       await entrar(email, password)
-      navegar('/sesiones', { replace: true })
+      // El rol llega con el perfil, justo despues del token; la redireccion
+      // definitiva la hace el Navigate de arriba cuando ya se conoce.
+      navegar('/', { replace: true })
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo iniciar sesión')
     } finally {
@@ -34,7 +42,7 @@ export function Login() {
         <p className="acceso-marca">
           Proc<span>toring</span>
         </p>
-        <h1>Panel del docente</h1>
+        <h1>Iniciar sesión</h1>
         <p className="subtitulo">Supervisión de exámenes remotos</p>
 
         <form onSubmit={(e) => void enviar(e)} noValidate>

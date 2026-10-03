@@ -18,6 +18,7 @@ from proctoring_api.application.use_cases.create_evidence_upload_url import (
 )
 from proctoring_api.application.use_cases.create_exam_session import CreateExamSession
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
+from proctoring_api.application.use_cases.join_exam_session import JoinExamSession
 from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
 from proctoring_api.application.use_cases.list_teacher_sessions import (
@@ -74,6 +75,11 @@ def get_exam_session(request: Request) -> GetExamSession:
     return use_case
 
 
+def get_join_exam_session(request: Request) -> JoinExamSession:
+    use_case: JoinExamSession = request.app.state.join_exam_session
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -109,6 +115,7 @@ CurrentUserDep = Annotated[AuthenticatedUser | None, Depends(get_current_user)]
 CreateExamSessionDep = Annotated[CreateExamSession, Depends(get_create_exam_session)]
 ListTeacherSessionsDep = Annotated[ListTeacherSessions, Depends(get_list_teacher_sessions)]
 GetExamSessionDep = Annotated[GetExamSession, Depends(get_exam_session)]
+JoinExamSessionDep = Annotated[JoinExamSession, Depends(get_join_exam_session)]
 CreateEvidenceUploadUrlDep = Annotated[
     CreateEvidenceUploadUrl, Depends(get_create_evidence_upload_url)
 ]

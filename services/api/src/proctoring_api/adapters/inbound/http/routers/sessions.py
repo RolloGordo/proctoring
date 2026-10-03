@@ -10,6 +10,7 @@ from proctoring_api.adapters.inbound.http.dependencies import (
     CreateExamSessionDep,
     CurrentUserDep,
     GetExamSessionDep,
+    JoinExamSessionDep,
     ListTeacherSessionsDep,
 )
 from proctoring_api.adapters.inbound.http.schemas import (
@@ -17,6 +18,8 @@ from proctoring_api.adapters.inbound.http.schemas import (
     ExamSessionRequest,
     ExamSessionResponse,
     ExamSessionSummary,
+    JoinExamRequest,
+    JoinExamResponse,
 )
 from proctoring_api.application.use_cases.create_exam_session import CreateExamSessionInput
 
@@ -108,3 +111,40 @@ def get_exam_session(
     permitir averiguar que sesiones existen.
     """
     return ExamSessionResponse.from_entity(use_case.execute(session_id, actor=current_user))
+
+
+@router.post(
+    "/join",
+    response_model=JoinExamResponse,
+    summary="Entrar a un examen con el codigo de acceso",
+    responses={
+        **AUTH_RESPONSES,
+        400: {"model": ErrorResponse, "description": "El codigo no corresponde a ningun examen"},
+    },
+)
+def join_exam_session(
+    payload: JoinExamRequest,
+    use_case: JoinExamSessionDep,
+    current_user: CurrentUserDep,
+) -> JoinExamResponse:
+    """Resuelve el codigo que el docente le dio al estudiante.
+
+    Un codigo mal escrito y uno de otro docente responden lo mismo: distinguirlos
+    permitiria tantear codigos hasta dar con uno valido.
+
+    **No matricula todavia.** Crear la fila en session_participants, el
+    consentimiento y la verificacion de identidad son SPEC-004.
+    """
+    resultado = use_case.execute(payload.access_code, actor=current_user)
+    sesion = resultado.session
+    return JoinExamResponse(
+        session_id=sesion.id,
+        title=sesion.title,
+        description=sesion.description,
+        starts_at=sesion.starts_at,
+        ends_at=resultado.closes_at,
+        duration_minutes=sesion.duration_minutes,
+        entry_tolerance_minutes=sesion.entry_tolerance_minutes,
+        can_enter_now=resultado.can_enter_now,
+        modules=sesion.modules,
+    )
