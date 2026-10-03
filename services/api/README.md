@@ -72,7 +72,25 @@ funciona con `uv sync` y nada más.
 | `POST` | `/api/v1/events` | estudiante | registra un evento → `201 {id, severity}` |
 | `GET` | `/api/v1/sessions/{session_id}/events` | estudiante / docente | lista los eventos (filtro `?student_id=`) |
 | `GET` | `/api/v1/sessions/{session_id}/alerts` | **solo docente** | alertas de la sesión, de la más reciente a la más antigua |
-| `POST` | `/api/v1/evidence/upload-url` | — | *(pendiente, Fase 6)* |
+| `POST` | `/api/v1/evidence/upload-url` | estudiante | URL firmada para subir una captura o audio |
+
+### Subida de evidencia
+
+El archivo **nunca pasa por la API**. El flujo del cliente es:
+
+1. `POST /api/v1/evidence/upload-url` con `{session_id, student_id, kind, extension}`;
+2. subir el archivo **directo a Storage** con la `url` devuelta;
+3. mandar el evento con el `path` devuelto en `evidence_path`.
+
+`kind` es `image`, `audio` o `reference_face`, y decide el bucket (`evidences`, `audio-segments`,
+`reference-faces`). Las extensiones aceptadas coinciden con los `allowed_mime_types` de cada bucket:
+dar una URL para un tipo que el bucket rechazaría haría fallar la subida lejos de su causa.
+
+La firma vale para **una ruta concreta**: quien la reciba no puede subir a otra parte del bucket ni
+sobrescribir evidencia ajena. Y un estudiante solo obtiene URLs para sí mismo.
+
+Si las capturas y el audio pasaran por la API, cada examen costaría ancho de banda del plan
+gratuito de Render. Ver ADR-0004.
 
 ### Alertas en vivo
 

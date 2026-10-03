@@ -13,6 +13,9 @@ from typing import Annotated
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from proctoring_api.application.use_cases.create_evidence_upload_url import (
+    CreateEvidenceUploadUrl,
+)
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
 from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
@@ -43,6 +46,11 @@ def get_list_session_events(request: Request) -> ListSessionEvents:
 
 def get_list_session_alerts(request: Request) -> ListSessionAlerts:
     use_case: ListSessionAlerts = request.app.state.list_session_alerts
+    return use_case
+
+
+def get_create_evidence_upload_url(request: Request) -> CreateEvidenceUploadUrl:
+    use_case: CreateEvidenceUploadUrl = request.app.state.create_evidence_upload_url
     return use_case
 
 
@@ -78,3 +86,6 @@ RegisterEventDep = Annotated[RegisterEvent, Depends(get_register_event)]
 ListSessionEventsDep = Annotated[ListSessionEvents, Depends(get_list_session_events)]
 ListSessionAlertsDep = Annotated[ListSessionAlerts, Depends(get_list_session_alerts)]
 CurrentUserDep = Annotated[AuthenticatedUser | None, Depends(get_current_user)]
+CreateEvidenceUploadUrlDep = Annotated[
+    CreateEvidenceUploadUrl, Depends(get_create_evidence_upload_url)
+]

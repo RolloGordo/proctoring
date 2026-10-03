@@ -136,3 +136,23 @@ Nada de `ipcRenderer` crudo ni `require` en el renderer.
 Video corto mostrando: Alt+Tab → evento en los logs de la API; conectar monitor → evento; abrir
 Zoom → evento; intentar capturar pantalla → ventana en negro.
 Guárdalo en `docs/evidencias/semana-05/rider/`.
+
+## Subir capturas y audio
+
+El archivo **no se manda a la API**. Tres pasos:
+
+```
+1. POST /api/v1/evidence/upload-url
+   { "session_id": "...", "student_id": "...", "kind": "image", "extension": "jpg" }
+   -> 201 { "path": "...", "url": "...", "token": "...", "expires_in_seconds": 7200 }
+
+2. subir el archivo directo a esa "url"
+
+3. POST /api/v1/events con "evidence_path": el "path" del paso 1
+```
+
+`kind` es `image`, `audio` o `reference_face`. Las extensiones aceptadas están limitadas por el
+bucket: imágenes `jpg`/`jpeg`/`png`/`webp`, audio `webm`/`wav`/`ogg`/`mp3`. Cualquier otra devuelve
+`400`.
+
+Ya está implementado y probado en la API: con `docker compose up` puedes usarlo hoy.

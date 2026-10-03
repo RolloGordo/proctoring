@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.event import MAX_EVIDENCE_PATH_LENGTH, EventType, ProctoringEvent
+from proctoring_api.domain.evidence import EvidenceKind
 from proctoring_api.domain.severity import Severity
 
 
@@ -107,6 +108,30 @@ class AlertResponse(BaseModel):
             reason=alert.reason,
             created_at=alert.created_at,
         )
+
+
+class EvidenceUploadRequestBody(BaseModel):
+    """Cuerpo de `POST /api/v1/evidence/upload-url`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: UUID
+    student_id: UUID
+    kind: EvidenceKind
+    extension: str = Field(max_length=8, examples=["jpg", "webm"])
+
+
+class EvidenceUploadResponse(BaseModel):
+    """Permiso temporal para subir un archivo.
+
+    El cliente sube a `url` y luego manda el evento con `path` en
+    `evidence_path`. El archivo nunca pasa por la API.
+    """
+
+    path: str
+    url: str
+    token: str | None
+    expires_in_seconds: int
 
 
 class HealthResponse(BaseModel):

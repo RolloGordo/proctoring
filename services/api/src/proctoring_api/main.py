@@ -12,24 +12,30 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from proctoring_api import __version__
 from proctoring_api.adapters.inbound.http.errors import register_error_handlers
-from proctoring_api.adapters.inbound.http.routers import events, health
+from proctoring_api.adapters.inbound.http.routers import events, evidence, health
 from proctoring_api.adapters.outbound.clock import SystemClock
 from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
 from proctoring_api.adapters.outbound.memory.event_repository import InMemoryEventRepository
+from proctoring_api.adapters.outbound.memory.evidence_storage import InMemoryEvidenceStorage
 from proctoring_api.adapters.outbound.memory.job_queue import InMemoryJobQueue
 from proctoring_api.adapters.outbound.memory.profile_repository import InMemoryProfileRepository
 from proctoring_api.application.ports.alert_repository import AlertRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.event_repository import EventRepository
+from proctoring_api.application.ports.evidence_storage import EvidenceStorage
 from proctoring_api.application.ports.job_queue import JobQueue
 from proctoring_api.application.ports.profile_repository import ProfileRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.ports.session_repository import SessionRepository
+from proctoring_api.application.use_cases.create_evidence_upload_url import (
+    CreateEvidenceUploadUrl,
+)
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
 from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.config import ENVS_WITHOUT_AUTH, Settings
+from proctoring_api.domain.evidence import EvidenceKind
 
 DESCRIPTION = """
 API principal del sistema de proctoring para examenes remotos (UPAO, Taller Integrador 1).
@@ -140,6 +146,20 @@ def _build_session_repository(
     return None
 
 
+def _build_evidence_storage(settings: Settings, client: object | None) -> EvidenceStorage:
+    if settings.evidence_storage == "supabase":
+        from supabase import Client
+
+        from proctoring_api.adapters.outbound.supabase.evidence_storage import (
+            SupabaseEvidenceStorage,
+        )
+
+        assert isinstance(client, Client)
+        return SupabaseEvidenceStorage(client)
+
+    return InMemoryEvidenceStorage()
+
+
 def _build_job_queue(settings: Settings) -> JobQueue:
     if settings.job_queue == "redis":
         from proctoring_api.adapters.outbound.redis_queue.job_queue import RedisJobQueue
@@ -195,6 +215,7 @@ def create_app(
         openapi_tags=[
             {"name": "health", "description": "Estado del servicio"},
             {"name": "events", "description": "Senales detectadas durante un examen"},
+            {"name": "evidence", "description": "Subida de capturas y audio a Storage"},
         ],
     )
 
@@ -207,12 +228,15 @@ def create_app(
     )
 
     # --- Cableado: adaptadores -> casos de uso ---
-    client = _build_supabase_client(settings) if settings.event_repository == "supabase" else None
+    # Un solo cliente para todos los adaptadores de Supabase que haga falta.
+    needs_supabase = "supabase" in (settings.event_repository, settings.evidence_storage)
+    client = _build_supabase_client(settings) if needs_supabase else None
 
     event_repository = _build_event_repository(settings, client)
     alert_repository = _build_alert_repository(settings, client)
     question_repository = _build_question_repository(settings, client)
     session_repository = _build_session_repository(settings, client)
+    evidence_storage = _build_evidence_storage(settings, client)
     profile_repository = _build_profile_repository(settings, client)
     job_queue = _build_job_queue(settings)
     clock = clock or SystemClock()
@@ -228,10 +252,19 @@ def create_app(
     )
     app.state.list_session_events = ListSessionEvents(event_repository, session_repository)
     app.state.list_session_alerts = ListSessionAlerts(alert_repository, session_repository)
+    app.state.create_evidence_upload_url = CreateEvidenceUploadUrl(
+        evidence_storage,
+        {
+            EvidenceKind.IMAGE: settings.supabase_evidence_bucket,
+            EvidenceKind.AUDIO: settings.supabase_audio_bucket,
+            EvidenceKind.REFERENCE_FACE: settings.supabase_reference_faces_bucket,
+        },
+    )
 
     register_error_handlers(app)
     app.include_router(health.router)
     app.include_router(events.router)
+    app.include_router(evidence.router)
 
     return app
 
