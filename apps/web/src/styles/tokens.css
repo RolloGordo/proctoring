@@ -1,0 +1,81 @@
+/*
+ * Sistema de diseño de la web del docente.
+ *
+ * Los colores y la tipografía vienen del tema Agency de Start Bootstrap, que es
+ * la referencia visual que pidió el equipo: Montserrat en mayúsculas para los
+ * títulos, Roboto Slab para el texto, y un amarillo que se usa **poco** —
+ * botones principales, estado activo y poco más. Un acento que aparece en todas
+ * partes deja de ser acento.
+ *
+ * Esto NO es una landing page: es una herramienta que un docente mira durante
+ * una hora seguida mientras vigila un examen. Por eso se conservan la
+ * tipografía y la paleta, pero se bajan las escalas, se quitan las sombras
+ * grandes y se usan esquinas poco redondeadas. Nada de degradados ni de
+ * animaciones decorativas.
+ */
+
+:root {
+  /* ---------- Paleta ---------- */
+  --amarillo: #ffc800;
+  --amarillo-oscuro: #e0b000;
+  --amarillo-tenue: #fff8e0;
+
+  --tinta: #212529;
+  --tinta-media: #495057;
+  --tinta-suave: #6c757d;
+
+  --papel: #ffffff;
+  --papel-gris: #f8f9fa;
+  --papel-hundido: #eef0f2;
+
+  --linea: #dee2e6;
+  --linea-fuerte: #ced4da;
+
+  /* ---------- Severidad ----------
+   * Son los tres valores del enum alert_severity. El rojo se reserva para
+   * `high`: si todo grita, el docente deja de mirar. */
+  --alta: #b42318;
+  --alta-fondo: #fef3f2;
+  --alta-linea: #fecdc9;
+
+  --media: #b54708;
+  --media-fondo: #fffaeb;
+  --media-linea: #fedf89;
+
+  --baja: #475467;
+  --baja-fondo: var(--papel-gris);
+  --baja-linea: var(--linea);
+
+  --exito: #067647;
+  --exito-fondo: #ecfdf3;
+
+  /* ---------- Tipografía ---------- */
+  --titulo: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --texto: 'Roboto Slab', Georgia, 'Times New Roman', serif;
+  --mono: 'SFMono-Regular', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  /* ---------- Espaciado ---------- */
+  --e1: 0.25rem;
+  --e2: 0.5rem;
+  --e3: 0.75rem;
+  --e4: 1rem;
+  --e5: 1.5rem;
+  --e6: 2rem;
+  --e7: 3rem;
+  --e8: 4rem;
+
+  /* ---------- Formas ----------
+   * Radios pequeños a propósito. Las esquinas muy redondeadas son lo que hace
+   * que una interfaz parezca una plantilla genérica. */
+  --radio: 3px;
+  --radio-grande: 6px;
+
+  --sombra: 0 1px 2px rgb(16 24 40 / 6%);
+  --sombra-alta: 0 4px 12px rgb(16 24 40 / 10%);
+
+  --transicion: 120ms ease-out;
+
+  /* ---------- Disposición ---------- */
+  --ancho-maximo: 1180px;
+  --alto-cabecera: 64px;
+}

@@ -1,0 +1,621 @@
+/* Estilos base y componentes compartidos. Ver tokens.css para el porqué. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--papel-gris);
+  color: var(--tinta);
+  font-family: var(--texto);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Títulos: Montserrat, mayúsculas, apretado ---------- */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--titulo);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--tinta);
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.75rem;
+  letter-spacing: 0.01em;
+}
+h2 {
+  font-size: 1.25rem;
+}
+h3 {
+  font-size: 1rem;
+}
+h4 {
+  font-size: 0.8125rem;
+  letter-spacing: 0.06em;
+  color: var(--tinta-suave);
+}
+
+p {
+  margin: 0 0 var(--e4);
+}
+
+a {
+  color: var(--tinta);
+  text-decoration-color: var(--amarillo);
+  text-underline-offset: 3px;
+}
+
+/* El subtítulo en cursiva bajo cada título es el gesto más reconocible del
+   tema Agency. Se conserva porque separa el "qué" del "por qué" sin ruido. */
+.subtitulo {
+  font-style: italic;
+  color: var(--tinta-suave);
+  margin: var(--e1) 0 0;
+}
+
+/* ---------- Estructura ---------- */
+.contenedor {
+  width: 100%;
+  max-width: var(--ancho-maximo);
+  margin: 0 auto;
+  padding: 0 var(--e5);
+}
+
+.cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: var(--alto-cabecera);
+  background: var(--tinta);
+  color: var(--papel);
+  display: flex;
+  align-items: center;
+}
+
+.cabecera .contenedor {
+  display: flex;
+  align-items: center;
+  gap: var(--e5);
+}
+
+.marca {
+  font-family: var(--titulo);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--papel);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.marca span {
+  color: var(--amarillo);
+}
+
+.navegacion {
+  display: flex;
+  gap: var(--e5);
+  margin-left: auto;
+  align-items: center;
+}
+
+.navegacion a {
+  font-family: var(--titulo);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgb(255 255 255 / 70%);
+  text-decoration: none;
+  padding: var(--e2) 0;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transicion), border-color var(--transicion);
+}
+
+.navegacion a:hover {
+  color: var(--papel);
+}
+
+.navegacion a.activo {
+  color: var(--papel);
+  border-bottom-color: var(--amarillo);
+}
+
+.principal {
+  padding: var(--e7) 0 var(--e8);
+}
+
+.encabezado-pagina {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--e5);
+  margin-bottom: var(--e6);
+}
+
+/* ---------- Tarjetas ---------- */
+.tarjeta {
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+
+.tarjeta-cuerpo {
+  padding: var(--e5);
+}
+
+.tarjeta + .tarjeta {
+  margin-top: var(--e4);
+}
+
+/* ---------- Botones ---------- */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e2);
+  font-family: var(--titulo);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: var(--e3) var(--e5);
+  border: 1px solid transparent;
+  border-radius: var(--radio);
+  background: var(--amarillo);
+  color: var(--tinta);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--transicion), border-color var(--transicion);
+}
+
+.boton:hover:not(:disabled) {
+  background: var(--amarillo-oscuro);
+}
+
+.boton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.boton-secundario {
+  background: var(--papel);
+  border-color: var(--linea-fuerte);
+  color: var(--tinta);
+}
+
+.boton-secundario:hover:not(:disabled) {
+  background: var(--papel-gris);
+}
+
+.boton-texto {
+  background: none;
+  border-color: transparent;
+  padding: var(--e2) var(--e3);
+  color: var(--tinta-media);
+}
+
+.boton-texto:hover:not(:disabled) {
+  background: var(--papel-hundido);
+}
+
+/* ---------- Formularios ---------- */
+.campo {
+  display: block;
+  margin-bottom: var(--e4);
+}
+
+.campo > label {
+  display: block;
+  font-family: var(--titulo);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tinta-media);
+  margin-bottom: var(--e2);
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+  width: 100%;
+  font-family: var(--texto);
+  font-size: 0.9375rem;
+  color: var(--tinta);
+  background: var(--papel);
+  padding: var(--e3);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--radio);
+  transition: border-color var(--transicion), box-shadow var(--transicion);
+}
+
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: var(--amarillo);
+  box-shadow: 0 0 0 3px rgb(255 200 0 / 25%);
+}
+
+.ayuda {
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+  margin-top: var(--e1);
+}
+
+.rejilla-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0 var(--e4);
+}
+
+/* ---------- Tablas ---------- */
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.tabla th {
+  font-family: var(--titulo);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tinta-suave);
+  text-align: left;
+  padding: var(--e3) var(--e4);
+  border-bottom: 1px solid var(--linea);
+  white-space: nowrap;
+}
+
+.tabla td {
+  padding: var(--e4);
+  border-bottom: 1px solid var(--linea);
+  vertical-align: top;
+}
+
+.tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tabla tbody tr:hover {
+  background: var(--papel-gris);
+}
+
+/* ---------- Etiquetas de severidad ---------- */
+.severidad {
+  display: inline-block;
+  font-family: var(--titulo);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px var(--e2);
+  border: 1px solid;
+  border-radius: var(--radio);
+  white-space: nowrap;
+}
+
+.severidad-high {
+  color: var(--alta);
+  background: var(--alta-fondo);
+  border-color: var(--alta-linea);
+}
+
+.severidad-medium {
+  color: var(--media);
+  background: var(--media-fondo);
+  border-color: var(--media-linea);
+}
+
+.severidad-low {
+  color: var(--baja);
+  background: var(--baja-fondo);
+  border-color: var(--baja-linea);
+}
+
+/* ---------- Código de acceso ---------- */
+.codigo-acceso {
+  font-family: var(--mono);
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--tinta);
+  background: var(--amarillo-tenue);
+  border: 1px solid var(--media-linea);
+  border-radius: var(--radio);
+  padding: var(--e2) var(--e3);
+  display: inline-block;
+}
+
+/* ---------- Estados vacíos y avisos ---------- */
+.vacio {
+  text-align: center;
+  padding: var(--e8) var(--e5);
+  color: var(--tinta-suave);
+}
+
+.vacio h3 {
+  color: var(--tinta);
+  margin-bottom: var(--e2);
+}
+
+.aviso {
+  padding: var(--e3) var(--e4);
+  border: 1px solid var(--alta-linea);
+  border-left: 3px solid var(--alta);
+  border-radius: var(--radio);
+  background: var(--alta-fondo);
+  color: var(--alta);
+  font-size: 0.9375rem;
+  margin-bottom: var(--e4);
+}
+
+.aviso-neutro {
+  border-color: var(--linea);
+  border-left-color: var(--tinta-suave);
+  background: var(--papel-gris);
+  color: var(--tinta-media);
+}
+
+/* ---------- Indicador de conexión en vivo ---------- */
+.en-vivo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  font-family: var(--titulo);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tinta-suave);
+}
+
+.punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tinta-suave);
+  flex-shrink: 0;
+}
+
+.punto-activo {
+  background: var(--exito);
+}
+
+/* Solo late cuando hay conexión: una animación constante es ruido, pero aquí
+   comunica que el canal sigue vivo, que es justo lo que el docente necesita
+   saber durante un examen. */
+@media (prefers-reduced-motion: no-preference) {
+  .punto-activo {
+    animation: latido 2s ease-in-out infinite;
+  }
+}
+
+@keyframes latido {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ---------- Utilidades mínimas ---------- */
+.fila {
+  display: flex;
+  align-items: center;
+  gap: var(--e3);
+}
+
+.apilado {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e4);
+}
+
+.tenue {
+  color: var(--tinta-suave);
+}
+
+.hora {
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .contenedor {
+    padding: 0 var(--e4);
+  }
+
+  .encabezado-pagina {
+    flex-direction: column;
+  }
+
+  .navegacion {
+    gap: var(--e4);
+  }
+}
+
+/* ===========================================================================
+   Pantallas
+   =========================================================================== */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Acceso ----------
+   Fondo oscuro, como el hero del tema: separa el acceso del resto y hace que
+   la marca sea lo primero que se lee. */
+.pantalla-acceso {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--e5);
+  background: var(--tinta);
+}
+
+.acceso-caja {
+  width: 100%;
+  max-width: 400px;
+  background: var(--papel);
+  border-radius: var(--radio-grande);
+  padding: var(--e7) var(--e6);
+  box-shadow: var(--sombra-alta);
+}
+
+.acceso-marca {
+  font-family: var(--titulo);
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--tinta-suave);
+  margin: 0 0 var(--e5);
+}
+
+.acceso-marca span {
+  color: var(--amarillo-oscuro);
+}
+
+.acceso-caja h1 {
+  font-size: 1.375rem;
+}
+
+.acceso-caja form {
+  margin-top: var(--e6);
+}
+
+.acceso-boton {
+  width: 100%;
+  padding: var(--e4);
+}
+
+/* ---------- Panel de resumen ---------- */
+.panel-resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--e4);
+  margin-bottom: var(--e6);
+}
+
+.dato {
+  padding: var(--e5);
+}
+
+.cifra {
+  font-family: var(--titulo);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0 0 var(--e2);
+  color: var(--tinta);
+  /* Las cifras no bailan al actualizarse en vivo. */
+  font-variant-numeric: tabular-nums;
+}
+
+.cifra-high {
+  color: var(--alta);
+}
+
+.cifra-medium {
+  color: var(--media);
+}
+
+.etiqueta {
+  font-family: var(--titulo);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tinta-suave);
+  margin: 0;
+}
+
+/* ---------- Dos columnas ---------- */
+.columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: var(--e6);
+  align-items: start;
+}
+
+.encabezado-seccion {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e4);
+  margin-bottom: var(--e3);
+}
+
+/* ---------- Lista de alertas ---------- */
+.lista-alertas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lista-alertas li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: var(--e3);
+  padding: var(--e4);
+  border-bottom: 1px solid var(--linea);
+}
+
+.lista-alertas li:last-child {
+  border-bottom: none;
+}
+
+/* La más reciente se marca con una línea de color, no con un fondo: el fondo
+   compite con la etiqueta de severidad y quita contraste al texto. */
+.lista-alertas li:first-child {
+  box-shadow: inset 3px 0 0 var(--amarillo);
+}
+
+.motivo {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.lista-alertas .ayuda {
+  margin-top: 2px;
+}
+
+@media (max-width: 900px) {
+  .columnas {
+    grid-template-columns: 1fr;
+  }
+}

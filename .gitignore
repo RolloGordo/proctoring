@@ -116,3 +116,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Vite: variables locales del desarrollador
+.env.local
+.env.*.local
