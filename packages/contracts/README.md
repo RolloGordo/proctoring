@@ -110,13 +110,30 @@ python packages/contracts/validate.py
 Comprueba tres cosas: que el esquema sea un JSON Schema válido, que cada ejemplo lo cumpla, y que
 no falte ningún `event_type` del enum sin su ejemplo. Lo corre el CI en el job `contracts`.
 
-## Pendiente
+## Tipos de la base de datos
 
-`database.types.ts` — tipos TypeScript generados desde el esquema real de Supabase, para que la web
-y la app de escritorio tengan autocompletado y comprobación de tipos contra las tablas:
+[`database.types.ts`](database.types.ts) tiene los tipos TypeScript generados desde el esquema
+**real** de Supabase: las 15 tablas con sus `Row`, `Insert`, `Update`, las relaciones y los 9 enums.
+Lo usan `apps/web` y `apps/desktop`:
+
+```ts
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@proctoring/contracts/database.types';
+
+const supabase = createClient<Database>(url, publishableKey);
+```
+
+**Está generado, no se edita a mano.** Después de cada migración hay que regenerarlo:
 
 ```bash
 npx supabase gen types typescript --project-id uzuysjmymvtpoxfrdxnm > packages/contracts/database.types.ts
 ```
 
-Requiere `npx supabase login` con acceso al proyecto.
+Dos cosas que conviene saber al usarlo:
+
+- `answers` cuelga de `participant_id`, no de `session_id` ni `student_id`. Para llegar a las
+  respuestas de un estudiante hay que pasar por `session_participants`.
+- `questions` y `question_options` **no tienen política de lectura para el estudiante**, y
+  `question_options.is_correct` está en la misma tabla. El estudiante recibe las preguntas por la
+  API, que las sirve con service role y quita las respuestas correctas. No intentes leerlas
+  directo desde el cliente: RLS te va a devolver vacío, y es a propósito.
