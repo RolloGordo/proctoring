@@ -141,12 +141,13 @@ def _build_session_repository(
 
 
 def _build_job_queue(settings: Settings) -> JobQueue:
-    # El adaptador de Redis llega en la Fase 5 (ADR-0006). Hasta entonces la cola
-    # en memoria deja el flujo completo funcionando y las pruebas verdes.
     if settings.job_queue == "redis":
-        raise NotImplementedError(
-            "JOB_QUEUE=redis todavia no esta implementado; usa JOB_QUEUE=memory"
-        )
+        from proctoring_api.adapters.outbound.redis_queue.job_queue import RedisJobQueue
+
+        return RedisJobQueue(settings.redis_url)
+
+    # En memoria por defecto: la API levanta sin Redis y las pruebas corren sin
+    # servicios externos.
     return InMemoryJobQueue()
 
 

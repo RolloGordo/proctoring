@@ -161,7 +161,7 @@ cambian el comportamiento:
 |---|---|---|
 | `AUTH_ENABLED` | `true` (por defecto) \| `false` | exige token y comprueba permisos |
 | `EVENT_REPOSITORY` | `memory` \| `supabase` | dónde se guardan los eventos y se leen los perfiles |
-| `JOB_QUEUE` | `memory` \| `redis` | dónde se encolan los análisis de audio |
+| `JOB_QUEUE` | `memory` \| `redis` | dónde se encolan los análisis de audio (`redis` necesita Redis levantado) |
 | `EVIDENCE_STORAGE` | `memory` \| `supabase` | quién firma las URLs de subida |
 
 Cambiar de memoria a producción es cambiar estas tres variables. Eso es el beneficio de los puertos.

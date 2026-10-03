@@ -132,6 +132,9 @@ lo es. Si tienes que usar PowerShell, reemplaza `A && B` por `A; if ($?) { B }`.
 
 ### Opción A — Docker (recomendada: API + Redis + worker de IA)
 
+Levanta los tres servicios y el flujo completo funciona de punta a punta: un evento
+`speech_detected` llega a la API, se encola en Redis y lo recoge el worker de IA.
+
 ```bash
 cp .env.example .env && docker compose up --build
 ```
@@ -141,6 +144,7 @@ En PowerShell el primer comando es `Copy-Item .env.example .env`.
 - API: <http://localhost:8000>
 - Swagger: <http://localhost:8000/docs>
 - Redis: `localhost:6379`
+- Worker de IA: sin puerto; se ve con `docker compose logs -f ai-worker`
 
 ### Opción B — Solo la API, sin Docker
 

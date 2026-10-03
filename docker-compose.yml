@@ -20,6 +20,9 @@ services:
     environment:
       # Dentro de la red de compose, Redis se llama "redis", no "localhost".
       REDIS_URL: redis://redis:6379/0
+      # Con Redis levantado, la cola real: asi `docker compose up` demuestra
+      # el flujo completo hasta el worker de IA.
+      JOB_QUEUE: redis
     depends_on:
       redis:
         condition: service_healthy
@@ -49,27 +52,30 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Servicio de IA (Pierreluiggi) y su worker. Se activan en la Fase 5, cuando
-  # exista el adaptador de cola con RQ (ADR-0006). Hasta entonces la API usa la
-  # cola en memoria y todo el flujo funciona sin esto.
+  # Worker de IA. De momento es el esqueleto (`worker_stub.py`): recibe el
+  # trabajo encolado y lo registra, sin analizar nada. Demuestra el flujo
+  # completo de punta a punta. La logica real es de Pierreluiggi.
   # ---------------------------------------------------------------------------
+  ai-worker:
+    build:
+      context: ./services/ai
+      dockerfile: Dockerfile
+    container_name: proctoring-ai-worker
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # El servicio HTTP de IA (puerto 8001) se activa cuando exista. Por ahora todo
+  # el trabajo entra por la cola, no por peticiones.
   # ai:
   #   build:
   #     context: ./services/ai
   #   container_name: proctoring-ai
   #   ports:
   #     - "8001:8001"
-  #   env_file:
-  #     - .env
-  #   depends_on:
-  #     redis:
-  #       condition: service_healthy
-  #
-  # ai-worker:
-  #   build:
-  #     context: ./services/ai
-  #   container_name: proctoring-ai-worker
-  #   command: ["python", "worker_stub.py"]
   #   env_file:
   #     - .env
   #   depends_on:
