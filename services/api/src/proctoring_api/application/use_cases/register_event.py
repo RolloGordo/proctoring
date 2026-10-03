@@ -8,9 +8,12 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from proctoring_api.application.ports.alert_repository import AlertRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.event_repository import EventRepository
 from proctoring_api.application.ports.job_queue import JobQueue
+from proctoring_api.application.ports.question_repository import QuestionRepository
+from proctoring_api.domain.alert import Alert, should_alert
 from proctoring_api.domain.errors import AuthorizationError, InvalidEventError
 from proctoring_api.domain.event import EventType, ProctoringEvent
 from proctoring_api.domain.severity import Severity, default_severity
@@ -59,10 +62,16 @@ class RegisterEvent:
         events: EventRepository,
         job_queue: JobQueue,
         clock: Clock,
+        alerts: AlertRepository,
+        questions: QuestionRepository | None = None,
     ) -> None:
         self._events = events
         self._job_queue = job_queue
         self._clock = clock
+        self._alerts = alerts
+        # `None` significa que no hay banco de preguntas con el que comprobar
+        # (modo memoria en desarrollo). La composicion lo decide en main.py.
+        self._questions = questions
 
     def execute(
         self, data: RegisterEventInput, *, actor: AuthenticatedUser | None = None
@@ -82,6 +91,7 @@ class RegisterEvent:
             self._authorize(data, actor)
 
         self._reject_if_from_the_future(data.started_at)
+        self._reject_if_question_is_from_another_session(data)
 
         event = ProctoringEvent.create(
             session_id=data.session_id,
@@ -96,15 +106,21 @@ class RegisterEvent:
 
         self._events.save(event)
 
+        severity = default_severity(event.event_type, event.duration_ms)
+
+        # Guardar la alerta ES notificar al docente: la tabla `alerts` esta
+        # publicada en Supabase Realtime, asi que la insercion llega sola a su
+        # navegador (ADR-0007). Esto es lo que sostiene la meta de avisar en
+        # menos de 5 s.
+        if should_alert(severity):
+            self._alerts.save(Alert.from_event(event, severity, self._clock.now()))
+
         # El analisis de audio es lo caro: se encola y la peticion responde ya.
         # Solo despues de guardar, para que el worker siempre encuentre el evento.
         if event.needs_audio_analysis:
             self._job_queue.enqueue_audio_analysis(event.id)
 
-        return RegisterEventOutput(
-            id=event.id,
-            severity=default_severity(event.event_type, event.duration_ms),
-        )
+        return RegisterEventOutput(id=event.id, severity=severity)
 
     @staticmethod
     def _authorize(data: RegisterEventInput, actor: AuthenticatedUser) -> None:
@@ -124,6 +140,26 @@ class RegisterEvent:
 
         if actor.id != data.student_id:
             raise AuthorizationError("No puedes registrar eventos a nombre de otro estudiante")
+
+    def _reject_if_question_is_from_another_session(self, data: RegisterEventInput) -> None:
+        """La pregunta tiene que ser de esta sesion.
+
+        Si no se comprueba, un cliente puede mandar el `question_id` de otro
+        examen y el servicio de IA acabaria comparando la transcripcion del
+        estudiante con el enunciado equivocado. La similitud saldria mal y la
+        deteccion de IA por voz daria un resultado sin sentido, que es justo lo
+        que el proyecto mide como falso positivo.
+        """
+        if data.question_id is None or self._questions is None:
+            return
+
+        session_id = self._questions.find_session_id(data.question_id)
+        if session_id is None:
+            raise InvalidEventError(f"La pregunta {data.question_id} no existe")
+        if session_id != data.session_id:
+            raise InvalidEventError(
+                f"La pregunta {data.question_id} no pertenece a la sesion {data.session_id}"
+            )
 
     def _reject_if_from_the_future(self, started_at: datetime) -> None:
         if started_at.tzinfo is None or started_at.utcoffset() is None:

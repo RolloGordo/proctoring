@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 
+from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
 from proctoring_api.adapters.outbound.memory.event_repository import InMemoryEventRepository
 from proctoring_api.adapters.outbound.memory.job_queue import InMemoryJobQueue
 from proctoring_api.application.use_cases.register_event import (
@@ -29,8 +30,9 @@ def use_case(
     event_repository: InMemoryEventRepository,
     job_queue: InMemoryJobQueue,
     clock: FixedClock,
+    alert_repository: InMemoryAlertRepository,
 ) -> RegisterEvent:
-    return RegisterEvent(event_repository, job_queue, clock)
+    return RegisterEvent(event_repository, job_queue, clock, alert_repository)
 
 
 def an_input(**overrides: object) -> RegisterEventInput:
@@ -94,7 +96,10 @@ class TestAudioAnalysisQueue:
         assert list(job_queue.audio_analysis_jobs) == []
 
     def test_is_not_enqueued_when_saving_fails(
-        self, job_queue: InMemoryJobQueue, clock: FixedClock
+        self,
+        job_queue: InMemoryJobQueue,
+        clock: FixedClock,
+        alert_repository: InMemoryAlertRepository,
     ) -> None:
         class FailingRepository:
             def save(self, event: object) -> None:
@@ -103,7 +108,12 @@ class TestAudioAnalysisQueue:
             def list_by_session(self, *args: object, **kwargs: object) -> list[object]:
                 return []
 
-        use_case = RegisterEvent(FailingRepository(), job_queue, clock)  # type: ignore[arg-type]
+        use_case = RegisterEvent(
+            FailingRepository(),  # type: ignore[arg-type]
+            job_queue,
+            clock,
+            alert_repository,
+        )
 
         with pytest.raises(RuntimeError):
             use_case.execute(an_input(event_type=EventType.SPEECH_DETECTED, question_id=QUESTION))

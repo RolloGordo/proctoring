@@ -13,6 +13,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
 from proctoring_api.adapters.outbound.memory.event_repository import InMemoryEventRepository
 from proctoring_api.adapters.outbound.memory.job_queue import InMemoryJobQueue
 from proctoring_api.adapters.outbound.memory.profile_repository import InMemoryProfileRepository
@@ -83,6 +84,11 @@ def event_repository() -> InMemoryEventRepository:
 @pytest.fixture
 def job_queue() -> InMemoryJobQueue:
     return InMemoryJobQueue()
+
+
+@pytest.fixture
+def alert_repository() -> InMemoryAlertRepository:
+    return InMemoryAlertRepository()
 
 
 @pytest.fixture

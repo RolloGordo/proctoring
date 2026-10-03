@@ -71,7 +71,24 @@ funciona con `uv sync` y nada más.
 | `GET` | `/health` | pública | estado, entorno, versión y si la auth está activa |
 | `POST` | `/api/v1/events` | estudiante | registra un evento → `201 {id, severity}` |
 | `GET` | `/api/v1/sessions/{session_id}/events` | estudiante / docente | lista los eventos (filtro `?student_id=`) |
+| `GET` | `/api/v1/sessions/{session_id}/alerts` | **solo docente** | alertas de la sesión, de la más reciente a la más antigua |
 | `POST` | `/api/v1/evidence/upload-url` | — | *(pendiente, Fase 6)* |
+
+### Alertas en vivo
+
+Al registrar un evento con severidad `medium` o `high`, la API inserta una fila en `alerts`. Esa
+tabla está publicada en **Supabase Realtime**, así que **insertar es notificar**: el navegador del
+docente, suscrito por `session_id`, recibe el aviso sin preguntar nada. Es lo que sostiene la meta
+de avisar en menos de 5 s.
+
+Las señales `low` **no** generan aviso. Quedan como evidencia y se ven en la revisión del caso. Un
+docente que recibe un aviso por cada parpadeo deja de mirarlos, y entonces el sistema no sirve.
+
+`speech_detected` nace `low`, así que no alerta al registrarse: la alerta por consulta a un
+asistente de IA la crea `services/ai` cuando confirma las **dos** condiciones.
+
+El endpoint `GET .../alerts` existe para la carga inicial: Realtime solo trae lo que ocurre a
+partir de que el docente se suscribe, no lo anterior.
 
 El contrato del cuerpo está en [`packages/contracts`](../../packages/contracts/), con un ejemplo
 válido por cada `event_type`.

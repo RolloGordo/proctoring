@@ -22,6 +22,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.event import MAX_EVIDENCE_PATH_LENGTH, EventType, ProctoringEvent
 from proctoring_api.domain.severity import Severity
 
@@ -77,6 +78,34 @@ class EventResponse(BaseModel):
             metadata=dict(event.metadata),
             evidence_path=event.evidence_path,
             severity=severity,
+        )
+
+
+class AlertResponse(BaseModel):
+    """Una alerta tal como la ve el docente.
+
+    Es la misma forma que llega por Supabase Realtime, para que la web pueda usar
+    el mismo tipo en la carga inicial y en los avisos en vivo.
+    """
+
+    id: UUID
+    event_id: UUID
+    session_id: UUID
+    student_id: UUID
+    severity: Severity
+    reason: str
+    created_at: datetime
+
+    @classmethod
+    def from_entity(cls, alert: Alert) -> AlertResponse:
+        return cls(
+            id=alert.id,
+            event_id=alert.event_id,
+            session_id=alert.session_id,
+            student_id=alert.student_id,
+            severity=alert.severity,
+            reason=alert.reason,
+            created_at=alert.created_at,
         )
 
 

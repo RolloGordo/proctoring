@@ -14,6 +14,7 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
+from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.config import Settings
@@ -37,6 +38,11 @@ def get_register_event(request: Request) -> RegisterEvent:
 
 def get_list_session_events(request: Request) -> ListSessionEvents:
     use_case: ListSessionEvents = request.app.state.list_session_events
+    return use_case
+
+
+def get_list_session_alerts(request: Request) -> ListSessionAlerts:
+    use_case: ListSessionAlerts = request.app.state.list_session_alerts
     return use_case
 
 
@@ -70,4 +76,5 @@ def get_current_user(
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 RegisterEventDep = Annotated[RegisterEvent, Depends(get_register_event)]
 ListSessionEventsDep = Annotated[ListSessionEvents, Depends(get_list_session_events)]
+ListSessionAlertsDep = Annotated[ListSessionAlerts, Depends(get_list_session_alerts)]
 CurrentUserDep = Annotated[AuthenticatedUser | None, Depends(get_current_user)]

@@ -14,14 +14,18 @@ from proctoring_api import __version__
 from proctoring_api.adapters.inbound.http.errors import register_error_handlers
 from proctoring_api.adapters.inbound.http.routers import events, health
 from proctoring_api.adapters.outbound.clock import SystemClock
+from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
 from proctoring_api.adapters.outbound.memory.event_repository import InMemoryEventRepository
 from proctoring_api.adapters.outbound.memory.job_queue import InMemoryJobQueue
 from proctoring_api.adapters.outbound.memory.profile_repository import InMemoryProfileRepository
+from proctoring_api.application.ports.alert_repository import AlertRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.event_repository import EventRepository
 from proctoring_api.application.ports.job_queue import JobQueue
 from proctoring_api.application.ports.profile_repository import ProfileRepository
+from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
+from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.config import ENVS_WITHOUT_AUTH, Settings
@@ -66,6 +70,20 @@ def _build_event_repository(settings: Settings, client: object | None) -> EventR
     return InMemoryEventRepository()
 
 
+def _build_alert_repository(settings: Settings, client: object | None) -> AlertRepository:
+    if settings.event_repository == "supabase":
+        from supabase import Client
+
+        from proctoring_api.adapters.outbound.supabase.alert_repository import (
+            SupabaseAlertRepository,
+        )
+
+        assert isinstance(client, Client)
+        return SupabaseAlertRepository(client)
+
+    return InMemoryAlertRepository()
+
+
 def _build_profile_repository(settings: Settings, client: object | None) -> ProfileRepository:
     # Los perfiles viven en la misma base que los eventos, asi que siguen el mismo
     # adaptador: no tiene sentido leer eventos de Supabase y perfiles de memoria.
@@ -80,6 +98,28 @@ def _build_profile_repository(settings: Settings, client: object | None) -> Prof
         return SupabaseProfileRepository(client)
 
     return InMemoryProfileRepository()
+
+
+def _build_question_repository(
+    settings: Settings, client: object | None
+) -> QuestionRepository | None:
+    """`None` en modo memoria: no hay banco de preguntas contra el que comprobar.
+
+    Rechazar todo evento con `question_id` dejaria a Rider y a Jesus sin poder
+    mandar `gaze_away` ni `speech_detected` mientras desarrollan. Con Supabase la
+    comprobacion si se hace.
+    """
+    if settings.event_repository == "supabase":
+        from supabase import Client
+
+        from proctoring_api.adapters.outbound.supabase.question_repository import (
+            SupabaseQuestionRepository,
+        )
+
+        assert isinstance(client, Client)
+        return SupabaseQuestionRepository(client)
+
+    return None
 
 
 def _build_job_queue(settings: Settings) -> JobQueue:
@@ -151,17 +191,23 @@ def create_app(
     client = _build_supabase_client(settings) if settings.event_repository == "supabase" else None
 
     event_repository = _build_event_repository(settings, client)
+    alert_repository = _build_alert_repository(settings, client)
+    question_repository = _build_question_repository(settings, client)
     profile_repository = _build_profile_repository(settings, client)
     job_queue = _build_job_queue(settings)
     clock = clock or SystemClock()
 
     app.state.settings = settings
     app.state.event_repository = event_repository
+    app.state.alert_repository = alert_repository
     app.state.profile_repository = profile_repository
     app.state.job_queue = job_queue
     app.state.identify_user = identify_user or _build_identify_user(settings, profile_repository)
-    app.state.register_event = RegisterEvent(event_repository, job_queue, clock)
+    app.state.register_event = RegisterEvent(
+        event_repository, job_queue, clock, alert_repository, question_repository
+    )
     app.state.list_session_events = ListSessionEvents(event_repository)
+    app.state.list_session_alerts = ListSessionAlerts(alert_repository)
 
     register_error_handlers(app)
     app.include_router(health.router)

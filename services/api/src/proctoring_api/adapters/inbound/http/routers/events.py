@@ -12,10 +12,12 @@ from fastapi import APIRouter, Query, status
 
 from proctoring_api.adapters.inbound.http.dependencies import (
     CurrentUserDep,
+    ListSessionAlertsDep,
     ListSessionEventsDep,
     RegisterEventDep,
 )
 from proctoring_api.adapters.inbound.http.schemas import (
+    AlertResponse,
     ErrorResponse,
     EventCreatedResponse,
     EventRequest,
@@ -94,3 +96,27 @@ def list_session_events(
         EventResponse.from_entity(event, default_severity(event.event_type, event.duration_ms))
         for event in events
     ]
+
+
+@router.get(
+    "/sessions/{session_id}/alerts",
+    response_model=list[AlertResponse],
+    summary="Alertas de una sesion (solo docente)",
+    responses=AUTH_RESPONSES,
+)
+def list_session_alerts(
+    session_id: UUID,
+    use_case: ListSessionAlertsDep,
+    current_user: CurrentUserDep,
+    student_id: UUID | None = Query(default=None, description="Filtrar por estudiante"),
+) -> list[AlertResponse]:
+    """Alertas ya generadas en la sesion, de la mas reciente a la mas antigua.
+
+    Llena la pantalla en vivo del docente cuando la abre con el examen ya
+    empezado: Supabase Realtime solo trae lo que ocurre a partir de que se
+    suscribe, no lo anterior.
+
+    Un estudiante no puede consultarlas: le ensenaria que detecciones esquivar.
+    """
+    alerts = use_case.execute(session_id, actor=current_user, student_id=student_id)
+    return [AlertResponse.from_entity(alert) for alert in alerts]

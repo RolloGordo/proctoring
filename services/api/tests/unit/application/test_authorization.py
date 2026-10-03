@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import pytest
 
+from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
 from proctoring_api.adapters.outbound.memory.event_repository import InMemoryEventRepository
 from proctoring_api.adapters.outbound.memory.job_queue import InMemoryJobQueue
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
@@ -46,8 +47,9 @@ def register(
     event_repository: InMemoryEventRepository,
     job_queue: InMemoryJobQueue,
     clock: FixedClock,
+    alert_repository: InMemoryAlertRepository,
 ) -> RegisterEvent:
-    return RegisterEvent(event_repository, job_queue, clock)
+    return RegisterEvent(event_repository, job_queue, clock, alert_repository)
 
 
 class TestRegisterEvent:
