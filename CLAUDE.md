@@ -24,7 +24,7 @@ El sistema es un **auditor, no un juez**: calcula un nivel de riesgo desglosado 
 | Silva Vega, Héctor | Project Manager | Arquitectura, backend (API hexagonal), infraestructura, CI/CD, riesgo y decisiones | `services/api`, `packages/contracts`, `.github/`, `docker-compose.yml`, `docs/` |
 | Rodriguez Ruiz, Rider | Scrum Master | App de escritorio Electron (kiosco, foco, monitores, procesos, protección), frontend | `apps/desktop`, `apps/web` (UI) |
 | Zevallos Bocanegra, Pierreluiggi | Desarrollo | Servicio de IA de audio (transcripción, similitud, voz sintética), importación QTI | `services/ai` |
-| Limay Capristan, Jesús | Desarrollo | Base de datos (migraciones SQL), visión computacional (rostro, mirada) | `supabase/migrations`, `apps/web/spikes/vision` |
+| Limay Capristan, Jesús | Desarrollo | Visión computacional (rostro, mirada); mantenimiento de la base de datos (el esquema inicial lo creó Héctor) | `apps/web/spikes/vision`, `supabase/migrations` |
 
 Product Owner y Portfolio Manager: docente Walter Cueva Chávez. El docente evalúa el trabajo **individual** por commits y evidencias: cuando trabajes para Héctor, no implementes los spikes de los demás; solo deja su carpeta preparada con un README.
 
@@ -121,9 +121,15 @@ proctoring/
 }
 ```
 
-## 7. Modelo de datos de referencia (lo implementa Jesús en `supabase/migrations`)
+## 7. Modelo de datos (YA CREADO en Supabase — ver `supabase/migrations` y `supabase/README.md`)
 
-`profiles` (id = auth user, full_name, role: teacher|student) · `courses` · `exam_sessions` (teacher_id, title, starts_at, duration_minutes, access_code, preset, settings jsonb) · `session_modules` · `questions` (session_id, statement, question_type, points, position) · `question_options` · `session_participants` (session_id, student_id, verification_status, consent_at) · `answers` · `events` (session_id, student_id, question_id, event_type, started_at, duration_ms, metadata, evidence_path) · `audio_analyses` (event_id, transcript, similarity, synthetic_score) · `alerts` (event_id, severity, reason) · `risk_scores` · `decisions` (session_id, student_id, teacher_id, decision: confirmed|dismissed|retake, justification NOT NULL, decided_at) · `reference_faces`. La API debe usar exactamente estos nombres.
+Proyecto Supabase `proctoring` (ref `uzuysjmymvtpoxfrdxnm`, región sa-east-1). URL `https://uzuysjmymvtpoxfrdxnm.supabase.co`. La service role key solo va en `.env` y GitHub Secrets.
+
+Tablas: `profiles` (id = auth user, full_name, email, role: teacher|student, student_code) · `courses` · `course_enrollments` · `exam_sessions` (teacher_id, title, starts_at, duration_minutes, entry_tolerance_minutes, access_code, reveal_code_at_start, preset, max_attempts, shuffle_questions, shuffle_options, question_pool_size, allow_back_navigation, show_answers_at, status) · `session_modules` (session_id, module, enabled, settings jsonb con umbrales) · `questions` (session_id, position, question_type, statement, points, correct_numeric_answer, numeric_tolerance, correct_text_answer, source_format) · `question_options` (question_id, position, option_text, is_correct) · `session_participants` (session_id, student_id, attempt, verification_status, verified_at, verification_reviewed_by, consent_at, requested_in_person, started_at, submitted_at, score) · `answers` · `reference_faces` (student_id, storage_path, embedding) · `events` (session_id, student_id, question_id, event_type, started_at, duration_ms, metadata, evidence_path) · `audio_analyses` (event_id, transcript, similarity, synthetic_voice_score, matched_question_id, processing_ms) · `alerts` (event_id, session_id, student_id, severity, reason) · `risk_scores` (session_id, student_id, score, breakdown) · `decisions` (session_id, student_id, teacher_id, decision: confirmed|dismissed|retake, justification ≥ 10 caracteres).
+
+Enums: `event_type` (focus_lost, gaze_away, face_absent, extra_person, extra_display, suspicious_process, screen_share, speech_detected, identity_check), `alert_severity`, `decision_type`, `question_type`, `verification_status`, `session_status`, `supervision_preset`, `supervision_module`, `user_role`.
+
+RLS activo en todas las tablas. La API usa la service role key (omite RLS) para servir preguntas sin respuestas correctas y escribir análisis, alertas y riesgo. Realtime activo en `alerts` y `session_participants`. Buckets privados: `evidences`, `audio-segments`, `reference-faces`. No modifiques el esquema directo en el dashboard: crea una nueva migración en `supabase/migrations`.
 
 ## 8. Lo que NO se hace
 

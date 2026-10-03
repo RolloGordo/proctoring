@@ -22,7 +22,7 @@ Restricciones: todo gratuito u open source; Windows es el sistema principal del 
    - `apps/desktop/README.md` (Rider): app Electron + TypeScript con electron-vite; detectar `blur`/`focus` de la ventana con duración, número de monitores (`screen.getAllDisplays()`, eventos `display-added/removed`), procesos sospechosos cada 10 s (`ps-list`: Zoom, AnyDesk, TeamViewer, OBS, Discord), `setContentProtection(true)`, `kiosk: true`, bloqueo de copiar/pegar; enviar eventos a `POST http://localhost:8000/api/v1/events` con el contrato de `packages/contracts`.
    - `services/ai/README.md` (Pierreluiggi): spikes en `services/ai/spikes/` — `transcribir.py` (faster-whisper `small`, español), `similitud.py` (sentence-transformers `paraphrase-multilingual-MiniLM-L12-v2`, alerta si > 0.6), `pipeline_vad.py` (Silero VAD continuo + tiempos), `qti_import.py` (QTI 2.1 → JSON de `questions`/`question_options`).
    - `apps/web/spikes/vision/README.md` (Jesús): Vite + TS + `@mediapipe/tasks-vision` Face Landmarker; rostro ausente > 5 s, más de un rostro, cabeza girada > 25° por > 3 s; captura del canvas por evento.
-   - `supabase/README.md` (Jesús): migración `migrations/0001_initial_schema.sql` con el modelo de `CLAUDE.md` §7, en inglés y snake_case.
+   - `supabase/`: YA EXISTE con 4 migraciones aplicadas y su README (lo hizo Héctor). Solo cópialo tal cual al repo y genera los tipos TypeScript con `npx supabase gen types typescript --project-id uzuysjmymvtpoxfrdxnm > packages/contracts/database.types.ts`.
 4. `specs/` con una carpeta por SPEC-001..SPEC-009 y un `requisitos.md` mínimo con el título y el responsable (el contenido completo lo pegamos después).
 5. `docs/adr/` con un archivo por decisión (formato: Contexto, Decisión, Alternativas, Consecuencias), estado "Aceptada":
    - 0001 Hexagonal con dos servicios backend (API e IA)
@@ -70,7 +70,7 @@ Dependencias: `fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`. D
 ### Adaptadores
 - `adapters/outbound/memory/event_repository.py`: implementación en memoria (thread-safe con lock).
 - `adapters/outbound/memory/job_queue.py`: cola falsa que registra los encolados (para pruebas y modo local sin Redis).
-- `adapters/outbound/supabase/event_repository.py`: implementación con el cliente oficial `supabase` contra la tabla `events`. Déjala completa pero se activa solo con `EVENT_REPOSITORY=supabase` (Jesús crea la tabla).
+- `adapters/outbound/supabase/event_repository.py`: implementación con el cliente oficial `supabase` contra la tabla `events`. Déjala completa; se activa con `EVENT_REPOSITORY=supabase`. La tabla `events` ya existe en Supabase con las columnas de `CLAUDE.md` §7.
 - `adapters/inbound/http/schemas.py`: modelos Pydantic de request/response alineados al contrato.
 - `adapters/inbound/http/routers/health.py`: `GET /health` → `{"status":"ok","env":...,"version":...}`.
 - `adapters/inbound/http/routers/events.py`:
@@ -140,7 +140,7 @@ forbidden_modules = ["fastapi", "pydantic", "supabase", "redis", "rq", "httpx", 
 
 ---
 
-## Fase 6 — Integración con Supabase (≈ 1.5 h, cuando Jesús suba la migración) · EN-006 parte
+## Fase 6 — Integración con Supabase (≈ 1.5 h; la base ya está creada) · EN-006 parte
 
 - Probar `EVENT_REPOSITORY=supabase` contra el proyecto de desarrollo (variables en `.env`, nunca en el repo).
 - Endpoint `POST /api/v1/evidence/upload-url` que devuelve una URL firmada de subida a Storage (bucket `evidences`, ruta `{session_id}/{student_id}/{uuid}.jpg`) para que la app suba directo. Puerto `EvidenceStorage` + adaptador Supabase + versión en memoria.

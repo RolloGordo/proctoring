@@ -80,7 +80,7 @@ proctoring/
 ├── packages/
 │   └── contracts/           # event.schema.json y ejemplos compartidos
 ├── supabase/
-│   └── migrations/          # SQL en inglés, snake_case                  -> Jesús
+│   └── migrations/          # SQL en inglés, snake_case (ya aplicado)    -> Héctor / Jesús
 ├── specs/                   # SPEC-001..009: requisitos, diseño, tareas
 ├── docs/
 │   ├── adr/                 # decisiones de arquitectura
@@ -195,7 +195,7 @@ Una tarea está terminada cuando cumple **todo** esto:
 | Silva Vega, Héctor | Project Manager | Arquitectura, backend, infraestructura, CI/CD |
 | Rodriguez Ruiz, Rider | Scrum Master | App de escritorio Electron, frontend |
 | Zevallos Bocanegra, Pierreluiggi | Desarrollo | Servicio de IA de audio, importación QTI |
-| Limay Capristan, Jesús | Desarrollo | Base de datos, visión computacional |
+| Limay Capristan, Jesús | Desarrollo | Visión computacional; mantenimiento de la base de datos |
 
 ## Lo que NO se hace
 
