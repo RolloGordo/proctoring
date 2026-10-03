@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-10-03T19:57:48.498717+00:00",
+  "audio_file": "dce9e72f-77f7-48ae-bc86-39ea510a3968.flac",
+  "audio_sha256": "2ff20b3952f079f0010010505c86ff0955b7ae2f2d94e2246030677204983bec",
+  "model": "small",
+  "device": "cpu",
+  "compute_type": "int8",
+  "cpu_threads": 4,
+  "beam_size": 5,
+  "language": "es",
+  "vad_filter": true,
+  "condition_on_previous_text": false,
+  "model_load_seconds": 2.087004300003173,
+  "inference_seconds": 3.3549920999939786,
+  "audio_seconds": 14.8,
+  "real_time_factor": 0.22668865540499855,
+  "transcript": "tienen estrés hasta los niños que no hablan todavía por ejemplo un niño que todavía no habla se puede llorar más puede tener más problemas en irse a la cama a dormir no puede la turrutina puede estar un poquito menos el",
+  "segments": [
+    {
+      "start": 0.27,
+      "end": 5.85,
+      "text": "tienen estrés hasta los niños que no hablan todavía por ejemplo un niño que"
+    },
+    {
+      "start": 5.85,
+      "end": 9.67,
+      "text": "todavía no habla se puede llorar más puede tener más problemas en irse a la"
+    },
+    {
+      "start": 9.67,
+      "end": 14.29,
+      "text": "cama a dormir no puede la turrutina puede estar un poquito menos el"
+    }
+  ],
+  "environment": {
+    "python": "3.12.15",
+    "os": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+    "faster_whisper": "1.2.1",
+    "ctranslate2": "4.8.2"
+  },
+  "scope": "transcription_only_no_fraud_detection",
+  "reference": "tienes estrés hasta los niños que no hablan todavía por ejemplo un niño que todavía no habla se puede llorar más puede tener más problemas en irse a la cama a dormir no puede la tu rutina puede estar un poquito menos él",
+  "metrics": {
+    "reference_words": 43,
+    "hypothesis_words": 42,
+    "word_edits": 4,
+    "wer": 0.09302325581395349
+  }
+}

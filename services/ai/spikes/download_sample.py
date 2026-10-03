@@ -7,6 +7,7 @@ references are retained. No archive paths are extracted onto the filesystem.
 import argparse
 import csv
 import hashlib
+import re
 import tarfile
 import urllib.request
 from pathlib import Path, PurePosixPath
@@ -16,15 +17,75 @@ from spikes.transcribe import save_json
 URL = "https://openslr.trmal.net/resources/108/ES.tgz"
 
 
+def restore_sample(output: Path) -> None:
+    """Restore audio selected by the committed manifest; never rewrite metadata."""
+    manifest = output / "manifest.csv"
+    with manifest.open(encoding="utf-8-sig", newline="") as manifest_source:
+        rows = list(csv.DictReader(manifest_source))
+    if not rows:
+        raise ValueError("El manifiesto no contiene muestras.")
+    expected: dict[str, str] = {}
+    for row in rows:
+        name = row.get("audio_path", "")
+        digest = row.get("sha256", "")
+        if not name or not re.fullmatch(r"[A-Za-z0-9_-]+\.flac", name):
+            raise ValueError("Ruta de audio inválida en el manifiesto.")
+        if name in expected or not digest or not re.fullmatch(r"[a-f0-9]{64}", digest):
+            raise ValueError("Audio duplicado o SHA-256 inválido en el manifiesto.")
+        expected[name] = digest
+    missing = {}
+    for name, digest in expected.items():
+        target = output / name
+        if target.is_file():
+            if hashlib.sha256(target.read_bytes()).hexdigest() != digest:
+                raise ValueError(f"Audio local modificado: {name}. No se sobrescribirá.")
+        else:
+            missing[name] = digest
+    if not missing:
+        print(f"Las {len(expected)} muestras ya están disponibles y verificadas.")
+        return
+    recovered: dict[str, bytes] = {}
+    with urllib.request.urlopen(URL, timeout=120) as response:
+        with tarfile.open(fileobj=response, mode="r|gz") as archive:
+            for member in archive:
+                if not member.isfile() or member.size > 5_000_000:
+                    continue
+                # Compare full archive names rather than extracting paths supplied by the TAR.
+                name = PurePosixPath(member.name).name
+                if member.name != f"ES/{name}" or name not in missing:
+                    continue
+                source = archive.extractfile(member)
+                if source is None:
+                    continue
+                data = source.read()
+                if hashlib.sha256(data).hexdigest() != missing[name]:
+                    raise ValueError(f"SHA-256 distinto al registrado para {name}.")
+                recovered[name] = data
+                if len(recovered) == len(missing):
+                    break
+    if len(recovered) != len(missing):
+        raise ValueError("El archivo remoto no contiene todas las muestras registradas.")
+    for name, data in recovered.items():
+        (output / name).write_bytes(data)
+    print(f"Restauradas {len(recovered)} muestras; manifiesto y procedencia conservados.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=Path("datasets/mediaspeech_es"))
     parser.add_argument("--count", type=int, default=8)
+    parser.add_argument("--restore", action="store_true", help="Recuperar audios del manifiesto")
     args = parser.parse_args()
+    if args.restore:
+        try:
+            restore_sample(args.output)
+        except (OSError, ValueError, tarfile.TarError) as exc:
+            parser.exit(1, f"Error: {exc}\n")
+        return
     if not 1 <= args.count <= 30:
         parser.error("count debe estar entre 1 y 30")
     if (args.output / "manifest.csv").exists():
-        parser.error("Ya existe un manifiesto; use otra carpeta para no sobrescribirlo.")
+        parser.error("Ya existe un manifiesto; use --restore o elija otra carpeta.")
     args.output.mkdir(parents=True, exist_ok=True)
     audio: dict[str, bytes] = {}
     texts: dict[str, str] = {}

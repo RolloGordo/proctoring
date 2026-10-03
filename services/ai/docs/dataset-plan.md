@@ -1,25 +1,45 @@
 # Registro y preparación del dataset de audio
 
-Estado al 03/10/2026: no se han recopilado, descargado ni generado audios. Este documento define el registro previsto, no acredita que exista un dataset.
+Estado al 03/10/2026: se descargó y evaluó una muestra pública de ocho audios en español de MediaSpeech y se generó un control de silencio digital. TA-006, el conjunto propio del proyecto, sigue pendiente.
 
-## Finalidad
+## Muestra utilizada en SP-007
 
-SP-007 necesita audios en español con transcripción de referencia para medir WER. TA-006 exige posteriormente al menos 60 audios etiquetados: lecturas, consultas a un asistente con respuesta sintética y silencios. No se considera completo TA-006 por preparar esta guía.
+- Fuente: MediaSpeech, OpenSLR 108, https://openslr.org/108/.
+- Procedencia y atribución: Kolobov et al. (2021); archivo oficial `ES.tgz`. La URL, licencia y transformaciones se registran en `datasets/mediaspeech_es/provenance.json`.
+- Licencia registrada: CC BY 4.0.
+- Selección: primeros ocho archivos FLAC en el orden del archivo comprimido; no es una muestra aleatoria.
+- Duración evaluada: 116 segundos. Referencias: 318 palabras tras la normalización del cálculo de WER.
+- Transformación: subconjunto sin edición de audio; solo se recortaron espacios en los extremos de los textos de referencia.
+- Limitaciones: habla de medios, no exámenes de estudiantes. No se verificó independencia por hablante. No contiene etiquetas de fraude ni valida un detector de voz sintética.
 
-## Registro por muestra
+El CSV conserva identificador, ruta relativa, transcripción de referencia, SHA-256, fuente, licencia y partición `exploratory`. Las referencias proceden del dataset; no se afirma que el equipo las haya revisado manualmente.
 
-Guardar un manifiesto con identificador, ruta local relativa, procedencia, fecha de obtención, autorización o licencia, identificador anónimo de hablante, idioma, duración, formato, frecuencia de muestreo, escenario, pregunta asociada, transcripción de referencia revisada, etiqueta humana/sintética/desconocida y partición de datos. Para voz sintética, registrar también modelo o herramienta generadora, versión disponible y condiciones de uso. No incluir nombres personales ni credenciales.
+## Archivos conservados en Git
 
-## Organización prevista
+`datasets/mediaspeech_es/manifest.csv` y `provenance.json` permiten identificar y recuperar la muestra. `results/evaluation.json`, `demo.json` y `silence.json` conservan las mediciones originales y las transcripciones obtenidas.
 
-Los audios se almacenarán en services/ai/datasets, excluido por el .gitignore existente. Los modelos se mantendrán fuera del historial en una carpeta models o en la caché del proveedor. El código, la documentación del origen y los resultados agregados sí podrán versionarse tras revisar que no expongan datos personales.
+Los audios, sus TXT auxiliares, los modelos y las herramientas locales quedan fuera de Git. Las referencias necesarias ya están en el CSV. La regla de atributos preserva los bytes del manifiesto para mantener válido su hash entre Windows y Linux.
 
-## Calidad y evaluación
+Desde `services/ai`, después de instalar las dependencias:
 
-Revisar manualmente las transcripciones de referencia y documentar cualquier normalización aplicada al cálculo de WER. Separar entrenamiento, validación y prueba; evitar que el mismo audio o sus variantes aparezcan en particiones distintas. Procurar separación por hablante y documentar límites de cobertura. Ajustar umbrales con validación y reservar la prueba para la evaluación final.
+```console
+uv run python -m spikes.download_sample --restore
+```
 
-La comparación inicial de transcripción no sustituye la evaluación del clasificador de voz sintética. Una transcripción parecida a la pregunta, por sí sola, no debe generar una alerta.
+El comando verifica audios existentes y recupera los que faltan desde la fuente original. Rechaza un hash distinto y no modifica el manifiesto ni la procedencia. Puede transferir hasta 582 MB al recorrer el archivo remoto; la recuperación depende de que la fuente siga disponible.
 
-## Evidencias que se completarán con datos reales
+## Control de silencio
 
-Cantidad y duración de muestras, distribución por escenario, fuentes y licencias, versiones de modelos, configuración y equipo de ejecución, WER, tiempo de carga del modelo y tiempo de inferencia por separado. No reportar métricas mientras no se hayan ejecutado las pruebas.
+Se generó un WAV de tres segundos, mono, PCM de 16 bits y 16 kHz, con muestras de valor cero. Su receta y SHA-256 se conservan en `datasets/controls/README.md`.
+
+Con `base` y VAD, la ejecución registrada produjo texto vacío. WER es nulo porque no hay palabras de referencia. Este control no representa ruido de aula ni demuestra comportamiento ante todos los silencios reales.
+
+## Dataset propio pendiente: TA-006
+
+El backlog requiere al menos 60 audios etiquetados: lecturas, consultas a un asistente con respuesta sintética y silencios. La muestra pública y el control no completan ese requisito.
+
+Para cada grabación propia registrar identificador, ruta relativa, procedencia, fecha, autorización o licencia, hablante anónimo, idioma, duración, formato, frecuencia, escenario, pregunta, referencia revisada, etiqueta humana/sintética/desconocida y partición. Para voz sintética, incluir herramienta, modelo, versión disponible y condiciones de uso.
+
+Separar entrenamiento, validación y prueba; evitar que el mismo audio o sus variantes aparezcan en varias particiones. Procurar separación por hablante. Ajustar umbrales con validación y reservar la prueba para evaluación final. No incluir nombres personales ni credenciales en las evidencias versionadas.
+
+La evaluación futura debe comprobar similitud semántica y voz sintética por separado de WER. Una transcripción parecida a la pregunta, por sí sola, no justifica una alerta.
