@@ -1,0 +1,167 @@
+"""Casos de uso de preguntas: crearlas, listarlas y servirlas al estudiante."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from decimal import Decimal
+from uuid import UUID
+
+from proctoring_api.application.ports.clock import Clock
+from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
+from proctoring_api.application.ports.question_repository import QuestionRepository
+from proctoring_api.application.session_access import ensure_teacher_owns_session
+from proctoring_api.domain.errors import AuthorizationError
+from proctoring_api.domain.question import (
+    ExamQuestion,
+    InvalidQuestionError,
+    Question,
+    QuestionType,
+)
+from proctoring_api.domain.user import AuthenticatedUser
+
+#: Tope por sesion. No es arbitrario: cada pregunta y sus opciones viajan al
+#: cliente, y un examen de miles de preguntas seria un error del docente o un
+#: intento de agotar la memoria del servicio.
+MAX_QUESTIONS_PER_SESSION = 200
+
+
+@dataclass(frozen=True, slots=True)
+class NewQuestion:
+    """Una pregunta a crear, ya con los tipos correctos."""
+
+    question_type: QuestionType
+    statement: str
+    points: Decimal = Decimal(1)
+    options: list[tuple[str, bool]] = field(default_factory=list)
+    correct_numeric_answer: Decimal | None = None
+    numeric_tolerance: Decimal | None = None
+    correct_text_answer: str | None = None
+    source_format: str | None = None
+
+
+class AddQuestions:
+    """Anade preguntas al final del examen. Solo el docente dueno."""
+
+    def __init__(
+        self, questions: QuestionRepository, sessions: ExamSessionRepository | None = None
+    ) -> None:
+        self._questions = questions
+        self._sessions = sessions
+
+    def execute(
+        self,
+        session_id: UUID,
+        nuevas: Sequence[NewQuestion],
+        *,
+        actor: AuthenticatedUser | None = None,
+    ) -> Sequence[Question]:
+        """Crea las preguntas y devuelve lo guardado.
+
+        Raises:
+            AuthorizationError: si quien pide no es el docente dueno.
+            InvalidQuestionError: si alguna pregunta viola una regla, o si se
+                pasa del tope por sesion.
+        """
+        if actor is not None and not actor.is_teacher:
+            raise AuthorizationError("Solo un docente puede anadir preguntas a un examen")
+        ensure_teacher_owns_session(self._sessions, session_id, actor)
+
+        if not nuevas:
+            raise InvalidQuestionError("No se envio ninguna pregunta")
+
+        ya_hay = self._questions.count_by_session(session_id)
+        if ya_hay + len(nuevas) > MAX_QUESTIONS_PER_SESSION:
+            raise InvalidQuestionError(
+                f"Un examen admite como maximo {MAX_QUESTIONS_PER_SESSION} preguntas "
+                f"(tiene {ya_hay})"
+            )
+
+        # Se construyen TODAS antes de guardar ninguna: si la tercera es
+        # invalida, el docente no se queda con dos preguntas sueltas y un error.
+        construidas = [
+            Question.create(
+                session_id=session_id,
+                position=ya_hay + indice,
+                question_type=nueva.question_type,
+                statement=nueva.statement,
+                points=nueva.points,
+                options=nueva.options,
+                correct_numeric_answer=nueva.correct_numeric_answer,
+                numeric_tolerance=nueva.numeric_tolerance,
+                correct_text_answer=nueva.correct_text_answer,
+                source_format=nueva.source_format,
+            )
+            for indice, nueva in enumerate(nuevas, start=1)
+        ]
+
+        self._questions.save_many(construidas)
+        return construidas
+
+
+class ListSessionQuestions:
+    """Preguntas **con** sus respuestas correctas. Solo para el docente dueno."""
+
+    def __init__(
+        self, questions: QuestionRepository, sessions: ExamSessionRepository | None = None
+    ) -> None:
+        self._questions = questions
+        self._sessions = sessions
+
+    def execute(
+        self, session_id: UUID, *, actor: AuthenticatedUser | None = None
+    ) -> Sequence[Question]:
+        if actor is not None and not actor.is_teacher:
+            raise AuthorizationError(
+                "Las respuestas correctas solo las ve el docente. Para rendir el "
+                "examen usa el endpoint del examen."
+            )
+        ensure_teacher_owns_session(self._sessions, session_id, actor)
+
+        return self._questions.list_by_session(session_id)
+
+
+class GetExamQuestions:
+    """Preguntas **sin** respuestas correctas, para rendir el examen.
+
+    Dos cosas lo protegen: el tipo que devuelve no tiene dónde guardar la
+    respuesta, y la ventana de ingreso se comprueba antes. Sin lo segundo, un
+    estudiante podría descargar el examen la noche anterior.
+    """
+
+    def __init__(
+        self,
+        questions: QuestionRepository,
+        sessions: ExamSessionRepository,
+        clock: Clock,
+    ) -> None:
+        self._questions = questions
+        self._sessions = sessions
+        self._clock = clock
+
+    def execute(
+        self, session_id: UUID, *, actor: AuthenticatedUser | None = None
+    ) -> Sequence[ExamQuestion]:
+        """Devuelve el examen tal como lo ve el estudiante.
+
+        Raises:
+            AuthorizationError: si un docente lo pide por aqui (tiene su propio
+                endpoint), si la sesion no existe, o si el examen todavia no
+                empezo o ya termino.
+        """
+        if actor is not None and actor.is_teacher:
+            raise AuthorizationError(
+                "Un docente ve su examen con las respuestas desde su panel, no por aqui"
+            )
+
+        sesion = self._sessions.find_by_id(session_id)
+        if sesion is None:
+            raise AuthorizationError("No tienes acceso a este examen")
+
+        ahora = self._clock.now()
+        if not (sesion.starts_at <= ahora <= sesion.ends_at):
+            raise AuthorizationError(
+                "El examen no esta abierto en este momento. Revisa la hora de inicio."
+            )
+
+        return [pregunta.for_student() for pregunta in self._questions.list_by_session(session_id)]

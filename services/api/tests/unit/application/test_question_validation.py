@@ -10,7 +10,7 @@ positivo.
 from __future__ import annotations
 
 from datetime import timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -26,6 +26,7 @@ from proctoring_api.application.use_cases.register_event import (
 )
 from proctoring_api.domain.errors import InvalidEventError
 from proctoring_api.domain.event import EventType
+from proctoring_api.domain.question import Question, QuestionType
 
 from tests.conftest import NOW, FixedClock
 
@@ -38,13 +39,23 @@ QUESTION_OF_ANOTHER_SESSION = uuid4()
 QUESTION_THAT_DOES_NOT_EXIST = uuid4()
 
 
+def una_pregunta(session_id: UUID, question_id: UUID) -> Question:
+    return Question.create(
+        session_id=session_id,
+        position=1,
+        question_type=QuestionType.ESSAY,
+        statement="Explica que es RLS",
+        question_id=question_id,
+    )
+
+
 @pytest.fixture
 def questions() -> InMemoryQuestionRepository:
     return InMemoryQuestionRepository(
-        {
-            QUESTION_OF_THIS_SESSION: SESSION,
-            QUESTION_OF_ANOTHER_SESSION: OTHER_SESSION,
-        }
+        [
+            una_pregunta(SESSION, QUESTION_OF_THIS_SESSION),
+            una_pregunta(OTHER_SESSION, QUESTION_OF_ANOTHER_SESSION),
+        ]
     )
 
 
