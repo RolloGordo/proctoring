@@ -1,32 +1,43 @@
-"""Repositorio de preguntas en memoria, para pruebas.
-
-En modo memoria la composicion de `main.py` **no cablea ningun** repositorio de
-preguntas: no existe banco de preguntas porque nadie ha creado un examen, y
-rechazar todo evento con `question_id` dejaria a Rider y a Jesus sin poder mandar
-`gaze_away` ni `speech_detected` mientras desarrollan.
-
-Este adaptador existe para que las pruebas puedan sembrar preguntas conocidas y
-comprobar la regla de verdad.
-"""
+"""Repositorio de preguntas en memoria, para pruebas y desarrollo."""
 
 from __future__ import annotations
 
 import threading
+from collections.abc import Sequence
 from uuid import UUID
+
+from proctoring_api.domain.question import Question
 
 
 class InMemoryQuestionRepository:
     """Implementacion de `QuestionRepository` sobre un diccionario."""
 
-    def __init__(self, questions: dict[UUID, UUID] | None = None) -> None:
-        #: question_id -> session_id
-        self._questions: dict[UUID, UUID] = dict(questions or {})
+    def __init__(self, questions: Sequence[Question] = ()) -> None:
+        self._questions: dict[UUID, Question] = {q.id: q for q in questions}
         self._lock = threading.Lock()
 
     def find_session_id(self, question_id: UUID) -> UUID | None:
         with self._lock:
-            return self._questions.get(question_id)
+            pregunta = self._questions.get(question_id)
+        return pregunta.session_id if pregunta else None
 
-    def add(self, question_id: UUID, session_id: UUID) -> None:
+    def save_many(self, questions: Sequence[Question]) -> None:
         with self._lock:
-            self._questions[question_id] = session_id
+            for pregunta in questions:
+                self._questions[pregunta.id] = pregunta
+
+    def list_by_session(self, session_id: UUID) -> Sequence[Question]:
+        with self._lock:
+            snapshot = list(self._questions.values())
+
+        de_la_sesion = [q for q in snapshot if q.session_id == session_id]
+        return sorted(de_la_sesion, key=lambda q: q.position)
+
+    def count_by_session(self, session_id: UUID) -> int:
+        with self._lock:
+            return sum(1 for q in self._questions.values() if q.session_id == session_id)
+
+    def clear(self) -> None:
+        """Vacia el repositorio. Solo para pruebas."""
+        with self._lock:
+            self._questions.clear()

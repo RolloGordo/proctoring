@@ -12,7 +12,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from proctoring_api import __version__
 from proctoring_api.adapters.inbound.http.errors import register_error_handlers
-from proctoring_api.adapters.inbound.http.routers import events, evidence, health, sessions
+from proctoring_api.adapters.inbound.http.routers import (
+    events,
+    evidence,
+    health,
+    questions,
+    sessions,
+)
 from proctoring_api.adapters.outbound.clock import SystemClock
 from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
 from proctoring_api.adapters.outbound.memory.event_repository import InMemoryEventRepository
@@ -22,6 +28,9 @@ from proctoring_api.adapters.outbound.memory.exam_session_repository import (
 )
 from proctoring_api.adapters.outbound.memory.job_queue import InMemoryJobQueue
 from proctoring_api.adapters.outbound.memory.profile_repository import InMemoryProfileRepository
+from proctoring_api.adapters.outbound.memory.question_repository import (
+    InMemoryQuestionRepository,
+)
 from proctoring_api.application.ports.alert_repository import AlertRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.event_repository import EventRepository
@@ -41,6 +50,11 @@ from proctoring_api.application.use_cases.list_session_events import ListSession
 from proctoring_api.application.use_cases.list_teacher_sessions import (
     GetExamSession,
     ListTeacherSessions,
+)
+from proctoring_api.application.use_cases.manage_questions import (
+    AddQuestions,
+    GetExamQuestions,
+    ListSessionQuestions,
 )
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.config import ENVS_WITHOUT_AUTH, Settings
@@ -116,14 +130,13 @@ def _build_profile_repository(settings: Settings, client: object | None) -> Prof
     return InMemoryProfileRepository()
 
 
-def _build_question_repository(
-    settings: Settings, client: object | None
-) -> QuestionRepository | None:
-    """`None` en modo memoria: no hay banco de preguntas contra el que comprobar.
+def _build_question_repository(settings: Settings, client: object | None) -> QuestionRepository:
+    """Banco de preguntas del examen.
 
-    Rechazar todo evento con `question_id` dejaria a Rider y a Jesus sin poder
-    mandar `gaze_away` ni `speech_detected` mientras desarrollan. Con Supabase la
-    comprobacion si se hace.
+    En memoria tambien existe de verdad: las preguntas se crean por la API y se
+    pueden listar. Lo que cambia es que `RegisterEvent` solo valida el
+    `question_id` contra el cuando hay Supabase detras (ver `create_app`), para
+    no bloquear a quien manda eventos sin haber creado un examen.
     """
     if settings.event_repository == "supabase":
         from supabase import Client
@@ -135,7 +148,7 @@ def _build_question_repository(
         assert isinstance(client, Client)
         return SupabaseQuestionRepository(client)
 
-    return None
+    return InMemoryQuestionRepository()
 
 
 def _build_session_repository(settings: Settings, client: object | None) -> ExamSessionRepository:
@@ -225,8 +238,18 @@ def create_app(
             {"name": "events", "description": "Senales detectadas durante un examen"},
             {"name": "evidence", "description": "Subida de capturas y audio a Storage"},
             {"name": "sessions", "description": "Sesiones de examen del docente"},
+            {"name": "questions", "description": "Banco de preguntas y examen del estudiante"},
         ],
     )
+
+    # Un comodin junto a allow_credentials deja que CUALQUIER sitio haga
+    # peticiones autenticadas en nombre del docente. Los navegadores lo rechazan,
+    # pero no todos los clientes son navegadores, y el error seria silencioso.
+    if "*" in settings.cors_origins:
+        raise ValueError(
+            "CORS_ORIGINS no puede ser '*': la API envia credenciales. "
+            "Enumera los origenes, separados por coma."
+        )
 
     app.add_middleware(
         CORSMiddleware,
@@ -258,7 +281,12 @@ def create_app(
     app.state.job_queue = job_queue
     app.state.identify_user = identify_user or _build_identify_user(settings, profile_repository)
     app.state.register_event = RegisterEvent(
-        event_repository, job_queue, clock, alert_repository, question_repository
+        event_repository,
+        job_queue,
+        clock,
+        alert_repository,
+        # Solo se valida el question_id cuando hay un banco real detras.
+        question_repository if settings.event_repository == "supabase" else None,
     )
     app.state.list_session_events = ListSessionEvents(event_repository, session_repository)
     app.state.list_session_alerts = ListSessionAlerts(alert_repository, session_repository)
@@ -268,6 +296,9 @@ def create_app(
     )
     app.state.get_exam_session = GetExamSession(session_repository)
     app.state.join_exam_session = JoinExamSession(session_repository, clock)
+    app.state.add_questions = AddQuestions(question_repository, session_repository)
+    app.state.list_session_questions = ListSessionQuestions(question_repository, session_repository)
+    app.state.get_exam_questions = GetExamQuestions(question_repository, session_repository, clock)
     app.state.create_evidence_upload_url = CreateEvidenceUploadUrl(
         evidence_storage,
         {
@@ -282,6 +313,7 @@ def create_app(
     app.include_router(events.router)
     app.include_router(evidence.router)
     app.include_router(sessions.router)
+    app.include_router(questions.router)
 
     return app
 

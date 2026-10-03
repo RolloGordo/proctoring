@@ -16,11 +16,13 @@ verdad compartida con la app de escritorio y el servicio de IA.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.event import MAX_EVIDENCE_PATH_LENGTH, EventType, ProctoringEvent
@@ -31,7 +33,18 @@ from proctoring_api.domain.exam_session import (
     SupervisionModule,
     SupervisionPreset,
 )
+from proctoring_api.domain.question import ExamQuestion, Question, QuestionType
 from proctoring_api.domain.severity import Severity
+
+#: Tope del campo `metadata` de un evento, en bytes de su JSON.
+#:
+#: La metadata documentada son unas pocas claves (umbrales, nombre de proceso,
+#: angulos). 8 KB es holgado para eso y muy por debajo de lo que sirve para
+#: tumbar el servicio: sin tope, un cliente puede mandar megabytes en cada uno de
+#: los cientos de eventos de un examen, y todo eso acaba en una columna jsonb.
+MAX_METADATA_BYTES = 8192
+#: Y un tope de claves, porque mil claves diminutas tambien hacen dano.
+MAX_METADATA_KEYS = 50
 
 
 class EventRequest(BaseModel):
@@ -49,6 +62,20 @@ class EventRequest(BaseModel):
     duration_ms: int = Field(default=0, ge=0)
     metadata: dict[str, Any] = Field(default_factory=dict)
     evidence_path: str | None = Field(default=None, max_length=MAX_EVIDENCE_PATH_LENGTH)
+
+    @field_validator("metadata")
+    @classmethod
+    def _limitar_metadata(cls, valor: dict[str, Any]) -> dict[str, Any]:
+        if len(valor) > MAX_METADATA_KEYS:
+            raise ValueError(f"metadata admite como maximo {MAX_METADATA_KEYS} claves")
+
+        tamano = len(json.dumps(valor, ensure_ascii=False).encode("utf-8"))
+        if tamano > MAX_METADATA_BYTES:
+            raise ValueError(
+                f"metadata ocupa {tamano} bytes y el maximo es {MAX_METADATA_BYTES}. "
+                "La evidencia pesada va a Storage, no al evento."
+            )
+        return valor
 
 
 class EventCreatedResponse(BaseModel):
@@ -256,6 +283,122 @@ class JoinExamResponse(BaseModel):
     entry_tolerance_minutes: int
     can_enter_now: bool
     modules: dict[SupervisionModule, dict[str, Any]]
+
+
+class QuestionOptionRequest(BaseModel):
+    """Una alternativa al crear una pregunta."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    option_text: str = Field(min_length=1, max_length=1000)
+    is_correct: bool = False
+
+
+class NewQuestionRequest(BaseModel):
+    """Una pregunta a crear."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question_type: QuestionType
+    statement: str = Field(min_length=1, max_length=5000)
+    points: Decimal = Field(default=Decimal(1), ge=0, le=100)
+    options: list[QuestionOptionRequest] = Field(default_factory=list, max_length=10)
+    correct_numeric_answer: Decimal | None = None
+    numeric_tolerance: Decimal | None = Field(default=None, ge=0)
+    correct_text_answer: str | None = Field(default=None, max_length=1000)
+
+
+class AddQuestionsRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/sessions/{id}/questions`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    questions: list[NewQuestionRequest] = Field(min_length=1, max_length=50)
+
+
+class QuestionOptionResponse(BaseModel):
+    """Alternativa **con** la marca de correcta. Solo para el docente."""
+
+    id: UUID
+    position: int
+    option_text: str
+    is_correct: bool
+
+
+class QuestionResponse(BaseModel):
+    """Pregunta **con** su respuesta correcta. Solo para el docente dueno."""
+
+    id: UUID
+    session_id: UUID
+    position: int
+    question_type: QuestionType
+    statement: str
+    points: Decimal
+    options: list[QuestionOptionResponse]
+    correct_numeric_answer: Decimal | None
+    numeric_tolerance: Decimal | None
+    correct_text_answer: str | None
+
+    @classmethod
+    def from_entity(cls, question: Question) -> QuestionResponse:
+        return cls(
+            id=question.id,
+            session_id=question.session_id,
+            position=question.position,
+            question_type=question.question_type,
+            statement=question.statement,
+            points=question.points,
+            options=[
+                QuestionOptionResponse(
+                    id=o.id,
+                    position=o.position,
+                    option_text=o.option_text,
+                    is_correct=o.is_correct,
+                )
+                for o in question.options
+            ],
+            correct_numeric_answer=question.correct_numeric_answer,
+            numeric_tolerance=question.numeric_tolerance,
+            correct_text_answer=question.correct_text_answer,
+        )
+
+
+class ExamOptionResponse(BaseModel):
+    """Alternativa como la ve el estudiante. **Sin `is_correct`.**"""
+
+    id: UUID
+    position: int
+    option_text: str
+
+
+class ExamQuestionResponse(BaseModel):
+    """Pregunta como la ve el estudiante mientras rinde.
+
+    No tiene respuesta correcta ni opciones marcadas. Se construye solo desde
+    `ExamQuestion`, que tampoco los tiene: el tipo impide el error, no la
+    disciplina.
+    """
+
+    id: UUID
+    position: int
+    question_type: QuestionType
+    statement: str
+    points: Decimal
+    options: list[ExamOptionResponse]
+
+    @classmethod
+    def from_entity(cls, question: ExamQuestion) -> ExamQuestionResponse:
+        return cls(
+            id=question.id,
+            position=question.position,
+            question_type=question.question_type,
+            statement=question.statement,
+            points=question.points,
+            options=[
+                ExamOptionResponse(id=o.id, position=o.position, option_text=o.option_text)
+                for o in question.options
+            ],
+        )
 
 
 class HealthResponse(BaseModel):
