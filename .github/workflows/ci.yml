@@ -17,6 +17,31 @@ permissions:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Que partes del monorepo existen ya.
+  #
+  # `hashFiles` no se puede usar en el `if` de un job (GitHub solo lo acepta
+  # dentro de steps), asi que la deteccion se hace aqui y los jobs de web y
+  # escritorio miran esta salida.
+  # ---------------------------------------------------------------------------
+  detect:
+    name: Detectar que hay en el repo
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.check.outputs.web }}
+      desktop: ${{ steps.check.outputs.desktop }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: check
+        run: |
+          test -f apps/web/package.json && web=true || web=false
+          test -f apps/desktop/package.json && desktop=true || desktop=false
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+          echo "desktop=$desktop" >> "$GITHUB_OUTPUT"
+          echo "web=$web  desktop=$desktop"
+
+  # ---------------------------------------------------------------------------
   # API principal: lint, formato, tipos, pruebas y la prueba de ARQUITECTURA.
   # ---------------------------------------------------------------------------
   api:
@@ -145,7 +170,8 @@ jobs:
   web:
     name: Web del docente
     runs-on: ubuntu-latest
-    if: hashFiles('apps/web/package.json') != ''
+    needs: detect
+    if: needs.detect.outputs.web == 'true'
 
     steps:
       - uses: actions/checkout@v4
@@ -168,7 +194,8 @@ jobs:
   desktop:
     name: App de escritorio
     runs-on: ubuntu-latest
-    if: hashFiles('apps/desktop/package.json') != ''
+    needs: detect
+    if: needs.detect.outputs.desktop == 'true'
 
     steps:
       - uses: actions/checkout@v4
