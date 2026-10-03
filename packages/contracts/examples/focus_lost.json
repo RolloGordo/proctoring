@@ -1,0 +1,14 @@
+{
+  "session_id": "3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60",
+  "student_id": "7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71",
+  "question_id": null,
+  "event_type": "focus_lost",
+  "started_at": "2026-10-03T14:21:05.120Z",
+  "duration_ms": 8400,
+  "metadata": {
+    "source": "electron_main",
+    "trigger": "window_blur",
+    "returned": true
+  },
+  "evidence_path": null
+}

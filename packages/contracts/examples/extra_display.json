@@ -1,0 +1,32 @@
+{
+  "session_id": "3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60",
+  "student_id": "7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71",
+  "question_id": null,
+  "event_type": "extra_display",
+  "started_at": "2026-10-03T14:10:00.000Z",
+  "duration_ms": 0,
+  "metadata": {
+    "source": "electron_screen",
+    "display_count": 2,
+    "displays": [
+      {
+        "id": 2779098405,
+        "bounds": {
+          "width": 1920,
+          "height": 1080
+        },
+        "scale_factor": 1.0
+      },
+      {
+        "id": 1830723109,
+        "bounds": {
+          "width": 1366,
+          "height": 768
+        },
+        "scale_factor": 1.0
+      }
+    ],
+    "detected_on": "exam_start"
+  },
+  "evidence_path": null
+}

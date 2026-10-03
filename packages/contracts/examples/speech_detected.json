@@ -1,0 +1,15 @@
+{
+  "session_id": "3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60",
+  "student_id": "7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71",
+  "question_id": "a9c8b7d6-1e2f-4a3b-8c9d-0e1f2a3b4c82",
+  "event_type": "speech_detected",
+  "started_at": "2026-10-03T14:35:22.300Z",
+  "duration_ms": 5600,
+  "metadata": {
+    "source": "silero_vad",
+    "sample_rate": 16000,
+    "speech_ratio": 0.82,
+    "note": "El analisis lo hace services/ai de forma asincrona. La API responde 201 al instante y encola el trabajo; el resultado va a audio_analyses y, si procede, a alerts."
+  },
+  "evidence_path": "3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60/7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71/7f4a5b6c-8d9e-4f0a-1b2c-3d4e5f6a7b24.webm"
+}

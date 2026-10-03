@@ -1,0 +1,16 @@
+{
+  "session_id": "3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60",
+  "student_id": "7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71",
+  "question_id": null,
+  "event_type": "identity_check",
+  "started_at": "2026-10-03T14:08:33.000Z",
+  "duration_ms": 0,
+  "metadata": {
+    "source": "insightface_arcface",
+    "result": "match",
+    "similarity": 0.71,
+    "threshold": 0.45,
+    "latency_ms": 312
+  },
+  "evidence_path": "3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60/7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71/8a5b6c7d-9e0f-4a1b-2c3d-4e5f6a7b8c35.jpg"
+}

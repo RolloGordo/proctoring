@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/upao-proctoring/proctoring/blob/main/packages/contracts/event.schema.json",
+  "title": "ProctoringEvent",
+  "description": "Contrato del evento de proctoring. Fuente de verdad unica para la app de escritorio (apps/desktop), la web (apps/web), la API principal (services/api) y el servicio de IA (services/ai). Si cambia este archivo, cambia en el mismo pull request el codigo de los tres consumidores.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["session_id", "student_id", "event_type", "started_at"],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "description": "Sesion de examen (exam_sessions.id)."
+    },
+    "student_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "description": "Estudiante supervisado (profiles.id)."
+    },
+    "question_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "default": null,
+      "description": "Pregunta en curso cuando ocurrio el evento (questions.id). Obligatorio para speech_detected y gaze_away: lo exige el dominio de la API, no este esquema, y su ausencia responde 400."
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "focus_lost",
+        "gaze_away",
+        "face_absent",
+        "extra_person",
+        "extra_display",
+        "suspicious_process",
+        "screen_share",
+        "speech_detected",
+        "identity_check"
+      ],
+      "description": "Tipo de senal detectada. El mismo conjunto que el tipo event_type de PostgreSQL."
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento en que empezo la condicion, en ISO-8601 y en UTC (sufijo Z). La API rechaza una marca de tiempo sin zona horaria."
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Cuanto duro la condicion, en milisegundos. Es 0 para eventos instantaneos (extra_display, suspicious_process, identity_check). Para los que tienen duracion se emite UN evento al cerrarse la condicion, no uno por frame."
+    },
+    "metadata": {
+      "type": "object",
+      "default": {},
+      "description": "Detalle propio de cada tipo de evento. Ver packages/contracts/README.md para las claves esperadas por tipo.",
+      "additionalProperties": true
+    },
+    "evidence_path": {
+      "type": ["string", "null"],
+      "default": null,
+      "maxLength": 512,
+      "description": "Ruta dentro del bucket privado de Storage, con la forma {session_id}/{student_id}/{uuid}.{ext}. El cliente sube el archivo DIRECTO a Storage con una URL firmada y aqui manda solo la ruta. Nunca va el contenido del archivo en el evento, y nunca hay video continuo."
+    }
+  },
+  "examples": [
+    {
+      "session_id": "3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60",
+      "student_id": "7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71",
+      "question_id": null,
+      "event_type": "focus_lost",
+      "started_at": "2026-10-03T14:21:05.120Z",
+      "duration_ms": 8400,
+      "metadata": { "source": "electron_main", "trigger": "window_blur" },
+      "evidence_path": null
+    }
+  ]
+}
