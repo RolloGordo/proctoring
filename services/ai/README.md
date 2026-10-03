@@ -163,6 +163,30 @@ Guárdala en `docs/evidencias/semana-05/pierreluiggi/`.
 
 ---
 
+## Probar el spike de transcripción (ya funciona)
+
+Tras un `git pull`, **primero recupera los audios**: el repositorio guarda el manifiesto, las
+referencias y los hashes, pero no el audio (pesa y está en `.gitignore`).
+
+```bash
+cd services/ai && uv run python -m spikes.download_sample --restore
+```
+
+```bash
+uv run python -m spikes.demo --offline
+```
+
+`--restore` descarga las ocho muestras registradas y **verifica su SHA-256** contra el manifiesto;
+si encuentra un audio local modificado, se detiene y lo conserva. `--offline` evita descargar el
+modelo, así que la primera vez quítalo o usa `--model base`, que es más ligero.
+
+Si lo ejecutas sin recuperar los audios, verás `Audio inexistente o fuera de la carpeta del
+manifiesto`. No es un error del código: es el manifiesto haciendo su trabajo.
+
+Detalle completo en [`docs/SP-007-guide.md`](docs/SP-007-guide.md). Los resultados medidos y lo que
+significan para el presupuesto de 10 s están en
+[`docs/development-report.md`](docs/development-report.md).
+
 ## Lo que ya está hecho (Héctor)
 
 Dos archivos de andamiaje para que no empieces desde cero:

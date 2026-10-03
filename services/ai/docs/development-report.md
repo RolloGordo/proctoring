@@ -1,84 +1,68 @@
 # Informe de desarrollo del módulo de audio
 
 Responsable: Zevallos Bocanegra Piereluiggi (rzecvallosb1@upao.edu.pe).
-Fecha de inicio: 03/10/2026.
-Tarea inicial: SP-007, prueba de transcripción de voz en español.
-Rama: feat/SP-007-spanish-transcription, creada desde origin/develop.
+Fecha: 03/10/2026.
+Tarea: SP-007, prueba de transcripción de voz en español.
+Rama: `feat/SP-007-spanish-transcription`.
 
-## Objetivo de la primera entrega
+## Objetivo y estado actual
 
-Ejecutar una prueba real que reciba un archivo de audio en español, produzca una transcripción y mida el tiempo de procesamiento. Con transcripciones de referencia se medirá la tasa de error por palabra (WER). Esta prueba no demuestra detección de fraude ni de voz sintética.
+Se implementó y ejecutó una prueba local que recibe audio en español, produce transcripciones y mide WER y tiempos. Este avance permite demostrar transcripción funcional. No implementa todavía detección de fraude, clasificación de voz sintética ni el servicio TA-007.
 
-## Estado comprobado al iniciar
+La rama incluye la base compartida de `develop` (`e5c01e1`), con `tasks.py`, `worker_stub.py`, Dockerfile y el CI del equipo. La recomendación antigua de esperar esa base ya está satisfecha. Las correcciones de esta revisión se limitan a `services/ai/`.
 
-Se clonó el repositorio del equipo y se revisaron CLAUDE.md, el README general, services/ai/README.md, .gitignore y las instrucciones de evidencias. La carpeta services/ai contiene inicialmente solo su README. Algunos archivos descritos en los documentos, como worker_stub.py, pyproject.toml y docker-compose.yml, no están presentes en esta copia de develop. No se ha ejecutado un servicio de IA ni descargado modelos o datasets.
+## Archivos y motivos
 
-## Registro de cambios
+- `pyproject.toml` y `uv.lock`: entorno Python 3.12 y dependencias reproducibles. Se fijó PyAV 16.1.0 por incompatibilidad observada de la versión 19 con faster-whisper. La excepción de mypy para `faster_whisper` reconoce que esa biblioteca no publica tipos; las comprobaciones del código propio siguen activas.
+- `spikes/transcribe.py`: inferencia local con faster-whisper, CPU/int8, cuatro hilos, idioma español, VAD y beam size 5. Consume todo el generador de segmentos antes de detener el cronómetro; separa carga del modelo e inferencia.
+- `spikes/metrics.py`: WER por distancia de edición entre palabras. Normaliza mayúsculas, puntuación, espacios y Unicode NFC, conservando tildes y ñ. Una referencia vacía produce WER nulo.
+- `spikes/evaluate.py`: valida rutas, identificadores y hashes del manifiesto; evalúa cada modelo y agrega errores sobre el total de palabras. Guarda configuración, entorno, segmentos y métricas.
+- `spikes/network.py`: usa los certificados del sistema para descargar modelos con TLS verificado.
+- `spikes/download_sample.py`: selecciona ocho audios de MediaSpeech. La nueva opción `--restore` descarga exactamente los audios del manifiesto versionado, verifica sus hashes y conserva los metadatos originales. Sin ella, una copia nueva con manifiesto pero sin audios no podía prepararse.
+- `spikes/demo.py`: nueva entrada portable para la demostración. Obtiene la referencia del CSV sin depender de archivos TXT ignorados y escribe por defecto `results/demo-local.json`.
+- `demo.ps1`: acceso cómodo desde Windows; ahora delega la ejecución a la misma demo Python.
+- `.gitignore`: permite versionar JSON de resultados, manifiestos CSV, procedencia JSON y README de datasets. Mantiene fuera los audios, modelos y herramientas. Se permiten los directorios intermedios para que las excepciones de Git funcionen.
+- `.gitattributes`: conserva los bytes de los manifiestos CSV. El informe original contiene el SHA-256 del CSV con finales de línea CRLF; normalizarlo a LF al subirlo alteraría ese hash.
+- `datasets/mediaspeech_es/manifest.csv` y `provenance.json`: identificadores, referencias, hashes, fuente, licencia y criterio de selección de la muestra medida.
+- `datasets/controls/README.md`: receta exacta para regenerar el control de silencio y verificar su hash.
+- `results/evaluation.json`, `demo.json` y `silence.json`: resultados reales originales, ahora visibles para Git. No se sustituyeron por nuevas mediciones.
+- `tests/test_spike.py`: trece pruebas originales de métricas, validación de entradas y consumo completo del generador.
+- `tests/test_reproducibility.py`: once pruebas adicionales para la demo, recuperación verificada de audios y consistencia de las evidencias. No requieren descargas ni modelos.
+- `docs/`: guía de reproducción, registro del dataset e informe actualizado de implementación.
+- `README.md`: solo se ajustó el formato de dos ejemplos Python para que pasen el formateador actual. Se conservó el contenido del compañero.
+- Se eliminó `spikes/.gitkeep`, innecesario porque la carpeta ya contiene código.
 
-### 03/10/2026 — Preparación del entorno
+## Evidencias reales
 
-- Se clonó develop en la carpeta del escritorio Sistemas/Taller/proctoring.
-- Se creó una rama exclusiva para SP-007.
-- Se añadió services/ai/docs/development-report.md: este informe conserva el motivo de cada cambio y las evidencias de validación.
-- Se añadió services/ai/docs/dataset-plan.md: define cómo registrar procedencia, etiquetas y separación de los datos antes de recoger audios.
-- La clonación requirió usar el almacén de certificados de Windows mediante una opción local al comando de Git. No se desactivó la verificación TLS ni se modificó la configuración global.
+La muestra exploratoria pública contiene ocho audios, 116 segundos y 318 palabras de referencia.
 
-## Cómo documentar cada implementación
+- `base`: 69 errores de palabra; WER 21,70 %; inferencia total 9,01 segundos; factor de tiempo real 0,078.
+- `small`: 51 errores de palabra; WER 16,04 %; inferencia total 27,16 segundos; factor de tiempo real 0,234.
+- Control de tres segundos de silencio con `base`: transcripción vacía, cero palabras insertadas y WER nulo.
 
-Para cada archivo o carpeta añadido o modificado, registrar:
+Son mediciones de una pasada local, registradas con faster-whisper 1.2.1, CTranslate2 4.8.2, Python 3.12.15 y Windows 11. El entorno concreto y la configuración figuran en los JSON.
 
-1. Ruta y tarea del backlog.
-2. Problema que resuelve y razón para crearlo o modificarlo.
-3. Entradas, salidas y relación con otros componentes.
-4. Dependencias y motivo de elección, incluyendo versión y licencia cuando corresponda.
-5. Comando de ejecución o reproducción.
-6. Pruebas realizadas y resultados observados, distinguiendo resultados reales de metas.
-7. Limitaciones, pendientes y evidencia asociada.
+Aplicar el factor agregado de `small` a diez segundos de audio da aproximadamente 2,34 segundos de inferencia. Es una estimación para orientar la elección del modelo; no demuestra que el sistema completo cumpla el presupuesto de diez segundos. Faltan transferencia, colas, similitud, clasificación, carga, concurrencia y variabilidad.
 
-## Validación de esta entrega
+La recomendación inicial es continuar evaluando `small`. No se ha medido todavía si los errores de transcripción preservan la similitud semántica necesaria para el caso de uso.
 
-Se comprobó la clonación y la creación de la rama. Esta entrega es preparación del espacio de trabajo y documentación; no constituye todavía una implementación funcional de SP-007. No se han creado commits, enviado cambios ni abierto un PR.
+## Verificación de las correcciones
 
-## Próximo incremento
+- Las 24 pruebas locales pasan, incluidas las trece originales.
+- Lint y formato del servicio pasan.
+- La comprobación de tipos de `spikes` y `tests` pasa.
+- La comprobación de tipos de todo el servicio sigue detectando `redis` y `rq` ausentes en `worker_stub.py`. No se ocultaron esos errores: la integración de dependencias y Dockerfile quedó asignada al compañero.
+- Los tests verifican que el hash del manifiesto coincide con el registrado, que cada referencia y hash de audio coincide con la evaluación y que el WER se puede recalcular desde las transcripciones guardadas.
+- Los tests de descarga utilizan archivos TAR en memoria: prueban recuperación correcta, rechazo de audio modificado, conservación de metadatos y entradas ausentes o con rutas distintas.
 
-Implementar la prueba autónoma de transcripción en services/ai/spikes, con salida reproducible y medición de tiempo. Evaluar small y, si el tiempo resulta excesivo, base según la guía del servicio. No inventar WER: requiere audio real y texto de referencia revisado.
+Los comandos y requisitos para repetir las comprobaciones están en `SP-007-guide.md`. Estas verificaciones locales no equivalen a un CI remoto aprobado.
 
-## Coordinación pendiente
+## Pendientes y coordinación
 
-El CSV asigna HU-008 (foco de ventana) a Pierreluiggi, pero CLAUDE.md asigna el foco de Electron a Rider. Registrar la discrepancia y aclararla antes de implementar esa parte; no bloquea SP-007. La guía del servicio también menciona componentes aún ausentes y nombres de campos que deberán contrastarse con las migraciones antes de integrar.
+TA-006 sigue pendiente: hacen falta grabaciones propias, autorizaciones y etiquetas para el conjunto requerido por el backlog. La muestra pública no representa estudiantes de UPAO ni permite evaluar fraude.
 
----
+TA-007 requiere integrar la transcripción con los eventos y la cola, comparar con la pregunta y evaluar voz sintética. La lectura legítima de la pregunta no debe generar por sí sola una alerta.
 
-## Resultados medidos (SP-007)
+La incorporación de `rq` y `redis`, la unificación del Dockerfile y la verificación con Supabase real se mantienen a cargo del compañero que las asumió. No se modificaron esos componentes ni `services/api/`.
 
-Ocho muestras públicas de MediaSpeech en español: 116 s de audio y 318 palabras de referencia.
-CPU, `int8`, `beam_size=5`, filtro VAD activo.
-
-| Modelo | WER | Inferencia | Factor de tiempo real | Fragmento de 10 s |
-|---|---|---|---|---|
-| `base` | 21,70 % | 9,01 s | 0,08 | ~0,8 s |
-| `small` | **16,04 %** | 27,16 s | 0,23 | **~2,3 s** |
-
-Un audio artificial de tres segundos de silencio no produjo texto, como se esperaba del filtro VAD.
-
-### Qué significa para el presupuesto del proyecto
-
-La alerta de consulta a un asistente de IA debe llegar al docente en **menos de 10 s**. Con `small`,
-transcribir un fragmento típico de 10 s cuesta unos 2,3 s, y quedan ~7,7 s para la comparación
-semántica con el enunciado y el clasificador de voz sintética. **`small` es viable**, y por eso se
-recomienda provisionalmente pese a ser tres veces más lento que `base`.
-
-### Lo siguiente a medir
-
-No bajar el WER, sino comprobar si una transcripción con 16 % de error **mantiene la similitud
-semántica** con el enunciado de la pregunta. Es lo que decide de verdad la detección, y puede que
-21 % también sirva — en cuyo caso `base` liberaría 1,5 s de presupuesto.
-
-### Alcance
-
-Esta medición demuestra **transcripción únicamente**. No demuestra detección de fraude, ni
-comparación con el enunciado, ni detección de voz sintética. Cada resultado generado lleva
-`scope: "transcription_only_no_fraud_detection"`.
-
-Los JSON con la medición completa están en `results/` y ahora se versionan: vuelve a generarlos con
-`.\demo.ps1 -Offline` desde `services/ai`.
+Antes de abordar foco de ventana, aclarar la discrepancia entre la asignación de HU-008 del CSV y la responsabilidad de Electron indicada en CLAUDE.md.
