@@ -1,0 +1,44 @@
+[project]
+name = "proctoring-audio-spike"
+version = "0.1.0"
+description = "SP-007 reproducible Spanish transcription experiment"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "av==16.1.0",
+    "faster-whisper>=1.2,<2",
+    "httpx>=0.28,<1",
+    "huggingface-hub>=1,<2",
+    "truststore>=0.10,<1",
+    # El worker de la cola (worker_stub.py) vive en este servicio.
+    "rq>=2.0,<3",
+    "redis>=5.0,<7",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15,<2",
+    "pytest>=8,<10",
+    "ruff>=0.11,<1",
+]
+
+[tool.uv]
+package = false
+
+[tool.mypy]
+python_version = "3.12"
+
+[[tool.mypy.overrides]]
+# Ninguna de las dos publica stubs ni marcador py.typed.
+module = ["faster_whisper.*", "av.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
