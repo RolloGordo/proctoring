@@ -46,3 +46,39 @@ Implementar la prueba autónoma de transcripción en services/ai/spikes, con sal
 ## Coordinación pendiente
 
 El CSV asigna HU-008 (foco de ventana) a Pierreluiggi, pero CLAUDE.md asigna el foco de Electron a Rider. Registrar la discrepancia y aclararla antes de implementar esa parte; no bloquea SP-007. La guía del servicio también menciona componentes aún ausentes y nombres de campos que deberán contrastarse con las migraciones antes de integrar.
+
+---
+
+## Resultados medidos (SP-007)
+
+Ocho muestras públicas de MediaSpeech en español: 116 s de audio y 318 palabras de referencia.
+CPU, `int8`, `beam_size=5`, filtro VAD activo.
+
+| Modelo | WER | Inferencia | Factor de tiempo real | Fragmento de 10 s |
+|---|---|---|---|---|
+| `base` | 21,70 % | 9,01 s | 0,08 | ~0,8 s |
+| `small` | **16,04 %** | 27,16 s | 0,23 | **~2,3 s** |
+
+Un audio artificial de tres segundos de silencio no produjo texto, como se esperaba del filtro VAD.
+
+### Qué significa para el presupuesto del proyecto
+
+La alerta de consulta a un asistente de IA debe llegar al docente en **menos de 10 s**. Con `small`,
+transcribir un fragmento típico de 10 s cuesta unos 2,3 s, y quedan ~7,7 s para la comparación
+semántica con el enunciado y el clasificador de voz sintética. **`small` es viable**, y por eso se
+recomienda provisionalmente pese a ser tres veces más lento que `base`.
+
+### Lo siguiente a medir
+
+No bajar el WER, sino comprobar si una transcripción con 16 % de error **mantiene la similitud
+semántica** con el enunciado de la pregunta. Es lo que decide de verdad la detección, y puede que
+21 % también sirva — en cuyo caso `base` liberaría 1,5 s de presupuesto.
+
+### Alcance
+
+Esta medición demuestra **transcripción únicamente**. No demuestra detección de fraude, ni
+comparación con el enunciado, ni detección de voz sintética. Cada resultado generado lleva
+`scope: "transcription_only_no_fraud_detection"`.
+
+Los JSON con la medición completa están en `results/` y ahora se versionan: vuelve a generarlos con
+`.\demo.ps1 -Offline` desde `services/ai`.
