@@ -54,8 +54,11 @@ uv sync
 ```
 
 ```bash
-uv run uvicorn proctoring_api.main:app --reload --port 8000
+uv run uvicorn proctoring_api.main:create_app --factory --reload --port 8000
 ```
+
+`--factory` es necesario: la app se construye al arrancar, no al importar el módulo, para que
+los adaptadores se elijan con las variables de entorno del proceso.
 
 Swagger en <http://localhost:8000/docs>. Con la configuración por defecto
 (`EVENT_REPOSITORY=memory`, `JOB_QUEUE=memory`) **no necesita Supabase ni Redis**: se levanta y
@@ -63,18 +66,128 @@ funciona con `uv sync` y nada más.
 
 ## Endpoints
 
-| Método | Ruta | Qué hace |
-|---|---|---|
-| `GET` | `/health` | estado, entorno y versión |
-| `POST` | `/api/v1/events` | registra un evento → `201 {id, severity}` |
-| `GET` | `/api/v1/sessions/{session_id}/events` | lista los eventos de una sesión (filtro `?student_id=`) |
-| `POST` | `/api/v1/evidence/upload-url` | URL firmada para que el cliente suba la captura a Storage |
+| Método | Ruta | Auth | Qué hace |
+|---|---|---|---|
+| `GET` | `/health` | pública | estado, entorno, versión y si la auth está activa |
+| `POST` | `/api/v1/events` | estudiante | registra un evento → `201 {id, severity}` |
+| `POST` | `/api/v1/sessions` | **solo docente** | crea una sesión de examen y devuelve su `access_code` |
+| `GET` | `/api/v1/sessions` | **solo docente** | sus propias sesiones, de la más próxima a la más antigua |
+| `GET` | `/api/v1/sessions/{session_id}` | **solo docente** | detalle con los módulos activos y sus umbrales |
+| `GET` | `/api/v1/sessions/{session_id}/events` | estudiante / docente | lista los eventos (filtro `?student_id=`) |
+| `GET` | `/api/v1/sessions/{session_id}/alerts` | **solo docente** | alertas de la sesión, de la más reciente a la más antigua |
+| `POST` | `/api/v1/evidence/upload-url` | estudiante | URL firmada para subir una captura o audio |
 
-Códigos de error: **422** si el cuerpo no cumple el contrato (lo rechaza Pydantic), **400** si
-cumple el contrato pero viola una regla de dominio (por ejemplo `gaze_away` sin `question_id`).
+### Sesiones de examen y presets
+
+El `preset` decide qué módulos de detección se activan y con qué umbrales:
+
+| Preset | Módulos |
+|---|---|
+| `basic` | identidad y foco de ventana |
+| `standard` | + copiar/pegar, monitores, mirada, persona adicional |
+| `strict` | + reverificación, voces externas, **IA por voz**, captura de pantalla, monitoreo en vivo |
+| `custom` | solo los que el docente envíe (al menos uno) |
+
+Cada escalón añade vigilancia a cambio de coste computacional en la máquina del estudiante y de
+riesgo de falsos positivos. `strict` incluye el diferencial del proyecto.
+
+La respuesta trae `modules` con sus umbrales, por ejemplo
+`{"gaze": {"yaw_degrees": 25, "min_duration_ms": 3000}}`. **Ese es el contrato que la app de
+escritorio y el spike de visión deben leer** para saber cuándo emitir cada evento: los umbrales
+viven en un solo sitio y se calibran sin tocar tres clientes.
+
+Con un preset que no sea `custom`, los módulos enviados a mano se ignoran: si no, `preset` mentiría
+sobre lo que la sesión hace de verdad.
+
+El `access_code` se genera con un alfabeto sin `O`, `0`, `I`, `1` ni `L`, porque el estudiante lo
+teclea leyéndolo de una pizarra.
+
+### Subida de evidencia
+
+El archivo **nunca pasa por la API**. El flujo del cliente es:
+
+1. `POST /api/v1/evidence/upload-url` con `{session_id, student_id, kind, extension}`;
+2. subir el archivo **directo a Storage** con la `url` devuelta;
+3. mandar el evento con el `path` devuelto en `evidence_path`.
+
+`kind` es `image`, `audio` o `reference_face`, y decide el bucket (`evidences`, `audio-segments`,
+`reference-faces`). Las extensiones aceptadas coinciden con los `allowed_mime_types` de cada bucket:
+dar una URL para un tipo que el bucket rechazaría haría fallar la subida lejos de su causa.
+
+La firma vale para **una ruta concreta**: quien la reciba no puede subir a otra parte del bucket ni
+sobrescribir evidencia ajena. Y un estudiante solo obtiene URLs para sí mismo.
+
+Si las capturas y el audio pasaran por la API, cada examen costaría ancho de banda del plan
+gratuito de Render. Ver ADR-0004.
+
+### Alertas en vivo
+
+Al registrar un evento con severidad `medium` o `high`, la API inserta una fila en `alerts`. Esa
+tabla está publicada en **Supabase Realtime**, así que **insertar es notificar**: el navegador del
+docente, suscrito por `session_id`, recibe el aviso sin preguntar nada. Es lo que sostiene la meta
+de avisar en menos de 5 s.
+
+Las señales `low` **no** generan aviso. Quedan como evidencia y se ven en la revisión del caso. Un
+docente que recibe un aviso por cada parpadeo deja de mirarlos, y entonces el sistema no sirve.
+
+`speech_detected` nace `low`, así que no alerta al registrarse: la alerta por consulta a un
+asistente de IA la crea `services/ai` cuando confirma las **dos** condiciones.
+
+El endpoint `GET .../alerts` existe para la carga inicial: Realtime solo trae lo que ocurre a
+partir de que el docente se suscribe, no lo anterior.
 
 El contrato del cuerpo está en [`packages/contracts`](../../packages/contracts/), con un ejemplo
 válido por cada `event_type`.
+
+### Códigos de error
+
+| Código | Significado |
+|---|---|
+| `400` | cumple el contrato pero viola una regla de dominio (`gaze_away` sin `question_id`) |
+| `401` | falta el token, es inválido o venció |
+| `403` | estás identificado pero no puedes hacer esto |
+| `422` | el cuerpo no cumple el contrato (lo rechaza Pydantic antes del dominio) |
+
+422 es "arregla el JSON", 400 es "arregla la lógica".
+
+## Autenticación
+
+Token de Supabase Auth en la cabecera:
+
+```
+Authorization: Bearer <access_token>
+```
+
+El proyecto usa **claves asimétricas ES256**: la API verifica la firma contra el JWKS público del
+proyecto, así que no necesita ningún secreto compartido para autenticar.
+
+El rol **no viene en el token** — ahí el claim `role` vale siempre `authenticated`, que es el rol
+de PostgreSQL. El rol del sistema (`teacher` / `student`) se lee de `public.profiles`, con una
+caché de 60 s para no meter una consulta extra en cada evento.
+
+### Reglas
+
+- Un **estudiante** solo registra eventos sobre sí mismo: el `student_id` del cuerpo tiene que
+  coincidir con el del token. Y al listar, solo ve los suyos: si pide los de otro, el filtro se
+  ignora.
+- Un **docente** ve toda la sesión, y **no** puede registrar eventos (los reporta el cliente del
+  estudiante).
+
+**Por qué esto vive en la API y no en la base de datos:** RLS protege las escrituras directas desde
+el cliente, pero la API usa la *service role key* y **omite RLS por completo**. Sin estas
+comprobaciones, cualquiera con un token válido podría fabricar evidencia contra otro estudiante — y
+esa evidencia termina delante de un docente que decide sobre una nota.
+
+### Desarrollo sin autenticación
+
+`AUTH_ENABLED=false` desactiva todo lo anterior, para que Rider y Jesús puedan mandar eventos antes
+de tener su pantalla de login. Dos seguros:
+
+1. La API **se niega a arrancar** con `AUTH_ENABLED=false` si `ENV` no es `local` ni `test`.
+2. Si la variable no existe, la autenticación queda **activada**. Olvidarla en un despliegue
+   protege, no abre.
+
+`GET /health` informa de `"auth": "enabled" | "disabled"`, así que se ve de un vistazo.
 
 ## Calidad: lo que el CI exige
 
@@ -92,8 +205,9 @@ cambian el comportamiento:
 
 | Variable | Valores | Efecto |
 |---|---|---|
-| `EVENT_REPOSITORY` | `memory` \| `supabase` | dónde se guardan los eventos |
-| `JOB_QUEUE` | `memory` \| `redis` | dónde se encolan los análisis de audio |
+| `AUTH_ENABLED` | `true` (por defecto) \| `false` | exige token y comprueba permisos |
+| `EVENT_REPOSITORY` | `memory` \| `supabase` | dónde se guardan los eventos y se leen los perfiles |
+| `JOB_QUEUE` | `memory` \| `redis` | dónde se encolan los análisis de audio (`redis` necesita Redis levantado) |
 | `EVIDENCE_STORAGE` | `memory` \| `supabase` | quién firma las URLs de subida |
 
 Cambiar de memoria a producción es cambiar estas tres variables. Eso es el beneficio de los puertos.

@@ -82,9 +82,14 @@ Contrato en [`packages/contracts`](../../../../packages/contracts/), con un ejem
 
 ```
 POST http://localhost:8000/api/v1/events
+Authorization: Bearer <access_token de Supabase Auth>
 ```
 
-Ojo: `gaze_away` **exige** `question_id` (lo valida el dominio de la API y devuelve 400 si falta).
+Dos cosas que te van a morder si no las sabes:
+
+- `gaze_away` **exige** `question_id`. Lo valida el dominio de la API y devuelve `400` si falta.
+- La API exige token y comprueba que el `student_id` sea el tuyo. Para el spike, arranca la API con
+  `AUTH_ENABLED=false` en tu `.env` (ya viene así en `.env.example`) y te ahorras el login.
 
 ## Criterios de aceptación
 
@@ -100,3 +105,26 @@ Ojo: `gaze_away` **exige** `question_id` (lo valida el dominio de la API y devue
 
 Video de la cámara con los landmarks y los eventos apareciendo en consola, más la tabla de
 umbrales. Guárdalo en `docs/evidencias/semana-05/jesus/`.
+
+## Subir la captura
+
+No mandes la imagen a la API. Pide una URL firmada, sube el `Blob` del canvas directo a Storage, y
+en el evento pon solo la ruta:
+
+```ts
+const res = await fetch(`${API}/api/v1/evidence/upload-url`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    session_id: sessionId, student_id: studentId, kind: 'image', extension: 'jpg',
+  }),
+});
+const { path, url } = await res.json();
+
+canvas.toBlob(async (blob) => {
+  await fetch(url, { method: 'PUT', body: blob });
+  await enviarEvento({ ...evento, evidence_path: path });
+}, 'image/jpeg', 0.7);
+```
+
+Ya funciona en la API con `docker compose up`.

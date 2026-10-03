@@ -137,3 +137,43 @@ Lo más difícil del módulo. Explora, en este orden:
 
 Captura de la terminal con cada spike corriendo y sus números, más la tabla de umbrales probados.
 Guárdala en `docs/evidencias/semana-05/pierreluiggi/`.
+
+---
+
+## Lo que ya está hecho (Héctor)
+
+Dos archivos de andamiaje para que no empieces desde cero:
+
+| Archivo | Qué es |
+|---|---|
+| `worker_stub.py` | worker de RQ que escucha las colas `high` y `audio`. Funciona. |
+| `tasks.py` | la función `analyze_audio(event_id)` que el worker ejecuta. **Es un esqueleto**: registra el id y no analiza nada. |
+
+El flujo de punta a punta **ya funciona**:
+
+```bash
+docker compose up --build
+```
+
+```bash
+curl -X POST http://localhost:8000/api/v1/events -H "Content-Type: application/json" --data-binary @packages/contracts/examples/speech_detected.json
+```
+
+```bash
+docker compose logs ai-worker
+```
+
+Verás el `event_id` que devolvió la API aparecer en los logs del worker. Lo único que falta es que
+`analyze_audio` haga el trabajo de verdad.
+
+### Dos cosas que no debes cambiar
+
+- **Por la cola solo viaja el `event_id`.** El audio se lee desde Storage con el `evidence_path` del
+  evento. Meter el audio en Redis llenaría la memoria del plan gratuito en una sola sesión de examen.
+- **Las colas son `high` y `audio`.** `high` es para la verificación facial, que tiene a un
+  estudiante esperando en pantalla (P90 < 500 ms); `audio` es la tuya. Si metes el análisis de audio
+  en `high`, bloqueas la sala de espera.
+
+La API encola por **nombre** (`tasks.analyze_audio`), no importando la función, para no tener que
+instalar tus modelos en su imagen. Si mueves la función, avísame: la constante está en
+`services/api/src/proctoring_api/adapters/outbound/redis_queue/job_queue.py`.

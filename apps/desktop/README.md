@@ -94,7 +94,16 @@ Todos los eventos usan el contrato de [`packages/contracts`](../../packages/cont
 ```
 POST http://localhost:8000/api/v1/events
 Content-Type: application/json
+Authorization: Bearer <access_token de Supabase Auth>
 ```
+
+**Sobre el token:** la API comprueba que el `student_id` del cuerpo sea el mismo del token, así que
+no puedes reportar eventos a nombre de otro. Si no mandas token recibes `401`; si mandas el de otro
+estudiante, `403`.
+
+Mientras no tengas la pantalla de login, arranca la API con `AUTH_ENABLED=false` en tu `.env` (ya
+viene así en `.env.example`) y los eventos entran sin cabecera. En cuanto el login exista, pon
+`AUTH_ENABLED=true` y empieza a mandar el token.
 
 Hay un ejemplo válido por tipo de evento en `packages/contracts/examples/`. La respuesta es
 `201` con `{ "id": "...", "severity": "low|medium|high" }`.
@@ -127,3 +136,23 @@ Nada de `ipcRenderer` crudo ni `require` en el renderer.
 Video corto mostrando: Alt+Tab → evento en los logs de la API; conectar monitor → evento; abrir
 Zoom → evento; intentar capturar pantalla → ventana en negro.
 Guárdalo en `docs/evidencias/semana-05/rider/`.
+
+## Subir capturas y audio
+
+El archivo **no se manda a la API**. Tres pasos:
+
+```
+1. POST /api/v1/evidence/upload-url
+   { "session_id": "...", "student_id": "...", "kind": "image", "extension": "jpg" }
+   -> 201 { "path": "...", "url": "...", "token": "...", "expires_in_seconds": 7200 }
+
+2. subir el archivo directo a esa "url"
+
+3. POST /api/v1/events con "evidence_path": el "path" del paso 1
+```
+
+`kind` es `image`, `audio` o `reference_face`. Las extensiones aceptadas están limitadas por el
+bucket: imágenes `jpg`/`jpeg`/`png`/`webp`, audio `webm`/`wav`/`ogg`/`mp3`. Cualquier otra devuelve
+`400`.
+
+Ya está implementado y probado en la API: con `docker compose up` puedes usarlo hoy.

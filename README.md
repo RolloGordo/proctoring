@@ -1,5 +1,7 @@
 # Proctoring — Supervisión de exámenes remotos
 
+[![CI](https://github.com/RolloGordo/proctoring/actions/workflows/ci.yml/badge.svg)](https://github.com/RolloGordo/proctoring/actions/workflows/ci.yml)
+
 > Taller Integrador 1 — Universidad Privada Antenor Orrego (UPAO)
 > Product Owner / Portfolio Manager: Walter Cueva Chávez
 
@@ -100,15 +102,38 @@ proctoring/
 | [Docker Desktop](https://www.docker.com/products/docker-desktop/) | reciente | levantar api + redis |
 | [Git](https://git-scm.com/) | 2.40+ | control de versiones |
 
+### Instalación en Windows
+
+El equipo trabaja en Windows. Con `winget` (ya viene en Windows 11), en un terminal:
+
+```bash
+winget install astral-sh.uv Git.Git GitHub.cli OpenJS.NodeJS.LTS
+```
+
+Docker Desktop se instala aparte desde su web, porque pide reiniciar.
+
+> **Después de instalar, abre un terminal nuevo.** El `PATH` solo se refresca en las ventanas que
+> se abren después; si sigues en la de antes, verás `uv no se reconoce como un comando`.
+
 Si no tienes Python 3.12, `uv` lo descarga por ti:
 
 ```bash
 uv python install 3.12
 ```
 
+### Qué terminal usar
+
+Usa el terminal de **Git Bash** o `cmd`. **No uses PowerShell** para los comandos de este README:
+la versión que trae Windows 11 por defecto (5.1) no entiende `&&` y te dará
+`El token '&&' no es un separador de instrucciones válido`, que parece un error del proyecto y no
+lo es. Si tienes que usar PowerShell, reemplaza `A && B` por `A; if ($?) { B }`.
+
 ## Levantar todo en local
 
 ### Opción A — Docker (recomendada: API + Redis + worker de IA)
+
+Levanta los tres servicios y el flujo completo funciona de punta a punta: un evento
+`speech_detected` llega a la API, se encola en Redis y lo recoge el worker de IA.
 
 ```bash
 cp .env.example .env && docker compose up --build
@@ -119,18 +144,28 @@ En PowerShell el primer comando es `Copy-Item .env.example .env`.
 - API: <http://localhost:8000>
 - Swagger: <http://localhost:8000/docs>
 - Redis: `localhost:6379`
+- Worker de IA: sin puerto; se ve con `docker compose logs -f ai-worker`
 
 ### Opción B — Solo la API, sin Docker
 
 ```bash
-cd services/api && uv sync && uv run uvicorn proctoring_api.main:app --reload --port 8000
+cd services/api && uv sync && uv run uvicorn proctoring_api.main:create_app --factory --reload --port 8000
 ```
+
+Arranca con adaptadores en memoria, así que **no necesita Supabase ni Redis** para
+funcionar: `uv sync` y listo.
 
 ### Comprobar que funciona
 
 ```bash
 curl http://localhost:8000/health
 ```
+
+Responde `{"status":"ok","env":"local","version":"0.1.0","auth":"disabled"}`. Ese `auth` es
+intencional: en local la autenticación viene desactivada para que los clientes puedan mandar
+eventos antes de tener su pantalla de login. **La API se niega a arrancar sin autenticación en
+cualquier entorno que no sea `local` o `test`**, y si la variable no existe, la autenticación queda
+activada.
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/events -H "Content-Type: application/json" --data-binary @packages/contracts/examples/focus_lost.json
