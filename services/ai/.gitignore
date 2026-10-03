@@ -1,4 +1,21 @@
+# Entorno local y modelos descargados: pesados y reproducibles.
 .tools/
-results/
-datasets/
 models/
+
+# Los datasets no se versionan (son audio), PERO el manifiesto y la procedencia
+# son texto de unos pocos kilobytes y llevan los hashes de cada muestra: sin
+# ellos, los numeros de un experimento no los puede comprobar nadie.
+#
+# Se excluye el CONTENIDO y no la carpeta: git no puede volver a incluir un
+# archivo si su carpeta esta excluida.
+datasets/**
+!datasets/**/
+!datasets/**/manifest.csv
+!datasets/**/provenance.json
+!datasets/**/README.md
+
+# Los resultados medidos SI se versionan: son JSON pequenos y son la evidencia
+# del experimento. Lo que no entra son los artefactos pesados que los generan.
+results/**
+!results/
+!results/*.json
