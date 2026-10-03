@@ -1,0 +1,137 @@
+[project]
+name = "proctoring-api"
+version = "0.1.0"
+description = "API principal del sistema de proctoring (arquitectura hexagonal)"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "supabase>=2.10",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "httpx>=0.28",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "import-linter>=2.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/proctoring_api"]
+
+# ---------------------------------------------------------------------------
+# Ruff: lint y formato
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "N",        # pep8-naming
+    "UP",       # pyupgrade
+    "B",        # flake8-bugbear
+    "A",        # flake8-builtins
+    "C4",       # flake8-comprehensions
+    "DTZ",      # flake8-datetimez: prohibe datetime sin zona horaria
+    "T20",      # flake8-print: nada de print() en la API
+    "SIM",      # flake8-simplify
+    "RUF",      # reglas propias de ruff
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Las pruebas pueden usar datetime naive a proposito: comprueban que el dominio lo rechaza.
+"tests/**" = ["DTZ"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Query/Depends/Path/Body en los valores por defecto es el idioma de FastAPI para
+# declarar dependencias, no el bug mutable que B008 busca.
+extend-immutable-calls = [
+    "fastapi.Body",
+    "fastapi.Depends",
+    "fastapi.Header",
+    "fastapi.Path",
+    "fastapi.Query",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["proctoring_api"]
+known-local-folder = ["tests"]
+
+# ---------------------------------------------------------------------------
+# mypy: estricto, con la holgura justa en pruebas y en el SDK de Supabase
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+# El SDK de supabase no publica tipos completos.
+module = ["supabase.*", "postgrest.*", "storage3.*", "gotrue.*", "realtime.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_decorators = false
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q --strict-markers"
+markers = [
+    "integration: pruebas que tocan HTTP o servicios externos",
+]
+
+# ---------------------------------------------------------------------------
+# import-linter: la regla de dependencias hexagonal, verificada en el CI.
+# Si esto falla, el PR no entra, aunque las pruebas pasen.
+# ---------------------------------------------------------------------------
+[tool.importlinter]
+root_package = "proctoring_api"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Hexagonal layers (adapters -> application -> domain)"
+type = "layers"
+layers = [
+    "proctoring_api.adapters",
+    "proctoring_api.application",
+    "proctoring_api.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "Core is framework-free"
+type = "forbidden"
+source_modules = ["proctoring_api.domain", "proctoring_api.application"]
+forbidden_modules = [
+    "fastapi",
+    "pydantic",
+    "pydantic_settings",
+    "supabase",
+    "postgrest",
+    "redis",
+    "rq",
+    "httpx",
+    "starlette",
+    "sqlalchemy",
+]
