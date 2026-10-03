@@ -1,0 +1,16 @@
+# Normaliza los finales de linea: el equipo trabaja en Windows pero el CI corre en Linux.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Scripts que Windows debe ver con CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
