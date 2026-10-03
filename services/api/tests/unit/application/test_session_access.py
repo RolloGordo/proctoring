@@ -8,20 +8,21 @@ informacion sobre estudiantes concretos y sobre decisiones academicas ajenas.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
 from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
 from proctoring_api.adapters.outbound.memory.event_repository import InMemoryEventRepository
-from proctoring_api.adapters.outbound.memory.session_repository import (
-    InMemorySessionRepository,
+from proctoring_api.adapters.outbound.memory.exam_session_repository import (
+    InMemoryExamSessionRepository,
 )
 from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.errors import AuthorizationError
 from proctoring_api.domain.event import EventType, ProctoringEvent
+from proctoring_api.domain.exam_session import ExamSession
 from proctoring_api.domain.severity import Severity
 from proctoring_api.domain.user import AuthenticatedUser, UserRole
 
@@ -36,9 +37,22 @@ STUDENT = AuthenticatedUser(id=uuid4(), role=UserRole.STUDENT)
 NOW = datetime(2026, 10, 3, 15, 0, 0, tzinfo=UTC)
 
 
+def a_session(session_id: UUID, teacher_id: UUID) -> ExamSession:
+    return ExamSession.create(
+        teacher_id=teacher_id,
+        title="Examen parcial",
+        starts_at=NOW,
+        duration_minutes=60,
+        session_id=session_id,
+    )
+
+
 @pytest.fixture
-def sessions() -> InMemorySessionRepository:
-    return InMemorySessionRepository({MY_SESSION: ME.id, SOMEONE_ELSES_SESSION: ANOTHER_TEACHER.id})
+def sessions() -> InMemoryExamSessionRepository:
+    repository = InMemoryExamSessionRepository()
+    repository.save(a_session(MY_SESSION, ME.id))
+    repository.save(a_session(SOMEONE_ELSES_SESSION, ANOTHER_TEACHER.id))
+    return repository
 
 
 @pytest.fixture
@@ -75,7 +89,7 @@ def alerts(alert_repository: InMemoryAlertRepository) -> InMemoryAlertRepository
 class TestListingEvents:
     @pytest.fixture
     def use_case(
-        self, events: InMemoryEventRepository, sessions: InMemorySessionRepository
+        self, events: InMemoryEventRepository, sessions: InMemoryExamSessionRepository
     ) -> ListSessionEvents:
         return ListSessionEvents(events, sessions)
 
@@ -107,7 +121,7 @@ class TestListingEvents:
 class TestListingAlerts:
     @pytest.fixture
     def use_case(
-        self, alerts: InMemoryAlertRepository, sessions: InMemorySessionRepository
+        self, alerts: InMemoryAlertRepository, sessions: InMemoryExamSessionRepository
     ) -> ListSessionAlerts:
         return ListSessionAlerts(alerts, sessions)
 

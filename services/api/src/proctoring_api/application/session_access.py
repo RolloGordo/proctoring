@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from proctoring_api.application.ports.session_repository import SessionRepository
+from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.domain.errors import AuthorizationError
 from proctoring_api.domain.user import AuthenticatedUser
 
 
 def ensure_teacher_owns_session(
-    sessions: SessionRepository | None,
+    sessions: ExamSessionRepository | None,
     session_id: UUID,
     actor: AuthenticatedUser | None,
 ) -> None:
@@ -27,9 +27,8 @@ def ensure_teacher_owns_session(
 
     No aplica a estudiantes: a ellos los limita el filtro por su propio id.
 
-    `sessions` es `None` cuando no hay con que comprobar (modo memoria en
-    desarrollo), igual que ocurre con el banco de preguntas. `actor` es `None`
-    con la autenticacion desactivada.
+    `sessions` es `None` cuando no hay con que comprobar (modo memoria sin
+    sesiones creadas). `actor` es `None` con la autenticacion desactivada.
 
     Raises:
         AuthorizationError: si el docente no es dueno de la sesion, o si la

@@ -1,0 +1,39 @@
+"""Puerto de persistencia de sesiones de examen."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import Protocol
+from uuid import UUID
+
+from proctoring_api.domain.exam_session import ExamSession
+
+
+class ExamSessionRepository(Protocol):
+    """Guarda y recupera sesiones de examen.
+
+    `find_teacher_id` existe aparte de `find_by_id` porque la comprobacion de
+    acceso se hace en **cada** lectura de eventos y de alertas: traer la sesion
+    entera para mirar una columna seria pagar de mas en el camino que mas se
+    recorre (la pantalla en vivo del docente).
+    """
+
+    def save(self, session: ExamSession) -> None:
+        """Persiste la sesion y sus modulos."""
+        ...
+
+    def find_by_id(self, session_id: UUID) -> ExamSession | None:
+        """La sesion con sus modulos, o `None` si no existe."""
+        ...
+
+    def find_teacher_id(self, session_id: UUID) -> UUID | None:
+        """Docente dueno de la sesion, o `None` si la sesion no existe."""
+        ...
+
+    def list_by_teacher(self, teacher_id: UUID) -> Sequence[ExamSession]:
+        """Sesiones de un docente, de la mas proxima a la mas antigua."""
+        ...
+
+    def access_code_exists(self, access_code: str) -> bool:
+        """Si ese codigo de acceso ya esta en uso."""
+        ...

@@ -70,9 +70,37 @@ funciona con `uv sync` y nada más.
 |---|---|---|---|
 | `GET` | `/health` | pública | estado, entorno, versión y si la auth está activa |
 | `POST` | `/api/v1/events` | estudiante | registra un evento → `201 {id, severity}` |
+| `POST` | `/api/v1/sessions` | **solo docente** | crea una sesión de examen y devuelve su `access_code` |
+| `GET` | `/api/v1/sessions` | **solo docente** | sus propias sesiones, de la más próxima a la más antigua |
+| `GET` | `/api/v1/sessions/{session_id}` | **solo docente** | detalle con los módulos activos y sus umbrales |
 | `GET` | `/api/v1/sessions/{session_id}/events` | estudiante / docente | lista los eventos (filtro `?student_id=`) |
 | `GET` | `/api/v1/sessions/{session_id}/alerts` | **solo docente** | alertas de la sesión, de la más reciente a la más antigua |
 | `POST` | `/api/v1/evidence/upload-url` | estudiante | URL firmada para subir una captura o audio |
+
+### Sesiones de examen y presets
+
+El `preset` decide qué módulos de detección se activan y con qué umbrales:
+
+| Preset | Módulos |
+|---|---|
+| `basic` | identidad y foco de ventana |
+| `standard` | + copiar/pegar, monitores, mirada, persona adicional |
+| `strict` | + reverificación, voces externas, **IA por voz**, captura de pantalla, monitoreo en vivo |
+| `custom` | solo los que el docente envíe (al menos uno) |
+
+Cada escalón añade vigilancia a cambio de coste computacional en la máquina del estudiante y de
+riesgo de falsos positivos. `strict` incluye el diferencial del proyecto.
+
+La respuesta trae `modules` con sus umbrales, por ejemplo
+`{"gaze": {"yaw_degrees": 25, "min_duration_ms": 3000}}`. **Ese es el contrato que la app de
+escritorio y el spike de visión deben leer** para saber cuándo emitir cada evento: los umbrales
+viven en un solo sitio y se calibran sin tocar tres clientes.
+
+Con un preset que no sea `custom`, los módulos enviados a mano se ignoran: si no, `preset` mentiría
+sobre lo que la sesión hace de verdad.
+
+El `access_code` se genera con un alfabeto sin `O`, `0`, `I`, `1` ni `L`, porque el estudiante lo
+teclea leyéndolo de una pizarra.
 
 ### Subida de evidencia
 

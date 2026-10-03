@@ -25,6 +25,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.event import MAX_EVIDENCE_PATH_LENGTH, EventType, ProctoringEvent
 from proctoring_api.domain.evidence import EvidenceKind
+from proctoring_api.domain.exam_session import (
+    ExamSession,
+    SessionStatus,
+    SupervisionModule,
+    SupervisionPreset,
+)
 from proctoring_api.domain.severity import Severity
 
 
@@ -132,6 +138,98 @@ class EvidenceUploadResponse(BaseModel):
     url: str
     token: str | None
     expires_in_seconds: int
+
+
+class ExamSessionRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/sessions`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=200)
+    starts_at: datetime
+    duration_minutes: int = Field(gt=0, le=600)
+    course_id: UUID | None = None
+    description: str | None = Field(default=None, max_length=2000)
+    entry_tolerance_minutes: int = Field(default=10, ge=0, le=120)
+    preset: SupervisionPreset = SupervisionPreset.STANDARD
+    max_attempts: int = Field(default=1, gt=0, le=10)
+    shuffle_questions: bool = True
+    shuffle_options: bool = True
+    allow_back_navigation: bool = True
+    #: Solo se usa con `preset = custom`; con los demas manda el preset.
+    modules: dict[SupervisionModule, dict[str, Any]] | None = None
+
+
+class ExamSessionSummary(BaseModel):
+    """Sesion en un listado, sin el detalle de los modulos."""
+
+    id: UUID
+    title: str
+    starts_at: datetime
+    duration_minutes: int
+    access_code: str
+    preset: SupervisionPreset
+    status: SessionStatus
+
+    @classmethod
+    def from_entity(cls, session: ExamSession) -> ExamSessionSummary:
+        return cls(
+            id=session.id,
+            title=session.title,
+            starts_at=session.starts_at,
+            duration_minutes=session.duration_minutes,
+            access_code=session.access_code,
+            preset=session.preset,
+            status=session.status,
+        )
+
+
+class ExamSessionResponse(BaseModel):
+    """Sesion completa, con los modulos activos y sus umbrales.
+
+    `modules` es el mismo contrato que la app de escritorio y el spike de vision
+    usan para saber con que umbrales emitir cada evento.
+    """
+
+    id: UUID
+    teacher_id: UUID
+    course_id: UUID | None
+    title: str
+    description: str | None
+    starts_at: datetime
+    ends_at: datetime
+    duration_minutes: int
+    entry_tolerance_minutes: int
+    access_code: str
+    preset: SupervisionPreset
+    status: SessionStatus
+    max_attempts: int
+    shuffle_questions: bool
+    shuffle_options: bool
+    allow_back_navigation: bool
+    modules: dict[SupervisionModule, dict[str, Any]]
+
+    @classmethod
+    def from_entity(cls, session: ExamSession) -> ExamSessionResponse:
+        return cls(
+            id=session.id,
+            teacher_id=session.teacher_id,
+            course_id=session.course_id,
+            title=session.title,
+            description=session.description,
+            starts_at=session.starts_at,
+            ends_at=session.ends_at,
+            duration_minutes=session.duration_minutes,
+            entry_tolerance_minutes=session.entry_tolerance_minutes,
+            access_code=session.access_code,
+            preset=session.preset,
+            status=session.status,
+            max_attempts=session.max_attempts,
+            shuffle_questions=session.shuffle_questions,
+            shuffle_options=session.shuffle_options,
+            allow_back_navigation=session.allow_back_navigation,
+            modules=session.modules,
+        )
 
 
 class HealthResponse(BaseModel):

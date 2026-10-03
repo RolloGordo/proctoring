@@ -21,6 +21,7 @@ from proctoring_api.application.ports.token_verifier import TokenClaims
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
 from proctoring_api.config import Settings
 from proctoring_api.domain.errors import AuthenticationError
+from proctoring_api.domain.exam_session import ExamSession
 from proctoring_api.domain.user import UserRole
 from proctoring_api.main import create_app
 
@@ -32,6 +33,8 @@ CONTRACT_EXAMPLES = Path(__file__).resolve().parents[3] / "packages" / "contract
 #: Hora de referencia, posterior a los `started_at` de los ejemplos del contrato.
 NOW = datetime(2026, 10, 3, 15, 0, 0, tzinfo=UTC)
 
+#: La sesion que traen los ejemplos del contrato.
+CONTRACT_SESSION_ID = UUID("3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60")
 #: El `student_id` que traen los ejemplos del contrato: el "dueno" de esos eventos.
 CONTRACT_STUDENT_ID = UUID("7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71")
 #: Otro estudiante, para probar que no puede reportar eventos ajenos.
@@ -153,8 +156,23 @@ def client(app: FastAPI) -> Iterator[TestClient]:
 
 @pytest.fixture
 def authed_app(clock: FixedClock, identify_user: IdentifyUser) -> FastAPI:
-    """App **con autenticacion**, para probar las reglas de autorizacion."""
-    return create_app(_settings(auth_enabled=True), clock=clock, identify_user=identify_user)
+    """App **con autenticacion**, para probar las reglas de autorizacion.
+
+    La sesion de los ejemplos del contrato se siembra a nombre del docente de
+    prueba: un docente solo accede a las sesiones que el creo, asi que sin esto
+    sus peticiones responderian 403 con razon.
+    """
+    app = create_app(_settings(auth_enabled=True), clock=clock, identify_user=identify_user)
+    app.state.session_repository.save(
+        ExamSession.create(
+            teacher_id=TEACHER_ID,
+            title="Examen de prueba",
+            starts_at=NOW,
+            duration_minutes=60,
+            session_id=CONTRACT_SESSION_ID,
+        )
+    )
+    return app
 
 
 @pytest.fixture

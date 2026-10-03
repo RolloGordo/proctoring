@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from uuid import UUID
 
 from proctoring_api.application.ports.event_repository import EventRepository
-from proctoring_api.application.ports.session_repository import SessionRepository
+from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.domain.event import ProctoringEvent
 from proctoring_api.domain.user import AuthenticatedUser
@@ -20,7 +20,9 @@ class ListSessionEvents:
     el repositorio.
     """
 
-    def __init__(self, events: EventRepository, sessions: SessionRepository | None = None) -> None:
+    def __init__(
+        self, events: EventRepository, sessions: ExamSessionRepository | None = None
+    ) -> None:
         self._events = events
         self._sessions = sessions
 

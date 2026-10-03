@@ -16,9 +16,14 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from proctoring_api.application.use_cases.create_evidence_upload_url import (
     CreateEvidenceUploadUrl,
 )
+from proctoring_api.application.use_cases.create_exam_session import CreateExamSession
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
 from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
+from proctoring_api.application.use_cases.list_teacher_sessions import (
+    GetExamSession,
+    ListTeacherSessions,
+)
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.config import Settings
 from proctoring_api.domain.errors import AuthenticationError
@@ -54,6 +59,21 @@ def get_create_evidence_upload_url(request: Request) -> CreateEvidenceUploadUrl:
     return use_case
 
 
+def get_create_exam_session(request: Request) -> CreateExamSession:
+    use_case: CreateExamSession = request.app.state.create_exam_session
+    return use_case
+
+
+def get_list_teacher_sessions(request: Request) -> ListTeacherSessions:
+    use_case: ListTeacherSessions = request.app.state.list_teacher_sessions
+    return use_case
+
+
+def get_exam_session(request: Request) -> GetExamSession:
+    use_case: GetExamSession = request.app.state.get_exam_session
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -86,6 +106,9 @@ RegisterEventDep = Annotated[RegisterEvent, Depends(get_register_event)]
 ListSessionEventsDep = Annotated[ListSessionEvents, Depends(get_list_session_events)]
 ListSessionAlertsDep = Annotated[ListSessionAlerts, Depends(get_list_session_alerts)]
 CurrentUserDep = Annotated[AuthenticatedUser | None, Depends(get_current_user)]
+CreateExamSessionDep = Annotated[CreateExamSession, Depends(get_create_exam_session)]
+ListTeacherSessionsDep = Annotated[ListTeacherSessions, Depends(get_list_teacher_sessions)]
+GetExamSessionDep = Annotated[GetExamSession, Depends(get_exam_session)]
 CreateEvidenceUploadUrlDep = Annotated[
     CreateEvidenceUploadUrl, Depends(get_create_evidence_upload_url)
 ]

@@ -146,3 +146,58 @@ def test_user_role_enum_matches_the_database() -> None:
     assert match
 
     assert set(re.findall(r"'([a-z_]+)'", match.group(1))) == {r.value for r in UserRole}
+
+
+class TestExamSessionsTable:
+    def test_the_adapter_selects_existing_columns(self) -> None:
+        from proctoring_api.adapters.outbound.supabase import exam_session_repository
+
+        assert selected_columns(exam_session_repository.COLUMNS) <= columns_of("exam_sessions")
+
+    def test_the_adapter_writes_existing_columns(self) -> None:
+        from datetime import UTC, datetime
+        from uuid import uuid4
+
+        from proctoring_api.adapters.outbound.supabase import exam_session_repository
+        from proctoring_api.domain.exam_session import ExamSession
+
+        row = exam_session_repository._to_row(
+            ExamSession.create(
+                teacher_id=uuid4(),
+                title="Examen",
+                starts_at=datetime(2026, 10, 10, tzinfo=UTC),
+                duration_minutes=60,
+            )
+        )
+
+        assert set(row) <= columns_of("exam_sessions")
+
+    def test_session_modules_columns(self) -> None:
+        assert {"session_id", "module", "enabled", "settings"} <= columns_of("session_modules")
+
+
+@pytest.mark.parametrize(
+    ("enum_name", "domain_values"),
+    [
+        ("session_status", "SessionStatus"),
+        ("supervision_preset", "SupervisionPreset"),
+        ("supervision_module", "SupervisionModule"),
+    ],
+)
+def test_session_enums_match_the_database(enum_name: str, domain_values: str) -> None:
+    """Los enums del dominio y los de PostgreSQL son los mismos.
+
+    `supervision_module` importa especialmente: si el dominio activa un modulo
+    que el enum de la base no conoce, crear la sesion falla al insertar en
+    session_modules con un error que no dice nada util.
+    """
+    import proctoring_api.domain.exam_session as exam_session
+
+    sql = MIGRATION.read_text(encoding="utf-8")
+    match = re.search(rf"create type public\.{enum_name} as enum \((.*?)\);", sql, re.DOTALL)
+    assert match, f"No se encontro el enum {enum_name}"
+
+    in_database = set(re.findall(r"'([a-z_]+)'", match.group(1)))
+    in_domain = {member.value for member in getattr(exam_session, domain_values)}
+
+    assert in_database == in_domain

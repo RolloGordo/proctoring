@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from uuid import UUID
 
 from proctoring_api.application.ports.alert_repository import AlertRepository
-from proctoring_api.application.ports.session_repository import SessionRepository
+from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.errors import AuthorizationError
@@ -21,7 +21,9 @@ class ListSessionAlerts:
     abrio.
     """
 
-    def __init__(self, alerts: AlertRepository, sessions: SessionRepository | None = None) -> None:
+    def __init__(
+        self, alerts: AlertRepository, sessions: ExamSessionRepository | None = None
+    ) -> None:
         self._alerts = alerts
         self._sessions = sessions
 
