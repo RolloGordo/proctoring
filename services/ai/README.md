@@ -45,9 +45,9 @@ punta; reemplázalo por el worker real.
 ```
 services/ai/
 ├── spikes/                      # EMPIEZA AQUI: scripts suetos, sin arquitectura
-│   ├── transcribir.py
-│   ├── similitud.py
-│   ├── pipeline_vad.py
+│   ├── transcribe.py
+│   ├── similarity.py
+│   ├── vad_pipeline.py
 │   └── qti_import.py
 ├── src/proctoring_ai/
 │   ├── domain/                  # reglas puras: umbrales, decisión de alerta
@@ -65,7 +65,7 @@ services/ai/
 El profesor fue claro en la reunión del 03/10: no quiere solo investigación, quiere un script que
 corra y demuestre el resultado. Cada spike es un archivo que se ejecuta solo y escribe su salida.
 
-### `spikes/transcribir.py`
+### `spikes/transcribe.py`
 
 [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper), modelo `small`, idioma español.
 
@@ -78,7 +78,7 @@ segments, info = model.transcribe("muestra.wav", language="es", vad_filter=True)
 Mide y reporta el tiempo: con `small` en CPU debe transcribir 10 s de audio en pocos segundos.
 Si no alcanza para el presupuesto de 10 s, prueba `base` y anótalo.
 
-### `spikes/similitud.py`
+### `spikes/similarity.py`
 
 [`sentence-transformers`](https://www.sbert.net/) con `paraphrase-multilingual-MiniLM-L12-v2`.
 
@@ -93,7 +93,7 @@ Prueba el umbral **0.6** con casos a favor y en contra: la pregunta leída liter
 parafraseada, y conversación no relacionada. Escribe los números que obtengas; el umbral final sale
 de esos datos, no de la intuición.
 
-### `spikes/pipeline_vad.py`
+### `spikes/vad_pipeline.py`
 
 [Silero VAD](https://github.com/snakers4/silero-vad) en continuo, con marcas de tiempo de inicio y
 fin de cada tramo de habla. Esto es lo que corre en el cliente, así que mide el consumo de CPU: no
@@ -116,6 +116,27 @@ Lo más difícil del módulo. Explora, en este orden:
 3. Si nada funciona a tiempo, deja el `synthetic_score` en el evento y haz que la decisión final
    dependa solo de la similitud + presencia de segundo locutor, y **documenta esa limitación**.
 
+## Qué se versiona y qué no
+
+Los modelos y el audio **no entran al repositorio**: pesan y el `.gitignore` los bloquea. Pero el
+**manifiesto, la procedencia y los resultados sí**, porque son texto de unos pocos kilobytes y son
+lo único que permite que otra persona compruebe tus números:
+
+```gitignore
+# en services/ai/.gitignore
+models/
+datasets/**
+!datasets/**/
+!datasets/**/manifest.csv
+!datasets/**/provenance.json
+results/*
+!results/*.json
+```
+
+El `.gitignore` de la raíz ya deja pasar `manifest.csv` y `provenance.json`. Si añades uno propio en
+`services/ai/`, no vuelvas a excluirlos: un spike cuyos resultados no están en el repo es, para
+quien lo revisa, un spike que no ocurrió.
+
 ## Reglas que no se negocian
 
 - **Nada de modelos ni datasets en el repo** (`.gitignore` ya bloquea `models/`, `*.pt`, `*.onnx`,
@@ -126,9 +147,9 @@ Lo más difícil del módulo. Explora, en este orden:
 
 ## Criterios de aceptación
 
-- [ ] `python spikes/transcribir.py muestra.wav` imprime la transcripción en español y el tiempo.
-- [ ] `python spikes/similitud.py` imprime la similitud de al menos 6 pares y marca cuáles pasan 0.6.
-- [ ] `python spikes/pipeline_vad.py` imprime los tramos de habla con tiempos de un audio de prueba.
+- [ ] `python spikes/transcribe.py muestra.wav` imprime la transcripción en español y el tiempo.
+- [ ] `python spikes/similarity.py` imprime la similitud de al menos 6 pares y marca cuáles pasan 0.6.
+- [ ] `python spikes/vad_pipeline.py` imprime los tramos de habla con tiempos de un audio de prueba.
 - [ ] `python spikes/qti_import.py examen.zip` escribe un JSON con preguntas y opciones.
 - [ ] Caso negativo demostrado: leer la pregunta en voz alta **sin** respuesta sintética NO alerta.
 - [ ] `docker compose up` y un POST de `speech_detected` aparece en los logs del worker.

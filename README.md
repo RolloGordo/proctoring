@@ -189,6 +189,39 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy src && uv run
 nunca al revés) y que `domain` y `application` no importen ningún framework. Si esa prueba falla,
 el PR no entra.
 
+## Antes de empezar a trabajar: actualiza
+
+`develop` se mueve. **Siempre** parte de la última versión, o acabarás escribiendo código contra un
+contrato que ya cambió:
+
+```bash
+git checkout develop && git pull && git checkout -b feat/<codigo>-<descripcion>
+```
+
+Cuando termines, sube **solo tu carpeta**, nunca `services/` o `apps/` enteras: así no reviertes
+sin querer el trabajo de otro.
+
+```bash
+git add <tu-carpeta> && git commit -m "feat(<codigo>): ..." && git push -u origin HEAD
+```
+
+Y abre el Pull Request hacia `develop`:
+
+```bash
+gh pr create --base develop --fill
+```
+
+| Integrante | Rama | Qué subir |
+|---|---|---|
+| Rider | `feat/EN-002-...` | `apps/desktop/` |
+| Pierreluiggi | `feat/SP-007-...` | `services/ai/` |
+| Jesús | `feat/EN-008-...` | `apps/web/spikes/vision/`, `supabase/migrations/` |
+| Héctor | `feat/EN-005-...` | `services/api/`, `packages/`, `.github/`, `docs/` |
+
+El CI corre solo sobre lo que existe: los trabajos de `apps/web`, `apps/desktop` y `services/ai` se
+saltan hasta que aparece su `package.json` o su `pyproject.toml`, y a partir de ahí validan lint,
+tipos, formato y pruebas en cada push.
+
 ## Flujo de ramas
 
 - `main` — protegida, solo por Pull Request. Es lo que se despliega.
