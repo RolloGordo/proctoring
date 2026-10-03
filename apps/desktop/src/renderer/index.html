@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Registro de eventos</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
+    <style>
+      :root {
+        --fondo: #f6f7f9;
+        --texto: #1c2430;
+        --suave: #5d6877;
+        --linea: #d9dee5;
+        --alerta: #b42318;
+        --alerta-fondo: #fdecea;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: var(--fondo);
+        color: var(--texto);
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 15px;
+      }
+      h1 { margin: 0 0 4px; font-size: 22px; }
+      .sub { margin: 0 0 20px; color: var(--suave); }
+      .resumen { display: flex; gap: 12px; margin-bottom: 20px; }
+      .dato {
+        flex: 1;
+        padding: 12px 14px;
+        background: #fff;
+        border: 1px solid var(--linea);
+        border-radius: 6px;
+      }
+      .dato b { display: block; font-size: 22px; }
+      .dato span { color: var(--suave); font-size: 13px; }
+      table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--linea); }
+      th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--linea); }
+      th { background: #eef1f5; font-weight: 600; font-size: 13px; }
+      tr.alerta td { background: var(--alerta-fondo); color: var(--alerta); }
+      .vacio { padding: 18px; color: var(--suave); }
+    </style>
+  </head>
+  <body>
+    <h1>Registro de eventos</h1>
+    <p class="sub">Salidas de la ventana y cambios de monitores durante el examen.</p>
+
+    <div class="resumen">
+      <div class="dato"><b id="n-salidas">0</b><span>Salidas de la ventana</span></div>
+      <div class="dato"><b id="t-fuera">0.0 s</b><span>Tiempo total fuera</span></div>
+      <div class="dato"><b id="n-monitores">-</b><span>Monitores conectados</span></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Hora</th><th>Tipo</th><th>Detalle</th><th>Duración</th></tr>
+      </thead>
+      <tbody id="cuerpo"></tbody>
+    </table>
+    <p class="vacio" id="vacio">Todavía no hay eventos.</p>
+
+    <script type="module" src="./src/renderer.ts"></script>
+  </body>
+</html>
