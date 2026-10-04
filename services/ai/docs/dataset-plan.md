@@ -1,6 +1,8 @@
 # Registro y preparación del dataset de audio
 
-Estado al 03/10/2026: se descargó y evaluó una muestra pública de ocho audios en español de MediaSpeech y se generó un control de silencio digital. TA-006, el conjunto propio del proyecto, sigue pendiente.
+Estado al 03/10/2026: se evaluaron ocho audios públicos de MediaSpeech, un control de silencio digital y dos audios propios de P01. TA-006, el conjunto de sesenta audios del proyecto, sigue pendiente.
+
+La colección `datasets/sp007_own` ya contiene dos grabaciones originales de P01, con 34,344 segundos y 79 palabras de referencia. Los textos fueron confirmados por el participante tras escuchar las grabaciones, antes de evaluar. La salida es `results/evaluation-own.json`. La entrega actual se limita a estos dos audios por decisión del responsable. La propuesta inicial de ocho audios queda como ampliación posterior; esa cantidad no es una exigencia del backlog. Esta muestra no completa TA-006.
 
 ## Muestra utilizada en SP-007
 

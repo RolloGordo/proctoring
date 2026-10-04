@@ -9,7 +9,7 @@ Rama: `feat/SP-007-spanish-transcription`.
 
 Se implementó y ejecutó una prueba local que recibe audio en español, produce transcripciones y mide WER y tiempos. Este avance permite demostrar transcripción funcional. No implementa todavía detección de fraude, clasificación de voz sintética ni el servicio TA-007.
 
-La rama incluye la base compartida de `develop` (`e5c01e1`), con `tasks.py`, `worker_stub.py`, Dockerfile y el CI del equipo. La recomendación antigua de esperar esa base ya está satisfecha. Las correcciones de esta revisión se limitan a `services/ai/`.
+La rama está actualizada desde `develop` hasta `bb265d3`, con los cambios integrados del equipo, incluidos `tasks.py`, `worker_stub.py`, las dependencias de la cola y el CI. La recomendación antigua de esperar esa base ya está satisfecha. Las correcciones de esta revisión se limitan a `services/ai/`.
 
 ## Archivos y motivos
 
@@ -50,8 +50,7 @@ La recomendación inicial es continuar evaluando `small`. No se ha medido todav�
 
 - Las 24 pruebas locales pasan, incluidas las trece originales.
 - Lint y formato del servicio pasan.
-- La comprobación de tipos de `spikes` y `tests` pasa.
-- La comprobación de tipos de todo el servicio sigue detectando `redis` y `rq` ausentes en `worker_stub.py`. No se ocultaron esos errores: la integración de dependencias y Dockerfile quedó asignada al compañero.
+- La comprobación de tipos de todo el servicio (`mypy .`) pasa después de instalar las dependencias `rq` y `redis` que el compañero incorporó a `pyproject.toml` y `uv.lock`.
 - Los tests verifican que el hash del manifiesto coincide con el registrado, que cada referencia y hash de audio coincide con la evaluación y que el WER se puede recalcular desde las transcripciones guardadas.
 - Los tests de descarga utilizan archivos TAR en memoria: prueban recuperación correcta, rechazo de audio modificado, conservación de metadatos y entradas ausentes o con rutas distintas.
 
@@ -59,10 +58,18 @@ Los comandos y requisitos para repetir las comprobaciones están en `SP-007-guid
 
 ## Pendientes y coordinación
 
-TA-006 sigue pendiente: hacen falta grabaciones propias, autorizaciones y etiquetas para el conjunto requerido por el backlog. La muestra pública no representa estudiantes de UPAO ni permite evaluar fraude.
+TA-006 sigue pendiente: los dos audios propios de SP-007 todavía no completan el conjunto de sesenta audios con escenarios y etiquetas requerido por el backlog. La muestra pública no representa estudiantes de UPAO ni permite evaluar fraude.
 
-TA-007 requiere integrar la transcripción con los eventos y la cola, comparar con la pregunta y evaluar voz sintética. La lectura legítima de la pregunta no debe generar por sí sola una alerta.
+TA-007 consiste en implementar el servicio que detecta fragmentos de habla, los transcribe en español y guarda texto y hora. La similitud con la pregunta corresponde a TA-009; el clasificador de voz sintética, a TA-010. La lectura legítima de la pregunta no debe generar por sí sola una alerta.
 
-La incorporación de `rq` y `redis`, la unificación del Dockerfile y la verificación con Supabase real se mantienen a cargo del compañero que las asumió. No se modificaron esos componentes ni `services/api/`.
+El compañero ya incorporó `rq` y `redis`; se sincronizó el entorno local con `uv.lock` para validar el servicio. La unificación del Dockerfile y la verificación con Supabase real corresponden al compañero que las asumió. No se modificaron esos componentes ni `services/api/`.
 
 Antes de abordar foco de ventana, aclarar la discrepancia entre la asignación de HU-008 del CSV y la responsabilidad de Electron indicada en CLAUDE.md.
+
+## Preparación de las grabaciones propias de SP-007
+
+El backlog pide probar con audios propios en español. Se preparó `datasets/sp007_own/README.md` con el protocolo y dos textos de lectura, `audio/` para los originales, ocho TXT vacíos en `references/`, un manifiesto con cabecera y `provenance.json` con estado pendiente. La propuesta inicial era recoger dos audios por integrante, sin atribuir esa cantidad al backlog; se acordó presentar primero los dos audios de P01.
+
+Después de esta preparación se recibieron y evaluaron dos audios originales de P01 (34,344 s). El participante escuchó ambos y confirmó que los textos leídos coinciden exactamente con la guía, antes de ejecutar los modelos. Se completaron las referencias y el manifiesto y se guardó la evaluación en `results/evaluation-own.json`, conservando las observaciones de pausa y ventilador en la procedencia. Base obtuvo WER 17,72 % y small 7,59 %. El detalle está en `docs/SP-007-own-results.md`. La evaluación experimental queda completada para el alcance actual de dos audios propios de P01. Las voces de los otros participantes quedan como ampliación posterior. La integración definitiva requiere la revisión del equipo y comprobar el CI remoto.
+
+No se modificó el código de transcripción ni de evaluación para preparar y procesar estos audios propios. Se verificaron hashes, referencias y recálculo de métricas sobre los resultados reales.

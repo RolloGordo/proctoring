@@ -78,7 +78,7 @@ uv run pytest
 
 Las 24 pruebas actuales usan dobles y evidencias de texto; no descargan modelos ni necesitan los audios. Incluyen restauración con hashes, demo portable y recálculo de WER a partir de las transcripciones registradas.
 
-En la revisión local del 03/10/2026 pasaron las pruebas, lint y formato. La comprobación de tipos de SP-007 (`uv run mypy spikes tests`) pasó; `mypy .` sigue señalando las dependencias ausentes `redis` y `rq` de `worker_stub.py`. Su incorporación y la adaptación del Dockerfile corresponden al compañero encargado de esa integración.
+Tras actualizar desde `develop`, se instalaron las dependencias `redis` y `rq` ya declaradas por el compañero. Pasaron las comprobaciones locales de lint, formato, tipos de todo el servicio (`mypy .`) y las 24 pruebas. La verificación local no equivale a un CI remoto aprobado.
 
 ## Cómo presentar el avance
 
@@ -86,7 +86,9 @@ En la revisión local del 03/10/2026 pasaron las pruebas, lint y formato. La com
 2. Ejecutar la demo y abrir `results/demo-local.json`: texto, segmentos, WER y tiempos.
 3. Mostrar `results/evaluation.json`: ocho audios, 116 segundos y 318 palabras de referencia; WER de 21,70 % con `base` y 16,04 % con `small`.
 4. Explicar que WER mide errores de palabras, no exactitud de detección de fraude.
-5. Indicar que siguen pendientes las grabaciones propias de TA-006 y la integración, similitud semántica y clasificación de voz sintética de TA-007.
+5. Indicar que SP-007 se presenta con dos audios propios de P01 ya evaluados; las voces del grupo quedan como ampliación posterior. TA-007 implementa la transcripción en el servidor y el guardado de texto y hora; la similitud semántica corresponde a TA-009 y la clasificación de voz sintética a TA-010. El dataset propio de sesenta audios es TA-006.
+
+La preparación de las grabaciones para SP-007 está en `datasets/sp007_own/README.md`. Esa carpeta ya contiene dos audios de P01 con referencias confirmadas; los resultados están en `results/evaluation-own.json` y el informe en `docs/SP-007-own-results.md`. Las otras referencias se conservan como plantillas para una ampliación futura.
 
 ## Fuentes del experimento
 
