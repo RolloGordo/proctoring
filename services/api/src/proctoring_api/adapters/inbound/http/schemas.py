@@ -33,6 +33,7 @@ from proctoring_api.domain.exam_session import (
     SupervisionModule,
     SupervisionPreset,
 )
+from proctoring_api.domain.participant import SessionParticipant, VerificationStatus
 from proctoring_api.domain.question import ExamQuestion, Question, QuestionType
 from proctoring_api.domain.severity import Severity
 
@@ -399,6 +400,53 @@ class ExamQuestionResponse(BaseModel):
                 for o in question.options
             ],
         )
+
+
+class EnrollRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/exam/{id}/enroll`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    #: Sin valor por defecto a proposito: el consentimiento se da, no se asume.
+    accepts_supervision: bool
+
+
+class ParticipantResponse(BaseModel):
+    """Estado de un estudiante dentro de una sesion."""
+
+    id: UUID
+    session_id: UUID
+    student_id: UUID
+    attempt: int
+    verification_status: VerificationStatus
+    consent_at: datetime | None
+    verified_at: datetime | None
+    started_at: datetime | None
+    submitted_at: datetime | None
+    can_take_exam: bool
+
+    @classmethod
+    def from_entity(cls, participant: SessionParticipant) -> ParticipantResponse:
+        return cls(
+            id=participant.id,
+            session_id=participant.session_id,
+            student_id=participant.student_id,
+            attempt=participant.attempt,
+            verification_status=participant.verification_status,
+            consent_at=participant.consent_at,
+            verified_at=participant.verified_at,
+            started_at=participant.started_at,
+            submitted_at=participant.submitted_at,
+            can_take_exam=participant.can_take_exam,
+        )
+
+
+class ReviewIdentityRequest(BaseModel):
+    """Cuerpo de la revision manual de identidad por el docente."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    approve: bool
 
 
 class HealthResponse(BaseModel):

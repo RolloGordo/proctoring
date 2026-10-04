@@ -133,6 +133,9 @@ def _settings(**overrides: Any) -> Settings:
         "event_repository": "memory",
         "job_queue": "memory",
         "evidence_storage": "memory",
+        # Las pruebas hacen decenas de peticiones seguidas desde el mismo
+        # cliente; el limite tiene sus propias pruebas en test_rate_limit.
+        "rate_limit_enabled": False,
     }
     base.update(overrides)
     return Settings(**base)

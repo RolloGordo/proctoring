@@ -25,6 +25,12 @@ from proctoring_api.application.use_cases.list_teacher_sessions import (
     GetExamSession,
     ListTeacherSessions,
 )
+from proctoring_api.application.use_cases.manage_enrollment import (
+    EnrollInExam,
+    ListSessionParticipants,
+    ReviewParticipantIdentity,
+    SubmitExam,
+)
 from proctoring_api.application.use_cases.manage_questions import (
     AddQuestions,
     GetExamQuestions,
@@ -100,6 +106,26 @@ def get_exam_questions(request: Request) -> GetExamQuestions:
     return use_case
 
 
+def get_enroll_in_exam(request: Request) -> EnrollInExam:
+    use_case: EnrollInExam = request.app.state.enroll_in_exam
+    return use_case
+
+
+def get_list_participants(request: Request) -> ListSessionParticipants:
+    use_case: ListSessionParticipants = request.app.state.list_participants
+    return use_case
+
+
+def get_review_identity(request: Request) -> ReviewParticipantIdentity:
+    use_case: ReviewParticipantIdentity = request.app.state.review_identity
+    return use_case
+
+
+def get_submit_exam(request: Request) -> SubmitExam:
+    use_case: SubmitExam = request.app.state.submit_exam
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -139,6 +165,10 @@ JoinExamSessionDep = Annotated[JoinExamSession, Depends(get_join_exam_session)]
 AddQuestionsDep = Annotated[AddQuestions, Depends(get_add_questions)]
 ListSessionQuestionsDep = Annotated[ListSessionQuestions, Depends(get_list_session_questions)]
 GetExamQuestionsDep = Annotated[GetExamQuestions, Depends(get_exam_questions)]
+EnrollInExamDep = Annotated[EnrollInExam, Depends(get_enroll_in_exam)]
+ListParticipantsDep = Annotated[ListSessionParticipants, Depends(get_list_participants)]
+ReviewIdentityDep = Annotated[ReviewParticipantIdentity, Depends(get_review_identity)]
+SubmitExamDep = Annotated[SubmitExam, Depends(get_submit_exam)]
 CreateEvidenceUploadUrlDep = Annotated[
     CreateEvidenceUploadUrl, Depends(get_create_evidence_upload_url)
 ]
