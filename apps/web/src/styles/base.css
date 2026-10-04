@@ -221,7 +221,8 @@ a {
   margin-bottom: var(--e4);
 }
 
-.campo > label {
+.campo > label,
+.campo > span {
   display: block;
   font-family: var(--titulo);
   font-size: 0.6875rem;
@@ -618,6 +619,190 @@ a {
   .columnas {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- Preguntas del examen ---------- */
+.lista-preguntas {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e4);
+}
+
+/* Solo la lista del docente se numera sola: la del estudiante ya trae el
+   numero en el titulo de cada pregunta. */
+.lista-preguntas.numerada {
+  counter-reset: pregunta;
+}
+
+.lista-preguntas.numerada > li {
+  counter-increment: pregunta;
+}
+
+.lista-preguntas.numerada h4::before {
+  content: counter(pregunta) '. ';
+  color: var(--tinta-suave);
+}
+
+.lista-opciones {
+  list-style: none;
+  margin-top: var(--e3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e1);
+  font-size: 0.9375rem;
+}
+
+.lista-opciones > li {
+  padding: var(--e2) var(--e3);
+  border-left: 3px solid var(--linea);
+  background: var(--papel-gris);
+}
+
+/* La correcta se marca con color y con texto: el color solo no basta. */
+.lista-opciones > li.correcta {
+  border-left-color: var(--exito);
+  background: var(--exito-fondo);
+  font-weight: 500;
+}
+
+.lista-opciones > li.correcta::after {
+  content: ' · correcta';
+  color: var(--exito);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.editor-opciones {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+}
+
+.editor-opciones > li {
+  display: flex;
+  align-items: center;
+  gap: var(--e3);
+}
+
+.editor-opciones input[type='radio'] {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  accent-color: var(--amarillo-oscuro);
+}
+
+.editor-opciones .boton-texto {
+  flex: none;
+}
+
+/* ---------- Rendir el examen (estudiante) ---------- */
+.pantalla-examen {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* Pegada arriba: el estudiante siempre ve cuanto respondio y el boton de
+   entregar sin tener que buscarlo al final de un examen largo. */
+.barra-examen {
+  position: sticky;
+  top: var(--alto-cabecera);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e4);
+  padding: var(--e3) var(--e4);
+  margin-bottom: var(--e5);
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+
+.barra-examen .ayuda {
+  margin-top: 0;
+}
+
+.enunciado {
+  margin-top: var(--e3);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  /* Un enunciado puede traer saltos de linea escritos por el docente. */
+  white-space: pre-wrap;
+}
+
+.opciones-examen {
+  list-style: none;
+  margin-top: var(--e4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+}
+
+.opciones-examen label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e3);
+  padding: var(--e3) var(--e4);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--radio);
+  cursor: pointer;
+  transition: border-color var(--transicion), background var(--transicion);
+}
+
+.opciones-examen label:hover {
+  border-color: var(--amarillo);
+  background: var(--amarillo-tenue);
+}
+
+.opciones-examen input[type='radio'] {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  margin-top: 0.1rem;
+  accent-color: var(--amarillo-oscuro);
+}
+
+.opciones-examen input[type='radio']:checked + span {
+  font-weight: 500;
+}
+
+.opciones-examen label:has(input:checked) {
+  border-color: var(--amarillo-oscuro);
+  background: var(--amarillo-tenue);
+}
+
+/* ---------- Consentimiento ---------- */
+.casilla {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e3);
+  cursor: pointer;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.casilla input[type='checkbox'] {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  margin-top: 0.2rem;
+  accent-color: var(--amarillo-oscuro);
+}
+
+/* ---------- Acciones de una sesion ---------- */
+.acciones-sesion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--e3);
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.875rem;
 }
 
 /* ---------- Pantallas de una sola columna (estudiante) ---------- */

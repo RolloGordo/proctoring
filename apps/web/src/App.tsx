@@ -8,6 +8,9 @@ import { NuevaSesion } from './pages/NuevaSesion'
 import { SesionEnVivo } from './pages/SesionEnVivo'
 import { AccesoExamen } from './pages/AccesoExamen'
 import { SalaDeEspera } from './pages/SalaDeEspera'
+import { Preguntas } from './pages/Preguntas'
+import { Participantes } from './pages/Participantes'
+import { RendirExamen } from './pages/RendirExamen'
 
 /** A dónde va cada quien al entrar. Sin autenticación, al panel del docente,
  *  que es la pantalla desde la que se crea todo lo demás. */
@@ -124,6 +127,8 @@ function Aplicacion() {
                   <Route path="/" element={<Sesiones />} />
                   <Route path="/nueva" element={<NuevaSesion />} />
                   <Route path="/:id" element={<SesionEnVivo />} />
+                  <Route path="/:id/preguntas" element={<Preguntas />} />
+                  <Route path="/:id/participantes" element={<Participantes />} />
                   <Route path="*" element={<NoEncontrado />} />
                 </Routes>
               </Marco>
@@ -140,6 +145,7 @@ function Aplicacion() {
                 <Routes>
                   <Route path="/" element={<AccesoExamen />} />
                   <Route path="/:id/sala" element={<SalaDeEspera />} />
+                  <Route path="/:id/rendir" element={<RendirExamen />} />
                   <Route path="*" element={<NoEncontrado />} />
                 </Routes>
               </Marco>

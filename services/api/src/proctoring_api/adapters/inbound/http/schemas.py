@@ -25,6 +25,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from proctoring_api.domain.alert import Alert
+from proctoring_api.domain.answer import MAX_TEXT_ANSWER_LENGTH, Answer
 from proctoring_api.domain.event import MAX_EVIDENCE_PATH_LENGTH, EventType, ProctoringEvent
 from proctoring_api.domain.evidence import EvidenceKind
 from proctoring_api.domain.exam_session import (
@@ -438,6 +439,53 @@ class ParticipantResponse(BaseModel):
             started_at=participant.started_at,
             submitted_at=participant.submitted_at,
             can_take_exam=participant.can_take_exam,
+        )
+
+
+class AnswerRequest(BaseModel):
+    """Una respuesta del estudiante a una pregunta.
+
+    Qué campo se usa depende del tipo de pregunta, y eso lo valida el dominio:
+    aquí solo se comprueba la forma. Mandar dos a la vez responde 400.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    question_id: UUID
+    selected_option_id: UUID | None = None
+    text_answer: str | None = Field(default=None, max_length=MAX_TEXT_ANSWER_LENGTH)
+    numeric_answer: Decimal | None = None
+
+
+class SaveAnswersRequest(BaseModel):
+    """Cuerpo de `PUT /api/v1/exam/{session_id}/answers`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    answers: list[AnswerRequest] = Field(min_length=1, max_length=200)
+
+
+class AnswerResponse(BaseModel):
+    """Una respuesta guardada.
+
+    No lleva `is_correct` ni `points_awarded`: devolverlos al guardar le diría al
+    estudiante si acertó mientras rinde, que es justo lo que no puede saber.
+    """
+
+    question_id: UUID
+    selected_option_id: UUID | None
+    text_answer: str | None
+    numeric_answer: Decimal | None
+    answered_at: datetime
+
+    @classmethod
+    def from_entity(cls, answer: Answer) -> AnswerResponse:
+        return cls(
+            question_id=answer.question_id,
+            selected_option_id=answer.selected_option_id,
+            text_answer=answer.text_answer,
+            numeric_answer=answer.numeric_answer,
+            answered_at=answer.answered_at,
         )
 
 

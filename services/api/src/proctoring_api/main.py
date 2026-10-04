@@ -14,6 +14,7 @@ from proctoring_api import __version__
 from proctoring_api.adapters.inbound.http.errors import register_error_handlers
 from proctoring_api.adapters.inbound.http.rate_limit import RateLimitMiddleware
 from proctoring_api.adapters.inbound.http.routers import (
+    answers,
     enrollment,
     events,
     evidence,
@@ -23,6 +24,7 @@ from proctoring_api.adapters.inbound.http.routers import (
 )
 from proctoring_api.adapters.outbound.clock import SystemClock
 from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
+from proctoring_api.adapters.outbound.memory.answer_repository import InMemoryAnswerRepository
 from proctoring_api.adapters.outbound.memory.event_repository import InMemoryEventRepository
 from proctoring_api.adapters.outbound.memory.evidence_storage import InMemoryEvidenceStorage
 from proctoring_api.adapters.outbound.memory.exam_session_repository import (
@@ -37,6 +39,7 @@ from proctoring_api.adapters.outbound.memory.question_repository import (
     InMemoryQuestionRepository,
 )
 from proctoring_api.application.ports.alert_repository import AlertRepository
+from proctoring_api.application.ports.answer_repository import AnswerRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.event_repository import EventRepository
 from proctoring_api.application.ports.evidence_storage import EvidenceStorage
@@ -57,6 +60,7 @@ from proctoring_api.application.use_cases.list_teacher_sessions import (
     GetExamSession,
     ListTeacherSessions,
 )
+from proctoring_api.application.use_cases.manage_answers import ListMyAnswers, SaveAnswers
 from proctoring_api.application.use_cases.manage_enrollment import (
     EnrollInExam,
     ListSessionParticipants,
@@ -193,6 +197,20 @@ def _build_evidence_storage(settings: Settings, client: object | None) -> Eviden
     return InMemoryEvidenceStorage()
 
 
+def _build_answer_repository(settings: Settings, client: object | None) -> AnswerRepository:
+    if settings.event_repository == "supabase":
+        from supabase import Client
+
+        from proctoring_api.adapters.outbound.supabase.answer_repository import (
+            SupabaseAnswerRepository,
+        )
+
+        assert isinstance(client, Client)
+        return SupabaseAnswerRepository(client)
+
+    return InMemoryAnswerRepository()
+
+
 def _build_participant_repository(
     settings: Settings, client: object | None
 ) -> ParticipantRepository:
@@ -306,6 +324,7 @@ def create_app(
     alert_repository = _build_alert_repository(settings, client)
     question_repository = _build_question_repository(settings, client)
     participant_repository = _build_participant_repository(settings, client)
+    answer_repository = _build_answer_repository(settings, client)
     session_repository = _build_session_repository(settings, client)
     evidence_storage = _build_evidence_storage(settings, client)
     profile_repository = _build_profile_repository(settings, client)
@@ -355,6 +374,17 @@ def create_app(
         participant_repository, session_repository, clock
     )
     app.state.submit_exam = SubmitExam(participant_repository, clock, settings.dev_student_id)
+    app.state.save_answers = SaveAnswers(
+        answer_repository,
+        question_repository,
+        participant_repository,
+        session_repository,
+        clock,
+        settings.dev_student_id,
+    )
+    app.state.list_my_answers = ListMyAnswers(
+        answer_repository, participant_repository, settings.dev_student_id
+    )
     app.state.create_evidence_upload_url = CreateEvidenceUploadUrl(
         evidence_storage,
         {
@@ -371,6 +401,7 @@ def create_app(
     app.include_router(sessions.router)
     app.include_router(questions.router)
     app.include_router(enrollment.router)
+    app.include_router(answers.router)
 
     return app
 
