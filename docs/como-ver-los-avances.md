@@ -36,6 +36,44 @@ Se abre en <http://localhost:5173>.
 
 ## 3. La app de escritorio
 
+### Antes de la primera vez: el binario de Electron
+
+`npm install` descarga aparte un binario de ~100 MB. Si esa descarga falló, al
+arrancar sale:
+
+```
+Error: Electron uninstall
+    at getElectronPath (...)
+```
+
+No es un fallo del código: es que el binario no está. Se arregla con:
+
+```powershell
+node apps/desktop/node_modules/electron/install.js
+```
+
+Para comprobar que quedó bien, este archivo tiene que existir:
+`apps/desktop/node_modules/electron/dist/electron.exe`.
+
+### Hay dos servidores, y no sirven lo mismo
+
+Esto confunde la primera vez. Al arrancar la app verás **dos** servidores:
+
+| Puerto | Quién lo levanta | Qué sirve |
+|---|---|---|
+| **5173** | `npm run dev --prefix apps/web` | **El examen.** Es el que carga la ventana de la app. |
+| **5180** | `npm run dev --prefix apps/desktop` | El panel local de eventos, la herramienta de diagnóstico. |
+
+El 5173 está fijado con `strictPort`: si está ocupado, la web **falla** en vez
+de mudarse al 5174 en silencio. Antes se mudaba, y como la app de escritorio
+busca el examen en el 5173, la ventana acababa cargando otra cosa y el error
+aparecía mucho después y en otro sitio.
+
+Si te dice que el 5173 está ocupado, es que ya tienes una web corriendo: úsala,
+o cierra la otra.
+
+### Arrancarla
+
 Necesita saber **qué examen** carga y **quién** lo rinde. Los dos son UUID que
 salen de la base: el del examen lo ves en la URL cuando entras a un examen en la
 web (`/sesiones/<este-uuid>`).
@@ -140,5 +178,40 @@ Con eso, al recargar:
   sostiene la meta de avisar en menos de 5 segundos. Sin Supabase configurado la
   pantalla del examen solo muestra lo ya registrado.
 
-Y para que la API también exija el token, en el `.env` de la raíz pon
-`AUTH_ENABLED=true` y reinicia: `docker compose up -d --force-recreate api`.
+## Con el login ya encendido: hace falta un estudiante
+
+En cuanto la web tiene Supabase configurado, **todas** las pantallas piden
+sesión, incluida la que carga la app de escritorio. Y hoy en la base solo existe
+un usuario, el docente. Hay que crear uno de estudiante.
+
+En el panel de Supabase: **Authentication → Users → Add user**, con correo y
+contraseña. No hace falta nada más: un disparador de la base crea su perfil y
+**todo el que se registra entra como `student`** — los docentes se promueven a
+mano, a propósito (`supabase/migrations/20261003120300_harden_signup_function.sql`).
+
+Comprueba que quedó bien:
+
+```sql
+select email, role from public.profiles order by role;
+```
+
+Y que las dos mitades vayan de acuerdo: si la web pide sesión pero la API corre
+con `AUTH_ENABLED=false`, la API ignora el token y trata a todo el mundo como el
+mismo estudiante de desarrollo. Para que cada estudiante sea el suyo, en el
+`.env` de la raíz:
+
+```
+AUTH_ENABLED=true
+```
+
+Y reinicia la API:
+
+```powershell
+docker compose up -d --force-recreate api
+```
+
+`curl http://localhost:8000/health` debe decir `"auth":"enabled"`.
+
+Al revés también vale: si quieres recorrer el flujo sin crear usuarios, **vacía**
+`VITE_SUPABASE_PUBLISHABLE_KEY` en `apps/web/.env.local` y las dos mitades
+vuelven al modo sin autenticación. Lo que no conviene es dejarlas desparejas.

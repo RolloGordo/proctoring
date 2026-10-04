@@ -8,6 +8,24 @@ procesos y envío a la API. Lee [`CLAUDE.md`](../../CLAUDE.md) §3 antes de toca
 
 ## Cómo correrla
 
+### Si sale `Error: Electron uninstall`
+
+`npm install` descarga aparte un binario de ~100 MB y esa descarga puede fallar.
+No es un fallo del código:
+
+```powershell
+node apps/desktop/node_modules/electron/install.js
+```
+
+Queda bien cuando existe `node_modules/electron/dist/electron.exe`.
+
+### Dos servidores
+
+| Puerto | Quién lo levanta | Qué sirve                                       |
+| ------ | ---------------- | ----------------------------------------------- |
+| 5173   | `apps/web`       | **El examen**, que es lo que carga esta ventana |
+| 5180   | esta app         | El panel local de eventos (diagnóstico)         |
+
 La app **no reimplementa el examen**: carga la misma web de `apps/web` en la ruta del examen,
 dentro de la ventana protegida. Así que primero levanta la web y la API:
 
