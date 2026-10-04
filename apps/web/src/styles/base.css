@@ -274,6 +274,19 @@ a {
   font-size: 0.9375rem;
 }
 
+/* Una tabla con muchas columnas se desborda de su tarjeta en pantallas
+   estrechas. Mejor que scrolee la tabla a que rompa el resto de la pagina. */
+.tarjeta:has(> .tabla) {
+  overflow-x: auto;
+}
+
+/* Los accesos directos de cada fila van en una sola linea: partidos en dos
+   parecen dos enlaces distintos. */
+.tabla .fila {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
 .tabla th {
   font-family: var(--titulo);
   font-size: 0.6875rem;

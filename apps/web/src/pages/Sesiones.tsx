@@ -21,7 +21,10 @@ export function Sesiones() {
       <div className="encabezado-pagina">
         <div>
           <h1>Mis exámenes</h1>
-          <p className="subtitulo">Sesiones que has programado, de la más próxima a la más antigua</p>
+          <p className="subtitulo">
+            Entra a un examen para ver sus alertas en vivo, o ve directo a sus preguntas y a su
+            sala de espera
+          </p>
         </div>
         <Link to="/sesiones/nueva" className="boton">
           Crear examen
@@ -59,6 +62,7 @@ export function Sesiones() {
                 <th>Supervisión</th>
                 <th>Código</th>
                 <th>Estado</th>
+                <th aria-label="Accesos directos" />
               </tr>
             </thead>
             <tbody>
@@ -74,6 +78,19 @@ export function Sesiones() {
                     <span className="codigo-acceso">{sesion.access_code}</span>
                   </td>
                   <td className="tenue">{nombreEstado(sesion.status)}</td>
+                  <td>
+                    <div className="fila">
+                      <Link to={`/sesiones/${sesion.id}/preguntas`} className="boton boton-texto">
+                        Preguntas
+                      </Link>
+                      <Link
+                        to={`/sesiones/${sesion.id}/participantes`}
+                        className="boton boton-texto"
+                      >
+                        Sala de espera
+                      </Link>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
