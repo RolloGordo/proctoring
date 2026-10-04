@@ -9,8 +9,13 @@ from uuid import UUID
 
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
+from proctoring_api.application.ports.participant_repository import ParticipantRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
+from proctoring_api.application.use_cases.manage_enrollment import (
+    DEFAULT_DEV_STUDENT_ID,
+    ensure_can_take_exam,
+)
 from proctoring_api.domain.errors import AuthorizationError
 from proctoring_api.domain.question import (
     ExamQuestion,
@@ -124,9 +129,11 @@ class ListSessionQuestions:
 class GetExamQuestions:
     """Preguntas **sin** respuestas correctas, para rendir el examen.
 
-    Dos cosas lo protegen: el tipo que devuelve no tiene dónde guardar la
-    respuesta, y la ventana de ingreso se comprueba antes. Sin lo segundo, un
-    estudiante podría descargar el examen la noche anterior.
+    Tres cosas lo protegen: el tipo que devuelve no tiene dónde guardar la
+    respuesta; la ventana del examen se comprueba antes, porque si no un
+    estudiante podría descargarlo la noche anterior; y se exige estar
+    **matriculado**, porque conocer el `session_id` de un examen ajeno no debería
+    dar acceso a sus preguntas.
     """
 
     def __init__(
@@ -134,10 +141,14 @@ class GetExamQuestions:
         questions: QuestionRepository,
         sessions: ExamSessionRepository,
         clock: Clock,
+        participants: ParticipantRepository | None = None,
+        dev_student_id: UUID = DEFAULT_DEV_STUDENT_ID,
     ) -> None:
         self._questions = questions
         self._sessions = sessions
         self._clock = clock
+        self._participants = participants
+        self._dev_student_id = dev_student_id
 
     def execute(
         self, session_id: UUID, *, actor: AuthenticatedUser | None = None
@@ -163,5 +174,9 @@ class GetExamQuestions:
             raise AuthorizationError(
                 "El examen no esta abierto en este momento. Revisa la hora de inicio."
             )
+
+        # Conocer el session_id no basta: hay que estar matriculado, haber
+        # consentido, tener la identidad resuelta y no haber entregado.
+        ensure_can_take_exam(self._participants, session_id, actor, self._dev_student_id)
 
         return [pregunta.for_student() for pregunta in self._questions.list_by_session(session_id)]

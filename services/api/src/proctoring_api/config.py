@@ -62,6 +62,21 @@ class Settings(BaseSettings):
     #: ENV local o test.
     dev_teacher_id: UUID = UUID("00000000-0000-4000-8000-000000000001")
 
+    #: Estudiante al que se atribuyen las matriculas con la autenticacion
+    #: desactivada. Sin esto, el flujo del estudiante es imposible de probar
+    #: en local, que es justo el modo en el que trabaja el equipo.
+    #:
+    #: Con EVENT_REPOSITORY=supabase hay que poner el id de un estudiante real,
+    #: porque session_participants.student_id tiene clave foranea a profiles.
+    dev_student_id: UUID = UUID("00000000-0000-4000-8000-000000000002")
+
+    #: Limitacion de peticiones. Activada por defecto: si la variable falta en un
+    #: despliegue, se protege.
+    #:
+    #: Se desactiva en las pruebas de integracion, que hacen decenas de
+    #: peticiones seguidas desde el mismo cliente y chocarian con el limite.
+    rate_limit_enabled: bool = True
+
     # --- Seleccion de adaptadores ---
     event_repository: RepositoryBackend = "memory"
     job_queue: JobQueueBackend = "memory"

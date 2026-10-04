@@ -10,7 +10,9 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
+from proctoring_api.application.use_cases.manage_enrollment import DEFAULT_DEV_STUDENT_ID
 from proctoring_api.domain.exam_session import ExamSession
+from proctoring_api.domain.participant import SessionParticipant
 
 from tests.conftest import NOW, STUDENT_TOKEN, TEACHER_ID, TEACHER_TOKEN
 
@@ -31,6 +33,22 @@ UNA_PREGUNTA: dict[str, Any] = {
         {"option_text": "Cifra el disco", "is_correct": False},
     ],
 }
+
+
+def matricular_verificado(app: Any, session_id: str, student_id: Any = None) -> None:
+    """Matricula al estudiante y le da la identidad por verificada.
+
+    Pedir el examen exige estar matriculado: es la regla que impide que conocer
+    un `session_id` ajeno de acceso a sus preguntas.
+    """
+    from uuid import UUID
+
+    participante = SessionParticipant.enroll(
+        session_id=UUID(session_id),
+        student_id=student_id or DEFAULT_DEV_STUDENT_ID,
+        consented_at=NOW,
+    ).verified(NOW)
+    app.state.participant_repository.save(participante)
 
 
 def sesion_abierta(app: Any, *, teacher_id: Any = None) -> str:
@@ -94,6 +112,7 @@ class TestLaRespuestaNoLlegaAlEstudiante:
     ) -> None:
         sid = sesion_abierta(app)
         client.post(f"/api/v1/sessions/{sid}/questions", json={"questions": [UNA_PREGUNTA]})
+        matricular_verificado(app, sid)
 
         respuesta = client.get(f"/api/v1/exam/{sid}/questions")
 
@@ -110,6 +129,7 @@ class TestLaRespuestaNoLlegaAlEstudiante:
     ) -> None:
         sid = sesion_abierta(app)
         client.post(f"/api/v1/sessions/{sid}/questions", json={"questions": [UNA_PREGUNTA]})
+        matricular_verificado(app, sid)
 
         cuerpo = client.get(f"/api/v1/exam/{sid}/questions").json()
 
@@ -131,6 +151,8 @@ class TestLaRespuestaNoLlegaAlEstudiante:
             },
         )
 
+        matricular_verificado(app, sid)
+
         assert "correct" not in client.get(f"/api/v1/exam/{sid}/questions").text
 
     def test_el_docente_si_las_ve(self, client: TestClient, app: Any) -> None:
@@ -140,6 +162,16 @@ class TestLaRespuestaNoLlegaAlEstudiante:
         cuerpo = client.get(f"/api/v1/sessions/{sid}/questions").json()
 
         assert [o["is_correct"] for o in cuerpo[0]["options"]] == [True, False, False]
+
+    def test_sin_matricula_no_hay_examen(self, client: TestClient, app: Any) -> None:
+        # Conocer el session_id de un examen ajeno no da acceso a sus preguntas.
+        sid = sesion_abierta(app)
+        client.post(f"/api/v1/sessions/{sid}/questions", json={"questions": [UNA_PREGUNTA]})
+
+        respuesta = client.get(f"/api/v1/exam/{sid}/questions")
+
+        assert respuesta.status_code == 403
+        assert "No estas matriculado" in respuesta.json()["detail"]
 
 
 class TestVentanaDelExamen:

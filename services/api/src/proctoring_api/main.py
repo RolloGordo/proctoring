@@ -12,7 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from proctoring_api import __version__
 from proctoring_api.adapters.inbound.http.errors import register_error_handlers
+from proctoring_api.adapters.inbound.http.rate_limit import RateLimitMiddleware
 from proctoring_api.adapters.inbound.http.routers import (
+    enrollment,
     events,
     evidence,
     health,
@@ -27,6 +29,9 @@ from proctoring_api.adapters.outbound.memory.exam_session_repository import (
     InMemoryExamSessionRepository,
 )
 from proctoring_api.adapters.outbound.memory.job_queue import InMemoryJobQueue
+from proctoring_api.adapters.outbound.memory.participant_repository import (
+    InMemoryParticipantRepository,
+)
 from proctoring_api.adapters.outbound.memory.profile_repository import InMemoryProfileRepository
 from proctoring_api.adapters.outbound.memory.question_repository import (
     InMemoryQuestionRepository,
@@ -37,6 +42,7 @@ from proctoring_api.application.ports.event_repository import EventRepository
 from proctoring_api.application.ports.evidence_storage import EvidenceStorage
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.job_queue import JobQueue
+from proctoring_api.application.ports.participant_repository import ParticipantRepository
 from proctoring_api.application.ports.profile_repository import ProfileRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.use_cases.create_evidence_upload_url import (
@@ -50,6 +56,12 @@ from proctoring_api.application.use_cases.list_session_events import ListSession
 from proctoring_api.application.use_cases.list_teacher_sessions import (
     GetExamSession,
     ListTeacherSessions,
+)
+from proctoring_api.application.use_cases.manage_enrollment import (
+    EnrollInExam,
+    ListSessionParticipants,
+    ReviewParticipantIdentity,
+    SubmitExam,
 )
 from proctoring_api.application.use_cases.manage_questions import (
     AddQuestions,
@@ -181,6 +193,22 @@ def _build_evidence_storage(settings: Settings, client: object | None) -> Eviden
     return InMemoryEvidenceStorage()
 
 
+def _build_participant_repository(
+    settings: Settings, client: object | None
+) -> ParticipantRepository:
+    if settings.event_repository == "supabase":
+        from supabase import Client
+
+        from proctoring_api.adapters.outbound.supabase.participant_repository import (
+            SupabaseParticipantRepository,
+        )
+
+        assert isinstance(client, Client)
+        return SupabaseParticipantRepository(client)
+
+    return InMemoryParticipantRepository()
+
+
 def _build_job_queue(settings: Settings) -> JobQueue:
     if settings.job_queue == "redis":
         from proctoring_api.adapters.outbound.redis_queue.job_queue import RedisJobQueue
@@ -239,6 +267,10 @@ def create_app(
             {"name": "evidence", "description": "Subida de capturas y audio a Storage"},
             {"name": "sessions", "description": "Sesiones de examen del docente"},
             {"name": "questions", "description": "Banco de preguntas y examen del estudiante"},
+            {
+                "name": "enrollment",
+                "description": "Matricula, consentimiento y entrega del examen",
+            },
         ],
     )
 
@@ -250,6 +282,12 @@ def create_app(
             "CORS_ORIGINS no puede ser '*': la API envia credenciales. "
             "Enumera los origenes, separados por coma."
         )
+
+    # El limite va ANTES que CORS en el orden de registro, por lo que Starlette
+    # lo ejecuta DESPUES: asi una respuesta 429 tambien lleva las cabeceras de
+    # CORS y el navegador puede leer el motivo en vez de ver un error opaco.
+    if settings.rate_limit_enabled:
+        app.add_middleware(RateLimitMiddleware)
 
     app.add_middleware(
         CORSMiddleware,
@@ -267,6 +305,7 @@ def create_app(
     event_repository = _build_event_repository(settings, client)
     alert_repository = _build_alert_repository(settings, client)
     question_repository = _build_question_repository(settings, client)
+    participant_repository = _build_participant_repository(settings, client)
     session_repository = _build_session_repository(settings, client)
     evidence_storage = _build_evidence_storage(settings, client)
     profile_repository = _build_profile_repository(settings, client)
@@ -298,7 +337,24 @@ def create_app(
     app.state.join_exam_session = JoinExamSession(session_repository, clock)
     app.state.add_questions = AddQuestions(question_repository, session_repository)
     app.state.list_session_questions = ListSessionQuestions(question_repository, session_repository)
-    app.state.get_exam_questions = GetExamQuestions(question_repository, session_repository, clock)
+    app.state.get_exam_questions = GetExamQuestions(
+        question_repository,
+        session_repository,
+        clock,
+        participant_repository,
+        settings.dev_student_id,
+    )
+    app.state.participant_repository = participant_repository
+    app.state.enroll_in_exam = EnrollInExam(
+        participant_repository, session_repository, clock, settings.dev_student_id
+    )
+    app.state.list_participants = ListSessionParticipants(
+        participant_repository, session_repository
+    )
+    app.state.review_identity = ReviewParticipantIdentity(
+        participant_repository, session_repository, clock
+    )
+    app.state.submit_exam = SubmitExam(participant_repository, clock, settings.dev_student_id)
     app.state.create_evidence_upload_url = CreateEvidenceUploadUrl(
         evidence_storage,
         {
@@ -314,6 +370,7 @@ def create_app(
     app.include_router(evidence.router)
     app.include_router(sessions.router)
     app.include_router(questions.router)
+    app.include_router(enrollment.router)
 
     return app
 

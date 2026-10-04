@@ -128,9 +128,58 @@ editan ni se borran. `decisions.justification` es obligatoria con al menos 10 ca
 
 ---
 
+## Corregidos en la segunda pasada (SPEC-004)
+
+### 5. No había limitación de peticiones — **medio** · corregido
+
+Nada impedía miles de peticiones por segundo. En `POST /sessions/join` permitía tantear códigos de
+acceso por fuerza bruta sin dejar rastro.
+
+**Corregido:** ventana deslizante en memoria, con dos límites. 120 escrituras por minuto en general
+—holgado para el ritmo de eventos de un examen— y **10 por minuto en `/sessions/join`**, que es
+generoso para un humano que teclea su código y demasiado lento para una fuerza bruta.
+
+El cliente se identifica **por token antes que por IP**: detrás de la red de una universidad todos
+los estudiantes comparten IP de salida, y limitar por IP los castigaría a todos por culpa de uno.
+
+Las lecturas no cuentan (la pantalla en vivo del docente lee a menudo) y `/health` nunca se limita,
+porque bloquearlo haría que el contenedor se reiniciara solo.
+
+**Limitación honesta:** el contador es *por instancia*. Con una sola réplica es suficiente; si algún
+día hay más, esto tiene que pasar a Redis, que ya está desplegado.
+
+Verificado en el contenedor: las 10 primeras peticiones a `/join` responden `400` (código
+inexistente), la 11 y la 12 responden `429` con `Retry-After`.
+
+### 6. Un estudiante podía pedir el examen de una sesión ajena — **medio** · corregido
+
+`GET /api/v1/exam/{id}/questions` comprobaba que el examen estuviera abierto, pero no que quien
+pedía estuviera **matriculado**.
+
+**Corregido:** `ensure_can_take_exam` exige matrícula, consentimiento, identidad resuelta y no haber
+entregado. La comprobación funciona **igual en local que en producción**: en modo sin autenticación
+usa el estudiante de desarrollo en vez de saltarse el control, porque un control que solo existe con
+autenticación activa no se prueba hasta el despliegue.
+
+Verificado en el contenedor, de punta a punta:
+
+| Paso | Respuesta |
+|---|---|
+| pedir el examen sin matrícula | `403` |
+| matricularse sin aceptar la supervisión | `400` |
+| aceptar la supervisión | `201` |
+| pedir el examen sin la identidad verificada | `403` |
+| el docente lo admite a mano | `200` |
+| pedir el examen | `200` |
+| entregar | `200` |
+| reenviar | `400` |
+| pedir el examen tras entregar | `403` |
+
+---
+
 ## Pendiente, por orden de riesgo
 
-### 1. No hay limitación de peticiones (rate limiting) — **medio**
+### 1. ~~No hay limitación de peticiones~~ — corregido, ver arriba
 
 Nada impide que un cliente haga miles de peticiones por segundo. En el plan gratuito de Render eso
 tumba el servicio, y en `POST /sessions/join` permite tantear códigos de acceso por fuerza bruta.
@@ -139,13 +188,7 @@ tampoco hay nada que lo frene ni que lo registre.
 
 **Qué haría:** un límite por IP y por usuario en los endpoints de escritura y en `join`.
 
-### 2. El estudiante puede pedir el examen de una sesión en la que no está matriculado — **medio**
-
-`GET /api/v1/exam/{id}/questions` comprueba que el examen esté abierto, pero **no** que quien pide
-sea participante: no existe todavía la tabla de participantes poblada. Hoy el impacto es acotado
-—hay que conocer el `session_id` y el examen tiene que estar en curso— pero hay que cerrarlo.
-
-**Depende de:** SPEC-004 (matrícula y consentimiento).
+### 2. ~~El estudiante puede pedir el examen de una sesión ajena~~ — corregido, ver arriba
 
 ### 3. Sin registro de auditoría de accesos — **bajo**
 
@@ -163,6 +206,10 @@ no aplica, pero conviene no olvidarlo al desplegar.
 
 ```bash
 cd services/api && uv run pytest tests/integration/http/test_security.py
+```
+
+```bash
+cd services/api && uv run pytest tests/integration/http/test_rate_limit.py
 ```
 
 ```bash

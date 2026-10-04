@@ -137,6 +137,13 @@ class SessionParticipant:
         """
         return self._replace(verification_status=VerificationStatus.FAILED)
 
+    def rejected_by_teacher(self, teacher_id: UUID) -> SessionParticipant:
+        """El docente no lo admite. Queda registrado quien lo decidio."""
+        return self._replace(
+            verification_status=VerificationStatus.REJECTED,
+            verification_reviewed_by=teacher_id,
+        )
+
     def started(self, moment: datetime) -> SessionParticipant:
         if self.started_at is not None:
             return self
