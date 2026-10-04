@@ -3,8 +3,39 @@
 **Responsable:** Rodriguez Ruiz, Rider (Scrum Master)
 **Backlog:** EN-002 / TA-00x (app de escritorio y detección de entorno)
 
-Esta carpeta está preparada pero **vacía a propósito**: la implementa Rider. Lee
-[`CLAUDE.md`](../../CLAUDE.md) §3 antes de empezar.
+**Ya implementada** por Rider: ventana en kiosco, protección de contenido, foco, monitores,
+procesos y envío a la API. Lee [`CLAUDE.md`](../../CLAUDE.md) §3 antes de tocarla.
+
+## Cómo correrla
+
+La app **no reimplementa el examen**: carga la misma web de `apps/web` en la ruta del examen,
+dentro de la ventana protegida. Así que primero levanta la web y la API:
+
+```bash
+docker compose up -d api          # API en localhost:8000
+npm run dev --prefix apps/web     # web en localhost:5173
+```
+
+Y después la app, con la sesión y el estudiante del examen:
+
+```bash
+PROCTORING_SESSION_ID=<uuid> PROCTORING_STUDENT_ID=<uuid> npm run dev --prefix apps/desktop
+```
+
+| Variable                                | Para qué                                                                           | Por defecto                           |
+| --------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------- |
+| `PROCTORING_SESSION_ID`                 | Qué examen se carga. **Sin ella se abre el panel local de eventos**, no el examen. | UUID nulo                             |
+| `PROCTORING_STUDENT_ID`                 | Quién lo rinde. Sin ella los eventos no se envían a la API.                        | UUID nulo                             |
+| `PROCTORING_WEB_URL`                    | Dónde vive la web del examen. En producción, la URL del despliegue.                | `http://localhost:5173`               |
+| `PROCTORING_API_URL`                    | A dónde van los eventos.                                                           | `http://localhost:8000/api/v1/events` |
+| `PROCTORING_KIOSK`                      | `1` fuerza el modo kiosco en desarrollo.                                           | apagado en dev                        |
+| `PROCTORING_DISABLE_CONTENT_PROTECTION` | `1` deja que la ventana salga en capturas, para grabar evidencia.                  | apagado                               |
+
+El **panel local de eventos** (`src/renderer/`) no es el examen: es la herramienta de diagnóstico
+del proceso principal. Sirve para ver qué está detectando sin montar un examen entero.
+
+La ventana está atada a su propio origen: si el examen intentara navegar a otro sitio, la
+navegación se cancela. El preload expone `window.api` y ese sitio la heredaría.
 
 ## Objetivo
 
@@ -15,26 +46,22 @@ foco de ventana, monitores adicionales y procesos sospechosos.
 El docente usa solo la web. El estudiante **necesita** esta app porque los permisos de sistema
 (pantallas, lista de procesos, protección de contenido) no existen en un navegador.
 
-## Estructura esperada
+## Estructura
 
 ```
 apps/desktop/
 ├── src/
-│   ├── main/        # proceso principal: ventana, kiosco, protección, pantallas, procesos, protocolo
+│   ├── main/        # index, context, events, processes, protection, sender, web
 │   ├── preload/     # API mínima expuesta con contextBridge
-│   └── renderer/    # carga apps/web; apenas un contenedor
+│   └── renderer/    # panel local de eventos (diagnóstico)
 ├── electron.vite.config.ts
 ├── package.json
 └── tsconfig.json
 ```
 
-Andamiaje recomendado: [`electron-vite`](https://electron-vite.org/).
+Construida con [`electron-vite`](https://electron-vite.org/).
 
-```bash
-npm create @quick-start/electron@latest . -- --template vanilla-ts
-```
-
-## Pasos
+## Lo que pedía el enunciado (referencia)
 
 ### 1. Ventana en modo kiosco y protegida (`src/main/window.ts`)
 
@@ -43,14 +70,14 @@ const win = new BrowserWindow({
   kiosk: true,
   fullscreen: true,
   webPreferences: {
-    contextIsolation: true,   // obligatorio
-    sandbox: true,            // obligatorio
-    nodeIntegration: false,   // obligatorio
-    preload: path.join(__dirname, '../preload/index.js'),
-  },
-});
-win.setContentProtection(true);   // la ventana no sale en capturas ni en screen share
-win.setAlwaysOnTop(true, 'screen-saver');
+    contextIsolation: true, // obligatorio
+    sandbox: true, // obligatorio
+    nodeIntegration: false, // obligatorio
+    preload: path.join(__dirname, '../preload/index.js')
+  }
+})
+win.setContentProtection(true) // la ventana no sale en capturas ni en screen share
+win.setAlwaysOnTop(true, 'screen-saver')
 ```
 
 Además: CSP restrictiva, bloquear `Ctrl+C` / `Ctrl+V` / `Ctrl+Shift+I` / `F12` con
@@ -81,7 +108,7 @@ En `metadata` manda `{ display_count, displays: [{ id, bounds, scale_factor }] }
 Con [`ps-list`](https://www.npmjs.com/package/ps-list), cada **10 s**. Lista inicial:
 
 ```ts
-const BLOCKLIST = ['zoom', 'anydesk', 'teamviewer', 'obs64', 'obs', 'discord'];
+const BLOCKLIST = ['zoom', 'anydesk', 'teamviewer', 'obs64', 'obs', 'discord']
 ```
 
 Busca también indicios de máquina virtual (`vmware`, `virtualbox`, `vboxservice`). En `metadata`
@@ -115,8 +142,8 @@ Pon la URL en una variable de entorno (`VITE_API_URL`), no la escribas fija.
 ```ts
 contextBridge.exposeInMainWorld('proctoring', {
   onFocusLost: (cb) => ipcRenderer.on('focus-lost', (_e, p) => cb(p)),
-  getDisplayCount: () => ipcRenderer.invoke('displays:count'),
-});
+  getDisplayCount: () => ipcRenderer.invoke('displays:count')
+})
 ```
 
 Nada de `ipcRenderer` crudo ni `require` en el renderer.

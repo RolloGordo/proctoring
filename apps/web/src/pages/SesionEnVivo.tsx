@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { api, type Alert, type ExamSession, type ProctoringEvent } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
@@ -94,9 +94,19 @@ export function SesionEnVivo() {
             {nombrePreset(sesion.preset).toLowerCase()}
           </p>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <span className="codigo-acceso">{sesion.access_code}</span>
-          <p className="ayuda">Código de acceso</p>
+        <div className="acciones-sesion">
+          <div style={{ textAlign: 'right' }}>
+            <span className="codigo-acceso">{sesion.access_code}</span>
+            <p className="ayuda">Código de acceso</p>
+          </div>
+          <div className="fila">
+            <Link to={`/sesiones/${id}/preguntas`} className="boton boton-secundario">
+              Preguntas
+            </Link>
+            <Link to={`/sesiones/${id}/participantes`} className="boton boton-secundario">
+              Sala de espera
+            </Link>
+          </div>
         </div>
       </div>
 

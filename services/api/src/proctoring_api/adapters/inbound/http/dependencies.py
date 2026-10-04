@@ -25,6 +25,7 @@ from proctoring_api.application.use_cases.list_teacher_sessions import (
     GetExamSession,
     ListTeacherSessions,
 )
+from proctoring_api.application.use_cases.manage_answers import ListMyAnswers, SaveAnswers
 from proctoring_api.application.use_cases.manage_enrollment import (
     EnrollInExam,
     ListSessionParticipants,
@@ -126,6 +127,16 @@ def get_submit_exam(request: Request) -> SubmitExam:
     return use_case
 
 
+def get_save_answers(request: Request) -> SaveAnswers:
+    use_case: SaveAnswers = request.app.state.save_answers
+    return use_case
+
+
+def get_list_my_answers(request: Request) -> ListMyAnswers:
+    use_case: ListMyAnswers = request.app.state.list_my_answers
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -169,6 +180,8 @@ EnrollInExamDep = Annotated[EnrollInExam, Depends(get_enroll_in_exam)]
 ListParticipantsDep = Annotated[ListSessionParticipants, Depends(get_list_participants)]
 ReviewIdentityDep = Annotated[ReviewParticipantIdentity, Depends(get_review_identity)]
 SubmitExamDep = Annotated[SubmitExam, Depends(get_submit_exam)]
+SaveAnswersDep = Annotated[SaveAnswers, Depends(get_save_answers)]
+ListMyAnswersDep = Annotated[ListMyAnswers, Depends(get_list_my_answers)]
 CreateEvidenceUploadUrlDep = Annotated[
     CreateEvidenceUploadUrl, Depends(get_create_evidence_upload_url)
 ]

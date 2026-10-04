@@ -7,6 +7,7 @@ import { buildExtraDisplayEvent, buildFocusLostEvent } from './events'
 import { applyWindowProtection } from './protection'
 import { startProcessMonitor } from './processes'
 import { sendEvent, setAuthSession } from './sender'
+import { loadExam, restrictNavigation } from './web'
 
 // Se conservan para mostrarlos en el panel local.
 const events: ProctoringEvent[] = []
@@ -74,6 +75,7 @@ function createWindow(): BrowserWindow {
   })
 
   applyWindowProtection(win)
+  restrictNavigation(win)
 
   win.on('ready-to-show', () => {
     win.show()
@@ -94,10 +96,14 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' }
   })
 
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    win.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    win.loadFile(join(__dirname, '../renderer/index.html'))
+  // La ventana carga la MISMA web del examen, no una copia en Electron. Sin
+  // sesion configurada carga el panel local de eventos, que es la herramienta
+  // de diagnostico del proceso principal.
+  const cargado = loadExam(win)
+  if (cargado === 'panel') {
+    console.log(
+      '[ventana] sin PROCTORING_SESSION_ID se abre el panel local de eventos, no el examen'
+    )
   }
 
   win.on('closed', () => {

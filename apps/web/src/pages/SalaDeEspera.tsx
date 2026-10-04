@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { api, type JoinedExam, type Participant } from '../lib/api'
+import { useAuth } from '../lib/auth-context'
+import { recordarExamen, recuperarExamen } from '../lib/examen-guardado'
 import { fechaLarga } from '../lib/formato'
-import type { JoinedExam } from '../lib/api'
 
 /** Nombre legible de cada módulo de supervisión, para que el estudiante sepa
  *  qué se va a observar. Decírselo no es un trámite: es la base del
  *  consentimiento, y el sistema vigila, no espía. */
+/** Cada cuánto se vuelve a preguntar si el docente ya admitió al estudiante.
+ *  Diez segundos: suficiente para que no se sienta colgado, y poco tráfico
+ *  aunque haya treinta personas esperando a la vez. */
+const ESPERA_MS = 10_000
+
 const MODULOS: Record<string, string> = {
   face_verification: 'Verificación de identidad por rostro',
   face_reverification: 'Reverificación de identidad durante el examen',
@@ -21,10 +28,64 @@ const MODULOS: Record<string, string> = {
   screen_capture: 'Aplicaciones de captura o control remoto'
 }
 
+/**
+ * Sala de espera y **consentimiento**.
+ *
+ * Es la pantalla donde el estudiante ve qué se va a observar y lo acepta antes
+ * de empezar. La API no entrega ni una pregunta sin esa aceptación: aquí se
+ * explica y allí se exige.
+ */
 export function SalaDeEspera() {
+  const { id = '' } = useParams()
+  const { token } = useAuth()
+  const navegar = useNavigate()
+
+  // Viene de la pantalla del código. Si el estudiante recarga, el estado de
+  // navegación se pierde, así que también se guarda por sesión del navegador.
   const { state } = useLocation()
-  const examen = state as JoinedExam | null
+  const [examen] = useState<JoinedExam | null>(
+    () => (state as JoinedExam | null) ?? recuperarExamen(id)
+  )
+  const [matricula, setMatricula] = useState<Participant>()
+  const [acepta, setAcepta] = useState(false)
+  const [entrando, setEntrando] = useState(false)
+  const [error, setError] = useState<string>()
   const [ahora, setAhora] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (examen) recordarExamen(examen)
+  }, [examen])
+
+  // Si ya consintió antes, no se le vuelve a preguntar: se le deja pasar.
+  //
+  // Y mientras su identidad no esté resuelta, se vuelve a preguntar cada pocos
+  // segundos: el estudiante está esperando a que su docente lo admita y no
+  // tiene por qué recargar la página para enterarse.
+  useEffect(() => {
+    if (!id) return
+    let cancelado = false
+
+    const consultar = (): void => {
+      api
+        .myEnrollment(id, token)
+        .then((mia) => {
+          if (cancelado) return
+          setMatricula(mia)
+          if (mia.can_take_exam && !mia.submitted_at) clearInterval(temporizador)
+        })
+        // Un 400 aquí significa "todavía no has consentido", que es el estado
+        // normal de esta pantalla y no un error que mostrar.
+        .catch(() => undefined)
+    }
+
+    consultar()
+    const temporizador = setInterval(consultar, ESPERA_MS)
+
+    return () => {
+      cancelado = true
+      clearInterval(temporizador)
+    }
+  }, [id, token])
 
   // Un reloj por minuto basta: la cuenta atrás se mide en minutos, no en
   // segundos, y refrescar cada segundo solo gasta batería.
@@ -32,6 +93,20 @@ export function SalaDeEspera() {
     const temporizador = setInterval(() => setAhora(Date.now()), 60_000)
     return () => clearInterval(temporizador)
   }, [])
+
+  async function entrar(): Promise<void> {
+    setError(undefined)
+    setEntrando(true)
+    try {
+      const mia = await api.enroll(id, true, token)
+      setMatricula(mia)
+      if (mia.can_take_exam) navegar(`/examen/${id}/rendir`)
+    } catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : 'No se pudo entrar al examen')
+    } finally {
+      setEntrando(false)
+    }
+  }
 
   if (!examen) {
     return (
@@ -53,6 +128,8 @@ export function SalaDeEspera() {
 
   const empiezaEn = new Date(examen.starts_at).getTime() - ahora
   const modulos = Object.keys(examen.modules).filter((m) => MODULOS[m])
+  const yaConsintio = matricula?.consent_at != null
+  const yaEntrego = matricula?.submitted_at != null
 
   return (
     <div className="centrado-estrecho">
@@ -63,11 +140,18 @@ export function SalaDeEspera() {
 
       <div className="tarjeta" style={{ marginTop: 'var(--e6)' }}>
         <div className="tarjeta-cuerpo">
-          {examen.can_enter_now ? (
+          {yaEntrego ? (
+            <>
+              <h2>Ya entregaste este examen</h2>
+              <p className="subtitulo">No se puede volver a entrar.</p>
+            </>
+          ) : examen.can_enter_now ? (
             <>
               <h2>Tu examen está abierto</h2>
               <p className="subtitulo">
-                Ábrelo desde la aplicación de escritorio para empezar.
+                {yaConsintio
+                  ? 'Ya aceptaste la supervisión. Puedes continuar.'
+                  : 'Revisa qué se va a supervisar y acepta para empezar.'}
               </p>
             </>
           ) : empiezaEn > 0 ? (
@@ -113,6 +197,54 @@ export function SalaDeEspera() {
               El sistema no decide nada por su cuenta. Si aparece un aviso, lo revisa tu docente y
               es él quien resuelve, con una justificación escrita.
             </p>
+          </div>
+        </div>
+      )}
+
+      {matricula && !matricula.can_take_exam && !yaEntrego && (
+        <p className="aviso aviso-neutro">
+          Tu identidad todavía no está verificada. Tu docente te admitirá desde su panel y esta
+          pantalla se actualizará sola: no hace falta que recargues.
+        </p>
+      )}
+
+      {error && <p className="aviso">{error}</p>}
+
+      {!yaEntrego && (
+        <div className="tarjeta">
+          <div className="tarjeta-cuerpo">
+            {yaConsintio ? (
+              <Link
+                to={`/examen/${id}/rendir`}
+                className="boton"
+                aria-disabled={!matricula?.can_take_exam}
+              >
+                Entrar al examen
+              </Link>
+            ) : (
+              <>
+                <label className="casilla">
+                  <input
+                    type="checkbox"
+                    checked={acepta}
+                    onChange={(e) => setAcepta(e.target.checked)}
+                  />
+                  <span>
+                    Acepto ser supervisado durante este examen con las señales de arriba, y que la
+                    evidencia quede registrada para que mi docente la revise.
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="boton"
+                  onClick={() => void entrar()}
+                  disabled={!acepta || entrando}
+                  style={{ marginTop: 'var(--e4)' }}
+                >
+                  {entrando ? 'Entrando…' : 'Aceptar y entrar al examen'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
