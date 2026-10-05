@@ -50,13 +50,30 @@ export function findSuspicious(processes: ProcessInfo[]): ProcessMatch[] {
  * Revisa los procesos cada 10 s. Emite un evento cuando un proceso de la
  * lista aparece; si se cierra y vuelve a abrir, emite otro.
  */
-export function startProcessMonitor(onEvent: (event: ProctoringEvent) => void): () => void {
+export interface ProcessMonitor {
+  stop: () => void
+  /**
+   * Olvida lo ya visto y revisa de inmediato, como si fuera el inicio del examen.
+   *
+   * El monitor avisa de un proceso **una sola vez**, al verlo aparecer. Si
+   * AnyDesk ya estaba abierto antes de que el estudiante llegara al examen, ese
+   * aviso se emitio sin sesion y se descarto, y no volveria a emitirse nunca.
+   * Al empezar el examen hay que volver a mirar.
+   */
+  rescan: () => void
+}
+
+export function startProcessMonitor(onEvent: (event: ProctoringEvent) => void): ProcessMonitor {
   const active = new Set<string>()
   let stopped = false
   let timer: NodeJS.Timeout | undefined
   let first = true
+  let checking = false
 
   async function check(): Promise<void> {
+    // Una revision a la vez: `rescan` puede llamar mientras hay una en curso.
+    if (checking) return
+    checking = true
     try {
       // import dinamico: ps-list es solo ESM y el main se compila a CommonJS
       const { default: psList } = await import('ps-list')
@@ -73,14 +90,24 @@ export function startProcessMonitor(onEvent: (event: ProctoringEvent) => void): 
       current.forEach((n) => active.add(n))
     } catch (error) {
       console.error('[processes] no se pudo leer la lista de procesos', error)
+    } finally {
+      checking = false
     }
     first = false
     if (!stopped) timer = setTimeout(check, POLL_INTERVAL_MS)
   }
 
   void check()
-  return () => {
-    stopped = true
-    if (timer) clearTimeout(timer)
+  return {
+    stop: () => {
+      stopped = true
+      if (timer) clearTimeout(timer)
+    },
+    rescan: () => {
+      active.clear()
+      first = true
+      if (timer) clearTimeout(timer)
+      void check()
+    }
   }
 }

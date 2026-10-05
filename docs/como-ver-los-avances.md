@@ -74,19 +74,38 @@ o cierra la otra.
 
 ### Arrancarla
 
-Necesita saber **qué examen** carga y **quién** lo rinde. Los dos son UUID que
-salen de la base: el del examen lo ves en la URL cuando entras a un examen en la
-web (`/sesiones/<este-uuid>`).
-
 ```powershell
-$env:PROCTORING_SESSION_ID = "pega-aqui-el-uuid-del-examen"
-$env:PROCTORING_STUDENT_ID = "00000000-0000-4000-8000-000000000002"
 npm run dev --prefix apps/desktop
 ```
 
-Se abre una ventana con el examen dentro. Sin `PROCTORING_SESSION_ID` se abre el
-**panel local de eventos**, que no es el examen: es la herramienta de
-diagnóstico para ver qué está detectando el proceso principal.
+Se abre una ventana con la web del examen. **No hay que configurar nada a mano**:
+el estudiante inicia sesión, escribe su código y el examen sale de ahí.
+
+Cómo se conecta con la web, que es lo que conviene entender:
+
+1. La web corre **dentro** de la ventana de Electron. Al iniciar sesión, le
+   entrega el token al proceso principal de la app (`window.api.setAuthSession`).
+   De ese token sale **quién** rinde; la API lo verifica y rechaza cualquier
+   evento cuyo estudiante no coincida con el del token.
+2. **La supervisión empieza al llegar a `/rendir`, no al abrir la app.** El
+   consentimiento se da en `/sala`: antes de aceptar, la app no manda nada.
+3. Al llegar a `/rendir`, la app revisa de nuevo monitores y procesos como si
+   fuera el inicio del examen. Si AnyDesk ya estaba abierto, se avisa en ese
+   momento; sin esto el aviso se habría emitido antes de haber examen y se
+   habría perdido.
+4. Si el estudiante cierra sesión, la app olvida quién era.
+
+En la terminal de la app verás `[examen] supervision iniciada para la sesion …`
+cuando eso ocurre, y `[event] …` por cada señal.
+
+Opciones útiles (`$env:NOMBRE = "valor"` antes de arrancar):
+
+| Variable | Para qué |
+|---|---|
+| `PROCTORING_PANEL=1` | Abre el **panel local de eventos** en vez del examen. Es la herramienta de diagnóstico del proceso principal. |
+| `PROCTORING_SESSION_ID=<uuid>` | Abre directo la sala de ese examen, saltándose la pantalla del código. |
+| `PROCTORING_KIOSK=1` | Modo kiosco en desarrollo. |
+| `PROCTORING_DISABLE_CONTENT_PROTECTION=1` | La ventana sale en capturas (ver abajo). |
 
 Para grabar evidencia de la ventana, ten en cuenta que está protegida contra
 capturas a propósito: saldría en negro. Para que se vea:
@@ -178,40 +197,85 @@ Con eso, al recargar:
   sostiene la meta de avisar en menos de 5 segundos. Sin Supabase configurado la
   pantalla del examen solo muestra lo ya registrado.
 
-## Con el login ya encendido: hace falta un estudiante
+## Las dos cuentas de prueba
 
-En cuanto la web tiene Supabase configurado, **todas** las pantallas piden
-sesión, incluida la que carga la app de escritorio. Y hoy en la base solo existe
-un usuario, el docente. Hay que crear uno de estudiante.
+Con el login encendido **todo** pide sesión, incluida la ventana de la app de
+escritorio. Hacen falta dos cuentas: un docente y un estudiante.
 
-En el panel de Supabase: **Authentication → Users → Add user**, con correo y
-contraseña. No hace falta nada más: un disparador de la base crea su perfil y
-**todo el que se registra entra como `student`** — los docentes se promueven a
-mano, a propósito (`supabase/migrations/20261003120300_harden_signup_function.sql`).
+Las cuentas **no se pueden crear desde el código**: viven en Supabase Auth, que
+es un servicio aparte, y se crean en su panel.
+
+### Docente
+
+Ya existe: `hfsv123456@gmail.com`, con rol `teacher`. Si no recuerdas su
+contraseña, en el panel de Supabase: **Authentication → Users**, los tres puntos
+de esa fila → **Send password recovery**, o **Reset password**.
+
+### Estudiante
+
+En el panel de Supabase: **Authentication → Users → Add user → Create new user**.
+
+- **Email:** uno distinto del docente. Con Gmail sirve un alias que llega a tu
+  misma bandeja, por ejemplo `hfsv123456+estudiante@gmail.com`.
+- **Password:** la que quieras.
+- **Marca `Auto Confirm User`.** Si no, el login responde *"Falta confirmar el
+  correo"* y no puedes entrar.
+
+No hace falta nada más: un disparador de la base crea su perfil, y **todo el que
+se registra entra como `student`**. Los docentes se promueven a mano, a propósito
+(`supabase/migrations/20261003120300_harden_signup_function.sql`).
 
 Comprueba que quedó bien:
 
 ```sql
-select email, role from public.profiles order by role;
+select p.email, p.role, u.email_confirmed_at is not null as confirmado
+from public.profiles p join auth.users u on u.id = p.id
+order by p.role;
 ```
 
-Y que las dos mitades vayan de acuerdo: si la web pide sesión pero la API corre
-con `AUTH_ENABLED=false`, la API ignora el token y trata a todo el mundo como el
-mismo estudiante de desarrollo. Para que cada estudiante sea el suyo, en el
-`.env` de la raíz:
+Tienen que salir dos filas: una `teacher` y una `student`, las dos confirmadas.
 
-```
-AUTH_ENABLED=true
-```
+### Que las dos mitades vayan de acuerdo
 
-Y reinicia la API:
+La web pide sesión cuando `apps/web/.env.local` trae la clave de Supabase, y la
+API la exige cuando el `.env` de la raíz dice `AUTH_ENABLED=true`. Tienen que ir
+juntas: si la API tiene `false`, ignora el token y trata a todos como el mismo
+estudiante de desarrollo.
 
 ```powershell
-docker compose up -d --force-recreate api
+curl http://localhost:8000/health
 ```
 
-`curl http://localhost:8000/health` debe decir `"auth":"enabled"`.
+Debe decir `"auth":"enabled"`. Para volver al modo sin cuentas, vacía
+`VITE_SUPABASE_PUBLISHABLE_KEY` y pon `AUTH_ENABLED=false`, y reinicia la API
+con `docker compose up -d --force-recreate api`.
 
-Al revés también vale: si quieres recorrer el flujo sin crear usuarios, **vacía**
-`VITE_SUPABASE_PUBLISHABLE_KEY` en `apps/web/.env.local` y las dos mitades
-vuelven al modo sin autenticación. Lo que no conviene es dejarlas desparejas.
+## Navegar con las dos cuentas a la vez
+
+Hacen falta **dos sesiones distintas**, y un mismo navegador comparte la sesión
+entre pestañas. Lo más cómodo:
+
+| Quién | Dónde |
+|---|---|
+| **Docente** | Tu navegador normal, en <http://localhost:5173> |
+| **Estudiante** | La **app de escritorio** (`npm run dev --prefix apps/desktop`) |
+
+Así ves exactamente lo que pide el proyecto: el docente en la web y el
+estudiante en la app, y cómo las alertas del segundo llegan al primero.
+
+1. **Docente (navegador):** entra, crea un examen con fecha de inicio **ya
+   pasada** o en unos minutos, añade preguntas y copia el código de acceso.
+   Deja abierta la pantalla del examen: ahí aparecen las alertas.
+2. **Estudiante (app):** entra con la cuenta de estudiante → escribe el código →
+   lee la supervisión y acepta.
+3. **Docente:** *Sala de espera* → **Admitir**.
+4. **Estudiante:** la pantalla se actualiza sola y deja entrar. A partir de aquí
+   empieza la supervisión.
+5. **Provoca señales:** cambia de ventana con Alt+Tab y vuelve (`focus_lost`),
+   abre AnyDesk o Discord (`suspicious_process`), conecta otro monitor
+   (`extra_display`).
+6. **Docente:** las alertas aparecen en la pantalla del examen en segundos.
+7. **Estudiante:** responde, recarga para ver que se conserva y entrega.
+
+Si no tienes forma de abrir dos sesiones a la vez, usa una ventana de incógnito
+para la segunda cuenta.

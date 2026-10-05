@@ -2,18 +2,18 @@ import { app, shell, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { examContext } from './context'
+import { examContext, liveExamSessionId, setExamSession, setStudentFromToken } from './context'
 import { buildExtraDisplayEvent, buildFocusLostEvent } from './events'
 import { applyWindowProtection } from './protection'
-import { startProcessMonitor } from './processes'
+import { startProcessMonitor, type ProcessMonitor } from './processes'
 import { sendEvent, setAuthSession } from './sender'
-import { loadExam, restrictNavigation } from './web'
+import { loadExam, recoverFromLoadFailure, restrictNavigation, webBaseUrl } from './web'
 
 // Se conservan para mostrarlos en el panel local.
 const events: ProctoringEvent[] = []
 let mainWindow: BrowserWindow | null = null
 let blurStartedAt: number | null = null
-let stopProcessMonitor: (() => void) | null = null
+let processMonitor: ProcessMonitor | null = null
 
 function recordEvent(event: ProctoringEvent): void {
   events.push(event)
@@ -46,6 +46,28 @@ function closeFocusLost(returned: boolean): void {
   recordEvent(buildFocusLostEvent(examContext, startedAt, Date.now(), returned))
 }
 
+/**
+ * Empieza la supervision cuando el estudiante llega al examen en curso.
+ *
+ * Los avisos de "AnyDesk esta abierto" y "hay un segundo monitor" se emiten al
+ * verlos aparecer, y antes de este momento no habia examen al que atribuirlos:
+ * se habrian descartado y no volverian a emitirse. Por eso se vuelve a mirar
+ * todo aqui, como si fuera el inicio.
+ */
+function startSupervision(): void {
+  console.log('[examen] supervision iniciada para la sesion', examContext.session_id)
+  checkDisplays('exam_start')
+  processMonitor?.rescan()
+}
+
+/** Sigue a la ventana por la web: el examen en curso sale de la URL. */
+function trackNavigation(url: string): void {
+  const sessionId = liveExamSessionId(url, new URL(webBaseUrl()).origin)
+  // undefined: no es la web del examen (el panel local); no se toca nada.
+  if (sessionId === undefined) return
+  if (setExamSession(sessionId) && sessionId !== null) startSupervision()
+}
+
 function isAuthSession(value: unknown): value is AuthSession {
   return (
     typeof value === 'object' &&
@@ -76,10 +98,18 @@ function createWindow(): BrowserWindow {
 
   applyWindowProtection(win)
   restrictNavigation(win)
+  recoverFromLoadFailure(win)
+
+  // La web es una SPA: ir de /sala a /rendir cambia la URL sin recargar, y eso
+  // llega como `did-navigate-in-page`, no como `did-navigate`.
+  win.webContents.on('did-navigate', (_event, url) => trackNavigation(url))
+  win.webContents.on('did-navigate-in-page', (_event, url) => trackNavigation(url))
 
   win.on('ready-to-show', () => {
     win.show()
-    checkDisplays('exam_start')
+    // En el panel local no hay navegacion de examen: se revisa al abrir. En el
+    // examen real se revisa al llegar a /rendir (ver startSupervision).
+    if (process.env['PROCTORING_PANEL'] === '1') checkDisplays('exam_start')
   })
 
   // blur solo marca el inicio; el evento se emite al volver (un solo evento con duracion)
@@ -130,6 +160,9 @@ app.whenReady().then(() => {
       throw new TypeError('La sesion de autenticacion de Supabase no es valida')
     }
     setAuthSession(session)
+    // Quien rinde es quien dice el token. Con null (cerro sesion) vuelve al
+    // respaldo del entorno.
+    setStudentFromToken(session?.accessToken ?? null)
   })
 
   screen.on('display-added', () => checkDisplays('display_added'))
@@ -137,14 +170,14 @@ app.whenReady().then(() => {
   screen.on('display-removed', () => notifyDisplayCount())
 
   mainWindow = createWindow()
-  stopProcessMonitor = startProcessMonitor(recordEvent)
+  processMonitor = startProcessMonitor(recordEvent)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow()
   })
 })
 
-app.on('before-quit', () => stopProcessMonitor?.())
+app.on('before-quit', () => processMonitor?.stop())
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

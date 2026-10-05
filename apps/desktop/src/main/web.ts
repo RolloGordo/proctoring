@@ -6,14 +6,14 @@
  * con la protección de contenido puesta. Tener dos exámenes distintos —uno en
  * React y otro en Electron— sería tener dos sitios donde arreglar cada cosa.
  *
- * Si no hay sesión configurada se carga el panel local de eventos, que es la
- * herramienta de diagnóstico: sirve para ver qué está detectando el proceso
- * principal sin montar un examen entero.
+ * El panel local de eventos sigue existiendo como herramienta de diagnóstico
+ * (`PROCTORING_PANEL=1`): sirve para ver qué está detectando el proceso principal
+ * sin montar un examen entero.
  */
 
 import { join } from 'path'
 import type { BrowserWindow } from 'electron'
-import { examContext } from './context'
+import { examContext, setExamSession } from './context'
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000'
 
@@ -22,22 +22,37 @@ export function webBaseUrl(): string {
   return (process.env['PROCTORING_WEB_URL'] ?? 'http://localhost:5173').replace(/\/$/, '')
 }
 
-/** La ruta del examen de esta sesión, o `null` si no hay sesión configurada. */
-export function examUrl(): string | null {
-  if (examContext.session_id === NIL_UUID) return null
-  return `${webBaseUrl()}/examen/${examContext.session_id}/sala`
+/**
+ * A dónde abre la ventana.
+ *
+ * - Con `PROCTORING_SESSION_ID`: directo a la sala de ese examen.
+ * - Sin ella: a la pantalla del código de acceso. Si hay login, la web pide
+ *   primero iniciar sesión; el estudiante entra, escribe su código y el examen
+ *   sale de ahí. No hay que configurar nada a mano.
+ */
+export function examUrl(): string {
+  const base = webBaseUrl()
+  return examContext.session_id === NIL_UUID
+    ? `${base}/examen`
+    : `${base}/examen/${examContext.session_id}/sala`
 }
 
 /**
- * Carga el examen en la ventana, o el panel local si no hay sesión.
+ * Carga la web del examen en la ventana, o el panel local si se pide.
  *
- * Devuelve qué se cargó, para que quien llame pueda decirlo en el registro:
- * arrancar sin sesión y ver el panel de eventos es fácil de confundir con un
- * error si nadie lo explica.
+ * El panel de eventos es la herramienta de diagnóstico del proceso principal:
+ * se abre con `PROCTORING_PANEL=1`. Ya no es lo que se abre por defecto, porque
+ * el estudiante tiene que ver el examen.
+ *
+ * Devuelve qué se cargó, para que quien llame pueda decirlo en el registro.
  */
 export function loadExam(win: BrowserWindow): 'examen' | 'panel' {
-  const url = examUrl()
-  if (url !== null) {
+  if (process.env['PROCTORING_PANEL'] !== '1') {
+    const url = examUrl()
+    // La supervision no empieza al abrir la app sino al llegar a /rendir, tras
+    // el consentimiento. Aunque el entorno traiga un examen para abrir la sala,
+    // no se registra nada hasta entonces.
+    setExamSession(null)
     void win.loadURL(url)
     return 'examen'
   }
@@ -76,4 +91,43 @@ export function restrictNavigation(win: BrowserWindow): void {
     event.preventDefault()
     console.warn('[ventana] navegacion bloqueada hacia', new URL(url).origin)
   })
+}
+
+const RETRY_MS = 3_000
+
+/** Códigos de Chromium que no son un fallo: -3 es "cancelada" (otra navegación la reemplazó). */
+const ABORTED = -3
+
+/**
+ * Si la web no carga, muestra un aviso claro y reintenta solo.
+ *
+ * Sin esto la ventana se queda con la pantalla de error de Chromium, que a un
+ * estudiante en pleno examen no le dice nada util. Y reintentar solo importa:
+ * si se cae la red un momento, el examen tiene que volver sin que nadie toque la
+ * app, en kiosco no hay barra de direcciones ni boton de recargar.
+ */
+export function recoverFromLoadFailure(win: BrowserWindow): void {
+  let timer: NodeJS.Timeout | undefined
+
+  win.webContents.on('did-fail-load', (_event, code, _description, failedUrl, isMainFrame) => {
+    if (!isMainFrame || code === ABORTED || failedUrl.startsWith('data:')) return
+    console.warn('[ventana] no se pudo cargar', failedUrl, 'codigo', code)
+
+    void win.loadURL(
+      'data:text/html;charset=utf-8,' +
+        encodeURIComponent(
+          '<!doctype html><meta charset="utf-8"><title>Proctoring</title>' +
+            '<body style="font-family:sans-serif;max-width:32rem;margin:20vh auto;padding:0 1rem;color:#212529">' +
+            '<h1 style="font-size:1.25rem">No se pudo abrir el examen</h1>' +
+            '<p>Revisa tu conexión. Se vuelve a intentar solo cada pocos segundos; no cierres la aplicación.</p>'
+        )
+    )
+
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      if (!win.isDestroyed()) void win.loadURL(failedUrl)
+    }, RETRY_MS)
+  })
+
+  win.on('closed', () => clearTimeout(timer))
 }
