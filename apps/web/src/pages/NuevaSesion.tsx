@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, type SupervisionPreset } from '../lib/api'
+import { api, type Course, type SupervisionPreset } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 
 /**
@@ -35,8 +35,23 @@ export function NuevaSesion() {
   const [tolerancia, setTolerancia] = useState(10)
   const [preset, setPreset] = useState<SupervisionPreset>('standard')
   const [descripcion, setDescripcion] = useState('')
+  const [cursos, setCursos] = useState<Course[]>([])
+  const [cursoId, setCursoId] = useState('')
   const [error, setError] = useState<string>()
   const [enviando, setEnviando] = useState(false)
+
+  // Los cursos son opcionales: si no se pueden cargar, se puede crear el
+  // examen igual, solo que sin asociarlo a ninguno.
+  useEffect(() => {
+    let cancelado = false
+    api
+      .listCourses(token)
+      .then((datos) => !cancelado && setCursos(datos))
+      .catch(() => undefined)
+    return () => {
+      cancelado = true
+    }
+  }, [token])
 
   async function enviar(evento: FormEvent): Promise<void> {
     evento.preventDefault()
@@ -51,7 +66,8 @@ export function NuevaSesion() {
           duration_minutes: duracion,
           entry_tolerance_minutes: tolerancia,
           preset,
-          description: descripcion.trim() || null
+          description: descripcion.trim() || null,
+          course_id: cursoId || null
         },
         token
       )
@@ -140,6 +156,25 @@ export function NuevaSesion() {
               </select>
               {elegido && <p className="ayuda">{elegido.detalle}</p>}
             </label>
+
+            {cursos.length > 0 && (
+              <label className="campo">
+                <span>Curso (opcional)</span>
+                <select value={cursoId} onChange={(e) => setCursoId(e.target.value)}>
+                  <option value="">Sin curso</option>
+                  {cursos.map((curso) => (
+                    <option key={curso.id} value={curso.id}>
+                      {curso.name}
+                      {curso.section ? ` — sección ${curso.section}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="ayuda">
+                  Los estudiantes del curso verán la fecha del examen en su panel. Para rendirlo
+                  siguen necesitando el código de acceso.
+                </p>
+              </label>
+            )}
 
             <label className="campo">
               <span>Indicaciones para el estudiante (opcional)</span>

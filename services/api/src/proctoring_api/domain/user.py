@@ -35,3 +35,16 @@ class AuthenticatedUser:
     @property
     def is_student(self) -> bool:
         return self.role is UserRole.STUDENT
+
+
+@dataclass(frozen=True, slots=True)
+class ProfileSummary:
+    """Lo que el sistema sabe de una persona para mostrarla: quién es.
+
+    No lleva contraseña ni nada de Auth: solo lo que ya está en `public.profiles`.
+    """
+
+    id: UUID
+    role: UserRole
+    email: str
+    full_name: str

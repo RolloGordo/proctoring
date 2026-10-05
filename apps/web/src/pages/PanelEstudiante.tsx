@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FormularioCodigo } from '../components/FormularioCodigo'
-import { api, comoExamenUnido, type MyExam } from '../lib/api'
+import { api, comoExamenUnido, type MyCourse, type MyExam } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { cuandoEmpieza, estadoExamen, fechaLarga } from '../lib/formato'
 
@@ -15,6 +15,7 @@ import { cuandoEmpieza, estadoExamen, fechaLarga } from '../lib/formato'
 export function PanelEstudiante() {
   const { token, email } = useAuth()
   const [examenes, setExamenes] = useState<MyExam[]>()
+  const [clases, setClases] = useState<MyCourse[]>([])
   const [error, setError] = useState<string>()
   const [ahora, setAhora] = useState(() => Date.now())
 
@@ -29,6 +30,18 @@ export function PanelEstudiante() {
       .myExams(token)
       .then((datos) => !cancelado && setExamenes(datos))
       .catch((fallo: Error) => !cancelado && setError(fallo.message))
+    return () => {
+      cancelado = true
+    }
+  }, [token])
+
+  // Las clases son un complemento: si fallan, el panel sigue sirviendo.
+  useEffect(() => {
+    let cancelado = false
+    api
+      .myCourses(token)
+      .then((datos) => !cancelado && setClases(datos))
+      .catch(() => undefined)
     return () => {
       cancelado = true
     }
@@ -62,6 +75,17 @@ export function PanelEstudiante() {
           </div>
         </div>
       </section>
+
+      {clases.length > 0 && (
+        <section className="bloque">
+          <h2>Mis clases</h2>
+          <div className="rejilla-clases">
+            {clases.map((clase) => (
+              <TarjetaClase key={clase.id} clase={clase} ahora={ahora} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {error && <p className="aviso">{error}</p>}
       {!examenes && !error && <p className="tenue">Cargando tus exámenes…</p>}
@@ -183,5 +207,36 @@ function Nota({ examen }: { examen: MyExam }) {
         <span className="chip chip-programado nota-aviso">Faltan desarrollos por calificar</span>
       )}
     </>
+  )
+}
+
+/**
+ * Una clase y lo que viene en ella.
+ *
+ * Solo muestra cuándo es cada examen. Estar en la clase no da acceso al examen:
+ * para rendirlo hace falta el código que reparte el docente.
+ */
+function TarjetaClase({ clase, ahora }: { clase: MyCourse; ahora: number }) {
+  const proximos = clase.exams
+    .filter((e) => new Date(e.starts_at).getTime() + e.duration_minutes * 60_000 >= ahora)
+    .slice(0, 3)
+
+  return (
+    <div className="tarjeta tarjeta-clase">
+      <h3>{clase.name}</h3>
+      {clase.section && <p className="subtitulo">Sección {clase.section}</p>}
+      {proximos.length === 0 ? (
+        <p className="ayuda">No hay exámenes próximos.</p>
+      ) : (
+        <ul className="lista-clase">
+          {proximos.map((examen) => (
+            <li key={examen.session_id}>
+              <strong>{examen.title}</strong>
+              <span className="tenue">{fechaLarga(examen.starts_at)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }

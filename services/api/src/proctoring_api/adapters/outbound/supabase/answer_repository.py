@@ -14,7 +14,8 @@ from proctoring_api.domain.answer import Answer
 
 TABLE = "answers"
 COLUMNS = (
-    "id, participant_id, question_id, selected_option_id, text_answer, numeric_answer, answered_at"
+    "id, participant_id, question_id, selected_option_id, text_answer, numeric_answer, "
+    "answered_at, is_correct, points_awarded"
 )
 
 

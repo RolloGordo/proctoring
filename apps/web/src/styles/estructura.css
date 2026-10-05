@@ -675,3 +675,52 @@
     text-align: left;
   }
 }
+
+/* ===========================================================================
+   Cursos
+   =========================================================================== */
+.formulario-curso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--e4);
+  margin-top: var(--e4);
+}
+
+.formulario-curso .campo {
+  flex: 1 1 260px;
+  margin-bottom: 0;
+}
+
+.formulario-curso .campo-corto {
+  flex: 0 1 140px;
+}
+
+.rejilla-clases {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--e4);
+}
+
+.tarjeta-clase {
+  padding: var(--e5);
+}
+
+.tarjeta-clase + .tarjeta-clase {
+  margin-top: 0;
+}
+
+.lista-clase {
+  list-style: none;
+  margin: var(--e3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+  font-size: 0.9375rem;
+}
+
+.lista-clase li {
+  display: flex;
+  flex-direction: column;
+}

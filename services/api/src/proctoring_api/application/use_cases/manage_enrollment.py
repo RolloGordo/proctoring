@@ -10,13 +10,14 @@ from proctoring_api.application.ports.answer_repository import AnswerRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.participant_repository import ParticipantRepository
+from proctoring_api.application.ports.profile_repository import ProfileRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.domain.errors import AuthorizationError, DomainError
 from proctoring_api.domain.exam_session import ExamSession
 from proctoring_api.domain.grading import score_exam
 from proctoring_api.domain.participant import InvalidEnrollmentError, SessionParticipant
-from proctoring_api.domain.user import AuthenticatedUser
+from proctoring_api.domain.user import AuthenticatedUser, ProfileSummary
 
 #: Estudiante ficticio por defecto cuando la autenticacion esta desactivada.
 #:
@@ -129,6 +130,41 @@ class ListSessionParticipants:
         ensure_teacher_owns_session(self._sessions, session_id, actor)
 
         return self._participants.list_by_session(session_id)
+
+
+@dataclass(frozen=True, slots=True)
+class ParticipantEntry:
+    """Un participante, con quien es."""
+
+    participant: SessionParticipant
+    #: `None` si la persona no tiene perfil. Se muestra igual: sigue siendo un
+    #: participante de la sesion.
+    profile: ProfileSummary | None
+
+
+class ListSessionParticipantsWithNames:
+    """La sala de espera del docente, con el nombre y el correo de cada estudiante.
+
+    Un docente que admite a alguien tiene que ver **a quien** admite: los primeros
+    ocho caracteres de un id no le dicen nada.
+    """
+
+    def __init__(
+        self,
+        participants: ParticipantRepository,
+        sessions: ExamSessionRepository | None,
+        profiles: ProfileRepository,
+    ) -> None:
+        self._listing = ListSessionParticipants(participants, sessions)
+        self._profiles = profiles
+
+    def execute(
+        self, session_id: UUID, *, actor: AuthenticatedUser | None = None
+    ) -> Sequence[ParticipantEntry]:
+        participantes = self._listing.execute(session_id, actor=actor)
+        # Nombres de todos en una consulta, no una por fila.
+        perfiles = self._profiles.get_summaries([p.student_id for p in participantes])
+        return [ParticipantEntry(p, perfiles.get(p.student_id)) for p in participantes]
 
 
 class ReviewParticipantIdentity:
@@ -301,6 +337,8 @@ __all__ = [
     "EnrollmentResult",
     "InvalidEnrollmentError",
     "ListSessionParticipants",
+    "ListSessionParticipantsWithNames",
+    "ParticipantEntry",
     "ReviewParticipantIdentity",
     "SubmitExam",
     "ensure_can_take_exam",

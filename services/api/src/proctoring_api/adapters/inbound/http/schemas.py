@@ -25,6 +25,12 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from proctoring_api.application.use_cases.list_my_exams import MyExam
+from proctoring_api.application.use_cases.manage_courses import (
+    CourseMember,
+    MyCourse,
+    TeacherCourse,
+)
+from proctoring_api.application.use_cases.manage_enrollment import ParticipantEntry
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.answer import MAX_TEXT_ANSWER_LENGTH, Answer
 from proctoring_api.domain.event import MAX_EVIDENCE_PATH_LENGTH, EventType, ProctoringEvent
@@ -427,6 +433,10 @@ class ParticipantResponse(BaseModel):
     submitted_at: datetime | None
     can_take_exam: bool
     score: float | None
+    #: Quien es. Solo lo llena la sala de espera del docente; en el resto de
+    #: rutas el estudiante ya sabe quien es.
+    student_name: str | None = None
+    student_email: str | None = None
 
     @classmethod
     def from_entity(cls, participant: SessionParticipant) -> ParticipantResponse:
@@ -443,6 +453,15 @@ class ParticipantResponse(BaseModel):
             can_take_exam=participant.can_take_exam,
             score=participant.score,
         )
+
+    @classmethod
+    def from_entry(cls, entry: ParticipantEntry) -> ParticipantResponse:
+        """El participante con su nombre y correo."""
+        response = cls.from_entity(entry.participant)
+        if entry.profile is not None:
+            response.student_name = entry.profile.full_name
+            response.student_email = entry.profile.email
+        return response
 
 
 class AnswerRequest(BaseModel):
@@ -543,6 +562,116 @@ class MyExamResponse(BaseModel):
             score=exam.participant.score,
             max_score=exam.max_score,
             pending_manual_review=exam.pending_manual_review,
+        )
+
+
+class CreateCourseRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/courses`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=120)
+    section: str | None = Field(default=None, max_length=40)
+
+
+class CourseResponse(BaseModel):
+    """Un curso del docente."""
+
+    id: UUID
+    name: str
+    section: str | None
+    created_at: datetime
+    student_count: int
+
+    @classmethod
+    def from_entity(cls, item: TeacherCourse) -> CourseResponse:
+        return cls(
+            id=item.course.id,
+            name=item.course.name,
+            section=item.course.section,
+            created_at=item.course.created_at,
+            student_count=item.student_count,
+        )
+
+
+class EnrollStudentRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/courses/{id}/students`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=3, max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def _looks_like_an_email(cls, value: str) -> str:
+        clean = value.strip()
+        # Lo justo para no mandar basura a la base: la comprobacion de verdad es
+        # que exista un estudiante con ese correo.
+        if clean.count("@") != 1 or clean.startswith("@") or clean.endswith("@"):
+            raise ValueError("Escribe un correo valido")
+        return clean
+
+
+class CourseMemberResponse(BaseModel):
+    """Un estudiante matriculado en un curso."""
+
+    student_id: UUID
+    email: str | None
+    full_name: str | None
+    enrolled_at: datetime
+
+    @classmethod
+    def from_entity(cls, member: CourseMember) -> CourseMemberResponse:
+        return cls(
+            student_id=member.student_id,
+            email=member.profile.email if member.profile else None,
+            full_name=member.profile.full_name if member.profile else None,
+            enrolled_at=member.enrolled_at,
+        )
+
+
+class EnrollStudentResponse(BaseModel):
+    student: CourseMemberResponse
+    already_enrolled: bool
+
+
+class MyCourseExamResponse(BaseModel):
+    """Un examen de una clase, tal como lo ve el estudiante: cuando es y nada mas.
+
+    No lleva el codigo de acceso: para rendirlo hace falta que el docente se lo de.
+    """
+
+    session_id: UUID
+    title: str
+    starts_at: datetime
+    ends_at: datetime
+    duration_minutes: int
+
+
+class MyCourseResponse(BaseModel):
+    """Una clase del estudiante, con los examenes que le tocan."""
+
+    id: UUID
+    name: str
+    section: str | None
+    exams: list[MyCourseExamResponse]
+
+    @classmethod
+    def from_entity(cls, item: MyCourse) -> MyCourseResponse:
+        return cls(
+            id=item.course.id,
+            name=item.course.name,
+            section=item.course.section,
+            exams=[
+                MyCourseExamResponse(
+                    session_id=e.id,
+                    title=e.title,
+                    starts_at=e.starts_at,
+                    ends_at=e.ends_at,
+                    duration_minutes=e.duration_minutes,
+                )
+                for e in item.exams
+            ],
         )
 
 

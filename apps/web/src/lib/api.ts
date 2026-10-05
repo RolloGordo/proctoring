@@ -140,6 +140,9 @@ export interface Participant {
   can_take_exam: boolean
   /** Puntos ganados en lo que se corrige solo. `null` si aún no hay nota. */
   score: number | null
+  /** Quién es. Solo lo trae la sala de espera del docente. */
+  student_name?: string | null
+  student_email?: string | null
 }
 
 /** Una respuesta guardada. No lleva si acertó: eso no lo sabe el estudiante. */
@@ -182,11 +185,48 @@ export interface MyExam {
   pending_manual_review: boolean
 }
 
+/** Un curso del docente. */
+export interface Course {
+  id: string
+  name: string
+  section: string | null
+  created_at: string
+  student_count: number
+}
+
+/** Un estudiante matriculado en un curso. */
+export interface CourseMember {
+  student_id: string
+  /** `null` si la persona ya no tiene perfil: sigue matriculada, y se muestra. */
+  email: string | null
+  full_name: string | null
+  enrolled_at: string
+}
+
+/** Un examen de una clase: cuándo es, sin el código para rendirlo. */
+export interface MyCourseExam {
+  session_id: string
+  title: string
+  starts_at: string
+  ends_at: string
+  duration_minutes: number
+}
+
+/** Una clase del estudiante, con los exámenes que le tocan. */
+export interface MyCourse {
+  id: string
+  name: string
+  section: string | null
+  exams: MyCourseExam[]
+}
+
 export interface NewExamSession {
   title: string
   starts_at: string
   duration_minutes: number
   description?: string | null
+  /** Curso al que pertenece. Tiene que ser del propio docente. */
+  course_id?: string | null
   entry_tolerance_minutes?: number
   preset?: SupervisionPreset
 }
@@ -262,6 +302,31 @@ export const api = {
     ),
 
   myExams: (token?: string): Promise<MyExam[]> => request('/api/v1/me/exams', undefined, token),
+
+  myCourses: (token?: string): Promise<MyCourse[]> =>
+    request('/api/v1/me/courses', undefined, token),
+
+  listCourses: (token?: string): Promise<Course[]> => request('/api/v1/courses', undefined, token),
+
+  getCourse: (id: string, token?: string): Promise<Course> =>
+    request(`/api/v1/courses/${id}`, undefined, token),
+
+  createCourse: (name: string, section: string | null, token?: string): Promise<Course> =>
+    request('/api/v1/courses', { method: 'POST', body: JSON.stringify({ name, section }) }, token),
+
+  listCourseMembers: (id: string, token?: string): Promise<CourseMember[]> =>
+    request(`/api/v1/courses/${id}/students`, undefined, token),
+
+  enrollStudent: (
+    id: string,
+    email: string,
+    token?: string
+  ): Promise<{ student: CourseMember; already_enrolled: boolean }> =>
+    request(
+      `/api/v1/courses/${id}/students`,
+      { method: 'POST', body: JSON.stringify({ email }) },
+      token
+    ),
 
   listQuestions: (sessionId: string, token?: string): Promise<Question[]> =>
     request(`/api/v1/sessions/${sessionId}/questions`, undefined, token),

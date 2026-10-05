@@ -136,7 +136,17 @@ export function Participantes() {
             <tbody>
               {participantes?.map((participante) => (
                 <tr key={participante.id}>
-                  <td className="mono">{participante.student_id.slice(0, 8)}</td>
+                  <td>
+                    {participante.student_name ? (
+                      <>
+                        <strong>{participante.student_name}</strong>
+                        <p className="ayuda">{participante.student_email}</p>
+                      </>
+                    ) : (
+                      // Sin perfil: se muestra igual, con su identificador.
+                      <span className="mono">{participante.student_id.slice(0, 8)}</span>
+                    )}
+                  </td>
                   <td>
                     <span
                       className={`severidad severidad-${ESTADOS[participante.verification_status].tono}`}

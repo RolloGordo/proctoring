@@ -114,6 +114,20 @@ class SupabaseExamSessionRepository:
         # por sesion. El detalle (`find_by_id`) si los incluye.
         return [_to_entity(row, {}) for row in rows]
 
+    def list_by_courses(self, course_ids: Sequence[UUID]) -> Sequence[ExamSession]:
+        if not course_ids:
+            return []
+
+        response = (
+            self._client.table(SESSIONS_TABLE)
+            .select(COLUMNS)
+            .in_("course_id", [str(i) for i in course_ids])
+            .order("starts_at", desc=False)
+            .execute()
+        )
+        # Sin los modulos: el estudiante ve el calendario, no la configuracion.
+        return [_to_entity(row, {}) for row in cast("list[dict[str, Any]]", response.data)]
+
     def find_many(self, session_ids: Sequence[UUID]) -> Sequence[ExamSession]:
         if not session_ids:
             return []

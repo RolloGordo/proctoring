@@ -118,8 +118,8 @@ def list_participants(
     Un estudiante no ve quien mas esta rindiendo.
     """
     return [
-        ParticipantResponse.from_entity(participante)
-        for participante in use_case.execute(session_id, actor=current_user)
+        ParticipantResponse.from_entry(entrada)
+        for entrada in use_case.execute(session_id, actor=current_user)
     ]
 
 

@@ -16,7 +16,9 @@ prototipo (`Prototipo_Sistema_Proctoring_v2`) y con los SPEC.
 | Crear examen | `/sesiones/nueva` | ✅ | SPEC-002 | Héctor |
 | Examen en vivo (alertas y señales) | `/sesiones/:id` | ✅ | SPEC-009 | Héctor |
 | Preguntas del examen | `/sesiones/:id/preguntas` | ✅ | SPEC-003 | Héctor |
-| Sala de espera (admitir identidad) | `/sesiones/:id/participantes` | ✅ | SPEC-004 | Héctor |
+| Sala de espera (con nombre y correo; admitir identidad) | `/sesiones/:id/participantes` | ✅ | SPEC-004 | Héctor |
+| Mis cursos | `/cursos` | ✅ | SPEC-002 | Héctor |
+| Un curso: matricular por correo | `/cursos/:id` | ✅ | SPEC-002 | Héctor |
 | Importar QTI | — | ❌ | SPEC-003 | Pierreluiggi |
 | Revisión de un caso (evidencia de un estudiante) | — | ❌ | SPEC-009 | Héctor |
 | **Decisión con justificación** | — | ❌ | SPEC-009 | Héctor |
@@ -71,14 +73,12 @@ Hay tres "capas", y cada pantalla pertenece a una:
 Quien inicia sesión llega a **su panel** (`/docente` o `/estudiante`), no a una pantalla suelta. La portada
 es lo primero que ve quien no ha entrado; quien ya tiene sesión pasa de largo a su panel.
 
-## Lo que falta en el panel del estudiante
+## Panel del estudiante
 
-El panel muestra **por rendir** y **entregados**. Falta lo que pidió el equipo y todavía no tiene de dónde salir:
+Muestra **mis clases** (con los exámenes que vienen en cada una), **por rendir** y **entregados** con su nota.
 
-| Falta | Por qué |
-|---|---|
-| **Mis clases** | No hay endpoints de cursos. Las tablas `courses` y `course_enrollments` existen, pero nada las lee ni las escribe: ni el docente crea cursos, ni el estudiante se matricula en uno. |
-| **Notas** | La columna "Nota" existe y dice *Pendiente de calificación*. No hay calificación automática: `answers.is_correct` y `session_participants.score` se quedan vacíos. Mostrar un cero inventado sería peor que decir que falta. |
+- **Mis clases:** estar en una clase **no da acceso a sus exámenes**. Para rendir uno sigue haciendo falta el código que reparte el docente; la clase solo dice cuándo es.
+- **Notas:** se califican solas opción múltiple, verdadero o falso, numéricas y completar. **Los desarrollos no**: esa nota es del docente, y mientras tanto la nota se muestra como parcial ("5 de 10 · faltan desarrollos por calificar"). Que el docente pueda calificarlos a mano es lo que falta.
 
 ## Lo que falta en la API
 
@@ -87,9 +87,7 @@ El panel muestra **por rendir** y **entregados**. Falta lo que pidió el equipo 
 | `POST /sessions/{id}/decisions` | **La decisión del docente con justificación.** Es la promesa central del proyecto —auditor, no juez— y hoy la tabla `decisions` existe sin nadie que la escriba. | SPEC-009 |
 | `GET /sessions/{id}/students/{id}/review` | La evidencia de un estudiante reunida: eventos, alertas, capturas, riesgo. | SPEC-009 |
 | `GET /sessions/{id}/results` | Notas y respuestas, una vez haya calificación. | SPEC-003 |
-| Calificación de respuestas | `answers.is_correct` y `points_awarded` se guardan vacíos: nadie califica todavía. Sin esto el panel del estudiante no puede mostrar notas. | SPEC-003 |
-| Cursos (`courses`, `course_enrollments`) | Crear cursos, matricular estudiantes y agrupar exámenes por curso. Sin esto no hay "Mis clases". | nuevo |
-| Nombre del estudiante en la sala de espera | Hoy se muestran los 8 primeros caracteres de su id. | SPEC-004 |
+| Que el docente califique los **desarrollos** a mano | Las demás preguntas se califican solas al entregar; los desarrollos quedan sin nota y la del estudiante, parcial. | SPEC-003 |
 | `POST /sessions/{id}/questions/import` | Importar QTI. | SPEC-003 |
 
 ## Lo siguiente, por orden

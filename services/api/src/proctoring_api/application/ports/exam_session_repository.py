@@ -34,6 +34,13 @@ class ExamSessionRepository(Protocol):
         """Sesiones de un docente, de la mas proxima a la mas antigua."""
         ...
 
+    def list_by_courses(self, course_ids: Sequence[UUID]) -> Sequence[ExamSession]:
+        """Las sesiones de esos cursos, en una sola consulta.
+
+        Es lo que ve un estudiante de sus clases: que examenes vienen.
+        """
+        ...
+
     def find_many(self, session_ids: Sequence[UUID]) -> Sequence[ExamSession]:
         """Las sesiones con esos ids, en una sola consulta. Los que no existen se omiten.
 
