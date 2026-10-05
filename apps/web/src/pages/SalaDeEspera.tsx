@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api, type JoinedExam, type Participant } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { recordarExamen, recuperarExamen } from '../lib/examen-guardado'
-import { fechaLarga } from '../lib/formato'
+import { cuandoEmpieza, fechaLarga } from '../lib/formato'
 
 /** Nombre legible de cada módulo de supervisión, para que el estudiante sepa
  *  qué se va a observar. Decírselo no es un trámite: es la base del
@@ -256,13 +256,4 @@ export function SalaDeEspera() {
       </p>
     </div>
   )
-}
-
-function cuandoEmpieza(ms: number): string {
-  const minutos = Math.ceil(ms / 60_000)
-  if (minutos < 60) return `en ${minutos} minuto${minutos === 1 ? '' : 's'}`
-  const horas = Math.floor(minutos / 60)
-  if (horas < 24) return `en ${horas} hora${horas === 1 ? '' : 's'}`
-  const dias = Math.floor(horas / 24)
-  return `en ${dias} día${dias === 1 ? '' : 's'}`
 }

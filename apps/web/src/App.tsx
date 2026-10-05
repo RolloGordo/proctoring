@@ -1,69 +1,22 @@
-import { BrowserRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { CapaExamen, CapaPanel, CapaPublica } from './components/Capas'
 import { ProveedorAuth } from './lib/auth'
 import { useAuth } from './lib/auth-context'
+import { inicioSegunRol, type Rol } from './lib/rutas'
 import { authEnabled } from './lib/supabase'
-import { Login } from './pages/Login'
-import { Sesiones } from './pages/Sesiones'
-import { NuevaSesion } from './pages/NuevaSesion'
-import { SesionEnVivo } from './pages/SesionEnVivo'
 import { AccesoExamen } from './pages/AccesoExamen'
-import { SalaDeEspera } from './pages/SalaDeEspera'
-import { Preguntas } from './pages/Preguntas'
+import { Login } from './pages/Login'
+import { NuevaSesion } from './pages/NuevaSesion'
+import { PanelDocente } from './pages/PanelDocente'
+import { PanelEstudiante } from './pages/PanelEstudiante'
 import { Participantes } from './pages/Participantes'
+import { Portada } from './pages/Portada'
+import { Preguntas } from './pages/Preguntas'
 import { RendirExamen } from './pages/RendirExamen'
-
-/** A dónde va cada quien al entrar. Sin autenticación, al panel del docente,
- *  que es la pantalla desde la que se crea todo lo demás. */
-function inicioSegunRol(rol?: 'teacher' | 'student'): string {
-  return rol === 'student' ? '/examen' : '/sesiones'
-}
-
-function Cabecera() {
-  const { rol, email, salir } = useAuth()
-  const esEstudiante = rol === 'student'
-  // Sin autenticación se muestran las dos zonas: es el modo de desarrollo y
-  // conviene poder recorrer todo el flujo sin crear usuarios.
-  const verDocente = !authEnabled || !esEstudiante
-  const verEstudiante = !authEnabled || esEstudiante
-
-  return (
-    <header className="cabecera">
-      <div className="contenedor">
-        <NavLink to={inicioSegunRol(rol)} className="marca">
-          Proc<span>toring</span>
-        </NavLink>
-
-        <nav className="navegacion">
-          {verDocente && (
-            <>
-              <NavLink to="/sesiones" className={({ isActive }) => (isActive ? 'activo' : '')}>
-                Exámenes
-              </NavLink>
-              <NavLink to="/sesiones/nueva" className={({ isActive }) => (isActive ? 'activo' : '')}>
-                Crear
-              </NavLink>
-            </>
-          )}
-          {verEstudiante && (
-            <NavLink to="/examen" className={({ isActive }) => (isActive ? 'activo' : '')}>
-              Entrar a un examen
-            </NavLink>
-          )}
-          {authEnabled && (
-            <button type="button" className="boton boton-texto" onClick={() => void salir()}>
-              Salir
-            </button>
-          )}
-        </nav>
-      </div>
-      {email && (
-        <span className="sr-only" aria-live="polite">
-          Sesión de {email}
-        </span>
-      )}
-    </header>
-  )
-}
+import { SalaDeEspera } from './pages/SalaDeEspera'
+import { SesionEnVivo } from './pages/SesionEnVivo'
+import { Sesiones } from './pages/Sesiones'
 
 /**
  * Deja pasar solo a quien corresponde.
@@ -72,7 +25,7 @@ function Cabecera() {
  * aterrice en una pantalla que no le sirve. Quien protege los datos de verdad
  * es la API, que valida el token y el rol en cada petición.
  */
-function Zona({ rol: rolRequerido, children }: { rol?: 'teacher' | 'student'; children: React.ReactNode }) {
+function Zona({ rol: rolRequerido, children }: { rol: Rol; children: ReactNode }) {
   const { cargando, token, rol } = useAuth()
 
   if (!authEnabled) return <>{children}</>
@@ -80,34 +33,38 @@ function Zona({ rol: rolRequerido, children }: { rol?: 'teacher' | 'student'; ch
   if (!token) return <Navigate to="/login" replace />
   // El rol llega un instante después del token: no se expulsa a nadie mientras
   // tanto, o el docente vería parpadear la pantalla del estudiante.
-  if (rolRequerido && rol && rol !== rolRequerido) {
-    return <Navigate to={inicioSegunRol(rol)} replace />
-  }
+  if (rol && rol !== rolRequerido) return <Navigate to={inicioSegunRol(rol)} replace />
   return <>{children}</>
 }
 
-function Marco({ children }: { children: React.ReactNode }) {
+/** Una pantalla del docente, con su barra lateral. */
+function Docente({ children }: { children: ReactNode }) {
   return (
-    <>
-      <Cabecera />
-      <main className="principal">
-        <div className="contenedor">{children}</div>
-      </main>
-    </>
+    <Zona rol="teacher">
+      <CapaPanel rol="teacher">{children}</CapaPanel>
+    </Zona>
   )
 }
 
-function Inicio() {
-  const { rol } = useAuth()
-  return <Navigate to={inicioSegunRol(rol)} replace />
+/** Una pantalla del estudiante, con su barra lateral. */
+function Estudiante({ children }: { children: ReactNode }) {
+  return (
+    <Zona rol="student">
+      <CapaPanel rol="student">{children}</CapaPanel>
+    </Zona>
+  )
 }
 
 function NoEncontrado() {
   return (
-    <div className="vacio">
-      <h3>Esa página no existe</h3>
-      <p className="subtitulo">Revisa el enlace o vuelve al inicio.</p>
-    </div>
+    <CapaPublica>
+      <div className="contenedor principal">
+        <div className="vacio">
+          <h3>Esa página no existe</h3>
+          <p className="subtitulo">Revisa el enlace o vuelve al inicio.</p>
+        </div>
+      </div>
+    </CapaPublica>
   )
 }
 
@@ -115,52 +72,99 @@ function Aplicacion() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Público */}
+        <Route path="/" element={<Portada />} />
         <Route path="/login" element={<Login />} />
 
         {/* Docente */}
         <Route
-          path="/sesiones/*"
+          path="/docente"
           element={
-            <Zona rol="teacher">
-              <Marco>
-                <Routes>
-                  <Route path="/" element={<Sesiones />} />
-                  <Route path="/nueva" element={<NuevaSesion />} />
-                  <Route path="/:id" element={<SesionEnVivo />} />
-                  <Route path="/:id/preguntas" element={<Preguntas />} />
-                  <Route path="/:id/participantes" element={<Participantes />} />
-                  <Route path="*" element={<NoEncontrado />} />
-                </Routes>
-              </Marco>
-            </Zona>
+            <Docente>
+              <PanelDocente />
+            </Docente>
+          }
+        />
+        <Route
+          path="/sesiones"
+          element={
+            <Docente>
+              <Sesiones />
+            </Docente>
+          }
+        />
+        <Route
+          path="/sesiones/nueva"
+          element={
+            <Docente>
+              <NuevaSesion />
+            </Docente>
+          }
+        />
+        <Route
+          path="/sesiones/:id"
+          element={
+            <Docente>
+              <SesionEnVivo />
+            </Docente>
+          }
+        />
+        <Route
+          path="/sesiones/:id/preguntas"
+          element={
+            <Docente>
+              <Preguntas />
+            </Docente>
+          }
+        />
+        <Route
+          path="/sesiones/:id/participantes"
+          element={
+            <Docente>
+              <Participantes />
+            </Docente>
           }
         />
 
         {/* Estudiante */}
         <Route
-          path="/examen/*"
+          path="/estudiante"
+          element={
+            <Estudiante>
+              <PanelEstudiante />
+            </Estudiante>
+          }
+        />
+        <Route
+          path="/examen"
+          element={
+            <Estudiante>
+              <AccesoExamen />
+            </Estudiante>
+          }
+        />
+        <Route
+          path="/examen/:id/sala"
+          element={
+            <Estudiante>
+              <SalaDeEspera />
+            </Estudiante>
+          }
+        />
+
+        {/* Rindiendo: sin barra lateral ni un solo enlace de salida. */}
+        <Route
+          path="/examen/:id/rendir"
           element={
             <Zona rol="student">
-              <Marco>
-                <Routes>
-                  <Route path="/" element={<AccesoExamen />} />
-                  <Route path="/:id/sala" element={<SalaDeEspera />} />
-                  <Route path="/:id/rendir" element={<RendirExamen />} />
-                  <Route path="*" element={<NoEncontrado />} />
-                </Routes>
-              </Marco>
+              <CapaExamen>
+                <RendirExamen />
+              </CapaExamen>
             </Zona>
           }
         />
 
-        <Route
-          path="*"
-          element={
-            <Zona>
-              <Inicio />
-            </Zona>
-          }
-        />
+        <Route path="*" element={<NoEncontrado />} />
       </Routes>
     </BrowserRouter>
   )

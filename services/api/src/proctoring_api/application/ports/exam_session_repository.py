@@ -34,6 +34,14 @@ class ExamSessionRepository(Protocol):
         """Sesiones de un docente, de la mas proxima a la mas antigua."""
         ...
 
+    def find_many(self, session_ids: Sequence[UUID]) -> Sequence[ExamSession]:
+        """Las sesiones con esos ids, en una sola consulta. Los que no existen se omiten.
+
+        Existe para el panel del estudiante, que muestra varios examenes a la
+        vez: pedirlos de uno en uno seria una consulta por fila.
+        """
+        ...
+
     def find_by_access_code(self, access_code: str) -> ExamSession | None:
         """La sesion con ese codigo de acceso, o `None` si no existe.
 

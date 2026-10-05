@@ -45,6 +45,17 @@ class SupabaseParticipantRepository:
         rows = cast("list[dict[str, Any]]", response.data)
         return _to_entity(rows[0]) if rows else None
 
+    def list_by_student(self, student_id: UUID) -> Sequence[SessionParticipant]:
+        response = (
+            self._client.table(TABLE)
+            .select(COLUMNS)
+            .eq("student_id", str(student_id))
+            .order("consent_at", desc=True)
+            .execute()
+        )
+        rows = cast("list[dict[str, Any]]", response.data)
+        return [_to_entity(row) for row in rows]
+
     def list_by_session(self, session_id: UUID) -> Sequence[SessionParticipant]:
         response = (
             self._client.table(TABLE)

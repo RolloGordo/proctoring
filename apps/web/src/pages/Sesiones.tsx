@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type ExamSessionSummary } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
-import { fechaLarga, nombreEstado, nombrePreset } from '../lib/formato'
+import { ChipEstado } from '../components/ChipEstado'
+import { estadoExamen, fechaLarga, nombrePreset } from '../lib/formato'
 
 export function Sesiones() {
   const { token } = useAuth()
@@ -22,8 +23,8 @@ export function Sesiones() {
         <div>
           <h1>Mis exámenes</h1>
           <p className="subtitulo">
-            Entra a un examen para ver sus alertas en vivo, o ve directo a sus preguntas y a su
-            sala de espera
+            Entra a un examen para ver sus alertas en vivo, o ve directo a sus preguntas y a su sala
+            de espera
           </p>
         </div>
         <Link to="/sesiones/nueva" className="boton">
@@ -77,7 +78,9 @@ export function Sesiones() {
                   <td>
                     <span className="codigo-acceso">{sesion.access_code}</span>
                   </td>
-                  <td className="tenue">{nombreEstado(sesion.status)}</td>
+                  <td>
+                    <ChipEstado estado={estadoExamen(sesion.starts_at, sesion.duration_minutes)} />
+                  </td>
                   <td>
                     <div className="fila">
                       <Link to={`/sesiones/${sesion.id}/preguntas`} className="boton boton-texto">

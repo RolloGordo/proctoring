@@ -156,11 +156,7 @@ export function Preguntas() {
                 </label>
 
                 {LLEVA_OPCIONES.has(tipo) && (
-                  <EditorOpciones
-                    tipo={tipo}
-                    opciones={opciones}
-                    onCambio={setOpciones}
-                  />
+                  <EditorOpciones tipo={tipo} opciones={opciones} onCambio={setOpciones} />
                 )}
 
                 {tipo === 'numeric' && (

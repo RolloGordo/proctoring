@@ -24,6 +24,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from proctoring_api.application.use_cases.list_my_exams import MyExam
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.answer import MAX_TEXT_ANSWER_LENGTH, Answer
 from proctoring_api.domain.event import MAX_EVIDENCE_PATH_LENGTH, EventType, ProctoringEvent
@@ -486,6 +487,54 @@ class AnswerResponse(BaseModel):
             text_answer=answer.text_answer,
             numeric_answer=answer.numeric_answer,
             answered_at=answer.answered_at,
+        )
+
+
+class MyExamResponse(BaseModel):
+    """Un examen del panel del estudiante.
+
+    Lleva lo que el estudiante necesita para decidir que hacer: cuando es, si
+    puede entrar hoy y en que punto esta. No lleva el codigo de acceso: lo tiene
+    quien ya entro y no hace falta repetirlo.
+    """
+
+    session_id: UUID
+    title: str
+    description: str | None
+    starts_at: datetime
+    ends_at: datetime
+    duration_minutes: int
+    entry_tolerance_minutes: int
+    can_enter_now: bool
+    #: Que se va a supervisar: la sala de espera lo muestra antes de que el
+    #: estudiante entre, igual que `JoinExamResponse`.
+    modules: dict[SupervisionModule, dict[str, Any]]
+    verification_status: VerificationStatus
+    can_take_exam: bool
+    consent_at: datetime | None
+    submitted_at: datetime | None
+    #: `None` mientras no se califica. Hoy siempre es `None`: la calificacion
+    #: automatica es una tarea pendiente (SPEC-003), y mostrar un cero inventado
+    #: seria peor que decir que falta.
+    score: float | None
+
+    @classmethod
+    def from_entity(cls, exam: MyExam) -> MyExamResponse:
+        return cls(
+            session_id=exam.session.id,
+            title=exam.session.title,
+            description=exam.session.description,
+            starts_at=exam.session.starts_at,
+            ends_at=exam.session.ends_at,
+            duration_minutes=exam.session.duration_minutes,
+            entry_tolerance_minutes=exam.session.entry_tolerance_minutes,
+            can_enter_now=exam.can_enter_now,
+            modules=exam.session.modules,
+            verification_status=exam.participant.verification_status,
+            can_take_exam=exam.participant.can_take_exam,
+            consent_at=exam.participant.consent_at,
+            submitted_at=exam.participant.submitted_at,
+            score=exam.participant.score,
         )
 
 

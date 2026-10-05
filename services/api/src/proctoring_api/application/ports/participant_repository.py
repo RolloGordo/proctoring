@@ -25,6 +25,14 @@ class ParticipantRepository(Protocol):
         """La matrícula de ese estudiante en esa sesión, o `None` si no existe."""
         ...
 
+    def list_by_student(self, student_id: UUID) -> Sequence[SessionParticipant]:
+        """Todas las matriculas de un estudiante, en cualquier sesion.
+
+        Es el panel del estudiante: a que examenes entro y en que estado esta
+        cada uno.
+        """
+        ...
+
     def list_by_session(self, session_id: UUID) -> Sequence[SessionParticipant]:
         """Participantes de una sesión. Es la sala de espera del docente."""
         ...

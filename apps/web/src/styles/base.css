@@ -124,7 +124,9 @@ a {
   text-decoration: none;
   padding: var(--e2) 0;
   border-bottom: 2px solid transparent;
-  transition: color var(--transicion), border-color var(--transicion);
+  transition:
+    color var(--transicion),
+    border-color var(--transicion);
 }
 
 .navegacion a:hover {
@@ -182,7 +184,9 @@ a {
   color: var(--tinta);
   cursor: pointer;
   text-decoration: none;
-  transition: background var(--transicion), border-color var(--transicion);
+  transition:
+    background var(--transicion),
+    border-color var(--transicion);
 }
 
 .boton:hover:not(:disabled) {
@@ -244,7 +248,9 @@ a {
   padding: var(--e3);
   border: 1px solid var(--linea-fuerte);
   border-radius: var(--radio);
-  transition: border-color var(--transicion), box-shadow var(--transicion);
+  transition:
+    border-color var(--transicion),
+    box-shadow var(--transicion);
 }
 
 .campo input:focus,
@@ -762,7 +768,9 @@ a {
   border: 1px solid var(--linea-fuerte);
   border-radius: var(--radio);
   cursor: pointer;
-  transition: border-color var(--transicion), background var(--transicion);
+  transition:
+    border-color var(--transicion),
+    background var(--transicion);
 }
 
 .opciones-examen label:hover {

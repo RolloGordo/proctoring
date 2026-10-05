@@ -128,7 +128,10 @@ export function NuevaSesion() {
 
             <label className="campo">
               <span>Nivel de supervisión</span>
-              <select value={preset} onChange={(e) => setPreset(e.target.value as SupervisionPreset)}>
+              <select
+                value={preset}
+                onChange={(e) => setPreset(e.target.value as SupervisionPreset)}
+              >
                 {PRESETS.map((p) => (
                   <option key={p.valor} value={p.valor}>
                     {p.nombre}
