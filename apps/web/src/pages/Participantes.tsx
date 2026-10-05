@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type Participant, type VerificationStatus } from '../lib/api'
+import { api, type Decision, type Participant, type VerificationStatus } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
-import { soloHora } from '../lib/formato'
+import { nombreDecision, soloHora } from '../lib/formato'
 
 /** Cómo se lee cada estado y de qué color va. */
 const ESTADOS: Record<VerificationStatus, { nombre: string; tono: 'low' | 'medium' | 'high' }> = {
@@ -33,6 +33,7 @@ export function Participantes() {
   const [error, setError] = useState<string>()
   const [enVivo, setEnVivo] = useState(false)
   const [revisando, setRevisando] = useState<string>()
+  const [decisiones, setDecisiones] = useState<Decision[]>([])
 
   const cargar = useCallback(() => {
     api
@@ -42,6 +43,14 @@ export function Participantes() {
   }, [id, token])
 
   useEffect(cargar, [cargar])
+
+  // Las decisiones son un complemento de la sala: si fallan, la sala sigue sirviendo.
+  useEffect(() => {
+    api
+      .listDecisions(id, token)
+      .then(setDecisiones)
+      .catch(() => undefined)
+  }, [id, token])
 
   useEffect(() => {
     if (!supabase || !id) return
@@ -130,6 +139,7 @@ export function Participantes() {
                 <th>Entró</th>
                 <th>Entregó</th>
                 <th>Nota</th>
+                <th>Caso</th>
                 <th aria-label="Acciones" />
               </tr>
             </thead>
@@ -164,6 +174,19 @@ export function Participantes() {
                     {participante.submitted_at && participante.score !== null
                       ? participante.score
                       : '—'}
+                  </td>
+                  <td>
+                    <Link
+                      to={`/sesiones/${id}/estudiantes/${participante.student_id}`}
+                      className="boton boton-texto"
+                    >
+                      Revisar
+                    </Link>
+                    {vigente(decisiones, participante.student_id) && (
+                      <span className="chip chip-programado">
+                        {nombreDecision(vigente(decisiones, participante.student_id)!.decision)}
+                      </span>
+                    )}
                   </td>
                   <td>
                     {participante.submitted_at ? null : participante.can_take_exam ? (
@@ -202,4 +225,9 @@ export function Participantes() {
       </p>
     </>
   )
+}
+
+/** La decisión vigente de un estudiante: la más reciente. */
+function vigente(decisiones: Decision[], studentId: string): Decision | undefined {
+  return decisiones.find((d) => d.student_id === studentId)
 }

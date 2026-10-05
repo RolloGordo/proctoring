@@ -1,6 +1,6 @@
 /** Formato de fechas, duraciones y nombres para la interfaz, que va en español. */
 
-import type { EventType, SessionStatus, SupervisionPreset } from './api'
+import type { DecisionType, EventType, RiskLevel, SessionStatus, SupervisionPreset } from './api'
 
 const LARGA = new Intl.DateTimeFormat('es-PE', {
   day: '2-digit',
@@ -116,4 +116,49 @@ const EVENTOS: Record<EventType, string> = {
 
 export function nombreEvento(tipo: EventType): string {
   return EVENTOS[tipo] ?? tipo
+}
+
+/**
+ * Nombre de cada decisión, con lo que significa.
+ *
+ * Las tres son igual de legítimas. «Descartar» no es un premio ni «Confirmar» un
+ * castigo: el sistema no debe empujar al docente hacia ninguna.
+ */
+export const DECISIONES: Record<DecisionType, { nombre: string; detalle: string }> = {
+  confirmed: {
+    nombre: 'Confirmar',
+    detalle: 'Revisé la evidencia y confirmo que hubo una infracción.'
+  },
+  dismissed: {
+    nombre: 'Descartar',
+    detalle: 'Revisé la evidencia y las señales tienen otra explicación.'
+  },
+  retake: {
+    nombre: 'Repetir el examen',
+    detalle: 'No confirmo ni descarto: le doy otra oportunidad.'
+  }
+}
+
+export function nombreDecision(decision: DecisionType): string {
+  return DECISIONES[decision].nombre
+}
+
+const NIVELES: Record<RiskLevel, string> = { low: 'Bajo', medium: 'Medio', high: 'Alto' }
+
+export function nombreNivel(nivel: RiskLevel): string {
+  return NIVELES[nivel]
+}
+
+/**
+ * Lo más útil de los metadatos de una señal, en una frase.
+ *
+ * Los metadatos son un objeto libre; aquí solo se leen las claves que el sistema
+ * documenta, y lo demás se ignora en vez de mostrarse a medias.
+ */
+export function detalleEvento(metadatos: Record<string, unknown>): string {
+  if (typeof metadatos.process_name === 'string') return metadatos.process_name
+  if (typeof metadatos.display_count === 'number') {
+    return `${metadatos.display_count} monitores conectados`
+  }
+  return ''
 }

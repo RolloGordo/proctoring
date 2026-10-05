@@ -15,8 +15,13 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from proctoring_api.adapters.outbound.supabase import answer_repository, participant_repository
+from proctoring_api.adapters.outbound.supabase import (
+    answer_repository,
+    decision_repository,
+    participant_repository,
+)
 from proctoring_api.domain.answer import Answer
+from proctoring_api.domain.decision import Decision, DecisionType
 from proctoring_api.domain.participant import SessionParticipant
 
 NOW = datetime(2026, 10, 5, 15, 0, tzinfo=UTC)
@@ -57,4 +62,22 @@ def test_los_participantes_leen_todo_lo_que_escriben() -> None:
     assert escritas <= columnas(participant_repository.COLUMNS), (
         "Columnas que se escriben pero no se leen: "
         f"{escritas - columnas(participant_repository.COLUMNS)}"
+    )
+
+
+def test_las_decisiones_leen_todo_lo_que_escriben() -> None:
+    decision = Decision.create(
+        session_id=uuid4(),
+        student_id=uuid4(),
+        teacher_id=uuid4(),
+        decision=DecisionType.RETAKE,
+        justification="Hubo un corte de energia a mitad del examen.",
+        decided_at=NOW,
+    )
+
+    escritas = set(decision_repository._to_row(decision))
+
+    assert escritas <= columnas(decision_repository.COLUMNS), (
+        "Columnas que se escriben pero no se leen: "
+        f"{escritas - columnas(decision_repository.COLUMNS)}"
     )

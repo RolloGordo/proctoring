@@ -14,6 +14,7 @@ import { PanelDocente } from './pages/PanelDocente'
 import { PanelEstudiante } from './pages/PanelEstudiante'
 import { Participantes } from './pages/Participantes'
 import { Portada } from './pages/Portada'
+import { RevisionCaso } from './pages/RevisionCaso'
 import { Preguntas } from './pages/Preguntas'
 import { RendirExamen } from './pages/RendirExamen'
 import { SalaDeEspera } from './pages/SalaDeEspera'
@@ -140,6 +141,15 @@ function Aplicacion() {
           element={
             <Docente>
               <Participantes />
+            </Docente>
+          }
+        />
+
+        <Route
+          path="/sesiones/:id/estudiantes/:estudianteId"
+          element={
+            <Docente>
+              <RevisionCaso />
             </Docente>
           }
         />

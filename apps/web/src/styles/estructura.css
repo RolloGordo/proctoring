@@ -724,3 +724,122 @@
   display: flex;
   flex-direction: column;
 }
+
+/* ===========================================================================
+   Revisión de caso
+   =========================================================================== */
+.riesgo-cabecera {
+  display: flex;
+  align-items: center;
+  gap: var(--e5);
+}
+
+.riesgo-cabecera .ayuda {
+  margin: 0;
+  max-width: 34rem;
+}
+
+.riesgo-cifra {
+  margin: 0;
+  min-width: 4.5rem;
+  font-family: var(--titulo);
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+/* El color acompaña al texto "Nivel ...", no lo sustituye. */
+.riesgo-low {
+  color: var(--exito);
+}
+
+.riesgo-medium {
+  color: var(--media);
+}
+
+.riesgo-high {
+  color: var(--alta);
+}
+
+.riesgo-nivel {
+  margin: 0 0 var(--e1);
+  font-family: var(--titulo);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.decision-vigente {
+  margin-bottom: var(--e4);
+  border-left: 3px solid var(--amarillo);
+}
+
+.justificacion {
+  margin: var(--e2) 0;
+  white-space: pre-wrap;
+}
+
+.opciones-decision {
+  margin: 0 0 var(--e5);
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+}
+
+.opciones-decision legend {
+  margin-bottom: var(--e2);
+  padding: 0;
+}
+
+.opciones-decision label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e3);
+  padding: var(--e3) var(--e4);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--radio);
+  cursor: pointer;
+  transition:
+    border-color var(--transicion),
+    background var(--transicion);
+}
+
+.opciones-decision label:hover {
+  border-color: var(--amarillo);
+}
+
+.opciones-decision label.elegida {
+  border-color: var(--amarillo-oscuro);
+  background: var(--amarillo-tenue);
+}
+
+.opciones-decision input {
+  margin-top: 0.25rem;
+  accent-color: var(--amarillo-oscuro);
+}
+
+.opciones-decision .ayuda {
+  display: block;
+  margin: 0;
+}
+
+.ayuda-falta {
+  color: var(--media);
+}
+
+.historial-decisiones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+}
+
+.historial-decisiones .tarjeta + .tarjeta {
+  margin-top: 0;
+}
