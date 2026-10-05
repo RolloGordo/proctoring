@@ -58,6 +58,10 @@ def _to_row(answer: Answer) -> dict[str, Any]:
         # numeric llega como texto para no perder decimales por el camino.
         "numeric_answer": str(answer.numeric_answer) if answer.numeric_answer is not None else None,
         "answered_at": answer.answered_at.isoformat(),
+        "is_correct": answer.is_correct,
+        "points_awarded": (
+            str(answer.points_awarded) if answer.points_awarded is not None else None
+        ),
     }
 
 
@@ -72,4 +76,8 @@ def _to_entity(row: dict[str, Any]) -> Answer:
         selected_option_id=UUID(opcion) if opcion else None,
         text_answer=row.get("text_answer"),
         numeric_answer=Decimal(str(numero)) if numero is not None else None,
+        is_correct=row.get("is_correct"),
+        points_awarded=(
+            Decimal(str(row["points_awarded"])) if row.get("points_awarded") is not None else None
+        ),
     )

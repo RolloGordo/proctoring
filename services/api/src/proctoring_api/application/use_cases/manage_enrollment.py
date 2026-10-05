@@ -6,12 +6,15 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
+from proctoring_api.application.ports.answer_repository import AnswerRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.participant_repository import ParticipantRepository
+from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.domain.errors import AuthorizationError, DomainError
 from proctoring_api.domain.exam_session import ExamSession
+from proctoring_api.domain.grading import score_exam
 from proctoring_api.domain.participant import InvalidEnrollmentError, SessionParticipant
 from proctoring_api.domain.user import AuthenticatedUser
 
@@ -172,17 +175,21 @@ class ReviewParticipantIdentity:
 
 
 class SubmitExam:
-    """El estudiante entrega su examen."""
+    """El estudiante entrega su examen, y se califica lo que se puede calificar."""
 
     def __init__(
         self,
         participants: ParticipantRepository,
         clock: Clock,
         dev_student_id: UUID = DEFAULT_DEV_STUDENT_ID,
+        questions: QuestionRepository | None = None,
+        answers: AnswerRepository | None = None,
     ) -> None:
         self._participants = participants
         self._clock = clock
         self._dev_student_id = dev_student_id
+        self._questions = questions
+        self._answers = answers
 
     def execute(
         self,
@@ -191,7 +198,7 @@ class SubmitExam:
         actor: AuthenticatedUser | None = None,
         student_id: UUID | None = None,
     ) -> SessionParticipant:
-        """Marca la entrega.
+        """Marca la entrega y la califica.
 
         Raises:
             AuthorizationError: si no está matriculado.
@@ -208,8 +215,35 @@ class SubmitExam:
             raise AuthorizationError("No estas matriculado en este examen")
 
         entregado = participante.submitted(self._clock.now())
+        entregado = self._grade(session_id, entregado)
         self._participants.save(entregado)
         return entregado
+
+    def _grade(self, session_id: UUID, participante: SessionParticipant) -> SessionParticipant:
+        """Califica lo que se corrige solo y guarda la correccion de cada respuesta.
+
+        Se califica **antes** de guardar la entrega: si algo falla aqui, el
+        estudiante no queda con el examen entregado y sin nota, sin poder
+        reintentar porque reenviar se rechaza.
+        """
+        if self._questions is None or self._answers is None:
+            return participante
+
+        preguntas = self._questions.list_by_session(session_id)
+        respuestas = self._answers.list_by_participant(participante.id)
+        resultado = score_exam(preguntas, respuestas)
+
+        self._answers.save_many(
+            [
+                respuesta.graded(
+                    resultado.by_question[respuesta.question_id].is_correct,
+                    resultado.by_question[respuesta.question_id].points,
+                )
+                for respuesta in respuestas
+                if respuesta.question_id in resultado.by_question
+            ]
+        )
+        return participante.with_score(float(resultado.earned))
 
 
 def ensure_can_take_exam(

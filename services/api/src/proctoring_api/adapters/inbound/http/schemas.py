@@ -426,6 +426,7 @@ class ParticipantResponse(BaseModel):
     started_at: datetime | None
     submitted_at: datetime | None
     can_take_exam: bool
+    score: float | None
 
     @classmethod
     def from_entity(cls, participant: SessionParticipant) -> ParticipantResponse:
@@ -440,6 +441,7 @@ class ParticipantResponse(BaseModel):
             started_at=participant.started_at,
             submitted_at=participant.submitted_at,
             can_take_exam=participant.can_take_exam,
+            score=participant.score,
         )
 
 
@@ -513,10 +515,14 @@ class MyExamResponse(BaseModel):
     can_take_exam: bool
     consent_at: datetime | None
     submitted_at: datetime | None
-    #: `None` mientras no se califica. Hoy siempre es `None`: la calificacion
-    #: automatica es una tarea pendiente (SPEC-003), y mostrar un cero inventado
-    #: seria peor que decir que falta.
+    #: Puntos ganados en lo que se corrige solo. `None` si aun no hay nota:
+    #: nunca un cero inventado, porque sin calificacion es mejor decir que falta.
     score: float | None
+    #: Puntos de todo el examen, para mostrar "7 de 10".
+    max_score: float | None
+    #: Si hay desarrollos que el docente todavia no califica. Mientras sea
+    #: verdadero, `score` es parcial.
+    pending_manual_review: bool
 
     @classmethod
     def from_entity(cls, exam: MyExam) -> MyExamResponse:
@@ -535,6 +541,8 @@ class MyExamResponse(BaseModel):
             consent_at=exam.participant.consent_at,
             submitted_at=exam.participant.submitted_at,
             score=exam.participant.score,
+            max_score=exam.max_score,
+            pending_manual_review=exam.pending_manual_review,
         )
 
 

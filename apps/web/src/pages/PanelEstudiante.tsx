@@ -114,11 +114,7 @@ export function PanelEstudiante() {
                           {examen.submitted_at ? fechaLarga(examen.submitted_at) : '—'}
                         </td>
                         <td>
-                          {examen.score !== null ? (
-                            <strong>{examen.score}</strong>
-                          ) : (
-                            <span className="chip chip-programado">Pendiente de calificación</span>
-                          )}
+                          <Nota examen={examen} />
                         </td>
                       </tr>
                     ))}
@@ -162,5 +158,30 @@ function FilaPorRendir({ examen, ahora }: { examen: MyExam; ahora: number }) {
         {examen.can_enter_now ? 'Continuar' : 'Ver detalles'}
       </Link>
     </li>
+  )
+}
+
+/**
+ * La nota de un examen entregado.
+ *
+ * Nunca un cero inventado: sin calificación se dice que falta. Y si hay
+ * desarrollos que el docente todavía no corrige, la nota es **parcial** y se
+ * avisa, porque «5 de 10» sin esa aclaración parece definitiva.
+ */
+function Nota({ examen }: { examen: MyExam }) {
+  if (examen.score === null) {
+    return <span className="chip chip-programado">Pendiente de calificación</span>
+  }
+
+  return (
+    <>
+      <strong>
+        {examen.score}
+        {examen.max_score !== null && ` de ${examen.max_score}`}
+      </strong>
+      {examen.pending_manual_review && (
+        <span className="chip chip-programado nota-aviso">Faltan desarrollos por calificar</span>
+      )}
+    </>
   )
 }

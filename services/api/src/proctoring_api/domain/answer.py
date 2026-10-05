@@ -13,7 +13,7 @@ filtrar lo que no debe ni aunque alguien se equivoque al usarlo.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -46,6 +46,14 @@ class Answer:
     selected_option_id: UUID | None = None
     text_answer: str | None = None
     numeric_answer: Decimal | None = None
+    #: Los pone la calificacion al entregar. `None` mientras no se califica, y
+    #: tambien en los desarrollos, que corrige el docente.
+    is_correct: bool | None = None
+    points_awarded: Decimal | None = None
+
+    def graded(self, is_correct: bool | None, points: Decimal | None) -> Answer:
+        """La misma respuesta con su correccion."""
+        return replace(self, is_correct=is_correct, points_awarded=points)
 
     @classmethod
     def create(

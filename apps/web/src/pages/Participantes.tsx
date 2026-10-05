@@ -129,6 +129,7 @@ export function Participantes() {
                 <th>Identidad</th>
                 <th>Entró</th>
                 <th>Entregó</th>
+                <th>Nota</th>
                 <th aria-label="Acciones" />
               </tr>
             </thead>
@@ -148,6 +149,11 @@ export function Participantes() {
                   </td>
                   <td className="hora">
                     {participante.submitted_at ? soloHora(participante.submitted_at) : '—'}
+                  </td>
+                  <td>
+                    {participante.submitted_at && participante.score !== null
+                      ? participante.score
+                      : '—'}
                   </td>
                   <td>
                     {participante.submitted_at ? null : participante.can_take_exam ? (

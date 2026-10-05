@@ -12,7 +12,7 @@ acepte antes de empezar es la diferencia entre supervisar y espiar.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -92,6 +92,10 @@ class SessionParticipant:
             verification_status=VerificationStatus.PENDING,
             consent_at=consented_at,
         )
+
+    def with_score(self, score: float) -> SessionParticipant:
+        """El participante con su nota. La pone la calificacion al entregar."""
+        return replace(self, score=score)
 
     @property
     def has_consented(self) -> bool:

@@ -138,6 +138,8 @@ export interface Participant {
   started_at: string | null
   submitted_at: string | null
   can_take_exam: boolean
+  /** Puntos ganados en lo que se corrige solo. `null` si aún no hay nota. */
+  score: number | null
 }
 
 /** Una respuesta guardada. No lleva si acertó: eso no lo sabe el estudiante. */
@@ -172,8 +174,12 @@ export interface MyExam {
   can_take_exam: boolean
   consent_at: string | null
   submitted_at: string | null
-  /** `null` mientras no se califica: todavía no hay calificación automática. */
+  /** Puntos ganados en lo que se corrige solo. `null` si aún no hay nota. */
   score: number | null
+  /** Puntos de todo el examen, para mostrar «7 de 10». */
+  max_score: number | null
+  /** Hay desarrollos que el docente todavía no califica: la nota es parcial. */
+  pending_manual_review: boolean
 }
 
 export interface NewExamSession {

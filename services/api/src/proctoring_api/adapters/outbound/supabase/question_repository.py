@@ -7,14 +7,20 @@ ese orden porque la segunda tiene clave foranea a la primera.
 from __future__ import annotations
 
 import threading
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any, cast
 from uuid import UUID
 
 from supabase import Client
 
-from proctoring_api.domain.question import Question, QuestionOption, QuestionType
+from proctoring_api.domain.grading import MANUAL_TYPES
+from proctoring_api.domain.question import (
+    Question,
+    QuestionOption,
+    QuestionSummary,
+    QuestionType,
+)
 
 QUESTIONS_TABLE = "questions"
 OPTIONS_TABLE = "question_options"
@@ -99,6 +105,30 @@ class SupabaseQuestionRepository:
             .execute()
         )
         return len(cast("list[dict[str, Any]]", response.data))
+
+    def summarize_sessions(self, session_ids: Sequence[UUID]) -> Mapping[UUID, QuestionSummary]:
+        if not session_ids:
+            return {}
+
+        # Solo dos columnas de todas las sesiones, en una consulta: el panel no
+        # necesita los enunciados ni las respuestas correctas para mostrar "7 de 10".
+        response = (
+            self._client.table(QUESTIONS_TABLE)
+            .select("session_id, points, question_type")
+            .in_("session_id", [str(i) for i in session_ids])
+            .execute()
+        )
+        summary: dict[UUID, QuestionSummary] = {}
+        for row in cast("list[dict[str, Any]]", response.data):
+            session_id = UUID(row["session_id"])
+            previous = summary.get(session_id)
+            summary[session_id] = QuestionSummary(
+                total_points=(previous.total_points if previous else Decimal(0))
+                + Decimal(str(row["points"])),
+                has_manual_questions=(previous.has_manual_questions if previous else False)
+                or QuestionType(row["question_type"]) in MANUAL_TYPES,
+            )
+        return summary
 
     def _options_of(self, session_id: UUID) -> dict[UUID, tuple[QuestionOption, ...]]:
         """Todas las opciones de la sesion en una sola consulta.

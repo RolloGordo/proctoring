@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Protocol
 from uuid import UUID
 
-from proctoring_api.domain.question import Question
+from proctoring_api.domain.question import Question, QuestionSummary
 
 
 class QuestionRepository(Protocol):
@@ -31,4 +31,13 @@ class QuestionRepository(Protocol):
 
     def count_by_session(self, session_id: UUID) -> int:
         """Cuantas preguntas tiene ya la sesion."""
+        ...
+
+    def summarize_sessions(self, session_ids: Sequence[UUID]) -> Mapping[UUID, QuestionSummary]:
+        """Puntos totales y si hay preguntas manuales, de varias sesiones a la vez.
+
+        Existe para el panel del estudiante, que muestra "7 de 10" en cada examen
+        entregado: traer las preguntas enteras de cada uno seria una consulta por
+        fila y traeria las respuestas correctas sin necesidad.
+        """
         ...
