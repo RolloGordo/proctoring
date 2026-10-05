@@ -34,20 +34,37 @@ docker compose up -d api          # API en localhost:8000
 npm run dev --prefix apps/web     # web en localhost:5173
 ```
 
-Y después la app, con la sesión y el estudiante del examen:
+Y después la app:
 
 ```bash
-PROCTORING_SESSION_ID=<uuid> PROCTORING_STUDENT_ID=<uuid> npm run dev --prefix apps/desktop
+npm run dev --prefix apps/desktop
 ```
 
-| Variable                                | Para qué                                                                           | Por defecto                           |
-| --------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------- |
-| `PROCTORING_SESSION_ID`                 | Qué examen se carga. **Sin ella se abre el panel local de eventos**, no el examen. | UUID nulo                             |
-| `PROCTORING_STUDENT_ID`                 | Quién lo rinde. Sin ella los eventos no se envían a la API.                        | UUID nulo                             |
-| `PROCTORING_WEB_URL`                    | Dónde vive la web del examen. En producción, la URL del despliegue.                | `http://localhost:5173`               |
-| `PROCTORING_API_URL`                    | A dónde van los eventos.                                                           | `http://localhost:8000/api/v1/events` |
-| `PROCTORING_KIOSK`                      | `1` fuerza el modo kiosco en desarrollo.                                           | apagado en dev                        |
-| `PROCTORING_DISABLE_CONTENT_PROTECTION` | `1` deja que la ventana salga en capturas, para grabar evidencia.                  | apagado                               |
+**No hay que configurar quién rinde ni en qué examen.** El estudiante inicia sesión en la web que
+carga la ventana, escribe su código de acceso y el examen sale de ahí:
+
+- **Quién:** al iniciar sesión, la web entrega el token al proceso principal (`window.api.setAuthSession`,
+  que el preload ya exponía). De él sale el `student_id`. No se verifica la firma aquí: la API sí lo
+  hace y rechaza con 403 cualquier evento cuyo `student_id` no coincida con el del token.
+- **En qué examen:** de la URL. La supervisión empieza al llegar a `/examen/<id>/rendir`, **no antes**:
+  el consentimiento se da en `/sala` y no se manda nada hasta que se acepta.
+- **Al empezar**, la app vuelve a revisar monitores y procesos como si fuera el inicio del examen. Sin
+  esto, un AnyDesk ya abierto se habría reportado antes de que existiera el examen, se habría
+  descartado, y no volvería a avisar.
+
+| Variable                                | Para qué                                                                         | Por defecto                           |
+| --------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------- |
+| `PROCTORING_PANEL`                      | `1` abre el panel local de eventos en vez del examen (diagnóstico).              | apagado                               |
+| `PROCTORING_SESSION_ID`                 | Abre directo la sala de ese examen. La supervisión sigue empezando en `/rendir`. | pantalla del código                   |
+| `PROCTORING_STUDENT_ID`                 | Respaldo para el panel local y para desarrollar **sin** login.                   | UUID nulo                             |
+| `PROCTORING_WEB_URL`                    | Dónde vive la web del examen. En producción, la URL del despliegue.              | `http://localhost:5173`               |
+| `PROCTORING_API_URL`                    | A dónde van los eventos.                                                         | `http://localhost:8000/api/v1/events` |
+| `PROCTORING_KIOSK`                      | `1` fuerza el modo kiosco en desarrollo.                                         | apagado en dev                        |
+| `PROCTORING_DISABLE_CONTENT_PROTECTION` | `1` deja que la ventana salga en capturas, para grabar evidencia.                | apagado                               |
+
+> No definas `SUPABASE_URL` ni `SUPABASE_PUBLISHABLE_KEY` en el entorno de la app. El proceso principal
+> sabe renovar el token por su cuenta tras un 401, pero la web ya le entrega cada renovación. Si los dos
+> rotaran el mismo token de refresco, Supabase podría invalidar la sesión.
 
 El **panel local de eventos** (`src/renderer/`) no es el examen: es la herramienta de diagnóstico
 del proceso principal. Sirve para ver qué está detectando sin montar un examen entero.

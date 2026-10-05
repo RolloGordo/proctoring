@@ -1,8 +1,27 @@
 /** Sesión del docente: token, perfil y acceso. */
 
 import { useEffect, useState, type ReactNode } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import { ContextoAuth } from './auth-context'
 import { authEnabled, supabase } from './supabase'
+
+/**
+ * Dentro de la app de escritorio, le pasa la sesion al proceso principal.
+ *
+ * Es lo que conecta las dos mitades: el proceso principal es quien detecta
+ * cambios de foco, monitores y procesos, y necesita el token para mandar esos
+ * eventos a la API y saber a nombre de quien. En un navegador normal
+ * `window.api` no existe y esto no hace nada.
+ *
+ * Se llama en **cada** cambio de sesion, renovaciones incluidas: Supabase rota
+ * el token de refresco, y si el proceso principal se quedara con uno viejo, sus
+ * eventos empezarian a fallar con 401 a mitad del examen.
+ */
+function entregarAlEscritorio(sesion: Session | null): void {
+  void window.api?.setAuthSession?.(
+    sesion ? { accessToken: sesion.access_token, refreshToken: sesion.refresh_token } : null
+  )
+}
 
 export function ProveedorAuth({ children }: { children: ReactNode }) {
   const [cargando, setCargando] = useState(authEnabled)
@@ -26,6 +45,7 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
       setToken(data.session?.access_token)
       setEmail(data.session?.user.email ?? undefined)
       if (data.session) void leerPerfil(data.session.user.id)
+      entregarAlEscritorio(data.session)
       setCargando(false)
     })
 
@@ -35,6 +55,7 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
       setEmail(sesion?.user.email ?? undefined)
       if (sesion) void leerPerfil(sesion.user.id)
       else setRol(undefined)
+      entregarAlEscritorio(sesion)
     })
 
     return () => sub.subscription.unsubscribe()
