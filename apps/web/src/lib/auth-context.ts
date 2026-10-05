@@ -11,6 +11,14 @@ export interface AuthState {
   email?: string
   /** El rol vive en `public.profiles`, no en el token. */
   rol?: 'teacher' | 'student'
+  /**
+   * `true` cuando ya se consultó el perfil, **haya o no uno**.
+   *
+   * Sin esto no se distingue "el rol está por llegar" de "esta cuenta no tiene
+   * perfil": en el segundo caso esperar para siempre dejaría a la persona
+   * mirando una pantalla de carga sin saber qué pasó.
+   */
+  perfilListo: boolean
   entrar: (email: string, password: string) => Promise<void>
   salir: () => Promise<void>
 }

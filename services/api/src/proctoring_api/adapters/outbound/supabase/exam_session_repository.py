@@ -114,6 +114,33 @@ class SupabaseExamSessionRepository:
         # por sesion. El detalle (`find_by_id`) si los incluye.
         return [_to_entity(row, {}) for row in rows]
 
+    def find_many(self, session_ids: Sequence[UUID]) -> Sequence[ExamSession]:
+        if not session_ids:
+            return []
+
+        ids = [str(i) for i in session_ids]
+        response = self._client.table(SESSIONS_TABLE).select(COLUMNS).in_("id", ids).execute()
+        rows = cast("list[dict[str, Any]]", response.data)
+
+        # Los modulos de TODAS las sesiones en una sola consulta: la sala de
+        # espera del estudiante dice que se va a supervisar, y pedirlos sesion
+        # por sesion seria una consulta por fila del panel.
+        modules_response = (
+            self._client.table(MODULES_TABLE)
+            .select("session_id, module, enabled, settings")
+            .in_("session_id", ids)
+            .execute()
+        )
+        by_session: dict[str, dict[SupervisionModule, dict[str, Any]]] = {}
+        for module_row in cast("list[dict[str, Any]]", modules_response.data):
+            if not module_row.get("enabled", True):
+                continue
+            by_session.setdefault(module_row["session_id"], {})[
+                SupervisionModule(module_row["module"])
+            ] = module_row.get("settings") or {}
+
+        return [_to_entity(row, by_session.get(row["id"], {})) for row in rows]
+
     def find_by_access_code(self, access_code: str) -> ExamSession | None:
         response = (
             self._client.table(SESSIONS_TABLE)

@@ -38,6 +38,10 @@ class InMemoryExamSessionRepository:
         # es el examen que viene.
         return sorted(mine, key=lambda session: session.starts_at, reverse=True)
 
+    def find_many(self, session_ids: Sequence[UUID]) -> Sequence[ExamSession]:
+        with self._lock:
+            return [self._sessions[i] for i in session_ids if i in self._sessions]
+
     def find_by_access_code(self, access_code: str) -> ExamSession | None:
         with self._lock:
             for sesion in self._sessions.values():

@@ -62,8 +62,12 @@ describe('autenticacion', () => {
     await api.listSessions('token-de-prueba')
     await api.listSessions()
 
-    const conToken = new Headers((espia.mock.calls[0] as unknown as [string, RequestInit])[1].headers)
-    const sinToken = new Headers((espia.mock.calls[1] as unknown as [string, RequestInit])[1].headers)
+    const conToken = new Headers(
+      (espia.mock.calls[0] as unknown as [string, RequestInit])[1].headers
+    )
+    const sinToken = new Headers(
+      (espia.mock.calls[1] as unknown as [string, RequestInit])[1].headers
+    )
 
     expect(conToken.get('Authorization')).toBe('Bearer token-de-prueba')
     expect(sinToken.get('Authorization')).toBeNull()

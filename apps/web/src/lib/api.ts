@@ -82,19 +82,10 @@ export interface JoinedExam {
   modules: Record<string, Record<string, unknown>>
 }
 
-export type QuestionType =
-  | 'multiple_choice'
-  | 'true_false'
-  | 'numeric'
-  | 'fill_blank'
-  | 'essay'
+export type QuestionType = 'multiple_choice' | 'true_false' | 'numeric' | 'fill_blank' | 'essay'
 
 export type VerificationStatus =
-  | 'pending'
-  | 'verified'
-  | 'failed'
-  | 'manually_approved'
-  | 'rejected'
+  'pending' | 'verified' | 'failed' | 'manually_approved' | 'rejected'
 
 /** Opcion como la ve el estudiante: sin `is_correct`. */
 export interface ExamOption {
@@ -164,6 +155,25 @@ export interface NewAnswer {
   selected_option_id?: string | null
   text_answer?: string | null
   numeric_answer?: string | null
+}
+
+/** Un examen del panel del estudiante: a cual entró y en qué punto está. */
+export interface MyExam {
+  session_id: string
+  title: string
+  description: string | null
+  starts_at: string
+  ends_at: string
+  duration_minutes: number
+  entry_tolerance_minutes: number
+  can_enter_now: boolean
+  modules: Record<string, Record<string, unknown>>
+  verification_status: VerificationStatus
+  can_take_exam: boolean
+  consent_at: string | null
+  submitted_at: string | null
+  /** `null` mientras no se califica: todavía no hay calificación automática. */
+  score: number | null
 }
 
 export interface NewExamSession {
@@ -245,10 +255,16 @@ export const api = {
       token
     ),
 
+  myExams: (token?: string): Promise<MyExam[]> => request('/api/v1/me/exams', undefined, token),
+
   listQuestions: (sessionId: string, token?: string): Promise<Question[]> =>
     request(`/api/v1/sessions/${sessionId}/questions`, undefined, token),
 
-  addQuestions: (sessionId: string, questions: NewQuestion[], token?: string): Promise<Question[]> =>
+  addQuestions: (
+    sessionId: string,
+    questions: NewQuestion[],
+    token?: string
+  ): Promise<Question[]> =>
     request(
       `/api/v1/sessions/${sessionId}/questions`,
       { method: 'POST', body: JSON.stringify({ questions }) },
@@ -301,4 +317,24 @@ export const api = {
 
   listAlerts: (sessionId: string, token?: string): Promise<Alert[]> =>
     request(`/api/v1/sessions/${sessionId}/alerts`, undefined, token)
+}
+
+/**
+ * Un examen del panel, con la forma que espera la sala de espera.
+ *
+ * Desde el panel el estudiante vuelve a la sala sin haber tecleado el código, y
+ * la sala se pensó para lo que devuelve `joinExam`. Son los mismos datos.
+ */
+export function comoExamenUnido(examen: MyExam): JoinedExam {
+  return {
+    session_id: examen.session_id,
+    title: examen.title,
+    description: examen.description,
+    starts_at: examen.starts_at,
+    ends_at: examen.ends_at,
+    duration_minutes: examen.duration_minutes,
+    entry_tolerance_minutes: examen.entry_tolerance_minutes,
+    can_enter_now: examen.can_enter_now,
+    modules: examen.modules
+  }
 }

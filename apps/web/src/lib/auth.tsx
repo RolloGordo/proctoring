@@ -28,6 +28,7 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string>()
   const [email, setEmail] = useState<string>()
   const [rol, setRol] = useState<'teacher' | 'student'>()
+  const [perfilListo, setPerfilListo] = useState(false)
 
   useEffect(() => {
     if (!supabase) return
@@ -39,6 +40,7 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .maybeSingle()
       setRol((data?.role as 'teacher' | 'student') ?? undefined)
+      setPerfilListo(true)
     }
 
     supabase.auth.getSession().then(({ data }) => {
@@ -54,7 +56,10 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
       setToken(sesion?.access_token)
       setEmail(sesion?.user.email ?? undefined)
       if (sesion) void leerPerfil(sesion.user.id)
-      else setRol(undefined)
+      else {
+        setRol(undefined)
+        setPerfilListo(false)
+      }
       entregarAlEscritorio(sesion)
     })
 
@@ -72,7 +77,7 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ContextoAuth.Provider value={{ cargando, token, email, rol, entrar, salir }}>
+    <ContextoAuth.Provider value={{ cargando, token, email, rol, perfilListo, entrar, salir }}>
       {children}
     </ContextoAuth.Provider>
   )

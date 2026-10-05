@@ -43,6 +43,48 @@ export function nombrePreset(preset: SupervisionPreset): string {
   return PRESETS[preset] ?? preset
 }
 
+/** Dónde está un examen respecto a la hora, que es lo que el usuario quiere saber. */
+export type EstadoExamen = 'programado' | 'en_curso' | 'terminado'
+
+/**
+ * El estado real de un examen, calculado con la hora.
+ *
+ * No se usa el campo `status` que guarda la API: se escribe como "programado" al
+ * crear la sesión y nada lo actualiza, así que un examen de ayer seguía
+ * diciendo "Programado". La hora es la verdad; el campo guardado es solo un
+ * borrador de intención.
+ */
+export function estadoExamen(
+  inicioIso: string,
+  duracionMinutos: number,
+  ahora: number = Date.now()
+): EstadoExamen {
+  const inicio = new Date(inicioIso).getTime()
+  const fin = inicio + duracionMinutos * 60_000
+  if (ahora < inicio) return 'programado'
+  return ahora <= fin ? 'en_curso' : 'terminado'
+}
+
+const ESTADOS_EXAMEN: Record<EstadoExamen, string> = {
+  programado: 'Programado',
+  en_curso: 'En curso',
+  terminado: 'Terminado'
+}
+
+export function nombreEstadoExamen(estado: EstadoExamen): string {
+  return ESTADOS_EXAMEN[estado]
+}
+
+/** "en 5 minutos", "en 3 horas", "en 2 días": cuánto falta para algo. */
+export function cuandoEmpieza(ms: number): string {
+  const minutos = Math.max(1, Math.ceil(ms / 60_000))
+  if (minutos < 60) return `en ${minutos} minuto${minutos === 1 ? '' : 's'}`
+  const horas = Math.floor(minutos / 60)
+  if (horas < 24) return `en ${horas} hora${horas === 1 ? '' : 's'}`
+  const dias = Math.floor(horas / 24)
+  return `en ${dias} día${dias === 1 ? '' : 's'}`
+}
+
 const ESTADOS: Record<SessionStatus, string> = {
   draft: 'Borrador',
   scheduled: 'Programado',

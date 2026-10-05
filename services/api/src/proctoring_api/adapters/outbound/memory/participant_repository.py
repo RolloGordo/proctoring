@@ -28,6 +28,12 @@ class InMemoryParticipantRepository:
         with self._lock:
             return self._participants.get((session_id, student_id))
 
+    def list_by_student(self, student_id: UUID) -> Sequence[SessionParticipant]:
+        with self._lock:
+            snapshot = list(self._participants.values())
+
+        return [p for p in snapshot if p.student_id == student_id]
+
     def list_by_session(self, session_id: UUID) -> Sequence[SessionParticipant]:
         with self._lock:
             snapshot = list(self._participants.values())

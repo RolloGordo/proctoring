@@ -21,7 +21,7 @@ Comprueba que responde:
 curl http://localhost:8000/health
 ```
 
-Debe decir `{"status":"ok","env":"local","version":"0.1.0","auth":"disabled"}`.
+Debe decir `{"status":"ok","env":"local","version":"0.1.0","auth":"enabled"}`.
 La documentación interactiva de los endpoints está en
 <http://localhost:8000/docs> — sirve como evidencia de que la API existe y
 funciona, sin tocar la web.
@@ -33,6 +33,16 @@ npm run dev --prefix apps/web
 ```
 
 Se abre en <http://localhost:5173>.
+
+Lo primero que ves es la **portada**, que explica qué es el sistema. Desde ahí:
+
+| Entras como | Llegas a |
+|---|---|
+| Docente | `/docente`: el panel, con la barra lateral |
+| Estudiante | `/estudiante`: el panel, con la barra lateral |
+
+Sin cuentas configuradas (modo desarrollo) la barra lateral trae **"Ver como
+estudiante" / "Ver como docente"** para saltar de un lado al otro sin login.
 
 ## 3. La app de escritorio
 

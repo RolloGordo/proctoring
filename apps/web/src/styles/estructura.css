@@ -1,0 +1,672 @@
+/*
+ * Estructura de la aplicación: la portada, la barra lateral de los paneles, y la
+ * capa de quien está rindiendo.
+ *
+ * Mismo sistema de diseño que el resto (ver tokens.css): Montserrat en
+ * mayúsculas, Roboto Slab, un amarillo que se usa poco. La portada es lo único
+ * que se permite ser "grande"; todo lo demás es una herramienta que se mira
+ * durante una hora seguida.
+ */
+
+:root {
+  --ancho-lateral: 248px;
+}
+
+/* ===========================================================================
+   Botones nuevos
+   =========================================================================== */
+.boton-compacto {
+  padding: var(--e2) var(--e4);
+}
+
+.boton-grande {
+  font-size: 0.875rem;
+  padding: var(--e4) var(--e6);
+}
+
+/* Para fondos oscuros: borde claro y sin relleno. */
+.boton-claro {
+  background: transparent;
+  border-color: rgb(255 255 255 / 45%);
+  color: var(--papel);
+}
+
+.boton-claro:hover:not(:disabled) {
+  background: rgb(255 255 255 / 10%);
+}
+
+/* El enlace de la navegación pinta todo `a` de gris claro; un botón dentro
+   tiene que conservar su propio color. */
+.navegacion a.boton,
+.navegacion a.boton:hover {
+  color: var(--tinta);
+  border-bottom-color: transparent;
+}
+
+.oculta-movil {
+  display: inline;
+}
+
+/* ===========================================================================
+   Chips de estado de un examen
+   =========================================================================== */
+.chip {
+  display: inline-block;
+  font-family: var(--titulo);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px var(--e2);
+  border: 1px solid;
+  border-radius: var(--radio);
+  white-space: nowrap;
+}
+
+.chip-programado {
+  color: var(--baja);
+  background: var(--baja-fondo);
+  border-color: var(--baja-linea);
+}
+
+.chip-en_curso {
+  color: var(--tinta);
+  background: var(--amarillo-tenue);
+  border-color: var(--media-linea);
+}
+
+.chip-terminado {
+  color: var(--tinta-suave);
+  background: var(--papel-hundido);
+  border-color: var(--linea);
+}
+
+.cifra-en-curso {
+  color: var(--exito);
+}
+
+/* ===========================================================================
+   Panel con barra lateral
+   =========================================================================== */
+.app {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--ancho-lateral) minmax(0, 1fr);
+}
+
+.lateral {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+  padding: var(--e5);
+  background: var(--tinta);
+  color: var(--papel);
+  overflow-y: auto;
+}
+
+.lateral-rol {
+  margin: 0;
+  font-family: var(--titulo);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgb(255 255 255 / 50%);
+}
+
+.lateral-nav {
+  display: flex;
+  flex-direction: column;
+  margin: var(--e5) calc(var(--e5) * -1) 0;
+}
+
+.lateral-nav a {
+  padding: var(--e3) var(--e5);
+  border-left: 3px solid transparent;
+  font-family: var(--titulo);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgb(255 255 255 / 70%);
+  text-decoration: none;
+  transition:
+    color var(--transicion),
+    background var(--transicion);
+}
+
+.lateral-nav a:hover {
+  color: var(--papel);
+  background: rgb(255 255 255 / 6%);
+}
+
+/* El amarillo marca dónde estás, y solo eso. */
+.lateral-nav a.activo {
+  color: var(--papel);
+  border-left-color: var(--amarillo);
+  background: rgb(255 255 255 / 9%);
+}
+
+.lateral-pie {
+  margin-top: auto;
+  padding-top: var(--e4);
+  border-top: 1px solid rgb(255 255 255 / 14%);
+}
+
+.lateral-correo {
+  margin: 0 0 var(--e2);
+  font-size: 0.8125rem;
+  color: rgb(255 255 255 / 70%);
+  overflow-wrap: anywhere;
+}
+
+.lateral .boton-texto {
+  padding-left: 0;
+  color: rgb(255 255 255 / 85%);
+}
+
+.lateral .boton-texto:hover:not(:disabled) {
+  background: transparent;
+  color: var(--papel);
+}
+
+.lateral-cambio {
+  font-family: var(--titulo);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--amarillo);
+  text-decoration: none;
+}
+
+.app-contenido {
+  min-width: 0;
+}
+
+.app-pagina {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--e7) var(--e6) var(--e8);
+}
+
+.app-movil,
+.lateral-velo {
+  display: none;
+}
+
+.bloque {
+  margin-bottom: var(--e7);
+}
+
+.bloque > h2,
+.bloque > .encabezado-seccion {
+  margin-bottom: var(--e4);
+}
+
+.bloque > .encabezado-seccion h2 {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-movil {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--alto-cabecera);
+    padding: 0 var(--e4);
+    background: var(--tinta);
+  }
+
+  .app-movil .boton-texto {
+    color: var(--papel);
+  }
+
+  /* En móvil la barra es un cajón: fuera de pantalla, y fuera también del
+     orden de tabulación mientras está cerrada. */
+  .lateral {
+    position: fixed;
+    z-index: 30;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(280px, 86vw);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform var(--transicion);
+  }
+
+  .lateral.abierto {
+    transform: none;
+    visibility: visible;
+  }
+
+  .lateral-velo {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    background: rgb(0 0 0 / 45%);
+  }
+
+  .app-pagina {
+    padding: var(--e5) var(--e4) var(--e7);
+  }
+}
+
+/* ===========================================================================
+   Paneles: tarjetas de examen
+   =========================================================================== */
+.tarjeta-examen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e5);
+  padding: var(--e5);
+}
+
+.tarjeta-examen-info {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.tarjeta-examen-acciones {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--e3);
+}
+
+.codigo-bloque {
+  text-align: right;
+}
+
+.codigo-bloque .ayuda {
+  margin-top: 2px;
+}
+
+.alertas-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e2);
+  margin: var(--e3) 0 0;
+}
+
+/* Lista "por rendir" del estudiante */
+.lista-examenes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+}
+
+.fila-examen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e4);
+  padding: var(--e4) var(--e5);
+}
+
+.fila-examen + .fila-examen {
+  margin-top: 0;
+}
+
+.detalle-examen {
+  margin: var(--e2) 0 0;
+  font-size: 0.875rem;
+  color: var(--tinta-suave);
+}
+
+.detalle-examen.activo {
+  color: var(--exito);
+  font-weight: 700;
+}
+
+/* Código de acceso dentro del panel del estudiante: título a la izquierda,
+   campo y botón en una línea a la derecha. */
+.tarjeta-codigo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e5);
+}
+
+.codigo-linea {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--e3);
+  flex: 1 1 320px;
+  max-width: 460px;
+}
+
+.codigo-linea .campo {
+  flex: 1;
+  margin: 0;
+}
+
+.codigo-linea .boton {
+  white-space: nowrap;
+}
+
+/* El error ocupa su propia fila encima del campo, no flota sobre él. */
+.codigo-linea {
+  flex-wrap: wrap;
+}
+
+.codigo-linea .aviso {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+.acceso-volver {
+  margin: var(--e5) 0 0;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+/* ===========================================================================
+   Quien está rindiendo: sin navegación
+   =========================================================================== */
+.examen-marco {
+  --alto-cabecera: 56px;
+
+  min-height: 100vh;
+  background: var(--papel-gris);
+}
+
+.examen-cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--alto-cabecera);
+  padding: 0 var(--e5);
+  background: var(--tinta);
+}
+
+.examen-aviso {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  font-family: var(--titulo);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgb(255 255 255 / 70%);
+}
+
+.examen-cuerpo {
+  padding: var(--e6) var(--e4) var(--e8);
+}
+
+/* ===========================================================================
+   Portada
+   =========================================================================== */
+.portada-inicio {
+  padding: 7rem 0 8rem;
+  background: var(--tinta);
+  color: var(--papel);
+}
+
+.portada-lema {
+  display: flex;
+  align-items: center;
+  gap: var(--e3);
+  margin: 0 0 var(--e5);
+  font-size: 1.25rem;
+  font-style: italic;
+  color: rgb(255 255 255 / 80%);
+}
+
+.portada-lema::before {
+  content: '';
+  width: 2.5rem;
+  height: 3px;
+  background: var(--amarillo);
+}
+
+.portada-inicio h1 {
+  max-width: 14ch;
+  font-size: clamp(2.5rem, 7vw, 4.75rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+  color: var(--papel);
+}
+
+.portada-resumen {
+  max-width: 38rem;
+  margin: var(--e5) 0 var(--e6);
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: rgb(255 255 255 / 75%);
+}
+
+.portada-seccion {
+  padding: 6rem 0;
+}
+
+.portada-gris {
+  background: var(--papel);
+  border-block: 1px solid var(--linea);
+}
+
+.portada-seccion h2 {
+  text-align: center;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+}
+
+.portada-sub {
+  margin: var(--e2) 0 var(--e8);
+  text-align: center;
+  font-size: 1.125rem;
+}
+
+.rejilla-capacidades {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--e6);
+}
+
+.capacidad {
+  text-align: center;
+}
+
+.capacidad-icono {
+  display: inline-grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--e4);
+  border-radius: 50%;
+  background: var(--amarillo);
+  color: var(--tinta);
+}
+
+.capacidad h3 {
+  margin-bottom: var(--e2);
+}
+
+.capacidad p {
+  font-size: 0.9375rem;
+  color: var(--tinta-suave);
+}
+
+.etiqueta-estado {
+  display: inline-block;
+  font-family: var(--titulo);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px var(--e2);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--radio);
+  color: var(--tinta-suave);
+}
+
+.etiqueta-estado.listo {
+  color: var(--exito);
+  background: var(--exito-fondo);
+  border-color: rgb(6 118 71 / 30%);
+}
+
+.pasos {
+  list-style: none;
+  counter-reset: paso;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--e6);
+}
+
+.pasos li {
+  counter-increment: paso;
+  text-align: center;
+}
+
+.pasos li::before {
+  content: counter(paso);
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--e4);
+  border-radius: 50%;
+  background: var(--tinta);
+  color: var(--amarillo);
+  font-family: var(--titulo);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.pasos h3 {
+  margin-bottom: var(--e2);
+}
+
+.pasos p {
+  font-size: 0.9375rem;
+  color: var(--tinta-suave);
+}
+
+.rejilla-principios {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--e6);
+}
+
+.rejilla-principios article {
+  padding-top: var(--e4);
+  border-top: 3px solid var(--amarillo);
+}
+
+.rejilla-principios h3 {
+  margin-bottom: var(--e2);
+}
+
+.rejilla-principios p {
+  color: var(--tinta-suave);
+}
+
+.portada-oscura {
+  background: var(--tinta);
+  color: var(--papel);
+}
+
+.portada-oscura h2 {
+  margin-bottom: var(--e5);
+  text-align: left;
+  color: var(--papel);
+}
+
+.rejilla-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--e8);
+}
+
+.rejilla-roles ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rejilla-roles li {
+  position: relative;
+  padding: var(--e2) 0 var(--e2) var(--e5);
+  color: rgb(255 255 255 / 80%);
+}
+
+.rejilla-roles li::before {
+  content: '—';
+  position: absolute;
+  left: 0;
+  color: var(--amarillo);
+}
+
+.portada-cierre {
+  margin: var(--e8) 0 0;
+  text-align: center;
+}
+
+.pie-publico {
+  padding: var(--e6) 0;
+  background: #1a1d20;
+  font-size: 0.875rem;
+  color: rgb(255 255 255 / 75%);
+}
+
+.pie-publico p {
+  margin: 0 0 var(--e1);
+}
+
+.pie-publico .tenue {
+  color: rgb(255 255 255 / 50%);
+}
+
+@media (max-width: 720px) {
+  .oculta-movil {
+    display: none;
+  }
+
+  .portada-inicio {
+    padding: 4rem 0 5rem;
+  }
+
+  .portada-seccion {
+    padding: 4rem 0;
+  }
+
+  .codigo-linea {
+    flex-direction: column;
+    align-items: stretch;
+    max-width: none;
+  }
+
+  .tarjeta-examen-acciones {
+    align-items: flex-start;
+  }
+
+  .codigo-bloque {
+    text-align: left;
+  }
+}

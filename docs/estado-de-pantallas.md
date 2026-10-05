@@ -3,14 +3,16 @@
 Qué vistas existen hoy, cuáles faltan y de quién son. Contrastado con el
 prototipo (`Prototipo_Sistema_Proctoring_v2`) y con los SPEC.
 
-Última revisión: 3 de octubre de 2026, rama `feat/EN-002-exam-screens`.
+Última revisión: 5 de octubre de 2026.
 
 ## Docente (web)
 
 | Pantalla | Ruta | Estado | SPEC | Responsable |
 |---|---|---|---|---|
+| Portada pública | `/` | ✅ | SPEC-001 | Héctor |
 | Entrar | `/login` | ✅ | SPEC-001 | Héctor |
-| Lista de exámenes | `/sesiones` | ✅ | SPEC-002 | Héctor |
+| **Panel**: qué pide atención ahora | `/docente` | ✅ | SPEC-009 | Héctor |
+| Mis exámenes | `/sesiones` | ✅ | SPEC-002 | Héctor |
 | Crear examen | `/sesiones/nueva` | ✅ | SPEC-002 | Héctor |
 | Examen en vivo (alertas y señales) | `/sesiones/:id` | ✅ | SPEC-009 | Héctor |
 | Preguntas del examen | `/sesiones/:id/preguntas` | ✅ | SPEC-003 | Héctor |
@@ -27,6 +29,7 @@ prototipo (`Prototipo_Sistema_Proctoring_v2`) y con los SPEC.
 | Pantalla | Ruta | Estado | SPEC | Responsable |
 |---|---|---|---|---|
 | Entrar | `/login` | ✅ | SPEC-001 | Héctor |
+| **Panel**: por rendir y entregados | `/estudiante` | ✅ | SPEC-004 | Héctor |
 | Código de acceso | `/examen` | ✅ | SPEC-002 | Héctor |
 | Consentimiento informado y espera | `/examen/:id/sala` | ✅ | SPEC-004 | Héctor |
 | Rendir el examen y entregar | `/examen/:id/rendir` | ✅ | SPEC-004 | Héctor |
@@ -55,6 +58,28 @@ La app **no reimplementa el examen**: carga la web. Así que las pantallas del
 estudiante de la tabla anterior se ven dentro del kiosco sin escribirlas dos
 veces. Lo que sí es propio de la app es lo que el navegador no puede ver.
 
+## Navegación
+
+Hay tres "capas", y cada pantalla pertenece a una:
+
+| Capa | Quién | Qué tiene |
+|---|---|---|
+| **Pública** | Cualquiera | Portada y acceso. Cabecera con la marca y el botón de entrar. |
+| **Panel** | Docente o estudiante con sesión | **Barra lateral** con lo que su rol puede hacer. El docente: Panel, Mis exámenes, Crear examen. El estudiante: Panel, Entrar a un examen. |
+| **Examen** | Estudiante rindiendo | **Sin barra lateral ni un solo enlace.** Solo la marca y "Supervisión activa". Durante un examen supervisado no hay a dónde ir, y ofrecer enlaces sería ofrecer formas de abandonarlo por accidente. |
+
+Quien inicia sesión llega a **su panel** (`/docente` o `/estudiante`), no a una pantalla suelta. La portada
+es lo primero que ve quien no ha entrado; quien ya tiene sesión pasa de largo a su panel.
+
+## Lo que falta en el panel del estudiante
+
+El panel muestra **por rendir** y **entregados**. Falta lo que pidió el equipo y todavía no tiene de dónde salir:
+
+| Falta | Por qué |
+|---|---|
+| **Mis clases** | No hay endpoints de cursos. Las tablas `courses` y `course_enrollments` existen, pero nada las lee ni las escribe: ni el docente crea cursos, ni el estudiante se matricula en uno. |
+| **Notas** | La columna "Nota" existe y dice *Pendiente de calificación*. No hay calificación automática: `answers.is_correct` y `session_participants.score` se quedan vacíos. Mostrar un cero inventado sería peor que decir que falta. |
+
 ## Lo que falta en la API
 
 | Endpoint | Para qué | SPEC |
@@ -62,7 +87,9 @@ veces. Lo que sí es propio de la app es lo que el navegador no puede ver.
 | `POST /sessions/{id}/decisions` | **La decisión del docente con justificación.** Es la promesa central del proyecto —auditor, no juez— y hoy la tabla `decisions` existe sin nadie que la escriba. | SPEC-009 |
 | `GET /sessions/{id}/students/{id}/review` | La evidencia de un estudiante reunida: eventos, alertas, capturas, riesgo. | SPEC-009 |
 | `GET /sessions/{id}/results` | Notas y respuestas, una vez haya calificación. | SPEC-003 |
-| Calificación de respuestas | `answers.is_correct` y `points_awarded` se guardan vacíos: nadie califica todavía. | SPEC-003 |
+| Calificación de respuestas | `answers.is_correct` y `points_awarded` se guardan vacíos: nadie califica todavía. Sin esto el panel del estudiante no puede mostrar notas. | SPEC-003 |
+| Cursos (`courses`, `course_enrollments`) | Crear cursos, matricular estudiantes y agrupar exámenes por curso. Sin esto no hay "Mis clases". | nuevo |
+| Nombre del estudiante en la sala de espera | Hoy se muestran los 8 primeros caracteres de su id. | SPEC-004 |
 | `POST /sessions/{id}/questions/import` | Importar QTI. | SPEC-003 |
 
 ## Lo siguiente, por orden

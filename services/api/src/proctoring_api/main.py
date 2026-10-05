@@ -54,6 +54,7 @@ from proctoring_api.application.use_cases.create_evidence_upload_url import (
 from proctoring_api.application.use_cases.create_exam_session import CreateExamSession
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
 from proctoring_api.application.use_cases.join_exam_session import JoinExamSession
+from proctoring_api.application.use_cases.list_my_exams import ListMyExams
 from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
 from proctoring_api.application.use_cases.list_teacher_sessions import (
@@ -374,6 +375,9 @@ def create_app(
         participant_repository, session_repository, clock
     )
     app.state.submit_exam = SubmitExam(participant_repository, clock, settings.dev_student_id)
+    app.state.list_my_exams = ListMyExams(
+        participant_repository, session_repository, clock, settings.dev_student_id
+    )
     app.state.save_answers = SaveAnswers(
         answer_repository,
         question_repository,

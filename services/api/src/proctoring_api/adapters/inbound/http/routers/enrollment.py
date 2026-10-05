@@ -9,6 +9,7 @@ from fastapi import APIRouter, status
 from proctoring_api.adapters.inbound.http.dependencies import (
     CurrentUserDep,
     EnrollInExamDep,
+    ListMyExamsDep,
     ListParticipantsDep,
     ReviewIdentityDep,
     SubmitExamDep,
@@ -16,6 +17,7 @@ from proctoring_api.adapters.inbound.http.dependencies import (
 from proctoring_api.adapters.inbound.http.schemas import (
     EnrollRequest,
     ErrorResponse,
+    MyExamResponse,
     ParticipantResponse,
     ReviewIdentityRequest,
 )
@@ -142,3 +144,21 @@ def review_identity(
     return ParticipantResponse.from_entity(
         use_case.execute(session_id, student_id, approve=payload.approve, actor=current_user)
     )
+
+
+@router.get(
+    "/me/exams",
+    response_model=list[MyExamResponse],
+    summary="Mis examenes (panel del estudiante)",
+    responses=AUTH_RESPONSES,
+)
+def my_exams(
+    use_case: ListMyExamsDep,
+    current_user: CurrentUserDep,
+) -> list[MyExamResponse]:
+    """A que examenes entro el estudiante y en que estado esta cada uno.
+
+    Es la base de su panel: lo que viene, lo que esta en curso y lo ya entregado.
+    El estudiante sale del token; no hay parametro con el que pedir los de otro.
+    """
+    return [MyExamResponse.from_entity(examen) for examen in use_case.execute(actor=current_user)]

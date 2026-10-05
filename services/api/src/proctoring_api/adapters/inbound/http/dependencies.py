@@ -19,6 +19,7 @@ from proctoring_api.application.use_cases.create_evidence_upload_url import (
 from proctoring_api.application.use_cases.create_exam_session import CreateExamSession
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
 from proctoring_api.application.use_cases.join_exam_session import JoinExamSession
+from proctoring_api.application.use_cases.list_my_exams import ListMyExams
 from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
 from proctoring_api.application.use_cases.list_session_events import ListSessionEvents
 from proctoring_api.application.use_cases.list_teacher_sessions import (
@@ -137,6 +138,11 @@ def get_list_my_answers(request: Request) -> ListMyAnswers:
     return use_case
 
 
+def get_list_my_exams(request: Request) -> ListMyExams:
+    use_case: ListMyExams = request.app.state.list_my_exams
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -181,6 +187,7 @@ ListParticipantsDep = Annotated[ListSessionParticipants, Depends(get_list_partic
 ReviewIdentityDep = Annotated[ReviewParticipantIdentity, Depends(get_review_identity)]
 SubmitExamDep = Annotated[SubmitExam, Depends(get_submit_exam)]
 SaveAnswersDep = Annotated[SaveAnswers, Depends(get_save_answers)]
+ListMyExamsDep = Annotated[ListMyExams, Depends(get_list_my_exams)]
 ListMyAnswersDep = Annotated[ListMyAnswers, Depends(get_list_my_answers)]
 CreateEvidenceUploadUrlDep = Annotated[
     CreateEvidenceUploadUrl, Depends(get_create_evidence_upload_url)
