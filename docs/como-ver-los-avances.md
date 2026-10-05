@@ -165,7 +165,25 @@ Para ver el modo kiosco en desarrollo: `$env:PROCTORING_KIOSK = "1"`.
 
 ### Para cerrar
 
-14. Vuelve a la sala de espera del docente: aparece la hora de entrega.
+14. Vuelve a la sala de espera del docente: aparece la hora de entrega y la **nota**.
+15. **Revisa el caso:** en la sala de espera, **Revisar** abre la evidencia del estudiante: el riesgo con
+    su desglose por señal y la línea de tiempo. Para tener algo que ver, abre AnyDesk o Discord, cambia de
+    ventana con Alt+Tab o conecta otro monitor mientras el estudiante rinde.
+16. **Decide.** Elige confirmar, descartar o repetir el examen y escribe una **justificación de al menos
+    10 caracteres**. Sin ella el botón no se activa. La decisión se registra y no se edita; si cambias de
+    parecer, registras otra y el historial queda.
+
+### Opcional: con un curso
+
+Antes del paso 1 puedes crear un curso (**Mis cursos → Crear curso**), matricular al estudiante **por su
+correo** (tiene que haberse registrado antes) y asociarlo al crear el examen. El estudiante verá la clase
+y la fecha del examen en su panel. **Para rendirlo sigue necesitando el código de acceso.**
+
+### La nota
+
+Al entregar se califican solas las preguntas de opción múltiple, verdadero o falso, numéricas y de
+completar. **Los desarrollos no**: esa nota es del docente, y mientras tanto el estudiante ve una nota
+parcial con el aviso *Faltan desarrollos por calificar*. Para ver una nota completa, no uses desarrollos.
 
 ## Dónde guardar las capturas
 
