@@ -10,6 +10,7 @@ from uuid import UUID
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.participant_repository import ParticipantRepository
+from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.use_cases.manage_enrollment import DEFAULT_DEV_STUDENT_ID
 from proctoring_api.domain.errors import AuthorizationError
 from proctoring_api.domain.exam_session import ExamSession
@@ -27,6 +28,11 @@ class MyExam:
     #: servidor, y no en el cliente: la hora de un equipo de estudiante no es
     #: fiable.
     can_enter_now: bool
+    #: Puntos de todo el examen, para mostrar "7 de 10". `None` mientras no se
+    #: entrega o si ya no hay preguntas guardadas.
+    max_score: float | None = None
+    #: Si hay desarrollos que el docente aun no califica: la nota es parcial.
+    pending_manual_review: bool = False
 
 
 class ListMyExams:
@@ -41,11 +47,13 @@ class ListMyExams:
         sessions: ExamSessionRepository,
         clock: Clock,
         dev_student_id: UUID = DEFAULT_DEV_STUDENT_ID,
+        questions: QuestionRepository | None = None,
     ) -> None:
         self._participants = participants
         self._sessions = sessions
         self._clock = clock
         self._dev_student_id = dev_student_id
+        self._questions = questions
 
     def execute(self, *, actor: AuthenticatedUser | None = None) -> Sequence[MyExam]:
         """Devuelve los examenes del estudiante, del mas reciente al mas antiguo.
@@ -68,11 +76,27 @@ class ListMyExams:
         }
         ahora = self._clock.now()
 
+        # El maximo solo hace falta para lo ya entregado, y se pide de una vez
+        # para todos: una consulta, no una por fila.
+        resumen = (
+            self._questions.summarize_sessions(
+                [p.session_id for p in participaciones if p.submitted_at is not None]
+            )
+            if self._questions is not None
+            else {}
+        )
+
         resultado = [
             MyExam(
                 session=sesiones[p.session_id],
                 participant=p,
                 can_enter_now=_can_continue(sesiones[p.session_id], p, ahora),
+                max_score=(
+                    float(resumen[p.session_id].total_points) if p.session_id in resumen else None
+                ),
+                pending_manual_review=(
+                    resumen[p.session_id].has_manual_questions if p.session_id in resumen else False
+                ),
             )
             # Una matricula cuya sesion ya no existe se omite en vez de romper el panel.
             for p in participaciones

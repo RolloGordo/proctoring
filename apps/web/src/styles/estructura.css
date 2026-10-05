@@ -81,6 +81,11 @@
   border-color: var(--linea);
 }
 
+/* El aviso de nota parcial va junto a la nota, no debajo: son una sola idea. */
+.nota-aviso {
+  margin-left: var(--e2);
+}
+
 .cifra-en-curso {
   color: var(--exito);
 }

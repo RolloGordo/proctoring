@@ -365,6 +365,7 @@ def create_app(
         settings.dev_student_id,
     )
     app.state.participant_repository = participant_repository
+    app.state.answer_repository = answer_repository
     app.state.enroll_in_exam = EnrollInExam(
         participant_repository, session_repository, clock, settings.dev_student_id
     )
@@ -374,9 +375,19 @@ def create_app(
     app.state.review_identity = ReviewParticipantIdentity(
         participant_repository, session_repository, clock
     )
-    app.state.submit_exam = SubmitExam(participant_repository, clock, settings.dev_student_id)
+    app.state.submit_exam = SubmitExam(
+        participant_repository,
+        clock,
+        settings.dev_student_id,
+        question_repository,
+        answer_repository,
+    )
     app.state.list_my_exams = ListMyExams(
-        participant_repository, session_repository, clock, settings.dev_student_id
+        participant_repository,
+        session_repository,
+        clock,
+        settings.dev_student_id,
+        question_repository,
     )
     app.state.save_answers = SaveAnswers(
         answer_repository,

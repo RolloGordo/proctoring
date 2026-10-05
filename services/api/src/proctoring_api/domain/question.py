@@ -45,6 +45,15 @@ CHOICE_TYPES = frozenset({QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE}
 
 
 @dataclass(frozen=True, slots=True)
+class QuestionSummary:
+    """Lo que un panel necesita saber de las preguntas de un examen, sin traerlas."""
+
+    total_points: Decimal
+    #: Si alguna pregunta la corrige el docente (los desarrollos).
+    has_manual_questions: bool
+
+
+@dataclass(frozen=True, slots=True)
 class QuestionOption:
     """Una alternativa. **Incluye si es la correcta: nunca sale hacia el estudiante.**"""
 

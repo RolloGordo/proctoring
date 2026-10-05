@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import threading
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from decimal import Decimal
 from uuid import UUID
 
-from proctoring_api.domain.question import Question
+from proctoring_api.domain.grading import MANUAL_TYPES
+from proctoring_api.domain.question import Question, QuestionSummary
 
 
 class InMemoryQuestionRepository:
@@ -36,6 +38,21 @@ class InMemoryQuestionRepository:
     def count_by_session(self, session_id: UUID) -> int:
         with self._lock:
             return sum(1 for q in self._questions.values() if q.session_id == session_id)
+
+    def summarize_sessions(self, session_ids: Sequence[UUID]) -> Mapping[UUID, QuestionSummary]:
+        wanted = set(session_ids)
+        with self._lock:
+            snapshot = [q for q in self._questions.values() if q.session_id in wanted]
+
+        summary: dict[UUID, QuestionSummary] = {}
+        for question in snapshot:
+            previous = summary.get(question.session_id)
+            summary[question.session_id] = QuestionSummary(
+                total_points=(previous.total_points if previous else Decimal(0)) + question.points,
+                has_manual_questions=(previous.has_manual_questions if previous else False)
+                or question.question_type in MANUAL_TYPES,
+            )
+        return summary
 
     def clear(self) -> None:
         """Vacia el repositorio. Solo para pruebas."""
