@@ -185,6 +185,46 @@ export interface MyExam {
   pending_manual_review: boolean
 }
 
+export type DecisionType = 'confirmed' | 'dismissed' | 'retake'
+export type RiskLevel = 'low' | 'medium' | 'high'
+
+/** Lo que un tipo de señal aporta al riesgo. */
+export interface SignalRisk {
+  event_type: EventType
+  count: number
+  total_duration_ms: number
+  points: number
+  max_severity: Severity
+}
+
+/** Cuánta atención merece un caso y por qué. Un auditor: no es un veredicto. */
+export interface Risk {
+  score: number
+  level: RiskLevel
+  signals: SignalRisk[]
+}
+
+/** Una decisión del docente. Es evidencia: no se edita, se agrega otra. */
+export interface Decision {
+  id: string
+  session_id: string
+  student_id: string
+  teacher_id: string
+  decision: DecisionType
+  justification: string
+  decided_at: string
+}
+
+/** Todo lo que el docente necesita para decidir sobre un estudiante. */
+export interface CaseFile {
+  participant: Participant
+  events: ProctoringEvent[]
+  alerts: Alert[]
+  /** De la más reciente a la más antigua: la primera es la vigente. */
+  decisions: Decision[]
+  risk: Risk
+}
+
 /** Un curso del docente. */
 export interface Course {
   id: string
@@ -300,6 +340,25 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ access_code: accessCode }) },
       token
     ),
+
+  reviewCase: (sessionId: string, studentId: string, token?: string): Promise<CaseFile> =>
+    request(`/api/v1/sessions/${sessionId}/students/${studentId}/case`, undefined, token),
+
+  decide: (
+    sessionId: string,
+    studentId: string,
+    decision: DecisionType,
+    justification: string,
+    token?: string
+  ): Promise<Decision> =>
+    request(
+      `/api/v1/sessions/${sessionId}/students/${studentId}/decision`,
+      { method: 'POST', body: JSON.stringify({ decision, justification }) },
+      token
+    ),
+
+  listDecisions: (sessionId: string, token?: string): Promise<Decision[]> =>
+    request(`/api/v1/sessions/${sessionId}/decisions`, undefined, token),
 
   myExams: (token?: string): Promise<MyExam[]> => request('/api/v1/me/exams', undefined, token),
 

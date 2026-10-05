@@ -31,8 +31,10 @@ from proctoring_api.application.use_cases.manage_courses import (
     TeacherCourse,
 )
 from proctoring_api.application.use_cases.manage_enrollment import ParticipantEntry
+from proctoring_api.application.use_cases.review_case import CaseFile
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.answer import MAX_TEXT_ANSWER_LENGTH, Answer
+from proctoring_api.domain.decision import Decision, DecisionType
 from proctoring_api.domain.event import MAX_EVIDENCE_PATH_LENGTH, EventType, ProctoringEvent
 from proctoring_api.domain.evidence import EvidenceKind
 from proctoring_api.domain.exam_session import (
@@ -43,7 +45,8 @@ from proctoring_api.domain.exam_session import (
 )
 from proctoring_api.domain.participant import SessionParticipant, VerificationStatus
 from proctoring_api.domain.question import ExamQuestion, Question, QuestionType
-from proctoring_api.domain.severity import Severity
+from proctoring_api.domain.risk import RiskAssessment, RiskLevel
+from proctoring_api.domain.severity import Severity, default_severity
 
 #: Tope del campo `metadata` de un evento, en bytes de su JSON.
 #:
@@ -672,6 +675,107 @@ class MyCourseResponse(BaseModel):
                 )
                 for e in item.exams
             ],
+        )
+
+
+class DecisionRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/sessions/{id}/students/{id}/decision`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    decision: DecisionType
+    #: El minimo se valida en el dominio (400 con un mensaje que explica que
+    #: hacer), no aqui (422 con un mensaje de campo).
+    justification: str = Field(max_length=2000)
+
+
+class DecisionResponse(BaseModel):
+    """Una decision registrada."""
+
+    id: UUID
+    session_id: UUID
+    student_id: UUID
+    teacher_id: UUID
+    decision: DecisionType
+    justification: str
+    decided_at: datetime
+
+    @classmethod
+    def from_entity(cls, decision: Decision) -> DecisionResponse:
+        return cls(
+            id=decision.id,
+            session_id=decision.session_id,
+            student_id=decision.student_id,
+            teacher_id=decision.teacher_id,
+            decision=decision.decision,
+            justification=decision.justification,
+            decided_at=decision.decided_at,
+        )
+
+
+class SignalRiskResponse(BaseModel):
+    """Lo que un tipo de senal aporta al riesgo."""
+
+    event_type: EventType
+    count: int
+    total_duration_ms: int
+    points: int
+    max_severity: Severity
+
+
+class RiskResponse(BaseModel):
+    """El riesgo de un estudiante, con su desglose por senal.
+
+    Es un **auditor**: dice cuanta atencion merece el caso y por que. No es un
+    veredicto, y por eso lleva el desglose y no solo el numero.
+    """
+
+    score: int
+    level: RiskLevel
+    signals: list[SignalRiskResponse]
+
+    @classmethod
+    def from_entity(cls, risk: RiskAssessment) -> RiskResponse:
+        return cls(
+            score=risk.score,
+            level=risk.level,
+            signals=[
+                SignalRiskResponse(
+                    event_type=s.event_type,
+                    count=s.count,
+                    total_duration_ms=s.total_duration_ms,
+                    points=s.points,
+                    max_severity=s.max_severity,
+                )
+                for s in risk.signals
+            ],
+        )
+
+
+class CaseResponse(BaseModel):
+    """Todo lo que el docente necesita para decidir sobre un estudiante."""
+
+    participant: ParticipantResponse
+    events: list[EventResponse]
+    alerts: list[AlertResponse]
+    decisions: list[DecisionResponse]
+    risk: RiskResponse
+
+    @classmethod
+    def from_entity(cls, case: CaseFile) -> CaseResponse:
+        participant = ParticipantResponse.from_entity(case.participant)
+        if case.profile is not None:
+            participant.student_name = case.profile.full_name
+            participant.student_email = case.profile.email
+        return cls(
+            participant=participant,
+            events=[
+                EventResponse.from_entity(e, default_severity(e.event_type, e.duration_ms))
+                for e in case.events
+            ],
+            alerts=[AlertResponse.from_entity(a) for a in case.alerts],
+            decisions=[DecisionResponse.from_entity(d) for d in case.decisions],
+            risk=RiskResponse.from_entity(case.risk),
         )
 
 

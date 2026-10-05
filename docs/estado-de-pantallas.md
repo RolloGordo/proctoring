@@ -20,8 +20,7 @@ prototipo (`Prototipo_Sistema_Proctoring_v2`) y con los SPEC.
 | Mis cursos | `/cursos` | ✅ | SPEC-002 | Héctor |
 | Un curso: matricular por correo | `/cursos/:id` | ✅ | SPEC-002 | Héctor |
 | Importar QTI | — | ❌ | SPEC-003 | Pierreluiggi |
-| Revisión de un caso (evidencia de un estudiante) | — | ❌ | SPEC-009 | Héctor |
-| **Decisión con justificación** | — | ❌ | SPEC-009 | Héctor |
+| **Revisión de un caso y decisión con justificación** | `/sesiones/:id/estudiantes/:id` | ✅ | SPEC-009 | Héctor |
 | Resultados y notas | — | ❌ | SPEC-003 | Héctor |
 | Galería de capturas | — | ❌ | SPEC-007 | Jesús |
 | Monitoreo en vivo por cámara | — | ❌ | SPEC-007 | Jesús |
@@ -84,11 +83,21 @@ Muestra **mis clases** (con los exámenes que vienen en cada una), **por rendir*
 
 | Endpoint | Para qué | SPEC |
 |---|---|---|
-| `POST /sessions/{id}/decisions` | **La decisión del docente con justificación.** Es la promesa central del proyecto —auditor, no juez— y hoy la tabla `decisions` existe sin nadie que la escriba. | SPEC-009 |
-| `GET /sessions/{id}/students/{id}/review` | La evidencia de un estudiante reunida: eventos, alertas, capturas, riesgo. | SPEC-009 |
+| Capturas en la revisión de caso | La revisión muestra señales, alertas y riesgo. Falta la **evidencia visual**: `evidence_path` se guarda, pero no hay URL firmada de lectura para mostrarla. | SPEC-009 |
+| Riesgo calibrado | El riesgo usa pesos razonados, **no medidos** (`domain/risk.py`). Calibrarlos con datos reales es lo que cumple la meta de accuracy ≥ 80 % y FPR < 20 %. | SPEC-009 |
 | `GET /sessions/{id}/results` | Notas y respuestas, una vez haya calificación. | SPEC-003 |
 | Que el docente califique los **desarrollos** a mano | Las demás preguntas se califican solas al entregar; los desarrollos quedan sin nota y la del estudiante, parcial. | SPEC-003 |
 | `POST /sessions/{id}/questions/import` | Importar QTI. | SPEC-003 |
+
+## La revisión de un caso
+
+El docente abre el caso de un estudiante desde la sala de espera (**Revisar**) y ve, **antes de decidir**:
+
+1. **Riesgo, con su desglose.** Cada punto sale de una señal concreta; un número sin origen no se puede discutir. Un mismo tipo de señal no pesa más de 50 puntos, para que cien salidas breves de la ventana no valgan como un acceso remoto.
+2. **Línea de tiempo** de señales, con hora, detalle y duración.
+3. **Su decisión**, con tres opciones igual de legítimas (confirmar, descartar, repetir el examen) y una **justificación obligatoria** de al menos 10 caracteres.
+
+El sistema **no anula nada**: la decisión se registra, no se edita, y si el docente cambia de parecer registra otra; el historial queda. Hay una prueba que fija que decidir no cambia el examen del estudiante.
 
 ## Lo siguiente, por orden
 

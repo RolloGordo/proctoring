@@ -47,6 +47,11 @@ from proctoring_api.application.use_cases.manage_questions import (
     ListSessionQuestions,
 )
 from proctoring_api.application.use_cases.register_event import RegisterEvent
+from proctoring_api.application.use_cases.review_case import (
+    ListSessionDecisions,
+    RecordDecision,
+    ReviewStudentCase,
+)
 from proctoring_api.config import Settings
 from proctoring_api.domain.errors import AuthenticationError
 from proctoring_api.domain.user import AuthenticatedUser
@@ -181,6 +186,21 @@ def get_list_my_courses(request: Request) -> ListMyCourses:
     return use_case
 
 
+def get_review_case(request: Request) -> ReviewStudentCase:
+    use_case: ReviewStudentCase = request.app.state.review_case
+    return use_case
+
+
+def get_record_decision(request: Request) -> RecordDecision:
+    use_case: RecordDecision = request.app.state.record_decision
+    return use_case
+
+
+def get_list_decisions(request: Request) -> ListSessionDecisions:
+    use_case: ListSessionDecisions = request.app.state.list_decisions
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -236,3 +256,6 @@ GetCourseDep = Annotated[GetCourse, Depends(get_get_course)]
 EnrollStudentDep = Annotated[EnrollStudentInCourse, Depends(get_enroll_student)]
 ListCourseMembersDep = Annotated[ListCourseMembers, Depends(get_list_course_members)]
 ListMyCoursesDep = Annotated[ListMyCourses, Depends(get_list_my_courses)]
+ReviewCaseDep = Annotated[ReviewStudentCase, Depends(get_review_case)]
+RecordDecisionDep = Annotated[RecordDecision, Depends(get_record_decision)]
+ListDecisionsDep = Annotated[ListSessionDecisions, Depends(get_list_decisions)]
