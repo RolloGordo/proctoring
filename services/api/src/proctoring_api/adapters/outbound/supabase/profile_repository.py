@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 from uuid import UUID
 
 from supabase import Client
 
-from proctoring_api.domain.user import UserRole
+from proctoring_api.domain.user import ProfileSummary, UserRole
 
 TABLE = "profiles"
+SUMMARY_COLUMNS = "id, role, email, full_name"
 
 #: El rol de alguien no cambia en mitad de un examen, y sin cache cada peticion
 #: metria una consulta extra en el camino del POST de eventos. Corto a proposito:
@@ -53,6 +55,33 @@ class SupabaseProfileRepository:
             self._cache[user_id] = (time.monotonic() + self._cache_ttl, role)
         return role
 
+    def find_by_email(self, email: str) -> ProfileSummary | None:
+        # Supabase Auth guarda los correos en minuscula y el trigger los copia
+        # tal cual, asi que se compara en minuscula. `eq` y no `ilike`: en un
+        # `ilike`, el guion bajo de un correo valdria como comodin.
+        response = (
+            self._client.table(TABLE)
+            .select(SUMMARY_COLUMNS)
+            .eq("email", email.strip().lower())
+            .limit(1)
+            .execute()
+        )
+        rows = cast("list[dict[str, Any]]", response.data)
+        return _to_summary(rows[0]) if rows else None
+
+    def get_summaries(self, user_ids: Sequence[UUID]) -> Mapping[UUID, ProfileSummary]:
+        if not user_ids:
+            return {}
+
+        response = (
+            self._client.table(TABLE)
+            .select(SUMMARY_COLUMNS)
+            .in_("id", [str(i) for i in user_ids])
+            .execute()
+        )
+        summaries = (_to_summary(row) for row in cast("list[dict[str, Any]]", response.data))
+        return {summary.id: summary for summary in summaries if summary is not None}
+
     def _read_cache(self, user_id: UUID) -> object:
         with self._lock:
             entry = self._cache.get(user_id)
@@ -68,3 +97,17 @@ class SupabaseProfileRepository:
 #: Centinela: `None` es un valor valido en cache (usuario sin perfil), asi que no
 #: sirve para distinguir "no esta cacheado".
 _MISS = object()
+
+
+def _to_summary(row: dict[str, Any]) -> ProfileSummary | None:
+    """Un perfil con rol desconocido se descarta: fallar cerrado, no abierto."""
+    try:
+        role = UserRole(row["role"])
+    except (KeyError, ValueError):
+        return None
+    return ProfileSummary(
+        id=UUID(row["id"]),
+        role=role,
+        email=row.get("email") or "",
+        full_name=row.get("full_name") or row.get("email") or "",
+    )

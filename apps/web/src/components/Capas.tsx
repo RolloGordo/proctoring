@@ -33,7 +33,8 @@ const ENLACES: Record<Rol, Enlace[]> = {
       // "Crear" tiene su propio enlace: sin esta excepción se encenderían los dos.
       activo: (r) => r.startsWith('/sesiones') && r !== '/sesiones/nueva'
     },
-    { a: '/sesiones/nueva', texto: 'Crear examen', activo: (r) => r === '/sesiones/nueva' }
+    { a: '/sesiones/nueva', texto: 'Crear examen', activo: (r) => r === '/sesiones/nueva' },
+    { a: '/cursos', texto: 'Mis cursos', activo: (r) => r.startsWith('/cursos') }
   ],
   student: [
     { a: '/estudiante', texto: 'Panel', activo: (r) => r === '/estudiante' },

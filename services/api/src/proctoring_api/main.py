@@ -15,6 +15,7 @@ from proctoring_api.adapters.inbound.http.errors import register_error_handlers
 from proctoring_api.adapters.inbound.http.rate_limit import RateLimitMiddleware
 from proctoring_api.adapters.inbound.http.routers import (
     answers,
+    courses,
     enrollment,
     events,
     evidence,
@@ -25,6 +26,7 @@ from proctoring_api.adapters.inbound.http.routers import (
 from proctoring_api.adapters.outbound.clock import SystemClock
 from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
 from proctoring_api.adapters.outbound.memory.answer_repository import InMemoryAnswerRepository
+from proctoring_api.adapters.outbound.memory.course_repository import InMemoryCourseRepository
 from proctoring_api.adapters.outbound.memory.event_repository import InMemoryEventRepository
 from proctoring_api.adapters.outbound.memory.evidence_storage import InMemoryEvidenceStorage
 from proctoring_api.adapters.outbound.memory.exam_session_repository import (
@@ -41,6 +43,7 @@ from proctoring_api.adapters.outbound.memory.question_repository import (
 from proctoring_api.application.ports.alert_repository import AlertRepository
 from proctoring_api.application.ports.answer_repository import AnswerRepository
 from proctoring_api.application.ports.clock import Clock
+from proctoring_api.application.ports.course_repository import CourseRepository
 from proctoring_api.application.ports.event_repository import EventRepository
 from proctoring_api.application.ports.evidence_storage import EvidenceStorage
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
@@ -62,9 +65,17 @@ from proctoring_api.application.use_cases.list_teacher_sessions import (
     ListTeacherSessions,
 )
 from proctoring_api.application.use_cases.manage_answers import ListMyAnswers, SaveAnswers
+from proctoring_api.application.use_cases.manage_courses import (
+    CreateCourse,
+    EnrollStudentInCourse,
+    GetCourse,
+    ListCourseMembers,
+    ListMyCourses,
+    ListTeacherCourses,
+)
 from proctoring_api.application.use_cases.manage_enrollment import (
     EnrollInExam,
-    ListSessionParticipants,
+    ListSessionParticipantsWithNames,
     ReviewParticipantIdentity,
     SubmitExam,
 )
@@ -198,6 +209,20 @@ def _build_evidence_storage(settings: Settings, client: object | None) -> Eviden
     return InMemoryEvidenceStorage()
 
 
+def _build_course_repository(settings: Settings, client: object | None) -> CourseRepository:
+    if settings.event_repository == "supabase":
+        from supabase import Client
+
+        from proctoring_api.adapters.outbound.supabase.course_repository import (
+            SupabaseCourseRepository,
+        )
+
+        assert isinstance(client, Client)
+        return SupabaseCourseRepository(client)
+
+    return InMemoryCourseRepository()
+
+
 def _build_answer_repository(settings: Settings, client: object | None) -> AnswerRepository:
     if settings.event_repository == "supabase":
         from supabase import Client
@@ -326,6 +351,7 @@ def create_app(
     question_repository = _build_question_repository(settings, client)
     participant_repository = _build_participant_repository(settings, client)
     answer_repository = _build_answer_repository(settings, client)
+    course_repository = _build_course_repository(settings, client)
     session_repository = _build_session_repository(settings, client)
     evidence_storage = _build_evidence_storage(settings, client)
     profile_repository = _build_profile_repository(settings, client)
@@ -349,7 +375,18 @@ def create_app(
     )
     app.state.list_session_events = ListSessionEvents(event_repository, session_repository)
     app.state.list_session_alerts = ListSessionAlerts(alert_repository, session_repository)
-    app.state.create_exam_session = CreateExamSession(session_repository, settings.dev_teacher_id)
+    app.state.create_exam_session = CreateExamSession(
+        session_repository, settings.dev_teacher_id, course_repository
+    )
+    app.state.course_repository = course_repository
+    app.state.create_course = CreateCourse(course_repository, clock, settings.dev_teacher_id)
+    app.state.list_teacher_courses = ListTeacherCourses(course_repository, settings.dev_teacher_id)
+    app.state.get_course = GetCourse(course_repository)
+    app.state.enroll_student = EnrollStudentInCourse(course_repository, profile_repository, clock)
+    app.state.list_course_members = ListCourseMembers(course_repository, profile_repository)
+    app.state.list_my_courses = ListMyCourses(
+        course_repository, session_repository, settings.dev_student_id
+    )
     app.state.list_teacher_sessions = ListTeacherSessions(
         session_repository, settings.dev_teacher_id
     )
@@ -369,8 +406,8 @@ def create_app(
     app.state.enroll_in_exam = EnrollInExam(
         participant_repository, session_repository, clock, settings.dev_student_id
     )
-    app.state.list_participants = ListSessionParticipants(
-        participant_repository, session_repository
+    app.state.list_participants = ListSessionParticipantsWithNames(
+        participant_repository, session_repository, profile_repository
     )
     app.state.review_identity = ReviewParticipantIdentity(
         participant_repository, session_repository, clock
@@ -417,6 +454,7 @@ def create_app(
     app.include_router(questions.router)
     app.include_router(enrollment.router)
     app.include_router(answers.router)
+    app.include_router(courses.router)
 
     return app
 

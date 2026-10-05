@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from proctoring_api.application.ports.course_repository import CourseRepository
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.domain.errors import AuthorizationError
 from proctoring_api.domain.exam_session import (
@@ -58,9 +59,11 @@ class CreateExamSession:
         self,
         sessions: ExamSessionRepository,
         dev_teacher_id: UUID = DEFAULT_DEV_TEACHER_ID,
+        courses: CourseRepository | None = None,
     ) -> None:
         self._sessions = sessions
         self._dev_teacher_id = dev_teacher_id
+        self._courses = courses
 
     def execute(
         self, data: CreateExamSessionInput, *, actor: AuthenticatedUser | None = None
@@ -72,6 +75,7 @@ class CreateExamSession:
             InvalidExamSessionError: si los datos violan una regla de dominio.
         """
         teacher_id = self._authorize(actor)
+        self._check_course(data.course_id, teacher_id)
 
         session = ExamSession.create(
             teacher_id=teacher_id,
@@ -102,6 +106,20 @@ class CreateExamSession:
             raise AuthorizationError("Solo un docente puede crear una sesion de examen")
 
         return actor.id
+
+    def _check_course(self, course_id: UUID | None, teacher_id: UUID) -> None:
+        """Un examen solo se asocia a un curso del propio docente.
+
+        Sin esto, un `course_id` ajeno o inventado llegaba hasta la base y volvia
+        como un error de clave foranea, incomprensible para el docente. Peor: con
+        un id ajeno valido, el examen quedaba colgado del curso de otro.
+        """
+        if course_id is None or self._courses is None:
+            return
+
+        course = self._courses.find_by_id(course_id)
+        if course is None or course.teacher_id != teacher_id:
+            raise AuthorizationError("No tienes acceso a ese curso")
 
     def _free_access_code(self) -> str:
         for _ in range(MAX_ACCESS_CODE_ATTEMPTS):

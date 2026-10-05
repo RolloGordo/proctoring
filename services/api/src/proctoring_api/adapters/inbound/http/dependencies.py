@@ -27,9 +27,17 @@ from proctoring_api.application.use_cases.list_teacher_sessions import (
     ListTeacherSessions,
 )
 from proctoring_api.application.use_cases.manage_answers import ListMyAnswers, SaveAnswers
+from proctoring_api.application.use_cases.manage_courses import (
+    CreateCourse,
+    EnrollStudentInCourse,
+    GetCourse,
+    ListCourseMembers,
+    ListMyCourses,
+    ListTeacherCourses,
+)
 from proctoring_api.application.use_cases.manage_enrollment import (
     EnrollInExam,
-    ListSessionParticipants,
+    ListSessionParticipantsWithNames,
     ReviewParticipantIdentity,
     SubmitExam,
 )
@@ -113,8 +121,8 @@ def get_enroll_in_exam(request: Request) -> EnrollInExam:
     return use_case
 
 
-def get_list_participants(request: Request) -> ListSessionParticipants:
-    use_case: ListSessionParticipants = request.app.state.list_participants
+def get_list_participants(request: Request) -> ListSessionParticipantsWithNames:
+    use_case: ListSessionParticipantsWithNames = request.app.state.list_participants
     return use_case
 
 
@@ -140,6 +148,36 @@ def get_list_my_answers(request: Request) -> ListMyAnswers:
 
 def get_list_my_exams(request: Request) -> ListMyExams:
     use_case: ListMyExams = request.app.state.list_my_exams
+    return use_case
+
+
+def get_create_course(request: Request) -> CreateCourse:
+    use_case: CreateCourse = request.app.state.create_course
+    return use_case
+
+
+def get_list_teacher_courses(request: Request) -> ListTeacherCourses:
+    use_case: ListTeacherCourses = request.app.state.list_teacher_courses
+    return use_case
+
+
+def get_get_course(request: Request) -> GetCourse:
+    use_case: GetCourse = request.app.state.get_course
+    return use_case
+
+
+def get_enroll_student(request: Request) -> EnrollStudentInCourse:
+    use_case: EnrollStudentInCourse = request.app.state.enroll_student
+    return use_case
+
+
+def get_list_course_members(request: Request) -> ListCourseMembers:
+    use_case: ListCourseMembers = request.app.state.list_course_members
+    return use_case
+
+
+def get_list_my_courses(request: Request) -> ListMyCourses:
+    use_case: ListMyCourses = request.app.state.list_my_courses
     return use_case
 
 
@@ -183,7 +221,7 @@ AddQuestionsDep = Annotated[AddQuestions, Depends(get_add_questions)]
 ListSessionQuestionsDep = Annotated[ListSessionQuestions, Depends(get_list_session_questions)]
 GetExamQuestionsDep = Annotated[GetExamQuestions, Depends(get_exam_questions)]
 EnrollInExamDep = Annotated[EnrollInExam, Depends(get_enroll_in_exam)]
-ListParticipantsDep = Annotated[ListSessionParticipants, Depends(get_list_participants)]
+ListParticipantsDep = Annotated[ListSessionParticipantsWithNames, Depends(get_list_participants)]
 ReviewIdentityDep = Annotated[ReviewParticipantIdentity, Depends(get_review_identity)]
 SubmitExamDep = Annotated[SubmitExam, Depends(get_submit_exam)]
 SaveAnswersDep = Annotated[SaveAnswers, Depends(get_save_answers)]
@@ -192,3 +230,9 @@ ListMyAnswersDep = Annotated[ListMyAnswers, Depends(get_list_my_answers)]
 CreateEvidenceUploadUrlDep = Annotated[
     CreateEvidenceUploadUrl, Depends(get_create_evidence_upload_url)
 ]
+CreateCourseDep = Annotated[CreateCourse, Depends(get_create_course)]
+ListTeacherCoursesDep = Annotated[ListTeacherCourses, Depends(get_list_teacher_courses)]
+GetCourseDep = Annotated[GetCourse, Depends(get_get_course)]
+EnrollStudentDep = Annotated[EnrollStudentInCourse, Depends(get_enroll_student)]
+ListCourseMembersDep = Annotated[ListCourseMembers, Depends(get_list_course_members)]
+ListMyCoursesDep = Annotated[ListMyCourses, Depends(get_list_my_courses)]
