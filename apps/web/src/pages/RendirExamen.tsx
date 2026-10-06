@@ -10,6 +10,8 @@ import {
 } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { soloHora } from '../lib/formato'
+import { detectoresDe } from '../supervision/detectores'
+import { useSupervision } from '../supervision/useSupervision'
 
 /**
  * Pantalla del examen del estudiante.
@@ -24,7 +26,7 @@ import { soloHora } from '../lib/formato'
  */
 export function RendirExamen() {
   const { id = '' } = useParams()
-  const { token } = useAuth()
+  const { token, userId } = useAuth()
 
   const [preguntas, setPreguntas] = useState<ExamQuestion[]>()
   const [matricula, setMatricula] = useState<Participant>()
@@ -55,6 +57,21 @@ export function RendirExamen() {
   }, [id, token])
 
   const guardar = useGuardadoDiferido(id, token, setGuardado, setError)
+
+  // La supervisión se enciende aquí y no antes: el consentimiento se da en la
+  // sala, y observar a alguien que todavía no aceptó sería justo lo que el
+  // proyecto promete no hacer.
+  const detectores = useMemo(() => detectoresDe(matricula ? MODULOS_ACTIVOS : {}), [matricula])
+  const supervision = useSupervision({
+    sessionId: id,
+    studentId: userId,
+    // La pregunta en curso: por ahora la primera sin responder, que es donde
+    // está mirando. Cuando haya navegación pregunta a pregunta saldrá de ahí.
+    questionId: preguntas?.find((p) => !respuestas[p.id])?.id ?? null,
+    token,
+    detectores,
+    activa: matricula?.submitted_at == null
+  })
 
   const responder = useCallback(
     (respuesta: NewAnswer) => {
@@ -102,6 +119,13 @@ export function RendirExamen() {
           {entregando ? 'Entregando…' : 'Entregar examen'}
         </button>
       </div>
+
+      {supervision.tipo === 'fallo' && (
+        <p className="aviso aviso-neutro">
+          {supervision.mensaje} Puedes seguir rindiendo: quedará registrado que la supervisión no se
+          pudo activar, y tu docente lo verá al revisar.
+        </p>
+      )}
 
       {error && <p className="aviso">{error}</p>}
 
@@ -344,3 +368,13 @@ function indexar(respuestas: Answer[]): Record<string, NewAnswer> {
     ])
   )
 }
+
+/**
+ * Los módulos que se observan desde el navegador.
+ *
+ * Provisional: tienen que salir de `session.modules`, que es lo que el docente
+ * eligió al crear el examen. Hoy la pantalla del examen no recibe la sesión
+ * completa, solo las preguntas; en cuanto la reciba, esto se sustituye por sus
+ * ajustes reales. Mientras los detectores sean plantillas vacías, da igual.
+ */
+const MODULOS_ACTIVOS: Record<string, Record<string, unknown>> = {}

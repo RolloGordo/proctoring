@@ -59,6 +59,19 @@ export interface ProctoringEvent {
   severity: Severity
 }
 
+/** Una señal a reportar. `student_id` tiene que ser el del token. */
+export interface NewEvent {
+  session_id: string
+  student_id: string
+  question_id?: string | null
+  event_type: EventType
+  /** ISO-8601 en UTC. */
+  started_at: string
+  duration_ms?: number
+  metadata?: Record<string, unknown>
+  evidence_path?: string | null
+}
+
 export interface Alert {
   id: string
   event_id: string
@@ -441,6 +454,9 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ approve }) },
       token
     ),
+
+  registerEvent: (evento: NewEvent, token?: string): Promise<{ id: string; severity: Severity }> =>
+    request('/api/v1/events', { method: 'POST', body: JSON.stringify(evento) }, token),
 
   listEvents: (sessionId: string, token?: string): Promise<ProctoringEvent[]> =>
     request(`/api/v1/sessions/${sessionId}/events`, undefined, token),

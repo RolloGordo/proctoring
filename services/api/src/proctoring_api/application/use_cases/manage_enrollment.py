@@ -14,7 +14,7 @@ from proctoring_api.application.ports.profile_repository import ProfileRepositor
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.domain.errors import AuthorizationError, DomainError
-from proctoring_api.domain.exam_session import ExamSession
+from proctoring_api.domain.exam_session import EntryState, ExamSession
 from proctoring_api.domain.grading import score_exam
 from proctoring_api.domain.participant import InvalidEnrollmentError, SessionParticipant
 from proctoring_api.domain.user import AuthenticatedUser, ProfileSummary
@@ -28,6 +28,15 @@ DEFAULT_DEV_STUDENT_ID = UUID("00000000-0000-4000-8000-000000000002")
 
 class ConsentRequiredError(DomainError):
     """No se puede entrar a un examen supervisado sin aceptar la supervisión."""
+
+
+class ExamNotStartedError(DomainError):
+    """El examen todavía no empieza.
+
+    Separado de "el plazo cerró" a propósito: para quien espera son situaciones
+    opuestas. A uno hay que decirle que vuelva en un rato; al otro, que hable con
+    su docente. Responde 400, no 403: no es que no pueda, es que todavía no.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,7 +106,15 @@ class EnrollInExam:
                 "Puedes revisar que se observa antes de aceptar."
             )
 
-        if not sesion.accepts_entry_at(ahora):
+        estado = sesion.entry_state_at(ahora)
+        if estado is EntryState.NOT_STARTED:
+            # Llegar antes de tiempo no es un error del estudiante: es lo normal.
+            # Decirle "el plazo esta cerrado" era confundirlo con lo contrario.
+            raise ExamNotStartedError(
+                "Este examen todavia no empieza. Espera a la hora de inicio: "
+                "esta pantalla te dejara entrar sola."
+            )
+        if estado is EntryState.CLOSED:
             raise AuthorizationError(
                 "El plazo de ingreso a este examen esta cerrado. "
                 "Habla con tu docente si crees que es un error."
@@ -335,6 +352,7 @@ __all__ = [
     "ConsentRequiredError",
     "EnrollInExam",
     "EnrollmentResult",
+    "ExamNotStartedError",
     "InvalidEnrollmentError",
     "ListSessionParticipants",
     "ListSessionParticipantsWithNames",

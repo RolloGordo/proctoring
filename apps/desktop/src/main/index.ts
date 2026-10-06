@@ -1,9 +1,10 @@
-import { app, shell, BrowserWindow, ipcMain, screen } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, screen, session } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { examContext, liveExamSessionId, setExamSession, setStudentFromToken } from './context'
 import { buildExtraDisplayEvent, buildFocusLostEvent } from './events'
+import { applyPermissionPolicy } from './permisos'
 import { applyWindowProtection } from './protection'
 import { startProcessMonitor, type ProcessMonitor } from './processes'
 import { sendEvent, setAuthSession } from './sender'
@@ -145,6 +146,10 @@ function createWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.proctoring.desktop')
+
+  // Camara y microfono solo para el examen, y solo desde su propio origen: la
+  // deteccion de mirada y de habla corre en la web que carga esta ventana.
+  applyPermissionPolicy(session.defaultSession, webBaseUrl())
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
