@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     #: pantalla de login este hecha.
     auth_enabled: bool = True
 
+    #: Secreto compartido con `services/ai` para sus endpoints internos.
+    #:
+    #: Vacio solo se permite con la autenticacion desactivada (desarrollo local);
+    #: `create_app` se niega a arrancar en cualquier otro caso. Asi un despliegue
+    #: no puede dejar abiertos los endpoints que escriben evidencia.
+    internal_api_token: str = ""
+
     #: Docente al que se atribuyen las sesiones cuando la autenticacion esta
     #: desactivada.
     #:

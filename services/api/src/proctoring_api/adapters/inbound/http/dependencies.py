@@ -13,6 +13,14 @@ from typing import Annotated
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from proctoring_api.application.use_cases.ai_jobs import (
+    GetAudioJob,
+    GetFaceJob,
+    RecordAudioAnalysis,
+    RecordIdentityCheck,
+    RegisterReferenceFace,
+    RequestIdentityCheck,
+)
 from proctoring_api.application.use_cases.create_evidence_upload_url import (
     CreateEvidenceUploadUrl,
 )
@@ -201,6 +209,36 @@ def get_list_decisions(request: Request) -> ListSessionDecisions:
     return use_case
 
 
+def get_audio_job(request: Request) -> GetAudioJob:
+    use_case: GetAudioJob = request.app.state.get_audio_job
+    return use_case
+
+
+def get_record_audio_analysis(request: Request) -> RecordAudioAnalysis:
+    use_case: RecordAudioAnalysis = request.app.state.record_audio_analysis
+    return use_case
+
+
+def get_face_job(request: Request) -> GetFaceJob:
+    use_case: GetFaceJob = request.app.state.get_face_job
+    return use_case
+
+
+def get_record_identity_check(request: Request) -> RecordIdentityCheck:
+    use_case: RecordIdentityCheck = request.app.state.record_identity_check
+    return use_case
+
+
+def get_register_reference_face(request: Request) -> RegisterReferenceFace:
+    use_case: RegisterReferenceFace = request.app.state.register_reference_face
+    return use_case
+
+
+def get_request_identity_check(request: Request) -> RequestIdentityCheck:
+    use_case: RequestIdentityCheck = request.app.state.request_identity_check
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -259,3 +297,9 @@ ListMyCoursesDep = Annotated[ListMyCourses, Depends(get_list_my_courses)]
 ReviewCaseDep = Annotated[ReviewStudentCase, Depends(get_review_case)]
 RecordDecisionDep = Annotated[RecordDecision, Depends(get_record_decision)]
 ListDecisionsDep = Annotated[ListSessionDecisions, Depends(get_list_decisions)]
+GetAudioJobDep = Annotated[GetAudioJob, Depends(get_audio_job)]
+RecordAudioAnalysisDep = Annotated[RecordAudioAnalysis, Depends(get_record_audio_analysis)]
+GetFaceJobDep = Annotated[GetFaceJob, Depends(get_face_job)]
+RecordIdentityCheckDep = Annotated[RecordIdentityCheck, Depends(get_record_identity_check)]
+RegisterReferenceFaceDep = Annotated[RegisterReferenceFace, Depends(get_register_reference_face)]
+RequestIdentityCheckDep = Annotated[RequestIdentityCheck, Depends(get_request_identity_check)]

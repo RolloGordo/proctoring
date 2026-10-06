@@ -41,6 +41,10 @@ CONTRACT_STUDENT_ID = UUID("7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71")
 OTHER_STUDENT_ID = UUID("1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d")
 TEACHER_ID = UUID("0f9e8d7c-6b5a-4938-8271-6a5b4c3d2e1f")
 
+#: Secreto de los endpoints internos que usa `services/ai`. La API se niega a
+#: arrancar con autenticacion y sin el, asi que la app de pruebas tambien lo lleva.
+INTERNAL_TOKEN = "secreto-interno-de-prueba"
+
 STUDENT_TOKEN = "token-estudiante"
 OTHER_STUDENT_TOKEN = "token-otro-estudiante"
 TEACHER_TOKEN = "token-docente"
@@ -165,7 +169,11 @@ def authed_app(clock: FixedClock, identify_user: IdentifyUser) -> FastAPI:
     prueba: un docente solo accede a las sesiones que el creo, asi que sin esto
     sus peticiones responderian 403 con razon.
     """
-    app = create_app(_settings(auth_enabled=True), clock=clock, identify_user=identify_user)
+    app = create_app(
+        _settings(auth_enabled=True, internal_api_token=INTERNAL_TOKEN),
+        clock=clock,
+        identify_user=identify_user,
+    )
     app.state.session_repository.save(
         ExamSession.create(
             teacher_id=TEACHER_ID,

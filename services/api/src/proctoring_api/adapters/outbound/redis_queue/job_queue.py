@@ -24,6 +24,9 @@ from rq import Queue, Retry
 #: constante y no disperso.
 AUDIO_ANALYSIS_TASK = "tasks.analyze_audio"
 
+#: Ruta de la funcion que compara dos caras. Misma idea: se encola por nombre.
+FACE_VERIFICATION_TASK = "tasks.verify_face"
+
 #: Analisis de audio: tarda segundos y nadie espera el resultado en pantalla.
 AUDIO_QUEUE = "audio"
 #: Verificacion facial: si hay un estudiante esperando en la sala de espera, con
@@ -37,6 +40,8 @@ MAX_RETRIES = 3
 
 #: Cuanto puede tardar un trabajo antes de darlo por colgado.
 AUDIO_JOB_TIMEOUT = "5m"
+#: La verificacion facial tiene a alguien esperando en pantalla.
+FACE_JOB_TIMEOUT = "60s"
 
 
 class RedisJobQueue:
@@ -53,6 +58,15 @@ class RedisJobQueue:
             str(event_id),
             retry=Retry(max=MAX_RETRIES),
             job_timeout=AUDIO_JOB_TIMEOUT,
+        )
+
+    def enqueue_face_verification(self, participant_id: UUID, capture_path: str) -> None:
+        self._high.enqueue(
+            FACE_VERIFICATION_TASK,
+            str(participant_id),
+            capture_path,
+            retry=Retry(max=MAX_RETRIES),
+            job_timeout=FACE_JOB_TIMEOUT,
         )
 
     def ping(self) -> bool:

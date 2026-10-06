@@ -32,7 +32,41 @@ PUBLICAS = {
 
 
 def rutas_de(app: FastAPI) -> list[APIRoute]:
-    return [r for r in app.routes if isinstance(r, APIRoute)]
+    """Todas las rutas de la aplicacion, incluidas las de los routers incluidos.
+
+    **Hay que recorrer en profundidad.** Desde FastAPI 0.1xx, `include_router` no
+    aplana las rutas en `app.routes`: deja un envoltorio por router. Mirar solo el
+    primer nivel devolvia una lista **vacia**, y las dos pruebas de abajo pasaban
+    sin comprobar nada. Una prueba que no puede fallar es peor que no tenerla,
+    porque da confianza.
+    """
+    encontradas: list[APIRoute] = []
+    pendientes: list[object] = list(app.routes)
+    while pendientes:
+        actual = pendientes.pop()
+        if isinstance(actual, APIRoute):
+            encontradas.append(actual)
+            continue
+        router = getattr(actual, "original_router", None)
+        if router is not None:
+            pendientes.extend(router.routes)
+    return encontradas
+
+
+def _guardianes(ruta: APIRoute) -> set[str]:
+    """Las dependencias que protegen una ruta, por nombre."""
+    return {d.call.__name__ for d in ruta.dependant.dependencies if d.call}
+
+
+def test_rutas_de_encuentra_los_endpoints(authed_app: FastAPI) -> None:
+    """Protege al propio recorrido: si vuelve a devolver poco, esto falla.
+
+    El numero no es magico; es "muchas mas que las cuatro de la documentacion".
+    """
+    rutas = rutas_de(authed_app)
+
+    assert len(rutas) > 20, f"Solo se encontraron {len(rutas)} rutas: el recorrido esta roto"
+    assert "/api/v1/sessions" in {r.path for r in rutas}
 
 
 class TestTodoEndpointIdentificaAlActor:
@@ -47,22 +81,37 @@ class TestTodoEndpointIdentificaAlActor:
         for ruta in rutas_de(authed_app):
             if ruta.path in PUBLICAS:
                 continue
-            nombres = {d.call.__name__ for d in ruta.dependant.dependencies if d.call}
-            if "get_current_user" not in nombres:
-                sin_actor.append(f"{sorted(ruta.methods or [])} {ruta.path}")
+            if _guardianes(ruta) & {"get_current_user", "verify_internal_token"}:
+                continue
+            sin_actor.append(f"{sorted(ruta.methods or [])} {ruta.path}")
 
         assert sin_actor == [], (
             f"Estos endpoints no identifican a quien los llama y quedan abiertos: {sin_actor}"
         )
+
+    def test_los_internos_usan_el_secreto_y_no_un_token_de_usuario(
+        self, authed_app: FastAPI
+    ) -> None:
+        """Los endpoints de `services/ai` se autentican con el secreto compartido.
+
+        El worker no es un usuario: darle una cuenta seria darle permisos sobre
+        datos de estudiantes. Y al reves, una ruta interna que pidiera
+        `get_current_user` seria inalcanzable para el worker.
+        """
+        internos = [r for r in rutas_de(authed_app) if r.path.startswith("/api/v1/internal")]
+
+        assert internos, "No se encontro ninguna ruta interna"
+        for ruta in internos:
+            assert "verify_internal_token" in _guardianes(ruta), (
+                f"La ruta interna {ruta.path} no exige el secreto compartido"
+            )
 
     def test_la_lista_de_publicas_no_crece_sin_querer(self, authed_app: FastAPI) -> None:
         # Si alguien añade una ruta pública, que sea una decisión consciente.
         publicas_reales = {
             r.path
             for r in rutas_de(authed_app)
-            if not any(
-                d.call and d.call.__name__ == "get_current_user" for d in r.dependant.dependencies
-            )
+            if not _guardianes(r) & {"get_current_user", "verify_internal_token"}
         }
 
         assert publicas_reales <= PUBLICAS
