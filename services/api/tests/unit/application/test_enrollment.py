@@ -16,13 +16,14 @@ from proctoring_api.adapters.outbound.memory.participant_repository import (
 from proctoring_api.application.use_cases.manage_enrollment import (
     ConsentRequiredError,
     EnrollInExam,
+    ExamNotStartedError,
     ListSessionParticipants,
     ReviewParticipantIdentity,
     SubmitExam,
     ensure_can_take_exam,
 )
 from proctoring_api.domain.errors import AuthorizationError
-from proctoring_api.domain.exam_session import ExamSession
+from proctoring_api.domain.exam_session import EntryState, ExamSession
 from proctoring_api.domain.participant import (
     InvalidEnrollmentError,
     SessionParticipant,
@@ -323,3 +324,74 @@ def test_una_matricula_sin_consentimiento_no_se_puede_construir() -> None:
     # participantes sin consentimiento.
     with pytest.raises(TypeError):
         SessionParticipant.enroll(session_id=uuid4(), student_id=uuid4())  # type: ignore[call-arg]
+
+
+class TestLlegarAntesDeTiempo:
+    """Llegar pronto y llegar tarde no son lo mismo para quien espera."""
+
+    def escenario(self, empieza_en: timedelta) -> tuple[EnrollInExam, ExamSession]:
+        sessions = InMemoryExamSessionRepository()
+        sesion = ExamSession.create(
+            teacher_id=DOCENTE.id,
+            title="Parcial",
+            starts_at=NOW + empieza_en,
+            duration_minutes=60,
+            entry_tolerance_minutes=10,
+        )
+        sessions.save(sesion)
+        caso = EnrollInExam(InMemoryParticipantRepository(), sessions, FixedClock(NOW))
+        return caso, sesion
+
+    def test_antes_de_la_hora_dice_que_espere(self) -> None:
+        # Era el error: recibia "el plazo esta cerrado", que es lo contrario.
+        caso, sesion = self.escenario(timedelta(minutes=30))
+
+        with pytest.raises(ExamNotStartedError, match="todavia no empieza"):
+            caso.execute(sesion.id, accepts_supervision=True, actor=ANA)
+
+    def test_pasada_la_tolerancia_dice_que_hable_con_su_docente(self) -> None:
+        caso, sesion = self.escenario(timedelta(minutes=-30))
+
+        with pytest.raises(AuthorizationError, match="cerrado"):
+            caso.execute(sesion.id, accepts_supervision=True, actor=ANA)
+
+    def test_dentro_de_la_ventana_entra(self) -> None:
+        caso, sesion = self.escenario(timedelta(minutes=-5))
+
+        resultado = caso.execute(sesion.id, accepts_supervision=True, actor=ANA)
+
+        assert resultado.participant.has_consented
+
+
+class TestEstadoDeLaVentana:
+    def sesion(self, empieza_en: timedelta, tolerancia: int = 10) -> ExamSession:
+        return ExamSession.create(
+            teacher_id=DOCENTE.id,
+            title="Parcial",
+            starts_at=NOW + empieza_en,
+            duration_minutes=60,
+            entry_tolerance_minutes=tolerancia,
+        )
+
+    def test_los_tres_estados(self) -> None:
+        assert self.sesion(timedelta(minutes=1)).entry_state_at(NOW) is EntryState.NOT_STARTED
+        assert self.sesion(timedelta(minutes=-1)).entry_state_at(NOW) is EntryState.OPEN
+        assert self.sesion(timedelta(minutes=-30)).entry_state_at(NOW) is EntryState.CLOSED
+
+    def test_justo_a_la_hora_de_inicio_ya_abre(self) -> None:
+        assert self.sesion(timedelta(0)).entry_state_at(NOW) is EntryState.OPEN
+
+    def test_justo_en_el_limite_de_tolerancia_sigue_abierto(self) -> None:
+        assert self.sesion(timedelta(minutes=-10)).entry_state_at(NOW) is EntryState.OPEN
+
+    def test_un_segundo_despues_ya_no(self) -> None:
+        sesion = self.sesion(timedelta(minutes=-10))
+
+        assert sesion.entry_state_at(NOW + timedelta(seconds=1)) is EntryState.CLOSED
+
+    def test_una_tolerancia_mayor_que_el_examen_no_lo_alarga(self) -> None:
+        # Con 180 min de tolerancia sobre un examen de 60, la puerta cierra con
+        # el examen, no tres horas despues.
+        sesion = self.sesion(timedelta(minutes=-90), tolerancia=180)
+
+        assert sesion.entry_state_at(NOW) is EntryState.CLOSED

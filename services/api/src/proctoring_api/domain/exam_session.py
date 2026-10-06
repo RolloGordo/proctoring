@@ -34,6 +34,17 @@ class SessionStatus(StrEnum):
     FINISHED = "finished"
 
 
+class EntryState(StrEnum):
+    """En que punto esta la ventana de ingreso de un examen."""
+
+    #: Todavia no empieza. El estudiante tiene que volver mas tarde.
+    NOT_STARTED = "not_started"
+    #: Se puede entrar ahora.
+    OPEN = "open"
+    #: Paso la tolerancia de ingreso, o el examen ya termino.
+    CLOSED = "closed"
+
+
 class SupervisionPreset(StrEnum):
     """Nivel de supervision. Igual que `supervision_preset` de PostgreSQL."""
 
@@ -257,11 +268,25 @@ class ExamSession:
     def ends_at(self) -> datetime:
         return self.starts_at + timedelta(minutes=self.duration_minutes)
 
+    def entry_state_at(self, moment: datetime) -> EntryState:
+        """En que punto esta la ventana de ingreso.
+
+        Devuelve **tres** estados y no un booleano porque "todavia no empieza" y
+        "ya cerro" se parecen desde dentro y no se parecen en nada para quien
+        espera: a uno hay que decirle que vuelva, al otro que hable con su
+        docente. Con un booleano, el estudiante que llegaba pronto recibia
+        "el plazo esta cerrado", que es lo contrario de lo que pasaba.
+        """
+        if moment < self.starts_at:
+            return EntryState.NOT_STARTED
+
+        limit = self.starts_at + timedelta(minutes=self.entry_tolerance_minutes)
+        return EntryState.OPEN if moment <= min(limit, self.ends_at) else EntryState.CLOSED
+
     def accepts_entry_at(self, moment: datetime) -> bool:
         """Si un estudiante puede entrar en ese instante.
 
         Hay tolerancia al inicio porque llegar dos minutos tarde no deberia
         costar el examen, pero no se puede entrar una vez terminado.
         """
-        limit = self.starts_at + timedelta(minutes=self.entry_tolerance_minutes)
-        return self.starts_at <= moment <= min(limit, self.ends_at)
+        return self.entry_state_at(moment) is EntryState.OPEN

@@ -140,9 +140,19 @@ def _settings(**overrides: Any) -> Settings:
         # Las pruebas hacen decenas de peticiones seguidas desde el mismo
         # cliente; el limite tiene sus propias pruebas en test_rate_limit.
         "rate_limit_enabled": False,
+        # Vacio: los endpoints internos quedan abiertos solo con la autenticacion
+        # desactivada, que es el modo de la mayoria de pruebas. `authed_app` lo
+        # sobreescribe.
+        "internal_api_token": "",
     }
     base.update(overrides)
-    return Settings(**base)
+    # `_env_file=None` desconecta el .env del desarrollador. Sin esto, las pruebas
+    # leian la configuracion real de quien las ejecuta: el DEV_TEACHER_ID de su
+    # Supabase, su INTERNAL_API_TOKEN... y pasaban o fallaban segun la maquina.
+    # Una prueba tiene que depender solo de lo que declara.
+    # `_env_file` lo entiende pydantic-settings en tiempo de ejecucion, pero no
+    # esta en la firma generada, asi que mypy no lo ve.
+    return Settings(**base, _env_file=None)  # type: ignore[call-arg]
 
 
 @pytest.fixture

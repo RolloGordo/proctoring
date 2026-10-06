@@ -843,3 +843,12 @@
 .historial-decisiones .tarjeta + .tarjeta {
   margin-top: 0;
 }
+
+/* Aviso de algo que salió bien. El verde se reserva para esto: que aparezca
+   poco es lo que hace que se note cuando aparece. */
+.aviso-exito {
+  color: var(--exito);
+  background: var(--exito-fondo);
+  border-color: rgb(6 118 71 / 30%);
+  border-left-color: var(--exito);
+}

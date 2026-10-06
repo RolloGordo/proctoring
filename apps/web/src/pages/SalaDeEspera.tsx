@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api, type JoinedExam, type Participant } from '../lib/api'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth-context'
 import { recordarExamen, recuperarExamen } from '../lib/examen-guardado'
 import { cuandoEmpieza, fechaLarga } from '../lib/formato'
@@ -49,6 +50,7 @@ export function SalaDeEspera() {
   const [matricula, setMatricula] = useState<Participant>()
   const [acepta, setAcepta] = useState(false)
   const [entrando, setEntrando] = useState(false)
+  const [acabanDeAdmitirme, setAcabanDeAdmitirme] = useState(false)
   const [error, setError] = useState<string>()
   const [ahora, setAhora] = useState(() => Date.now())
 
@@ -58,9 +60,16 @@ export function SalaDeEspera() {
 
   // Si ya consintió antes, no se le vuelve a preguntar: se le deja pasar.
   //
-  // Y mientras su identidad no esté resuelta, se vuelve a preguntar cada pocos
-  // segundos: el estudiante está esperando a que su docente lo admita y no
-  // tiene por qué recargar la página para enterarse.
+  // Y mientras su identidad no esté resuelta, esta pantalla **espera sola**. El
+  // estudiante no tiene que recargar ni volver a intentarlo para enterarse de
+  // que su docente ya lo admitió: antes tenía que hacerlo, y era lo peor de
+  // estar esperando.
+  //
+  // Dos caminos a la vez, a propósito: Realtime avisa en el instante en que el
+  // docente pulsa «Admitir», y la consulta periódica cubre el caso de que la
+  // conexión en vivo no esté disponible (sin Supabase configurado, o con la red
+  // del estudiante bloqueando websockets). Perder el aviso es peor que pedirlo
+  // dos veces.
   useEffect(() => {
     if (!id) return
     let cancelado = false
@@ -70,8 +79,12 @@ export function SalaDeEspera() {
         .myEnrollment(id, token)
         .then((mia) => {
           if (cancelado) return
-          setMatricula(mia)
-          if (mia.can_take_exam && !mia.submitted_at) clearInterval(temporizador)
+          setMatricula((previa) => {
+            if (!previa?.can_take_exam && mia.can_take_exam && !mia.submitted_at) {
+              setAcabanDeAdmitirme(true)
+            }
+            return mia
+          })
         })
         // Un 400 aquí significa "todavía no has consentido", que es el estado
         // normal de esta pantalla y no un error que mostrar.
@@ -81,9 +94,28 @@ export function SalaDeEspera() {
     consultar()
     const temporizador = setInterval(consultar, ESPERA_MS)
 
+    const cliente = supabase
+    const canal = cliente
+      ?.channel(`mi-matricula-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'session_participants',
+          filter: `session_id=eq.${id}`
+        },
+        // Llega la fila cambiada, pero se vuelve a preguntar a la API: la fila
+        // puede ser de otro estudiante de la misma sesión, y quién soy yo lo
+        // decide el token, no un mensaje que llega por el canal.
+        () => consultar()
+      )
+      .subscribe()
+
     return () => {
       cancelado = true
       clearInterval(temporizador)
+      if (cliente && canal) void cliente.removeChannel(canal)
     }
   }, [id, token])
 
@@ -130,6 +162,9 @@ export function SalaDeEspera() {
   const modulos = Object.keys(examen.modules).filter((m) => MODULOS[m])
   const yaConsintio = matricula?.consent_at != null
   const yaEntrego = matricula?.submitted_at != null
+  // Antes de la hora no se ofrece aceptar: pulsarlo daba un error, y encima uno
+  // que decía lo contrario de lo que pasaba («el plazo está cerrado»).
+  const todaviaNoEmpieza = empiezaEn > 0 && !examen.can_enter_now
 
   return (
     <div className="centrado-estrecho">
@@ -201,10 +236,16 @@ export function SalaDeEspera() {
         </div>
       )}
 
+      {acabanDeAdmitirme && !yaEntrego && (
+        <p className="aviso aviso-exito" role="status">
+          <strong>Tu docente te admitió.</strong> Ya puedes entrar al examen.
+        </p>
+      )}
+
       {matricula && !matricula.can_take_exam && !yaEntrego && (
-        <p className="aviso aviso-neutro">
+        <p className="aviso aviso-neutro" role="status">
           Tu identidad todavía no está verificada. Tu docente te admitirá desde su panel y esta
-          pantalla se actualizará sola: no hace falta que recargues.
+          pantalla te avisará sola: no hace falta que recargues ni que vuelvas a intentarlo.
         </p>
       )}
 
@@ -213,7 +254,15 @@ export function SalaDeEspera() {
       {!yaEntrego && (
         <div className="tarjeta">
           <div className="tarjeta-cuerpo">
-            {yaConsintio ? (
+            {todaviaNoEmpieza ? (
+              <>
+                <h2>Todavía no es la hora</h2>
+                <p className="subtitulo">
+                  Este examen empieza {cuandoEmpieza(empiezaEn)}. Puedes dejar esta pantalla
+                  abierta: se actualizará sola cuando puedas entrar.
+                </p>
+              </>
+            ) : yaConsintio ? (
               <Link
                 to={`/examen/${id}/rendir`}
                 className="boton"
