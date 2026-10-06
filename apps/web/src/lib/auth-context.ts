@@ -9,6 +9,8 @@ export interface AuthState {
   /** Token de acceso para la API. `undefined` cuando no hay autenticación. */
   token?: string
   email?: string
+  /** Id del usuario en Supabase. Los eventos de supervisión lo llevan. */
+  userId?: string
   /** El rol vive en `public.profiles`, no en el token. */
   rol?: 'teacher' | 'student'
   /**
