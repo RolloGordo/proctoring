@@ -29,6 +29,10 @@ class InMemoryEventRepository:
         with self._lock:
             self._events.append(event)
 
+    def find_by_id(self, event_id: UUID) -> ProctoringEvent | None:
+        with self._lock:
+            return next((e for e in self._events if e.id == event_id), None)
+
     def list_by_session(
         self, session_id: UUID, student_id: UUID | None = None
     ) -> Sequence[ProctoringEvent]:

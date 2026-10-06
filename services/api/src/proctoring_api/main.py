@@ -14,6 +14,7 @@ from proctoring_api import __version__
 from proctoring_api.adapters.inbound.http.errors import register_error_handlers
 from proctoring_api.adapters.inbound.http.rate_limit import RateLimitMiddleware
 from proctoring_api.adapters.inbound.http.routers import (
+    ai,
     answers,
     courses,
     enrollment,
@@ -27,6 +28,9 @@ from proctoring_api.adapters.inbound.http.routers import (
 from proctoring_api.adapters.outbound.clock import SystemClock
 from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
 from proctoring_api.adapters.outbound.memory.answer_repository import InMemoryAnswerRepository
+from proctoring_api.adapters.outbound.memory.audio_analysis_repository import (
+    InMemoryAudioAnalysisRepository,
+)
 from proctoring_api.adapters.outbound.memory.course_repository import InMemoryCourseRepository
 from proctoring_api.adapters.outbound.memory.decision_repository import (
     InMemoryDecisionRepository,
@@ -44,8 +48,12 @@ from proctoring_api.adapters.outbound.memory.profile_repository import InMemoryP
 from proctoring_api.adapters.outbound.memory.question_repository import (
     InMemoryQuestionRepository,
 )
+from proctoring_api.adapters.outbound.memory.reference_face_repository import (
+    InMemoryReferenceFaceRepository,
+)
 from proctoring_api.application.ports.alert_repository import AlertRepository
 from proctoring_api.application.ports.answer_repository import AnswerRepository
+from proctoring_api.application.ports.audio_analysis_repository import AudioAnalysisRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.course_repository import CourseRepository
 from proctoring_api.application.ports.decision_repository import DecisionRepository
@@ -56,6 +64,15 @@ from proctoring_api.application.ports.job_queue import JobQueue
 from proctoring_api.application.ports.participant_repository import ParticipantRepository
 from proctoring_api.application.ports.profile_repository import ProfileRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
+from proctoring_api.application.ports.reference_face_repository import ReferenceFaceRepository
+from proctoring_api.application.use_cases.ai_jobs import (
+    GetAudioJob,
+    GetFaceJob,
+    RecordAudioAnalysis,
+    RecordIdentityCheck,
+    RegisterReferenceFace,
+    RequestIdentityCheck,
+)
 from proctoring_api.application.use_cases.create_evidence_upload_url import (
     CreateEvidenceUploadUrl,
 )
@@ -219,6 +236,38 @@ def _build_evidence_storage(settings: Settings, client: object | None) -> Eviden
     return InMemoryEvidenceStorage()
 
 
+def _build_audio_analysis_repository(
+    settings: Settings, client: object | None
+) -> AudioAnalysisRepository:
+    if settings.event_repository == "supabase":
+        from supabase import Client
+
+        from proctoring_api.adapters.outbound.supabase.audio_analysis_repository import (
+            SupabaseAudioAnalysisRepository,
+        )
+
+        assert isinstance(client, Client)
+        return SupabaseAudioAnalysisRepository(client)
+
+    return InMemoryAudioAnalysisRepository()
+
+
+def _build_reference_face_repository(
+    settings: Settings, client: object | None
+) -> ReferenceFaceRepository:
+    if settings.event_repository == "supabase":
+        from supabase import Client
+
+        from proctoring_api.adapters.outbound.supabase.reference_face_repository import (
+            SupabaseReferenceFaceRepository,
+        )
+
+        assert isinstance(client, Client)
+        return SupabaseReferenceFaceRepository(client)
+
+    return InMemoryReferenceFaceRepository()
+
+
 def _build_decision_repository(settings: Settings, client: object | None) -> DecisionRepository:
     if settings.event_repository == "supabase":
         from supabase import Client
@@ -345,6 +394,17 @@ def create_app(
     # Un comodin junto a allow_credentials deja que CUALQUIER sitio haga
     # peticiones autenticadas en nombre del docente. Los navegadores lo rechazan,
     # pero no todos los clientes son navegadores, y el error seria silencioso.
+    # Los endpoints internos escriben evidencia y aplican la regla de alerta. Sin
+    # el secreto quedarian abiertos a cualquiera que conozca la URL, asi que se
+    # exige en cuanto la autenticacion esta activa: mejor un despliegue que falla
+    # al arrancar que uno que acepta analisis de cualquiera.
+    if settings.auth_enabled and not settings.internal_api_token:
+        raise ValueError(
+            "Falta INTERNAL_API_TOKEN. Los endpoints internos de services/ai "
+            "quedarian abiertos. Genera un secreto largo y ponlo en el .env y en "
+            "el entorno del worker."
+        )
+
     if "*" in settings.cors_origins:
         raise ValueError(
             "CORS_ORIGINS no puede ser '*': la API envia credenciales. "
@@ -377,6 +437,8 @@ def create_app(
     answer_repository = _build_answer_repository(settings, client)
     course_repository = _build_course_repository(settings, client)
     decision_repository = _build_decision_repository(settings, client)
+    audio_analysis_repository = _build_audio_analysis_repository(settings, client)
+    reference_face_repository = _build_reference_face_repository(settings, client)
     session_repository = _build_session_repository(settings, client)
     evidence_storage = _build_evidence_storage(settings, client)
     profile_repository = _build_profile_repository(settings, client)
@@ -405,6 +467,42 @@ def create_app(
     )
     app.state.course_repository = course_repository
     app.state.decision_repository = decision_repository
+    app.state.audio_analysis_repository = audio_analysis_repository
+    app.state.reference_face_repository = reference_face_repository
+    # --- Servicio de IA: el worker mide, la API decide ---
+    app.state.get_audio_job = GetAudioJob(
+        event_repository,
+        session_repository,
+        question_repository,
+        settings.supabase_audio_bucket,
+    )
+    app.state.record_audio_analysis = RecordAudioAnalysis(
+        audio_analysis_repository,
+        event_repository,
+        session_repository,
+        alert_repository,
+        clock,
+    )
+    app.state.get_face_job = GetFaceJob(
+        participant_repository,
+        session_repository,
+        reference_face_repository,
+        settings.supabase_reference_faces_bucket,
+        settings.supabase_evidence_bucket,
+    )
+    app.state.record_identity_check = RecordIdentityCheck(
+        participant_repository,
+        session_repository,
+        event_repository,
+        reference_face_repository,
+        clock,
+    )
+    app.state.register_reference_face = RegisterReferenceFace(
+        reference_face_repository, clock, settings.dev_student_id
+    )
+    app.state.request_identity_check = RequestIdentityCheck(
+        participant_repository, reference_face_repository, job_queue, settings.dev_student_id
+    )
     app.state.review_case = ReviewStudentCase(
         event_repository,
         alert_repository,
@@ -498,6 +596,8 @@ def create_app(
     app.include_router(answers.router)
     app.include_router(courses.router)
     app.include_router(review.router)
+    app.include_router(ai.router)
+    app.include_router(ai.internal)
 
     return app
 

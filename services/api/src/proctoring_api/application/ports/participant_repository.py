@@ -25,6 +25,11 @@ class ParticipantRepository(Protocol):
         """La matrícula de ese estudiante en esa sesión, o `None` si no existe."""
         ...
 
+    def find_by_id(self, participant_id: UUID) -> SessionParticipant | None:
+        """La matricula por su id, o `None`. Lo necesita el servicio de IA: por la
+        cola de verificacion facial viaja el `participant_id`."""
+        ...
+
     def list_by_student(self, student_id: UUID) -> Sequence[SessionParticipant]:
         """Todas las matriculas de un estudiante, en cualquier sesion.
 

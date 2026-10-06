@@ -21,3 +21,12 @@ class JobQueue(Protocol):
         la ruta que guarda el evento en `evidence_path`.
         """
         ...
+
+    def enqueue_face_verification(self, participant_id: UUID, capture_path: str) -> None:
+        """Pide comparar la captura con la cara de referencia del estudiante.
+
+        Va en una cola aparte y de mayor prioridad: hay alguien esperando en la
+        sala de espera, con un presupuesto de P90 < 500 ms. Si fuera detras de la
+        cola de audio, un examen con mucho habla lo dejaria esperando minutos.
+        """
+        ...

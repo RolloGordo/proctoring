@@ -38,6 +38,13 @@ class SupabaseEventRepository:
     def save(self, event: ProctoringEvent) -> None:
         self._client.table(TABLE).insert(_to_row(event)).execute()
 
+    def find_by_id(self, event_id: UUID) -> ProctoringEvent | None:
+        response = (
+            self._client.table(TABLE).select(COLUMNS).eq("id", str(event_id)).limit(1).execute()
+        )
+        rows = cast("list[dict[str, Any]]", response.data)
+        return _to_entity(rows[0]) if rows else None
+
     def list_by_session(
         self, session_id: UUID, student_id: UUID | None = None
     ) -> Sequence[ProctoringEvent]:

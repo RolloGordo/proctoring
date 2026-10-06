@@ -20,6 +20,13 @@ class EventRepository(Protocol):
         """Persiste un evento ya validado."""
         ...
 
+    def find_by_id(self, event_id: UUID) -> ProctoringEvent | None:
+        """Un evento por su id, o `None` si no existe.
+
+        Lo necesita el servicio de IA: por la cola solo viaja el `event_id`.
+        """
+        ...
+
     def list_by_session(
         self, session_id: UUID, student_id: UUID | None = None
     ) -> Sequence[ProctoringEvent]:

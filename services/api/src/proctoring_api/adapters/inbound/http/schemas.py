@@ -24,6 +24,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from proctoring_api.application.use_cases.ai_jobs import AudioJob, FaceJob
 from proctoring_api.application.use_cases.list_my_exams import MyExam
 from proctoring_api.application.use_cases.manage_courses import (
     CourseMember,
@@ -34,6 +35,7 @@ from proctoring_api.application.use_cases.manage_enrollment import ParticipantEn
 from proctoring_api.application.use_cases.review_case import CaseFile
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.answer import MAX_TEXT_ANSWER_LENGTH, Answer
+from proctoring_api.domain.audio_analysis import AudioAnalysis
 from proctoring_api.domain.decision import Decision, DecisionType
 from proctoring_api.domain.event import MAX_EVIDENCE_PATH_LENGTH, EventType, ProctoringEvent
 from proctoring_api.domain.evidence import EvidenceKind
@@ -43,6 +45,7 @@ from proctoring_api.domain.exam_session import (
     SupervisionModule,
     SupervisionPreset,
 )
+from proctoring_api.domain.identity import IdentityCheck, IdentityResult
 from proctoring_api.domain.participant import SessionParticipant, VerificationStatus
 from proctoring_api.domain.question import ExamQuestion, Question, QuestionType
 from proctoring_api.domain.risk import RiskAssessment, RiskLevel
@@ -800,3 +803,167 @@ class ErrorResponse(BaseModel):
     """Cuerpo de error del dominio (400)."""
 
     detail: str
+
+
+# ---------------------------------------------------------------------------
+# Servicio de IA (endpoints internos)
+#
+# Son el contrato con `services/ai`. El worker mide y manda numeros; la API
+# decide que significan. Ver `application/use_cases/ai_jobs.py`.
+# ---------------------------------------------------------------------------
+
+
+class AudioJobResponse(BaseModel):
+    """El trabajo de audio servido al worker, con todo lo que necesita."""
+
+    event_id: UUID
+    session_id: UUID
+    student_id: UUID
+    question_id: UUID | None
+    #: El enunciado con el que comparar. `None` si la pregunta ya no existe.
+    question_statement: str | None
+    audio_path: str
+    audio_bucket: str
+    #: Con que se va a comparar lo medido. El worker los registra, no decide con ellos.
+    similarity_threshold: float
+    synthetic_threshold: float
+
+    @classmethod
+    def from_entity(cls, job: AudioJob) -> AudioJobResponse:
+        return cls(
+            event_id=job.event_id,
+            session_id=job.session_id,
+            student_id=job.student_id,
+            question_id=job.question_id,
+            question_statement=job.question_statement,
+            audio_path=job.audio_path,
+            audio_bucket=job.audio_bucket,
+            similarity_threshold=job.similarity_threshold,
+            synthetic_threshold=job.synthetic_threshold,
+        )
+
+
+class AudioMeasurementRequest(BaseModel):
+    """Lo que el worker midio. Todo opcional: un analisis puede fallar a medias."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    transcript: str | None = Field(default=None, max_length=10_000)
+    similarity: float | None = Field(default=None, ge=0, le=1)
+    synthetic_voice_score: float | None = Field(default=None, ge=0, le=1)
+    processing_ms: int | None = Field(default=None, ge=0)
+    #: Que modelos lo produjeron. Sin esto, un numero de hoy no se puede comparar
+    #: con el de la semana que viene.
+    model_versions: dict[str, Any] = Field(default_factory=dict)
+
+
+class AudioAnalysisResponse(BaseModel):
+    """Lo guardado, y si el docente fue avisado."""
+
+    event_id: UUID
+    transcript: str | None
+    similarity: float | None
+    synthetic_voice_score: float | None
+    processing_ms: int | None
+    processed_at: datetime
+    #: `True` solo si se cumplieron **las dos** condiciones. Lo decide la API.
+    alerted: bool
+
+    @classmethod
+    def from_entity(cls, analysis: AudioAnalysis, alerted: bool) -> AudioAnalysisResponse:
+        return cls(
+            event_id=analysis.event_id,
+            transcript=analysis.transcript,
+            similarity=analysis.similarity,
+            synthetic_voice_score=analysis.synthetic_voice_score,
+            processing_ms=analysis.processing_ms,
+            processed_at=analysis.processed_at,
+            alerted=alerted,
+        )
+
+
+class FaceJobResponse(BaseModel):
+    """El trabajo de verificacion facial servido al worker."""
+
+    participant_id: UUID
+    session_id: UUID
+    student_id: UUID
+    reference_path: str
+    reference_bucket: str
+    #: Embedding ya calculado, si lo hay: evita recalcularlo en cada examen.
+    reference_embedding: list[float] | None
+    capture_path: str
+    capture_bucket: str
+    similarity_threshold: float
+
+    @classmethod
+    def from_entity(cls, job: FaceJob) -> FaceJobResponse:
+        return cls(
+            participant_id=job.participant_id,
+            session_id=job.session_id,
+            student_id=job.student_id,
+            reference_path=job.reference_path,
+            reference_bucket=job.reference_bucket,
+            reference_embedding=job.reference_embedding,
+            capture_path=job.capture_path,
+            capture_bucket=job.capture_bucket,
+            similarity_threshold=job.similarity_threshold,
+        )
+
+
+class FaceMeasurementRequest(BaseModel):
+    """Lo que midio el modelo al comparar dos caras."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    similarity: float | None = Field(default=None, ge=0, le=1)
+    #: `True` cuando no se pudo medir: sin cara, con varias, o imagen ilegible.
+    #: **No es lo mismo que "no coincide"**, y el docente tiene que distinguirlo.
+    inconclusive: bool = False
+    latency_ms: int | None = Field(default=None, ge=0)
+    model_version: str | None = Field(default=None, max_length=120)
+    reference_embedding: list[float] | None = Field(default=None, max_length=1024)
+
+
+class IdentityCheckResponse(BaseModel):
+    """El resultado aplicado: que concluyo y como quedo el participante."""
+
+    result: IdentityResult
+    similarity: float | None
+    threshold: float
+    latency_ms: int | None
+    #: Si el estudiante ya puede rendir. Un fallo **no expulsa**: queda esperando
+    #: a que el docente lo admita a mano.
+    can_take_exam: bool
+    verification_status: VerificationStatus
+
+    @classmethod
+    def from_entity(
+        cls, check: IdentityCheck, participant: SessionParticipant
+    ) -> IdentityCheckResponse:
+        return cls(
+            result=check.result,
+            similarity=check.similarity,
+            threshold=check.threshold,
+            latency_ms=check.latency_ms,
+            can_take_exam=participant.can_take_exam,
+            verification_status=participant.verification_status,
+        )
+
+
+class RegisterReferenceFaceRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/me/reference-face`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    #: Ruta devuelta por `POST /api/v1/evidence/upload-url` con `kind=reference_face`.
+    storage_path: str = Field(min_length=1, max_length=512)
+
+
+class RequestIdentityCheckRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/exam/{session_id}/identity/check`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    #: Ruta de la captura recien tomada, ya subida con una URL firmada.
+    capture_path: str = Field(min_length=1, max_length=512)

@@ -61,8 +61,13 @@ services:
       context: ./services/ai
       dockerfile: Dockerfile
     container_name: proctoring-ai-worker
+    env_file:
+      - .env
     environment:
       REDIS_URL: redis://redis:6379/0
+      # El worker le pide a la API que analizar y le devuelve lo medido. Por
+      # nombre de servicio: dentro de la red de compose, `api` resuelve solo.
+      PROCTORING_API_URL: http://api:8000
     depends_on:
       redis:
         condition: service_healthy
