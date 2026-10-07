@@ -68,21 +68,71 @@ cd apps/web && npm run lint && npm test && npm run build
 cd apps/desktop && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
-### 5. Commit y pull request
+### 5. Cuando termines: cómo subirlo
 
-Mensajes **en inglés**, con el formato `tipo(código): qué hace`:
+**Paso a paso, sin saltarse ninguno.**
 
+**a) Mira qué vas a subir.** Nunca subas a ciegas:
+
+```bash
+git status
+git diff
 ```
-feat(SPEC-007): detect gaze away with MediaPipe
+
+Si aparece algún archivo que no esperabas —sobre todo `.env`, modelos, vídeos o
+audios—, **páralo ahí**. Esos no van al repositorio.
+
+**b) Añade solo lo tuyo.** `git add .` es lo que ha hecho que se suba por error
+la carpeta de otro. Añade por ruta:
+
+```bash
+git add services/ai/            # o apps/desktop/, o lo que te toque
 ```
 
-Tipos: `feat`, `fix`, `test`, `docs`, `chore`, `ci`.
+**c) Commit, en inglés, con el formato `tipo(código): qué hace`:**
+
+```bash
+git commit -m "feat(SPEC-007): detect gaze away with MediaPipe"
+```
+
+Tipos: `feat`, `fix`, `test`, `docs`, `chore`, `ci`. El mensaje dice **qué hace**,
+no "cambios" ni "avances". El profesor evalúa por commits: un mensaje que no
+explica nada es trabajo que no se ve.
+
+**d) Sube tu rama:**
 
 ```bash
 git push -u origin feat/SPEC-007-deteccion-mirada
 ```
 
-Después abre el PR hacia `develop` desde GitHub. **No se empuja a `main`.**
+**e) Abre el pull request hacia `develop`.** Desde la web de GitHub sale un botón
+"Compare & pull request" en cuanto subes. O desde la terminal:
+
+```bash
+gh pr create --base develop --fill
+```
+
+**Nunca a `main`.** `main` está protegida y solo recibe de `develop`.
+
+**f) En la descripción del PR, escribe tres cosas:**
+
+1. **Qué resuelve** y por qué, en dos líneas.
+2. **Cómo lo probaste.** Si es un detector, los números: accuracy, FPR, con cuántas
+   muestras.
+3. **Qué queda fuera**, si algo queda.
+
+**g) Espera al CI.** Son 7 jobs. Si alguno se pone rojo:
+
+```bash
+gh pr checks          # cuál falló
+gh run view --log-failed   # por qué
+```
+
+Arregla, haz otro commit en la **misma rama** y vuelve a empujar: el PR se
+actualiza solo. No abras un PR nuevo.
+
+**h) Avisa a Héctor** de que está listo para revisar, y mándale la evidencia
+(captura o vídeo) para el Notion.
 
 ### Terminado significa
 
@@ -90,6 +140,17 @@ Después abre el PR hacia `develop` desde GitHub. **No se empuja a `main`.**
 - [ ] Una prueba que cubra el criterio de aceptación de tu tarea
 - [ ] README o docstring actualizado
 - [ ] Evidencia (captura o vídeo) para el Notion de Héctor
+- [ ] Ningún secreto, dataset ni modelo en el diff
+
+### Si algo se tuerce
+
+| Lo que pasa | Qué hacer |
+|---|---|
+| "Your branch is behind develop" | `git checkout develop && git pull && git checkout tu-rama && git merge develop` |
+| Conflicto al fusionar | Abre el archivo, el conflicto está entre `<<<<<<<` y `>>>>>>>`. Te quedas con lo que corresponda, borras las marcas, `git add <archivo>`, `git commit`. |
+| Subiste algo que no debías y **aún no hiciste push** | `git reset HEAD~1` (deshace el commit, conserva los archivos) |
+| Ya hiciste push | **No reescribas la historia.** Haz otro commit que lo quite y avisa a Héctor. |
+| El CI falla y en tu máquina pasa | Casi siempre es la rama desactualizada: fusiona `develop` (primera fila) y vuelve a empujar. |
 
 ---
 

@@ -198,9 +198,27 @@ SCORM que lo contenga) y devuelva una lista de preguntas con esta forma:
 }
 ```
 
-Es exactamente lo que acepta `POST /api/v1/sessions/{id}/questions` hoy, y lo que
-aceptará el banco de preguntas. Héctor lo expone como endpoint; tú entregas la
-función y sus pruebas.
+Es **exactamente** la forma que ya acepta el banco de preguntas:
+
+```
+POST /api/v1/question-banks/{bank_id}/questions
+{ "questions": [ ...tu lista tal cual... ] }
+```
+
+Ese endpoint ya existe y está probado. Tú entregas la función pura y sus
+pruebas; Héctor la conecta al endpoint de subida del archivo. Si el lote lleva
+una pregunta inválida, la API **no guarda ninguna**: importar cuarenta no puede
+dejar veintinueve a medias.
+
+Para probar tu función contra la API de verdad, sin escribir interfaz:
+
+```bash
+# 1. crea un banco y quédate con el id que devuelve
+curl -s -X POST http://localhost:8000/api/v1/question-banks   -H 'Content-Type: application/json'   -d '{"name": "Prueba QTI"}'
+
+# 2. mete lo que produjo tu parser
+curl -s -X POST http://localhost:8000/api/v1/question-banks/<id>/questions   -H 'Content-Type: application/json'   -d @preguntas.json
+```
 
 Qué cubrir:
 
