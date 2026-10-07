@@ -32,6 +32,10 @@ class InMemoryAnswerRepository:
         suyas = [a for a in snapshot if a.participant_id == participant_id]
         return sorted(suyas, key=lambda a: a.answered_at)
 
+    def count_by_question(self, question_id: UUID) -> int:
+        with self._lock:
+            return sum(1 for clave in self._answers if clave[1] == question_id)
+
     def clear(self) -> None:
         """Vacia el repositorio. Solo para pruebas."""
         with self._lock:

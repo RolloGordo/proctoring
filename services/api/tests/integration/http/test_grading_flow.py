@@ -75,8 +75,10 @@ def test_al_entregar_se_califica_lo_que_se_corrige_solo(client: TestClient, app:
     entrega = client.post(f"/api/v1/exam/{sid}/submit")
 
     assert entrega.status_code == 200, entrega.text
-    # 2 + 3 ganados; el desarrollo de 5 espera al docente.
-    assert entrega.json()["score"] == 5.0
+    # 2 + 3 ganados de 10 puntos, llevados a la escala del examen (20 por
+    # defecto, que es la peruana): 5/10 * 20 = 10. El desarrollo de 5 puntos
+    # sigue esperando al docente, asi que la nota es parcial.
+    assert entrega.json()["score"] == 10.0
 
 
 def test_quien_falla_todo_gana_cero_no_nulo(client: TestClient, app: Any) -> None:
@@ -98,8 +100,10 @@ def test_el_panel_muestra_la_nota_el_maximo_y_que_falta_un_desarrollo(
 
     [examen] = client.get("/api/v1/me/exams").json()
 
-    assert examen["score"] == 5.0
-    assert examen["max_score"] == 10.0
+    # La nota se lee "10 de 20", no "5 de 10": el estudiante ve su nota en la
+    # escala del examen, no el reparto de puntos entre preguntas.
+    assert examen["score"] == 10.0
+    assert examen["max_score"] == 20.0
     assert examen["pending_manual_review"] is True
 
 

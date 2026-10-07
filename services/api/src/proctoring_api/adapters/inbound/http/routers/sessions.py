@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
 
 from proctoring_api.adapters.inbound.http.dependencies import (
+    CancelExamSessionDep,
     CreateExamSessionDep,
     CurrentUserDep,
+    DeleteExamSessionDep,
     GetExamSessionDep,
     JoinExamSessionDep,
     ListTeacherSessionsDep,
+    UpdateExamSessionDep,
 )
 from proctoring_api.adapters.inbound.http.schemas import (
     ErrorResponse,
@@ -20,6 +23,7 @@ from proctoring_api.adapters.inbound.http.schemas import (
     ExamSessionSummary,
     JoinExamRequest,
     JoinExamResponse,
+    UpdateExamSessionRequest,
 )
 from proctoring_api.application.use_cases.create_exam_session import CreateExamSessionInput
 
@@ -68,6 +72,7 @@ def create_exam_session(
             question_pool_size=payload.question_pool_size,
             shuffle_options=payload.shuffle_options,
             allow_back_navigation=payload.allow_back_navigation,
+            max_score=payload.max_score,
             modules=payload.modules or {},
         ),
         actor=current_user,
@@ -149,3 +154,83 @@ def join_exam_session(
         can_enter_now=resultado.can_enter_now,
         modules=sesion.modules,
     )
+
+
+@router.patch(
+    "/{session_id}",
+    response_model=ExamSessionResponse,
+    summary="Corregir un examen (solo su docente)",
+    responses={
+        **AUTH_RESPONSES,
+        400: {
+            "model": ErrorResponse,
+            "description": "Viola una regla, o se cambia la escala con estudiantes dentro",
+        },
+    },
+)
+def update_exam_session(
+    session_id: UUID,
+    payload: UpdateExamSessionRequest,
+    use_case: UpdateExamSessionDep,
+    current_user: CurrentUserDep,
+) -> ExamSessionResponse:
+    """Cambia lo que el docente se equivocó al crear.
+
+    Solo lo que se envía. Lo que no se toca se queda como estaba; para **vaciar**
+    un campo opcional están los `clear_*`.
+
+    Con estudiantes ya dentro, el título, la descripción, la hora y la duración
+    se siguen pudiendo cambiar, pero la nota máxima y cómo se sortean las
+    preguntas no: moverlas a mitad de un examen dejaría a unos calificados con
+    una regla y a otros con otra.
+    """
+    corregida = use_case.execute(session_id, payload.to_changes(), actor=current_user)
+    return ExamSessionResponse.from_entity(corregida)
+
+
+@router.post(
+    "/{session_id}/cancel",
+    response_model=ExamSessionResponse,
+    summary="Cancelar un examen (solo su docente)",
+    responses={
+        **AUTH_RESPONSES,
+        400: {"model": ErrorResponse, "description": "Ya estaba cancelado"},
+    },
+)
+def cancel_exam_session(
+    session_id: UUID,
+    use_case: CancelExamSessionDep,
+    current_user: CurrentUserDep,
+) -> ExamSessionResponse:
+    """Retira el examen sin borrar nada.
+
+    Su código de acceso deja de servir, pero el estudiante que lo use recibe
+    "tu docente canceló este examen" en vez de un error cualquiera. Los eventos,
+    las alertas y las respuestas de quien ya entró siguen ahí: son evidencia.
+    """
+    cancelada = use_case.execute(session_id, actor=current_user)
+    return ExamSessionResponse.from_entity(cancelada)
+
+
+@router.delete(
+    "/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Borrar un examen sin estudiantes (solo su docente)",
+    responses={
+        **AUTH_RESPONSES,
+        400: {"model": ErrorResponse, "description": "El examen ya tiene estudiantes"},
+    },
+)
+def delete_exam_session(
+    session_id: UUID,
+    use_case: DeleteExamSessionDep,
+    current_user: CurrentUserDep,
+) -> Response:
+    """Borra el examen de verdad, y **solo si nadie entró**.
+
+    Es el caso del docente que acaba de crear un examen con la fecha mal y quiere
+    que desaparezca. En cuanto hay un participante hay evidencia, y entonces lo
+    que corresponde es cancelarlo.
+    """
+    use_case.execute(session_id, actor=current_user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

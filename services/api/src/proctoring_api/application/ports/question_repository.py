@@ -22,7 +22,19 @@ class QuestionRepository(Protocol):
         ...
 
     def save_many(self, questions: Sequence[Question]) -> None:
-        """Persiste varias preguntas con sus opciones."""
+        """Persiste varias preguntas con sus opciones.
+
+        Crea las que no existen y **reemplaza** las que si, opciones incluidas:
+        corregir una pregunta pasa por aqui.
+        """
+        ...
+
+    def find_by_id(self, question_id: UUID) -> Question | None:
+        """La pregunta con sus opciones y su respuesta correcta, o `None`."""
+        ...
+
+    def delete(self, question_id: UUID) -> None:
+        """Borra la pregunta y sus opciones. Borrar una que no existe no es un error."""
         ...
 
     def list_by_session(self, session_id: UUID) -> Sequence[Question]:

@@ -7,6 +7,7 @@ from datetime import datetime
 
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
+from proctoring_api.application.use_cases.manage_enrollment import ExamCancelledError
 from proctoring_api.domain.errors import AuthorizationError, DomainError
 from proctoring_api.domain.exam_session import ExamSession
 from proctoring_api.domain.user import AuthenticatedUser
@@ -72,6 +73,15 @@ class JoinExamSession:
         if session is None:
             raise ExamSessionNotFoundError(
                 "No hay ningún examen con ese código. Revísalo con tu docente."
+            )
+
+        # Un examen cancelado **sí** existió, así que decir "no hay ningún examen
+        # con ese código" mandaría al estudiante a revisar un código que está
+        # bien. Esto no filtra nada: ya tenía el código.
+        if session.is_cancelled:
+            raise ExamCancelledError(
+                "Tu docente canceló este examen. No tienes que hacer nada; "
+                "si no sabías nada, habla con él."
             )
 
         now = self._clock.now()

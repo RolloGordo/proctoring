@@ -59,6 +59,10 @@ class InMemoryExamSessionRepository:
         with self._lock:
             return any(session.access_code == access_code for session in self._sessions.values())
 
+    def delete(self, session_id: UUID) -> None:
+        with self._lock:
+            self._sessions.pop(session_id, None)
+
     def clear(self) -> None:
         """Vacia el repositorio. Solo para pruebas."""
         with self._lock:

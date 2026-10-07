@@ -25,6 +25,15 @@ from proctoring_api.application.use_cases.create_evidence_upload_url import (
     CreateEvidenceUploadUrl,
 )
 from proctoring_api.application.use_cases.create_exam_session import CreateExamSession
+from proctoring_api.application.use_cases.edit_exam_session import (
+    CancelExamSession,
+    DeleteExamSession,
+    UpdateExamSession,
+)
+from proctoring_api.application.use_cases.edit_questions import (
+    DeleteQuestion,
+    UpdateQuestion,
+)
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
 from proctoring_api.application.use_cases.join_exam_session import JoinExamSession
 from proctoring_api.application.use_cases.list_my_exams import ListMyExams
@@ -283,6 +292,31 @@ def get_list_session_banks(request: Request) -> ListSessionBanks:
     return use_case
 
 
+def get_update_session(request: Request) -> UpdateExamSession:
+    use_case: UpdateExamSession = request.app.state.update_session
+    return use_case
+
+
+def get_cancel_session(request: Request) -> CancelExamSession:
+    use_case: CancelExamSession = request.app.state.cancel_session
+    return use_case
+
+
+def get_delete_session(request: Request) -> DeleteExamSession:
+    use_case: DeleteExamSession = request.app.state.delete_session
+    return use_case
+
+
+def get_update_question(request: Request) -> UpdateQuestion:
+    use_case: UpdateQuestion = request.app.state.update_question
+    return use_case
+
+
+def get_delete_question(request: Request) -> DeleteQuestion:
+    use_case: DeleteQuestion = request.app.state.delete_question
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -354,3 +388,8 @@ AddQuestionsToBankDep = Annotated[AddQuestionsToBank, Depends(get_add_questions_
 AttachBankDep = Annotated[AttachBankToSession, Depends(get_attach_bank)]
 DetachBankDep = Annotated[DetachBankFromSession, Depends(get_detach_bank)]
 ListSessionBanksDep = Annotated[ListSessionBanks, Depends(get_list_session_banks)]
+UpdateExamSessionDep = Annotated[UpdateExamSession, Depends(get_update_session)]
+CancelExamSessionDep = Annotated[CancelExamSession, Depends(get_cancel_session)]
+DeleteExamSessionDep = Annotated[DeleteExamSession, Depends(get_delete_session)]
+UpdateQuestionDep = Annotated[UpdateQuestion, Depends(get_update_question)]
+DeleteQuestionDep = Annotated[DeleteQuestion, Depends(get_delete_question)]

@@ -179,7 +179,14 @@ def test_el_ejemplo_del_examen_trae_los_campos_opcionales() -> None:
 
     assert fila["question_pool_size"] == 20
     assert fila["access_code"] == "ABC123"
-    assert None not in fila.values()
+    assert fila["max_score"] == "20"
+
+    # Todo lo que el docente pudo rellenar, relleno. `cancelled_at` queda fuera a
+    # propósito: un examen vigente lo tiene nulo, y eso es lo correcto.
+    opcionales = {k: v for k, v in fila.items() if k != "cancelled_at"}
+    assert None not in opcionales.values(), (
+        f"Campos sin valor en el ejemplo: {[k for k, v in opcionales.items() if v is None]}"
+    )
 
 
 def test_atrapa_una_columna_escrita_y_no_leida() -> None:

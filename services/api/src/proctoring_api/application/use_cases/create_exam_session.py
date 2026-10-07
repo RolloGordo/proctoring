@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from proctoring_api.application.ports.course_repository import CourseRepository
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.domain.errors import AuthorizationError
 from proctoring_api.domain.exam_session import (
+    DEFAULT_MAX_SCORE,
     ExamSession,
     InvalidExamSessionError,
     SupervisionModule,
@@ -50,6 +52,8 @@ class CreateExamSessionInput:
     question_pool_size: int | None = None
     shuffle_options: bool = True
     allow_back_navigation: bool = True
+    #: Sobre cuanto se califica. 20 por defecto, que es la escala peruana.
+    max_score: Decimal = DEFAULT_MAX_SCORE
     #: Solo se usa con `preset = custom`.
     modules: dict[SupervisionModule, dict[str, Any]] = field(default_factory=dict)
 
@@ -94,6 +98,7 @@ class CreateExamSession:
             question_pool_size=data.question_pool_size,
             shuffle_options=data.shuffle_options,
             allow_back_navigation=data.allow_back_navigation,
+            max_score=data.max_score,
             modules=data.modules,
         )
 

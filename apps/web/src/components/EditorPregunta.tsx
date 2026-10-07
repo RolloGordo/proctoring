@@ -151,8 +151,22 @@ export function EditorPregunta({
   )
 }
 
-/** Las preguntas con sus respuestas correctas. Solo la ve el docente. */
-export function ListaPreguntas({ preguntas }: { preguntas: Question[] }) {
+/**
+ * Las preguntas con sus respuestas correctas. Solo la ve el docente.
+ *
+ * Con `onCambiarPuntos` y `onBorrar` cada una se puede corregir ahí mismo. Sin
+ * ellos la lista es de solo lectura, que es como la usan las pantallas que no
+ * dejan editar.
+ */
+export function ListaPreguntas({
+  preguntas,
+  onCambiarPuntos,
+  onBorrar
+}: {
+  preguntas: Question[]
+  onCambiarPuntos?: (id: string, puntos: string) => Promise<void>
+  onBorrar?: (id: string) => Promise<void>
+}) {
   return (
     <ol className="lista-preguntas numerada">
       {preguntas.map((pregunta) => (
@@ -160,7 +174,14 @@ export function ListaPreguntas({ preguntas }: { preguntas: Question[] }) {
           <div className="tarjeta-cuerpo">
             <div className="fila" style={{ justifyContent: 'space-between' }}>
               <h4>{nombreDeTipo(pregunta.question_type)}</h4>
-              <span className="tenue">{pregunta.points} pts</span>
+              {onCambiarPuntos ? (
+                <PuntosEditables
+                  puntos={pregunta.points}
+                  onGuardar={(valor) => onCambiarPuntos(pregunta.id, valor)}
+                />
+              ) : (
+                <span className="tenue">{pregunta.points} pts</span>
+              )}
             </div>
             <p className="motivo" style={{ marginTop: 'var(--e2)' }}>
               {pregunta.statement}
@@ -180,10 +201,66 @@ export function ListaPreguntas({ preguntas }: { preguntas: Question[] }) {
             {pregunta.correct_text_answer && (
               <p className="ayuda">Respuesta: {pregunta.correct_text_answer}</p>
             )}
+            {onBorrar && (
+              <button
+                type="button"
+                className="boton boton-texto"
+                onClick={() => void onBorrar(pregunta.id)}
+              >
+                Quitar esta pregunta
+              </button>
+            )}
           </div>
         </li>
       ))}
     </ol>
+  )
+}
+
+/**
+ * Los puntos de una pregunta, editables en el sitio.
+ *
+ * Se guarda al salir del campo y no con un botón: en una lista de cuarenta
+ * preguntas, cuarenta botones "guardar" son ruido.
+ */
+function PuntosEditables({
+  puntos,
+  onGuardar
+}: {
+  puntos: string
+  onGuardar: (valor: string) => Promise<void>
+}) {
+  const [valor, setValor] = useState(puntos)
+  const [guardando, setGuardando] = useState(false)
+
+  async function alSalir(): Promise<void> {
+    if (valor === puntos) return
+    setGuardando(true)
+    try {
+      await onGuardar(valor)
+    } catch {
+      // Si falló, se vuelve a lo que había: el número que se ve es el guardado.
+      setValor(puntos)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <span className="puntos-editables">
+      <input
+        type="number"
+        min={0}
+        max={100}
+        step="0.5"
+        value={valor}
+        disabled={guardando}
+        onChange={(e) => setValor(e.target.value)}
+        onBlur={() => void alSalir()}
+        aria-label="Puntos de esta pregunta"
+      />
+      <span className="tenue">pts</span>
+    </span>
   )
 }
 

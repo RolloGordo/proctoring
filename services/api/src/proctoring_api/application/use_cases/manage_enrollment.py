@@ -6,16 +6,18 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
+from proctoring_api.application.exam_questions import questions_for
 from proctoring_api.application.ports.answer_repository import AnswerRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.participant_repository import ParticipantRepository
 from proctoring_api.application.ports.profile_repository import ProfileRepository
+from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.application.use_cases.create_exam_session import DEFAULT_DEV_TEACHER_ID
 from proctoring_api.domain.errors import AuthorizationError, DomainError
-from proctoring_api.domain.exam_session import EntryState, ExamSession
+from proctoring_api.domain.exam_session import DEFAULT_MAX_SCORE, EntryState, ExamSession
 from proctoring_api.domain.grading import score_exam
 from proctoring_api.domain.participant import InvalidEnrollmentError, SessionParticipant
 from proctoring_api.domain.user import AuthenticatedUser, ProfileSummary
@@ -37,6 +39,16 @@ class ExamNotStartedError(DomainError):
     Separado de "el plazo cerró" a propósito: para quien espera son situaciones
     opuestas. A uno hay que decirle que vuelva en un rato; al otro, que hable con
     su docente. Responde 400, no 403: no es que no pueda, es que todavía no.
+    """
+
+
+class ExamCancelledError(DomainError):
+    """El docente retiró el examen.
+
+    También está separado, y por lo mismo: el estudiante que teclea su código y
+    recibe "no hay ningún examen con ese código" se queda pensando que lo escribió
+    mal y lo intenta diez veces. Lo que necesita saber es que el examen existía y
+    ya no va a ocurrir.
     """
 
 
@@ -108,6 +120,11 @@ class EnrollInExam:
             )
 
         estado = sesion.entry_state_at(ahora)
+        if estado is EntryState.CANCELLED:
+            raise ExamCancelledError(
+                "Tu docente cancelo este examen. No tienes que hacer nada; "
+                "si no sabias nada, habla con el."
+            )
         if estado is EntryState.NOT_STARTED:
             # Llegar antes de tiempo no es un error del estudiante: es lo normal.
             # Decirle "el plazo esta cerrado" era confundirlo con lo contrario.
@@ -244,12 +261,16 @@ class SubmitExam:
         dev_student_id: UUID = DEFAULT_DEV_STUDENT_ID,
         questions: QuestionRepository | None = None,
         answers: AnswerRepository | None = None,
+        sessions: ExamSessionRepository | None = None,
+        banks: QuestionBankRepository | None = None,
     ) -> None:
         self._participants = participants
         self._clock = clock
         self._dev_student_id = dev_student_id
         self._questions = questions
         self._answers = answers
+        self._sessions = sessions
+        self._banks = banks
 
     def execute(
         self,
@@ -289,7 +310,15 @@ class SubmitExam:
         if self._questions is None or self._answers is None:
             return participante
 
-        preguntas = self._questions.list_by_session(session_id)
+        sesion = self._sessions.find_by_id(session_id) if self._sessions is not None else None
+        # Las mismas preguntas que recibió, no las del examen: con bancos atados
+        # el examen no tiene preguntas propias y calificar contra ellas daría
+        # cero a todo el mundo.
+        preguntas = (
+            questions_for(sesion, participante.id, self._questions, self._banks)
+            if sesion is not None
+            else self._questions.list_by_session(session_id)
+        )
         respuestas = self._answers.list_by_participant(participante.id)
         resultado = score_exam(preguntas, respuestas)
 
@@ -303,7 +332,11 @@ class SubmitExam:
                 if respuesta.question_id in resultado.by_question
             ]
         )
-        return participante.with_score(float(resultado.earned))
+        # La nota va en la escala del examen (20 en Perú), no en puntos sueltos:
+        # el docente pone los puntos que quiera a cada pregunta y el reparto lo
+        # hace el sistema.
+        escala = sesion.max_score if sesion is not None else DEFAULT_MAX_SCORE
+        return participante.with_score(float(resultado.on_scale(escala)))
 
 
 def ensure_can_take_exam(

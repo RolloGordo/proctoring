@@ -9,12 +9,14 @@ from __future__ import annotations
 import threading
 from collections.abc import Sequence
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, cast
 from uuid import UUID
 
 from supabase import Client
 
 from proctoring_api.domain.exam_session import (
+    DEFAULT_MAX_SCORE,
     ExamSession,
     SessionStatus,
     SupervisionModule,
@@ -27,7 +29,8 @@ MODULES_TABLE = "session_modules"
 COLUMNS = (
     "id, course_id, teacher_id, title, description, starts_at, duration_minutes, "
     "entry_tolerance_minutes, access_code, preset, max_attempts, shuffle_questions, "
-    "shuffle_options, allow_back_navigation, question_pool_size, status"
+    "shuffle_options, allow_back_navigation, question_pool_size, max_score, "
+    "cancelled_at, status"
 )
 
 
@@ -43,8 +46,16 @@ class SupabaseExamSessionRepository:
         self._lock = threading.Lock()
 
     def save(self, session: ExamSession) -> None:
-        self._client.table(SESSIONS_TABLE).insert(_to_row(session)).execute()
+        """Crea la sesion, o la reemplaza si ya existia.
 
+        `upsert` y no `insert` porque editar un examen pasa por aqui: con
+        `insert`, corregir la fecha fallaba con un error de clave duplicada.
+        """
+        self._client.table(SESSIONS_TABLE).upsert(_to_row(session), on_conflict="id").execute()
+
+        # Los modulos se reemplazan enteros: cambiar de `strict` a `basic` tiene
+        # que **quitar** los que sobran, no solo anadir los que faltan.
+        self._client.table(MODULES_TABLE).delete().eq("session_id", str(session.id)).execute()
         if session.modules:
             self._client.table(MODULES_TABLE).insert(
                 [
@@ -60,6 +71,12 @@ class SupabaseExamSessionRepository:
 
         with self._lock:
             self._owner_cache[session.id] = session.teacher_id
+
+    def delete(self, session_id: UUID) -> None:
+        """Borra la sesion. Sus modulos se van por la clave ajena en cascada."""
+        self._client.table(SESSIONS_TABLE).delete().eq("id", str(session_id)).execute()
+        with self._lock:
+            self._owner_cache.pop(session_id, None)
 
     def find_by_id(self, session_id: UUID) -> ExamSession | None:
         response = (
@@ -195,6 +212,11 @@ class SupabaseExamSessionRepository:
         }
 
 
+def _parse(value: Any) -> datetime | None:
+    """Una marca de tiempo opcional de PostgREST."""
+    return datetime.fromisoformat(value) if value else None
+
+
 def _to_row(session: ExamSession) -> dict[str, Any]:
     return {
         "id": str(session.id),
@@ -210,6 +232,8 @@ def _to_row(session: ExamSession) -> dict[str, Any]:
         "max_attempts": session.max_attempts,
         "shuffle_questions": session.shuffle_questions,
         "question_pool_size": session.question_pool_size,
+        "max_score": str(session.max_score),
+        "cancelled_at": session.cancelled_at.isoformat() if session.cancelled_at else None,
         "shuffle_options": session.shuffle_options,
         "allow_back_navigation": session.allow_back_navigation,
         "status": session.status.value,
@@ -235,6 +259,10 @@ def _to_entity(
         max_attempts=row["max_attempts"],
         shuffle_questions=row["shuffle_questions"],
         question_pool_size=row.get("question_pool_size"),
+        max_score=Decimal(str(row["max_score"]))
+        if row.get("max_score") is not None
+        else DEFAULT_MAX_SCORE,
+        cancelled_at=_parse(row.get("cancelled_at")),
         shuffle_options=row["shuffle_options"],
         allow_back_navigation=row["allow_back_navigation"],
         modules=modules,

@@ -79,7 +79,14 @@ export function Sesiones() {
                     <span className="codigo-acceso">{sesion.access_code}</span>
                   </td>
                   <td>
-                    <ChipEstado estado={estadoExamen(sesion.starts_at, sesion.duration_minutes)} />
+                    <ChipEstado
+                      estado={estadoExamen(
+                        sesion.starts_at,
+                        sesion.duration_minutes,
+                        undefined,
+                        sesion.status === 'cancelled'
+                      )}
+                    />
                   </td>
                   <td>
                     <div className="fila">

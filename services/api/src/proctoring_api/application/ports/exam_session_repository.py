@@ -59,3 +59,11 @@ class ExamSessionRepository(Protocol):
     def access_code_exists(self, access_code: str) -> bool:
         """Si ese codigo de acceso ya esta en uso."""
         ...
+
+    def delete(self, session_id: UUID) -> None:
+        """Borra la sesion y sus modulos. Borrar una que no existe no es un error.
+
+        Solo se usa con sesiones sin participantes: una con estudiantes se
+        cancela, porque borrarla se llevaria sus eventos y respuestas.
+        """
+        ...

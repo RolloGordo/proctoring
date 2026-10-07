@@ -69,11 +69,22 @@ class SupabaseQuestionRepository:
         return session_id
 
     def save_many(self, questions: Sequence[Question]) -> None:
+        """Crea o reemplaza las preguntas con sus opciones.
+
+        `upsert` y no `insert` porque corregir una pregunta pasa por aqui: con
+        `insert`, cambiarle los puntos fallaba con un error de clave duplicada.
+        Las opciones se borran y se vuelven a escribir enteras, porque editar una
+        pregunta puede quitar alternativas, no solo cambiarles el texto.
+        """
         if not questions:
             return
 
-        self._client.table(QUESTIONS_TABLE).insert([_question_row(q) for q in questions]).execute()
+        self._client.table(QUESTIONS_TABLE).upsert(
+            [_question_row(q) for q in questions], on_conflict="id"
+        ).execute()
 
+        ids = [str(q.id) for q in questions]
+        self._client.table(OPTIONS_TABLE).delete().in_("question_id", ids).execute()
         opciones = [_option_row(q.id, opcion) for q in questions for opcion in q.options]
         if opciones:
             self._client.table(OPTIONS_TABLE).insert(opciones).execute()
@@ -84,6 +95,27 @@ class SupabaseQuestionRepository:
                 # `find_session_id` devolviera un acierto falso.
                 if pregunta.session_id is not None:
                     self._session_cache[pregunta.id] = pregunta.session_id
+
+    def find_by_id(self, question_id: UUID) -> Question | None:
+        response = (
+            self._client.table(QUESTIONS_TABLE)
+            .select(COLUMNS)
+            .eq("id", str(question_id))
+            .limit(1)
+            .execute()
+        )
+        rows = cast("list[dict[str, Any]]", response.data)
+        if not rows:
+            return None
+
+        opciones = self._options_of_questions([question_id])
+        return _to_entity(rows[0], opciones.get(question_id, ()))
+
+    def delete(self, question_id: UUID) -> None:
+        """Las opciones se van por la clave ajena en cascada."""
+        self._client.table(QUESTIONS_TABLE).delete().eq("id", str(question_id)).execute()
+        with self._lock:
+            self._session_cache.pop(question_id, None)
 
     def list_by_session(self, session_id: UUID) -> Sequence[Question]:
         response = (
