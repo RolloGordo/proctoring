@@ -35,6 +35,15 @@ from proctoring_api.application.use_cases.list_teacher_sessions import (
     ListTeacherSessions,
 )
 from proctoring_api.application.use_cases.manage_answers import ListMyAnswers, SaveAnswers
+from proctoring_api.application.use_cases.manage_banks import (
+    AddQuestionsToBank,
+    AttachBankToSession,
+    CreateQuestionBank,
+    DetachBankFromSession,
+    ListBankQuestions,
+    ListQuestionBanks,
+    ListSessionBanks,
+)
 from proctoring_api.application.use_cases.manage_courses import (
     CreateCourse,
     EnrollStudentInCourse,
@@ -239,6 +248,41 @@ def get_request_identity_check(request: Request) -> RequestIdentityCheck:
     return use_case
 
 
+def get_create_bank(request: Request) -> CreateQuestionBank:
+    use_case: CreateQuestionBank = request.app.state.create_bank
+    return use_case
+
+
+def get_list_banks(request: Request) -> ListQuestionBanks:
+    use_case: ListQuestionBanks = request.app.state.list_banks
+    return use_case
+
+
+def get_list_bank_questions(request: Request) -> ListBankQuestions:
+    use_case: ListBankQuestions = request.app.state.list_bank_questions
+    return use_case
+
+
+def get_add_questions_to_bank(request: Request) -> AddQuestionsToBank:
+    use_case: AddQuestionsToBank = request.app.state.add_questions_to_bank
+    return use_case
+
+
+def get_attach_bank(request: Request) -> AttachBankToSession:
+    use_case: AttachBankToSession = request.app.state.attach_bank
+    return use_case
+
+
+def get_detach_bank(request: Request) -> DetachBankFromSession:
+    use_case: DetachBankFromSession = request.app.state.detach_bank
+    return use_case
+
+
+def get_list_session_banks(request: Request) -> ListSessionBanks:
+    use_case: ListSessionBanks = request.app.state.list_session_banks
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -303,3 +347,10 @@ GetFaceJobDep = Annotated[GetFaceJob, Depends(get_face_job)]
 RecordIdentityCheckDep = Annotated[RecordIdentityCheck, Depends(get_record_identity_check)]
 RegisterReferenceFaceDep = Annotated[RegisterReferenceFace, Depends(get_register_reference_face)]
 RequestIdentityCheckDep = Annotated[RequestIdentityCheck, Depends(get_request_identity_check)]
+CreateBankDep = Annotated[CreateQuestionBank, Depends(get_create_bank)]
+ListBanksDep = Annotated[ListQuestionBanks, Depends(get_list_banks)]
+ListBankQuestionsDep = Annotated[ListBankQuestions, Depends(get_list_bank_questions)]
+AddQuestionsToBankDep = Annotated[AddQuestionsToBank, Depends(get_add_questions_to_bank)]
+AttachBankDep = Annotated[AttachBankToSession, Depends(get_attach_bank)]
+DetachBankDep = Annotated[DetachBankFromSession, Depends(get_detach_bank)]
+ListSessionBanksDep = Annotated[ListSessionBanks, Depends(get_list_session_banks)]

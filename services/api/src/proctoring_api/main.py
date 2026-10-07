@@ -16,6 +16,7 @@ from proctoring_api.adapters.inbound.http.rate_limit import RateLimitMiddleware
 from proctoring_api.adapters.inbound.http.routers import (
     ai,
     answers,
+    banks,
     courses,
     enrollment,
     events,
@@ -45,6 +46,9 @@ from proctoring_api.adapters.outbound.memory.participant_repository import (
     InMemoryParticipantRepository,
 )
 from proctoring_api.adapters.outbound.memory.profile_repository import InMemoryProfileRepository
+from proctoring_api.adapters.outbound.memory.question_bank_repository import (
+    InMemoryQuestionBankRepository,
+)
 from proctoring_api.adapters.outbound.memory.question_repository import (
     InMemoryQuestionRepository,
 )
@@ -63,6 +67,7 @@ from proctoring_api.application.ports.exam_session_repository import ExamSession
 from proctoring_api.application.ports.job_queue import JobQueue
 from proctoring_api.application.ports.participant_repository import ParticipantRepository
 from proctoring_api.application.ports.profile_repository import ProfileRepository
+from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.ports.reference_face_repository import ReferenceFaceRepository
 from proctoring_api.application.use_cases.ai_jobs import (
@@ -87,6 +92,15 @@ from proctoring_api.application.use_cases.list_teacher_sessions import (
     ListTeacherSessions,
 )
 from proctoring_api.application.use_cases.manage_answers import ListMyAnswers, SaveAnswers
+from proctoring_api.application.use_cases.manage_banks import (
+    AddQuestionsToBank,
+    AttachBankToSession,
+    CreateQuestionBank,
+    DetachBankFromSession,
+    ListBankQuestions,
+    ListQuestionBanks,
+    ListSessionBanks,
+)
 from proctoring_api.application.use_cases.manage_courses import (
     CreateCourse,
     EnrollStudentInCourse,
@@ -282,6 +296,23 @@ def _build_decision_repository(settings: Settings, client: object | None) -> Dec
     return InMemoryDecisionRepository()
 
 
+def _build_question_bank_repository(
+    settings: Settings, client: object | None, questions: QuestionRepository
+) -> QuestionBankRepository:
+    if settings.event_repository == "supabase":
+        from supabase import Client
+
+        from proctoring_api.adapters.outbound.supabase.question_bank_repository import (
+            SupabaseQuestionBankRepository,
+        )
+
+        assert isinstance(client, Client)
+        return SupabaseQuestionBankRepository(client)
+
+    # El de memoria cuenta preguntas mirando el repositorio de preguntas.
+    return InMemoryQuestionBankRepository(questions)
+
+
 def _build_course_repository(settings: Settings, client: object | None) -> CourseRepository:
     if settings.event_repository == "supabase":
         from supabase import Client
@@ -436,6 +467,7 @@ def create_app(
     participant_repository = _build_participant_repository(settings, client)
     answer_repository = _build_answer_repository(settings, client)
     course_repository = _build_course_repository(settings, client)
+    bank_repository = _build_question_bank_repository(settings, client, question_repository)
     decision_repository = _build_decision_repository(settings, client)
     audio_analysis_repository = _build_audio_analysis_repository(settings, client)
     reference_face_repository = _build_reference_face_repository(settings, client)
@@ -540,7 +572,16 @@ def create_app(
         clock,
         participant_repository,
         settings.dev_student_id,
+        bank_repository,
     )
+    app.state.bank_repository = bank_repository
+    app.state.create_bank = CreateQuestionBank(bank_repository, clock, settings.dev_teacher_id)
+    app.state.list_banks = ListQuestionBanks(bank_repository, settings.dev_teacher_id)
+    app.state.list_bank_questions = ListBankQuestions(bank_repository, question_repository)
+    app.state.add_questions_to_bank = AddQuestionsToBank(bank_repository, question_repository)
+    app.state.attach_bank = AttachBankToSession(bank_repository, session_repository)
+    app.state.detach_bank = DetachBankFromSession(bank_repository, session_repository)
+    app.state.list_session_banks = ListSessionBanks(bank_repository, session_repository)
     app.state.participant_repository = participant_repository
     app.state.answer_repository = answer_repository
     app.state.enroll_in_exam = EnrollInExam(
@@ -595,6 +636,7 @@ def create_app(
     app.include_router(enrollment.router)
     app.include_router(answers.router)
     app.include_router(courses.router)
+    app.include_router(banks.router)
     app.include_router(review.router)
     app.include_router(ai.router)
     app.include_router(ai.internal)

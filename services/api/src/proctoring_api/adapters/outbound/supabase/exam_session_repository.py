@@ -27,7 +27,7 @@ MODULES_TABLE = "session_modules"
 COLUMNS = (
     "id, course_id, teacher_id, title, description, starts_at, duration_minutes, "
     "entry_tolerance_minutes, access_code, preset, max_attempts, shuffle_questions, "
-    "shuffle_options, allow_back_navigation, status"
+    "shuffle_options, allow_back_navigation, question_pool_size, status"
 )
 
 
@@ -209,6 +209,7 @@ def _to_row(session: ExamSession) -> dict[str, Any]:
         "preset": session.preset.value,
         "max_attempts": session.max_attempts,
         "shuffle_questions": session.shuffle_questions,
+        "question_pool_size": session.question_pool_size,
         "shuffle_options": session.shuffle_options,
         "allow_back_navigation": session.allow_back_navigation,
         "status": session.status.value,
@@ -233,6 +234,7 @@ def _to_entity(
         status=SessionStatus(row["status"]),
         max_attempts=row["max_attempts"],
         shuffle_questions=row["shuffle_questions"],
+        question_pool_size=row.get("question_pool_size"),
         shuffle_options=row["shuffle_options"],
         allow_back_navigation=row["allow_back_navigation"],
         modules=modules,

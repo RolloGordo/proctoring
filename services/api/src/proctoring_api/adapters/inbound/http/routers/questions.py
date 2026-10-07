@@ -29,7 +29,6 @@ from proctoring_api.adapters.inbound.http.schemas import (
     ExamQuestionResponse,
     QuestionResponse,
 )
-from proctoring_api.application.use_cases.manage_questions import NewQuestion
 
 router = APIRouter(prefix="/api/v1", tags=["questions"])
 
@@ -63,18 +62,7 @@ def add_questions(
     """
     creadas = use_case.execute(
         session_id,
-        [
-            NewQuestion(
-                question_type=pregunta.question_type,
-                statement=pregunta.statement,
-                points=pregunta.points,
-                options=[(o.option_text, o.is_correct) for o in pregunta.options],
-                correct_numeric_answer=pregunta.correct_numeric_answer,
-                numeric_tolerance=pregunta.numeric_tolerance,
-                correct_text_answer=pregunta.correct_text_answer,
-            )
-            for pregunta in payload.questions
-        ],
+        [pregunta.to_input() for pregunta in payload.questions],
         actor=current_user,
     )
     return [QuestionResponse.from_entity(pregunta) for pregunta in creadas]

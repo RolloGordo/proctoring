@@ -26,12 +26,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from proctoring_api.application.use_cases.ai_jobs import AudioJob, FaceJob
 from proctoring_api.application.use_cases.list_my_exams import MyExam
+from proctoring_api.application.use_cases.manage_banks import BankSummary
 from proctoring_api.application.use_cases.manage_courses import (
     CourseMember,
     MyCourse,
     TeacherCourse,
 )
 from proctoring_api.application.use_cases.manage_enrollment import ParticipantEntry
+from proctoring_api.application.use_cases.manage_questions import NewQuestion
 from proctoring_api.application.use_cases.review_case import CaseFile
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.answer import MAX_TEXT_ANSWER_LENGTH, Answer
@@ -198,6 +200,9 @@ class ExamSessionRequest(BaseModel):
     shuffle_questions: bool = True
     shuffle_options: bool = True
     allow_back_navigation: bool = True
+    #: Cuantas preguntas recibe cada estudiante. Solo aplica con bancos
+    #: atados; sin ellos el examen usa sus propias preguntas, todas.
+    question_pool_size: int | None = Field(default=None, gt=0, le=500)
     #: Solo se usa con `preset = custom`; con los demas manda el preset.
     modules: dict[SupervisionModule, dict[str, Any]] | None = None
 
@@ -322,6 +327,22 @@ class NewQuestionRequest(BaseModel):
     numeric_tolerance: Decimal | None = Field(default=None, ge=0)
     correct_text_answer: str | None = Field(default=None, max_length=1000)
 
+    def to_input(self) -> NewQuestion:
+        """La misma pregunta como la espera la capa de aplicacion.
+
+        Vive aqui y no en el router porque ahora hay dos destinos —un examen y un
+        banco— y la conversion tiene que ser la misma para los dos.
+        """
+        return NewQuestion(
+            question_type=self.question_type,
+            statement=self.statement,
+            points=self.points,
+            options=[(o.option_text, o.is_correct) for o in self.options],
+            correct_numeric_answer=self.correct_numeric_answer,
+            numeric_tolerance=self.numeric_tolerance,
+            correct_text_answer=self.correct_text_answer,
+        )
+
 
 class AddQuestionsRequest(BaseModel):
     """Cuerpo de `POST /api/v1/sessions/{id}/questions`."""
@@ -344,7 +365,9 @@ class QuestionResponse(BaseModel):
     """Pregunta **con** su respuesta correcta. Solo para el docente dueno."""
 
     id: UUID
-    session_id: UUID
+    #: Uno de los dos esta puesto: la pregunta es de un examen o de un banco.
+    session_id: UUID | None
+    bank_id: UUID | None = None
     position: int
     question_type: QuestionType
     statement: str
@@ -359,6 +382,7 @@ class QuestionResponse(BaseModel):
         return cls(
             id=question.id,
             session_id=question.session_id,
+            bank_id=question.bank_id,
             position=question.position,
             question_type=question.question_type,
             statement=question.statement,
@@ -967,3 +991,55 @@ class RequestIdentityCheckRequest(BaseModel):
 
     #: Ruta de la captura recien tomada, ya subida con una URL firmada.
     capture_path: str = Field(min_length=1, max_length=512)
+
+
+# ---------------------------------------------------------------------------
+# Bancos de preguntas
+# ---------------------------------------------------------------------------
+
+
+class CreateQuestionBankRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/question-banks`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=120)
+    #: Opcional: un banco sin curso sirve para todos los examenes del docente.
+    course_id: UUID | None = None
+    description: str | None = Field(default=None, max_length=1000)
+
+
+class QuestionBankResponse(BaseModel):
+    """Un banco con cuantas preguntas tiene."""
+
+    id: UUID
+    name: str
+    course_id: UUID | None
+    description: str | None
+    created_at: datetime
+    question_count: int
+
+    @classmethod
+    def from_entity(cls, item: BankSummary) -> QuestionBankResponse:
+        return cls(
+            id=item.bank.id,
+            name=item.bank.name,
+            course_id=item.bank.course_id,
+            description=item.bank.description,
+            created_at=item.bank.created_at,
+            question_count=item.question_count,
+        )
+
+
+class AttachBankRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/sessions/{id}/banks`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    bank_id: UUID
+
+
+class AttachBankResponse(BaseModel):
+    bank_id: UUID
+    #: `True` si ya estaba atado. Atar dos veces no es un error.
+    already_attached: bool

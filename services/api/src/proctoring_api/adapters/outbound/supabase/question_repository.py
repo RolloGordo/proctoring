@@ -26,7 +26,7 @@ QUESTIONS_TABLE = "questions"
 OPTIONS_TABLE = "question_options"
 
 COLUMNS = (
-    "id, session_id, position, question_type, statement, points, "
+    "id, session_id, bank_id, position, question_type, statement, points, "
     "correct_numeric_answer, numeric_tolerance, correct_text_answer, source_format"
 )
 OPTION_COLUMNS = "id, question_id, position, option_text, is_correct"
@@ -80,7 +80,10 @@ class SupabaseQuestionRepository:
 
         with self._lock:
             for pregunta in questions:
-                self._session_cache[pregunta.id] = pregunta.session_id
+                # Las de banco no tienen sesion: cachearlas con `None` haria que
+                # `find_session_id` devolviera un acierto falso.
+                if pregunta.session_id is not None:
+                    self._session_cache[pregunta.id] = pregunta.session_id
 
     def list_by_session(self, session_id: UUID) -> Sequence[Question]:
         response = (
@@ -96,6 +99,33 @@ class SupabaseQuestionRepository:
 
         opciones = self._options_of(session_id)
         return [_to_entity(row, opciones.get(UUID(row["id"]), ())) for row in rows]
+
+    def list_by_bank(self, bank_id: UUID) -> Sequence[Question]:
+        return self.list_by_banks([bank_id])
+
+    def list_by_banks(self, bank_ids: Sequence[UUID]) -> Sequence[Question]:
+        if not bank_ids:
+            return []
+
+        response = (
+            self._client.table(QUESTIONS_TABLE)
+            .select(COLUMNS)
+            .in_("bank_id", [str(i) for i in bank_ids])
+            .order("position", desc=False)
+            .execute()
+        )
+        rows = cast("list[dict[str, Any]]", response.data)
+        if not rows:
+            return []
+
+        opciones = self._options_of_questions([UUID(row["id"]) for row in rows])
+        return [_to_entity(row, opciones.get(UUID(row["id"]), ())) for row in rows]
+
+    def count_by_bank(self, bank_id: UUID) -> int:
+        response = (
+            self._client.table(QUESTIONS_TABLE).select("id").eq("bank_id", str(bank_id)).execute()
+        )
+        return len(cast("list[dict[str, Any]]", response.data))
 
     def count_by_session(self, session_id: UUID) -> int:
         response = (
@@ -130,6 +160,26 @@ class SupabaseQuestionRepository:
             )
         return summary
 
+    def _options_of_questions(
+        self, question_ids: Sequence[UUID]
+    ) -> dict[UUID, tuple[QuestionOption, ...]]:
+        """Las opciones de esas preguntas, en una sola consulta.
+
+        Existe aparte de `_options_of` porque las preguntas de un banco no cuelgan
+        de ninguna sesion: no se pueden pedir filtrando por `session_id`.
+        """
+        if not question_ids:
+            return {}
+
+        response = (
+            self._client.table(OPTIONS_TABLE)
+            .select(OPTION_COLUMNS)
+            .in_("question_id", [str(i) for i in question_ids])
+            .order("position", desc=False)
+            .execute()
+        )
+        return _agrupar_opciones(cast("list[dict[str, Any]]", response.data))
+
     def _options_of(self, session_id: UUID) -> dict[UUID, tuple[QuestionOption, ...]]:
         """Todas las opciones de la sesion en una sola consulta.
 
@@ -143,26 +193,29 @@ class SupabaseQuestionRepository:
             .order("position", desc=False)
             .execute()
         )
-        rows = cast("list[dict[str, Any]]", response.data)
+        return _agrupar_opciones(cast("list[dict[str, Any]]", response.data))
 
-        agrupadas: dict[UUID, list[QuestionOption]] = {}
-        for row in rows:
-            question_id = UUID(row["question_id"])
-            agrupadas.setdefault(question_id, []).append(
-                QuestionOption(
-                    id=UUID(row["id"]),
-                    position=row["position"],
-                    option_text=row["option_text"],
-                    is_correct=bool(row["is_correct"]),
-                )
+
+def _agrupar_opciones(rows: list[dict[str, Any]]) -> dict[UUID, tuple[QuestionOption, ...]]:
+    agrupadas: dict[UUID, list[QuestionOption]] = {}
+    for row in rows:
+        question_id = UUID(row["question_id"])
+        agrupadas.setdefault(question_id, []).append(
+            QuestionOption(
+                id=UUID(row["id"]),
+                position=row["position"],
+                option_text=row["option_text"],
+                is_correct=bool(row["is_correct"]),
             )
-        return {k: tuple(v) for k, v in agrupadas.items()}
+        )
+    return {k: tuple(v) for k, v in agrupadas.items()}
 
 
 def _question_row(question: Question) -> dict[str, Any]:
     return {
         "id": str(question.id),
-        "session_id": str(question.session_id),
+        "session_id": str(question.session_id) if question.session_id else None,
+        "bank_id": str(question.bank_id) if question.bank_id else None,
         "position": question.position,
         "question_type": question.question_type.value,
         "statement": question.statement,
@@ -194,9 +247,12 @@ def _to_entity(row: dict[str, Any], options: tuple[QuestionOption, ...]) -> Ques
     def decimal_o_none(valor: Any) -> Decimal | None:
         return Decimal(str(valor)) if valor is not None else None
 
+    sesion = row.get("session_id")
+    banco = row.get("bank_id")
     return Question(
         id=UUID(row["id"]),
-        session_id=UUID(row["session_id"]),
+        session_id=UUID(sesion) if sesion else None,
+        bank_id=UUID(banco) if banco else None,
         position=row["position"],
         question_type=QuestionType(row["question_type"]),
         statement=row["statement"],
