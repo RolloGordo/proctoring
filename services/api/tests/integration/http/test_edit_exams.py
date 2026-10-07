@@ -437,9 +437,7 @@ class TestPanelDelEstudiante:
             antes = client.get("/api/v1/me/exams", headers=bearer(STUDENT_TOKEN)).json()
             assert [e["cancelled"] for e in antes] == [False]
 
-            client.post(
-                f"/api/v1/sessions/{examen['id']}/cancel", headers=bearer(TEACHER_TOKEN)
-            )
+            client.post(f"/api/v1/sessions/{examen['id']}/cancel", headers=bearer(TEACHER_TOKEN))
             despues = client.get("/api/v1/me/exams", headers=bearer(STUDENT_TOKEN)).json()
 
         assert [e["cancelled"] for e in despues] == [True]
