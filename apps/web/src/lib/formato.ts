@@ -44,7 +44,7 @@ export function nombrePreset(preset: SupervisionPreset): string {
 }
 
 /** Dónde está un examen respecto a la hora, que es lo que el usuario quiere saber. */
-export type EstadoExamen = 'programado' | 'en_curso' | 'terminado'
+export type EstadoExamen = 'programado' | 'en_curso' | 'terminado' | 'cancelado'
 
 /**
  * El estado real de un examen, calculado con la hora.
@@ -57,8 +57,12 @@ export type EstadoExamen = 'programado' | 'en_curso' | 'terminado'
 export function estadoExamen(
   inicioIso: string,
   duracionMinutos: number,
-  ahora: number = Date.now()
+  ahora: number = Date.now(),
+  cancelado = false
 ): EstadoExamen {
+  // Cancelado manda sobre el reloj: un examen retirado no está "en curso" ni
+  // "programado" a ninguna hora.
+  if (cancelado) return 'cancelado'
   const inicio = new Date(inicioIso).getTime()
   const fin = inicio + duracionMinutos * 60_000
   if (ahora < inicio) return 'programado'
@@ -68,7 +72,8 @@ export function estadoExamen(
 const ESTADOS_EXAMEN: Record<EstadoExamen, string> = {
   programado: 'Programado',
   en_curso: 'En curso',
-  terminado: 'Terminado'
+  terminado: 'Terminado',
+  cancelado: 'Cancelado'
 }
 
 export function nombreEstadoExamen(estado: EstadoExamen): string {
@@ -89,7 +94,8 @@ const ESTADOS: Record<SessionStatus, string> = {
   draft: 'Borrador',
   scheduled: 'Programado',
   in_progress: 'En curso',
-  finished: 'Terminado'
+  finished: 'Terminado',
+  cancelled: 'Cancelado'
 }
 
 export function nombreEstado(estado: SessionStatus): string {

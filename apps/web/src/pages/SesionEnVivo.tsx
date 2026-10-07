@@ -104,6 +104,9 @@ export function SesionEnVivo() {
             <Link to={`/sesiones/${id}/preguntas`} className="boton boton-secundario">
               Preguntas
             </Link>
+            <Link to={`/sesiones/${id}/editar`} className="boton boton-secundario">
+              Editar
+            </Link>
             <Link to={`/sesiones/${id}/participantes`} className="boton boton-secundario">
               Sala de espera
             </Link>

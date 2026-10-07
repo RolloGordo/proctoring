@@ -81,6 +81,14 @@
   border-color: var(--linea);
 }
 
+/* Cancelado se distingue de terminado a propósito: uno ocurrió y el otro no. */
+.chip-cancelado {
+  color: var(--alta);
+  background: var(--alta-fondo);
+  border-color: var(--alta-linea);
+  text-decoration: line-through;
+}
+
 /* El aviso de nota parcial va junto a la nota, no debajo: son una sola idea. */
 .nota-aviso {
   margin-left: var(--e2);
@@ -891,4 +899,37 @@
   background: var(--exito-fondo);
   border-color: rgb(6 118 71 / 30%);
   border-left-color: var(--exito);
+}
+
+/* Cancelar y borrar: separados del formulario y marcados, porque una pulsación
+   distraída aquí se lleva un examen. */
+.zona-peligro {
+  margin-top: var(--e5);
+  border-color: var(--alta-linea);
+}
+
+.zona-peligro h3 {
+  margin-top: 0;
+}
+
+.boton-peligro {
+  background: transparent;
+  color: var(--alta);
+  border: 1px solid var(--alta-linea);
+}
+
+.boton-peligro:hover {
+  background: var(--alta-fondo);
+}
+
+/* Los puntos de una pregunta, editables en la propia lista. */
+.puntos-editables {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--e1);
+}
+
+.puntos-editables input {
+  width: 5rem;
+  text-align: right;
 }

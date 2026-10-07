@@ -20,7 +20,7 @@ export type EventType =
   | 'identity_check'
 
 export type Severity = 'low' | 'medium' | 'high'
-export type SessionStatus = 'draft' | 'scheduled' | 'in_progress' | 'finished'
+export type SessionStatus = 'draft' | 'scheduled' | 'in_progress' | 'finished' | 'cancelled'
 export type SupervisionPreset = 'basic' | 'standard' | 'strict' | 'custom'
 
 export interface ExamSessionSummary {
@@ -43,6 +43,11 @@ export interface ExamSession extends ExamSessionSummary {
   shuffle_questions: boolean
   shuffle_options: boolean
   allow_back_navigation: boolean
+  question_pool_size: number | null
+  /** Sobre cuánto se califica. 20 por defecto: la escala peruana. */
+  max_score: string
+  /** Cuándo lo canceló el docente. `null` mientras siga en pie. */
+  cancelled_at: string | null
   modules: Record<string, Record<string, unknown>>
 }
 
@@ -192,7 +197,9 @@ export interface MyExam {
   submitted_at: string | null
   /** Puntos ganados en lo que se corrige solo. `null` si aún no hay nota. */
   score: number | null
-  /** Puntos de todo el examen, para mostrar «7 de 10». */
+  /** Si el docente retiró el examen. */
+  cancelled: boolean
+  /** Sobre cuánto se califica, para mostrar «13.5 de 20». */
   max_score: number | null
   /** Hay desarrollos que el docente todavía no califica: la nota es parcial. */
   pending_manual_review: boolean
@@ -287,6 +294,43 @@ export interface NewExamSession {
    * atados. `null` es "todas". Sin bancos no tiene efecto.
    */
   question_pool_size?: number | null
+  /** Sobre cuánto se califica. 20 por defecto: es la escala peruana. */
+  max_score?: string | number | null
+}
+
+/**
+ * Lo que se quiere cambiar de un examen. Lo que no se envía no se toca.
+ *
+ * Para **vaciar** un campo opcional están los `clear_*`: `null` ya significa
+ * "no lo cambies", así que con un solo mecanismo no habría forma de quitarle la
+ * descripción a un examen que ya la tiene.
+ */
+export interface ExamSessionChanges {
+  title?: string
+  starts_at?: string
+  duration_minutes?: number
+  entry_tolerance_minutes?: number
+  description?: string
+  course_id?: string
+  preset?: SupervisionPreset
+  max_score?: string | number
+  question_pool_size?: number
+  shuffle_questions?: boolean
+  shuffle_options?: boolean
+  allow_back_navigation?: boolean
+  clear_description?: boolean
+  clear_course?: boolean
+  clear_pool_size?: boolean
+}
+
+/** Lo que se quiere cambiar de una pregunta. Las opciones van enteras o no van. */
+export interface QuestionChanges {
+  statement?: string
+  points?: string
+  options?: Array<{ option_text: string; is_correct: boolean }>
+  correct_numeric_answer?: string
+  numeric_tolerance?: string
+  correct_text_answer?: string
 }
 
 /** Un banco de preguntas reutilizable, con cuántas tiene. */
@@ -367,6 +411,25 @@ export const api = {
 
   createSession: (data: NewExamSession, token?: string): Promise<ExamSession> =>
     request('/api/v1/sessions', { method: 'POST', body: JSON.stringify(data) }, token),
+
+  updateSession: (
+    id: string,
+    changes: ExamSessionChanges,
+    token?: string
+  ): Promise<ExamSession> =>
+    request(`/api/v1/sessions/${id}`, { method: 'PATCH', body: JSON.stringify(changes) }, token),
+
+  cancelSession: (id: string, token?: string): Promise<ExamSession> =>
+    request(`/api/v1/sessions/${id}/cancel`, { method: 'POST' }, token),
+
+  deleteSession: (id: string, token?: string): Promise<void> =>
+    request(`/api/v1/sessions/${id}`, { method: 'DELETE' }, token),
+
+  updateQuestion: (id: string, changes: QuestionChanges, token?: string): Promise<Question> =>
+    request(`/api/v1/questions/${id}`, { method: 'PATCH', body: JSON.stringify(changes) }, token),
+
+  deleteQuestion: (id: string, token?: string): Promise<void> =>
+    request(`/api/v1/questions/${id}`, { method: 'DELETE' }, token),
 
   joinExam: (accessCode: string, token?: string): Promise<JoinedExam> =>
     request(

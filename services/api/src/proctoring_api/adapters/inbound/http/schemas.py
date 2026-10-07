@@ -577,11 +577,13 @@ class MyExamResponse(BaseModel):
     #: Puntos ganados en lo que se corrige solo. `None` si aun no hay nota:
     #: nunca un cero inventado, porque sin calificacion es mejor decir que falta.
     score: float | None
-    #: Puntos de todo el examen, para mostrar "7 de 10".
+    #: Sobre cuanto se califica el examen, para mostrar "13.5 de 20".
     max_score: float | None
     #: Si hay desarrollos que el docente todavia no califica. Mientras sea
     #: verdadero, `score` es parcial.
     pending_manual_review: bool
+    #: Si el docente retiro el examen.
+    cancelled: bool
 
     @classmethod
     def from_entity(cls, exam: MyExam) -> MyExamResponse:
@@ -602,6 +604,7 @@ class MyExamResponse(BaseModel):
             score=exam.participant.score,
             max_score=exam.max_score,
             pending_manual_review=exam.pending_manual_review,
+            cancelled=exam.cancelled,
         )
 
 

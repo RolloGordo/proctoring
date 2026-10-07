@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ChipEstado } from '../components/ChipEstado'
 import { FormularioCodigo } from '../components/FormularioCodigo'
 import { api, comoExamenUnido, type MyCourse, type MyExam } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
@@ -154,11 +155,18 @@ export function PanelEstudiante() {
 }
 
 function FilaPorRendir({ examen, ahora }: { examen: MyExam; ahora: number }) {
-  const estado = estadoExamen(examen.starts_at, examen.duration_minutes, ahora)
+  const estado = estadoExamen(
+    examen.starts_at,
+    examen.duration_minutes,
+    ahora,
+    examen.cancelled
+  )
   const empiezaEn = new Date(examen.starts_at).getTime() - ahora
 
   let detalle: string
-  if (examen.can_enter_now) detalle = 'Puedes entrar ahora'
+  // Lo primero: un examen cancelado no "empieza en 3 horas".
+  if (examen.cancelled) detalle = 'Tu docente canceló este examen'
+  else if (examen.can_enter_now) detalle = 'Puedes entrar ahora'
   else if (estado === 'programado') detalle = `Empieza ${cuandoEmpieza(empiezaEn)}`
   else if (estado === 'en_curso') detalle = 'El plazo de ingreso terminó'
   else detalle = 'No lo entregaste a tiempo'
@@ -174,13 +182,19 @@ function FilaPorRendir({ examen, ahora }: { examen: MyExam; ahora: number }) {
           {detalle}
         </p>
       </div>
-      <Link
-        to={`/examen/${examen.session_id}/sala`}
-        state={comoExamenUnido(examen)}
-        className={examen.can_enter_now ? 'boton' : 'boton boton-secundario'}
-      >
-        {examen.can_enter_now ? 'Continuar' : 'Ver detalles'}
-      </Link>
+      {examen.cancelled ? (
+        // Sin enlace: no hay a dónde ir, y un botón que lleva a una pantalla de
+        // error es peor que no tener botón.
+        <ChipEstado estado="cancelado" />
+      ) : (
+        <Link
+          to={`/examen/${examen.session_id}/sala`}
+          state={comoExamenUnido(examen)}
+          className={examen.can_enter_now ? 'boton' : 'boton boton-secundario'}
+        >
+          {examen.can_enter_now ? 'Continuar' : 'Ver detalles'}
+        </Link>
+      )}
     </li>
   )
 }

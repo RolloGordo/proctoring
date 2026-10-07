@@ -423,3 +423,36 @@ class TestEditarPreguntas:
         )
 
         assert respuesta.status_code == 403
+
+
+class TestPanelDelEstudiante:
+    def test_un_examen_cancelado_se_marca_en_el_panel(self, authed_app: FastAPI) -> None:
+        """Sin esto el panel diría "empieza en 3 horas" de un examen que no va a
+        ocurrir."""
+        with TestClient(authed_app) as client:
+            examen = crear_examen(client)
+        matricular(authed_app, examen["id"])
+
+        with TestClient(authed_app) as client:
+            antes = client.get("/api/v1/me/exams", headers=bearer(STUDENT_TOKEN)).json()
+            assert [e["cancelled"] for e in antes] == [False]
+
+            client.post(
+                f"/api/v1/sessions/{examen['id']}/cancel", headers=bearer(TEACHER_TOKEN)
+            )
+            despues = client.get("/api/v1/me/exams", headers=bearer(STUDENT_TOKEN)).json()
+
+        assert [e["cancelled"] for e in despues] == [True]
+        # Sigue apareciendo: el estudiante tiene que poder verlo, no que
+        # desaparezca sin explicación.
+        assert despues[0]["title"] == examen["title"]
+
+    def test_la_nota_se_informa_sobre_la_escala_del_examen(self, authed_app: FastAPI) -> None:
+        with TestClient(authed_app) as client:
+            examen = crear_examen(client, max_score="20")
+        matricular(authed_app, examen["id"])
+
+        with TestClient(authed_app) as client:
+            [mio] = client.get("/api/v1/me/exams", headers=bearer(STUDENT_TOKEN)).json()
+
+        assert mio["max_score"] == 20.0

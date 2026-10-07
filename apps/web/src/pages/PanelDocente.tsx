@@ -42,7 +42,7 @@ export function PanelDocente() {
   const grupos = useMemo(() => {
     const todos = (sesiones ?? []).map((s) => ({
       ...s,
-      estado: estadoExamen(s.starts_at, s.duration_minutes, ahora)
+      estado: estadoExamen(s.starts_at, s.duration_minutes, ahora, s.status === 'cancelled')
     }))
     const porInicio = (a: { starts_at: string }, b: { starts_at: string }): number =>
       new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()

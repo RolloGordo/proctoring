@@ -34,6 +34,9 @@ class MyExam:
     max_score: float | None = None
     #: Si hay desarrollos que el docente aun no califica: la nota es parcial.
     pending_manual_review: bool = False
+    #: Si el docente lo retiro. Sin esto el panel diria "empieza en 3 horas" de
+    #: un examen que no va a ocurrir.
+    cancelled: bool = False
 
 
 class ListMyExams:
@@ -96,6 +99,7 @@ class ListMyExams:
                 pending_manual_review=(
                     resumen[p.session_id].has_manual_questions if p.session_id in resumen else False
                 ),
+                cancelled=sesiones[p.session_id].is_cancelled,
             )
             # Una matricula cuya sesion ya no existe se omite en vez de romper el panel.
             for p in participaciones

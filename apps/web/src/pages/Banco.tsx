@@ -26,6 +26,30 @@ export function Banco() {
       .catch((fallo: Error) => setError(fallo.message))
   }, [id, token])
 
+  async function cambiarPuntos(preguntaId: string, puntos: string): Promise<void> {
+    setError(undefined)
+    try {
+      const corregida = await api.updateQuestion(preguntaId, { points: puntos }, token)
+      setPreguntas((previas) =>
+        (previas ?? []).map((p) => (p.id === preguntaId ? corregida : p))
+      )
+    } catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : 'No se pudieron cambiar los puntos')
+      throw fallo
+    }
+  }
+
+  async function borrar(preguntaId: string): Promise<void> {
+    if (!confirm('Se quitará esta pregunta del banco. ¿Seguro?')) return
+    setError(undefined)
+    try {
+      await api.deleteQuestion(preguntaId, token)
+      setPreguntas((previas) => (previas ?? []).filter((p) => p.id !== preguntaId))
+    } catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : 'No se pudo quitar la pregunta')
+    }
+  }
+
   async function agregar(nueva: NewQuestion): Promise<void> {
     setError(undefined)
     try {
@@ -87,7 +111,11 @@ export function Banco() {
               </div>
             </div>
           ) : (
-            <ListaPreguntas preguntas={preguntas ?? []} />
+            <ListaPreguntas
+              preguntas={preguntas ?? []}
+              onCambiarPuntos={cambiarPuntos}
+              onBorrar={borrar}
+            />
           )}
         </section>
       </div>

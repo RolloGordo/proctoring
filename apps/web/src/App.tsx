@@ -9,6 +9,7 @@ import { AccesoExamen } from './pages/AccesoExamen'
 import { Banco } from './pages/Banco'
 import { Bancos } from './pages/Bancos'
 import { Curso } from './pages/Curso'
+import { EditarSesion } from './pages/EditarSesion'
 import { Cursos } from './pages/Cursos'
 import { Login } from './pages/Login'
 import { NuevaSesion } from './pages/NuevaSesion'
@@ -143,6 +144,14 @@ function Aplicacion() {
           element={
             <Docente>
               <SesionEnVivo />
+            </Docente>
+          }
+        />
+        <Route
+          path="/sesiones/:id/editar"
+          element={
+            <Docente>
+              <EditarSesion />
             </Docente>
           }
         />
