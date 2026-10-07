@@ -181,6 +181,10 @@ class ExamSession:
     status: SessionStatus = SessionStatus.DRAFT
     max_attempts: int = 1
     shuffle_questions: bool = True
+    #: Cuantas preguntas recibe cada estudiante de las disponibles. `None` es
+    #: "todas". Solo tiene efecto con bancos atados: un examen con preguntas
+    #: propias las usa todas.
+    question_pool_size: int | None = None
     shuffle_options: bool = True
     allow_back_navigation: bool = True
     modules: dict[SupervisionModule, dict[str, Any]] = field(default_factory=dict)
@@ -200,6 +204,7 @@ class ExamSession:
         preset: SupervisionPreset = SupervisionPreset.STANDARD,
         max_attempts: int = 1,
         shuffle_questions: bool = True,
+        question_pool_size: int | None = None,
         shuffle_options: bool = True,
         allow_back_navigation: bool = True,
         modules: dict[SupervisionModule, dict[str, Any]] | None = None,
@@ -259,6 +264,7 @@ class ExamSession:
             status=SessionStatus.SCHEDULED,
             max_attempts=max_attempts,
             shuffle_questions=shuffle_questions,
+            question_pool_size=question_pool_size,
             shuffle_options=shuffle_options,
             allow_back_navigation=allow_back_navigation,
             modules=resolved,

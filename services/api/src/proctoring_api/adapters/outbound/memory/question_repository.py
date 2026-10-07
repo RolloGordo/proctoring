@@ -35,6 +35,25 @@ class InMemoryQuestionRepository:
         de_la_sesion = [q for q in snapshot if q.session_id == session_id]
         return sorted(de_la_sesion, key=lambda q: q.position)
 
+    def list_by_bank(self, bank_id: UUID) -> Sequence[Question]:
+        with self._lock:
+            snapshot = list(self._questions.values())
+
+        del_banco = [q for q in snapshot if q.bank_id == bank_id]
+        return sorted(del_banco, key=lambda q: q.position)
+
+    def list_by_banks(self, bank_ids: Sequence[UUID]) -> Sequence[Question]:
+        wanted = set(bank_ids)
+        with self._lock:
+            snapshot = list(self._questions.values())
+
+        de_los_bancos = [q for q in snapshot if q.bank_id in wanted]
+        return sorted(de_los_bancos, key=lambda q: (q.position, str(q.id)))
+
+    def count_by_bank(self, bank_id: UUID) -> int:
+        with self._lock:
+            return sum(1 for q in self._questions.values() if q.bank_id == bank_id)
+
     def count_by_session(self, session_id: UUID) -> int:
         with self._lock:
             return sum(1 for q in self._questions.values() if q.session_id == session_id)
@@ -46,6 +65,10 @@ class InMemoryQuestionRepository:
 
         summary: dict[UUID, QuestionSummary] = {}
         for question in snapshot:
+            # El filtro de arriba ya descarta las de banco; esto lo hace explicito
+            # para quien lea y para el verificador de tipos.
+            if question.session_id is None:
+                continue
             previous = summary.get(question.session_id)
             summary[question.session_id] = QuestionSummary(
                 total_points=(previous.total_points if previous else Decimal(0)) + question.points,

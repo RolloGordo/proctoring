@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { api, type Course, type SupervisionPreset } from '../lib/api'
+import { Link, useNavigate } from 'react-router-dom'
+import { api, type Course, type QuestionBank, type SupervisionPreset } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 
 /**
@@ -37,21 +37,38 @@ export function NuevaSesion() {
   const [descripcion, setDescripcion] = useState('')
   const [cursos, setCursos] = useState<Course[]>([])
   const [cursoId, setCursoId] = useState('')
+  const [bancos, setBancos] = useState<QuestionBank[]>([])
+  const [elegidos, setElegidos] = useState<string[]>([])
+  const [cuantas, setCuantas] = useState('')
   const [error, setError] = useState<string>()
   const [enviando, setEnviando] = useState(false)
 
-  // Los cursos son opcionales: si no se pueden cargar, se puede crear el
-  // examen igual, solo que sin asociarlo a ninguno.
+  // Cursos y bancos son opcionales: si no se pueden cargar, el examen se crea
+  // igual, solo que sin curso y sin bancos.
   useEffect(() => {
     let cancelado = false
     api
       .listCourses(token)
       .then((datos) => !cancelado && setCursos(datos))
       .catch(() => undefined)
+    api
+      .listBanks(token)
+      .then((datos) => !cancelado && setBancos(datos))
+      .catch(() => undefined)
     return () => {
       cancelado = true
     }
   }, [token])
+
+  const disponibles = bancos
+    .filter((b) => elegidos.includes(b.id))
+    .reduce((suma, b) => suma + b.question_count, 0)
+
+  function alternar(bankId: string): void {
+    setElegidos((previos) =>
+      previos.includes(bankId) ? previos.filter((i) => i !== bankId) : [...previos, bankId]
+    )
+  }
 
   async function enviar(evento: FormEvent): Promise<void> {
     evento.preventDefault()
@@ -67,19 +84,43 @@ export function NuevaSesion() {
           entry_tolerance_minutes: tolerancia,
           preset,
           description: descripcion.trim() || null,
-          course_id: cursoId || null
+          course_id: cursoId || null,
+          // Vacío significa "todas las del banco".
+          question_pool_size: cuantas ? Number(cuantas) : null
         },
         token
       )
+
+      // Los bancos se atan después porque el examen tiene que existir primero.
+      // Si uno falla, el examen ya está creado: se avisa y se deja al docente en
+      // la pantalla del examen, donde puede atarlos a mano, en vez de perderlo.
+      const fallidos: string[] = []
+      for (const bankId of elegidos) {
+        try {
+          await api.attachBank(sesion.id, bankId, token)
+        } catch {
+          fallidos.push(bancos.find((b) => b.id === bankId)?.name ?? bankId)
+        }
+      }
+
+      if (fallidos.length > 0) {
+        setError(
+          `El examen se creó, pero no se pudieron atar estos bancos: ${fallidos.join(', ')}. ` +
+            'Puedes atarlos desde la pantalla del examen.'
+        )
+        setEnviando(false)
+        return
+      }
+
       navegar(`/sesiones/${sesion.id}`)
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo crear el examen')
-    } finally {
       setEnviando(false)
     }
   }
 
   const elegido = PRESETS.find((p) => p.valor === preset)
+  const demasiadas = Boolean(cuantas) && Number(cuantas) > disponibles && disponibles > 0
 
   return (
     <>
@@ -87,7 +128,7 @@ export function NuevaSesion() {
         <div>
           <h1>Crear examen</h1>
           <p className="subtitulo">
-            Al guardarlo obtendrás un código de acceso para repartir a tus estudiantes
+            Elige de qué bancos salen las preguntas y obtendrás el código de acceso para repartir
           </p>
         </div>
       </div>
@@ -141,6 +182,66 @@ export function NuevaSesion() {
                 />
               </label>
             </div>
+
+            <div className="campo">
+              <span>Preguntas</span>
+              {bancos.length === 0 ? (
+                <p className="ayuda">
+                  No tienes bancos todavía. Puedes crear el examen y escribir las preguntas
+                  después, pero conviene{' '}
+                  <Link to="/bancos">crear un banco</Link> y escribirlas una sola vez: así se
+                  reutilizan y cada estudiante recibe un sorteo distinto.
+                </p>
+              ) : (
+                <>
+                  <p className="ayuda" style={{ marginBottom: 0 }}>
+                    Marca de qué bancos sale este examen. Si no marcas ninguno, escribirás las
+                    preguntas a mano después.
+                  </p>
+                  <ul className="selector-bancos">
+                    {bancos.map((banco) => (
+                      <li key={banco.id}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={elegidos.includes(banco.id)}
+                            onChange={() => alternar(banco.id)}
+                          />
+                          <span>{banco.name}</span>
+                          <span className="cuenta">
+                            {banco.question_count} pregunta{banco.question_count === 1 ? '' : 's'}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+
+            {elegidos.length > 0 && (
+              <label className="campo" style={{ maxWidth: '280px' }}>
+                <span>Preguntas por estudiante</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={disponibles || undefined}
+                  value={cuantas}
+                  onChange={(e) => setCuantas(e.target.value)}
+                  placeholder={`Todas (${disponibles})`}
+                />
+                <p className="ayuda">
+                  De las {disponibles} disponibles. Cada estudiante recibe su propio sorteo, y
+                  siempre el mismo aunque recargue la página.
+                </p>
+                {demasiadas && (
+                  <p className="aviso">
+                    Solo hay {disponibles} preguntas en los bancos marcados. Cada estudiante
+                    recibirá esas {disponibles}.
+                  </p>
+                )}
+              </label>
+            )}
 
             <label className="campo">
               <span>Nivel de supervisión</span>

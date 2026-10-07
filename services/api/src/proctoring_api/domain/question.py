@@ -80,7 +80,12 @@ class Question:
     """Una pregunta con su respuesta correcta. Solo para el docente."""
 
     id: UUID
-    session_id: UUID
+    #: El examen al que pertenece, si es una pregunta suelta de un examen.
+    session_id: UUID | None
+    #: El banco al que pertenece, si es reutilizable. **Exactamente uno de los
+    #: dos está puesto**: una pregunta sin ninguno quedaría huérfana, invisible
+    #: para todos e imposible de borrar desde la interfaz.
+    bank_id: UUID | None
     position: int
     question_type: QuestionType
     statement: str
@@ -95,8 +100,9 @@ class Question:
     def create(
         cls,
         *,
-        session_id: UUID,
         position: int,
+        session_id: UUID | None = None,
+        bank_id: UUID | None = None,
         question_type: QuestionType,
         statement: str,
         points: Decimal = Decimal(1),
@@ -110,8 +116,14 @@ class Question:
         """Crea una pregunta validada.
 
         Raises:
-            InvalidQuestionError: si viola alguna regla del dominio.
+            InvalidQuestionError: si viola alguna regla del dominio, incluido no
+                decir a qué pertenece o decir dos cosas a la vez.
         """
+        if (session_id is None) == (bank_id is None):
+            raise InvalidQuestionError(
+                "Una pregunta pertenece a un examen o a un banco, nunca a los dos ni a ninguno"
+            )
+
         clean_statement = statement.strip()
         if not clean_statement:
             raise InvalidQuestionError("El enunciado no puede estar vacio")
@@ -131,6 +143,7 @@ class Question:
         return cls(
             id=question_id if question_id is not None else uuid4(),
             session_id=session_id,
+            bank_id=bank_id,
             position=position,
             question_type=question_type,
             statement=clean_statement,

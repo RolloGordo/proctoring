@@ -6,6 +6,8 @@ import { useAuth } from './lib/auth-context'
 import { inicioSegunRol, type Rol } from './lib/rutas'
 import { authEnabled } from './lib/supabase'
 import { AccesoExamen } from './pages/AccesoExamen'
+import { Banco } from './pages/Banco'
+import { Bancos } from './pages/Bancos'
 import { Curso } from './pages/Curso'
 import { Cursos } from './pages/Cursos'
 import { Login } from './pages/Login'
@@ -101,6 +103,22 @@ function Aplicacion() {
           element={
             <Docente>
               <Curso />
+            </Docente>
+          }
+        />
+        <Route
+          path="/bancos"
+          element={
+            <Docente>
+              <Bancos />
+            </Docente>
+          }
+        />
+        <Route
+          path="/bancos/:id"
+          element={
+            <Docente>
+              <Banco />
             </Docente>
           }
         />

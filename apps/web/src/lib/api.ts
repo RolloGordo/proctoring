@@ -282,6 +282,27 @@ export interface NewExamSession {
   course_id?: string | null
   entry_tolerance_minutes?: number
   preset?: SupervisionPreset
+  /**
+   * Cuántas preguntas recibe cada estudiante de las que hay en los bancos
+   * atados. `null` es "todas". Sin bancos no tiene efecto.
+   */
+  question_pool_size?: number | null
+}
+
+/** Un banco de preguntas reutilizable, con cuántas tiene. */
+export interface QuestionBank {
+  id: string
+  name: string
+  course_id: string | null
+  description: string | null
+  created_at: string
+  question_count: number
+}
+
+export interface NewQuestionBank {
+  name: string
+  course_id?: string | null
+  description?: string | null
 }
 
 /** Error de la API con su código, para poder distinguir 401 de 403 de 400. */
@@ -379,6 +400,45 @@ export const api = {
     request('/api/v1/me/courses', undefined, token),
 
   listCourses: (token?: string): Promise<Course[]> => request('/api/v1/courses', undefined, token),
+
+  // --- Bancos de preguntas ---
+
+  listBanks: (token?: string): Promise<QuestionBank[]> =>
+    request('/api/v1/question-banks', undefined, token),
+
+  createBank: (data: NewQuestionBank, token?: string): Promise<QuestionBank> =>
+    request('/api/v1/question-banks', { method: 'POST', body: JSON.stringify(data) }, token),
+
+  listBankQuestions: (bankId: string, token?: string): Promise<Question[]> =>
+    request(`/api/v1/question-banks/${bankId}/questions`, undefined, token),
+
+  addBankQuestions: (
+    bankId: string,
+    questions: NewQuestion[],
+    token?: string
+  ): Promise<Question[]> =>
+    request(
+      `/api/v1/question-banks/${bankId}/questions`,
+      { method: 'POST', body: JSON.stringify({ questions }) },
+      token
+    ),
+
+  listSessionBanks: (sessionId: string, token?: string): Promise<QuestionBank[]> =>
+    request(`/api/v1/sessions/${sessionId}/banks`, undefined, token),
+
+  attachBank: (
+    sessionId: string,
+    bankId: string,
+    token?: string
+  ): Promise<{ bank_id: string; already_attached: boolean }> =>
+    request(
+      `/api/v1/sessions/${sessionId}/banks`,
+      { method: 'POST', body: JSON.stringify({ bank_id: bankId }) },
+      token
+    ),
+
+  detachBank: (sessionId: string, bankId: string, token?: string): Promise<void> =>
+    request(`/api/v1/sessions/${sessionId}/banks/${bankId}`, { method: 'DELETE' }, token),
 
   getCourse: (id: string, token?: string): Promise<Course> =>
     request(`/api/v1/courses/${id}`, undefined, token),

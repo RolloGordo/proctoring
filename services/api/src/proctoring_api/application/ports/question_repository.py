@@ -29,6 +29,23 @@ class QuestionRepository(Protocol):
         """Preguntas de una sesion, ordenadas por `position`."""
         ...
 
+    def list_by_bank(self, bank_id: UUID) -> Sequence[Question]:
+        """Preguntas de un banco, ordenadas por `position`."""
+        ...
+
+    def list_by_banks(self, bank_ids: Sequence[UUID]) -> Sequence[Question]:
+        """Preguntas de varios bancos, en una sola consulta.
+
+        Es lo que un examen tiene disponible para sortear: pedirlas banco por
+        banco seria una consulta por banco en el camino mas caliente, el de
+        servir el examen.
+        """
+        ...
+
+    def count_by_bank(self, bank_id: UUID) -> int:
+        """Cuantas preguntas tiene ya el banco. Sirve para numerar la siguiente."""
+        ...
+
     def count_by_session(self, session_id: UUID) -> int:
         """Cuantas preguntas tiene ya la sesion."""
         ...

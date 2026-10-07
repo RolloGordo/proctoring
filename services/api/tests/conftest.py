@@ -40,6 +40,8 @@ CONTRACT_STUDENT_ID = UUID("7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71")
 #: Otro estudiante, para probar que no puede reportar eventos ajenos.
 OTHER_STUDENT_ID = UUID("1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d")
 TEACHER_ID = UUID("0f9e8d7c-6b5a-4938-8271-6a5b4c3d2e1f")
+#: Otro docente, para probar que no ve ni usa lo que creo el primero.
+OTHER_TEACHER_ID = UUID("2b3c4d5e-6f70-4812-9a3b-4c5d6e7f8091")
 
 #: Secreto de los endpoints internos que usa `services/ai`. La API se niega a
 #: arrancar con autenticacion y sin el, asi que la app de pruebas tambien lo lleva.
@@ -48,6 +50,7 @@ INTERNAL_TOKEN = "secreto-interno-de-prueba"
 STUDENT_TOKEN = "token-estudiante"
 OTHER_STUDENT_TOKEN = "token-otro-estudiante"
 TEACHER_TOKEN = "token-docente"
+OTHER_TEACHER_TOKEN = "token-otro-docente"
 
 
 class FixedClock:
@@ -112,12 +115,13 @@ def contract_example() -> Any:
 
 @pytest.fixture
 def identify_user() -> IdentifyUser:
-    """`IdentifyUser` con tres usuarios conocidos y sin red."""
+    """`IdentifyUser` con cuatro usuarios conocidos y sin red."""
     profiles = InMemoryProfileRepository(
         {
             CONTRACT_STUDENT_ID: UserRole.STUDENT,
             OTHER_STUDENT_ID: UserRole.STUDENT,
             TEACHER_ID: UserRole.TEACHER,
+            OTHER_TEACHER_ID: UserRole.TEACHER,
         }
     )
     verifier = StubTokenVerifier(
@@ -125,6 +129,7 @@ def identify_user() -> IdentifyUser:
             STUDENT_TOKEN: CONTRACT_STUDENT_ID,
             OTHER_STUDENT_TOKEN: OTHER_STUDENT_ID,
             TEACHER_TOKEN: TEACHER_ID,
+            OTHER_TEACHER_TOKEN: OTHER_TEACHER_ID,
         }
     )
     return IdentifyUser(verifier, profiles)

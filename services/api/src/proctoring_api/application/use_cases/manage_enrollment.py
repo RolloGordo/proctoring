@@ -13,6 +13,7 @@ from proctoring_api.application.ports.participant_repository import ParticipantR
 from proctoring_api.application.ports.profile_repository import ProfileRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
+from proctoring_api.application.use_cases.create_exam_session import DEFAULT_DEV_TEACHER_ID
 from proctoring_api.domain.errors import AuthorizationError, DomainError
 from proctoring_api.domain.exam_session import EntryState, ExamSession
 from proctoring_api.domain.grading import score_exam
@@ -196,10 +197,12 @@ class ReviewParticipantIdentity:
         participants: ParticipantRepository,
         sessions: ExamSessionRepository | None,
         clock: Clock,
+        dev_teacher_id: UUID = DEFAULT_DEV_TEACHER_ID,
     ) -> None:
         self._participants = participants
         self._sessions = sessions
         self._clock = clock
+        self._dev_teacher_id = dev_teacher_id
 
     def execute(
         self,
@@ -217,7 +220,11 @@ class ReviewParticipantIdentity:
         if participante is None:
             raise AuthorizationError("Ese estudiante no esta en esta sesion")
 
-        revisor = actor.id if actor is not None else participante.session_id
+        # Sin autenticacion, el revisor es el docente de desarrollo. Antes se
+        # guardaba aqui el `session_id`, que no es ninguna persona: dejaba una
+        # pista de auditoria falsa —la columna existe para decir *quien* admitio—
+        # y contra PostgreSQL rompia la clave ajena a `profiles`.
+        revisor = actor.id if actor is not None else self._dev_teacher_id
         actualizado = (
             participante.approved_by_teacher(revisor, self._clock.now())
             if approve

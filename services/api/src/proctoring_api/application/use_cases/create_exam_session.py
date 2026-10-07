@@ -46,6 +46,8 @@ class CreateExamSessionInput:
     preset: SupervisionPreset = SupervisionPreset.STANDARD
     max_attempts: int = 1
     shuffle_questions: bool = True
+    #: Cuantas preguntas recibe cada estudiante. Solo aplica con bancos atados.
+    question_pool_size: int | None = None
     shuffle_options: bool = True
     allow_back_navigation: bool = True
     #: Solo se usa con `preset = custom`.
@@ -89,6 +91,7 @@ class CreateExamSession:
             preset=data.preset,
             max_attempts=data.max_attempts,
             shuffle_questions=data.shuffle_questions,
+            question_pool_size=data.question_pool_size,
             shuffle_options=data.shuffle_options,
             allow_back_navigation=data.allow_back_navigation,
             modules=data.modules,

@@ -65,6 +65,7 @@ def create_exam_session(
             preset=payload.preset,
             max_attempts=payload.max_attempts,
             shuffle_questions=payload.shuffle_questions,
+            question_pool_size=payload.question_pool_size,
             shuffle_options=payload.shuffle_options,
             allow_back_navigation=payload.allow_back_navigation,
             modules=payload.modules or {},

@@ -10,6 +10,7 @@ from uuid import UUID
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.participant_repository import ParticipantRepository
+from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.application.use_cases.manage_enrollment import (
@@ -17,12 +18,14 @@ from proctoring_api.application.use_cases.manage_enrollment import (
     ensure_can_take_exam,
 )
 from proctoring_api.domain.errors import AuthorizationError
+from proctoring_api.domain.exam_session import ExamSession
 from proctoring_api.domain.question import (
     ExamQuestion,
     InvalidQuestionError,
     Question,
     QuestionType,
 )
+from proctoring_api.domain.question_bank import draw_questions
 from proctoring_api.domain.user import AuthenticatedUser
 
 #: Tope por sesion. No es arbitrario: cada pregunta y sus opciones viajan al
@@ -134,6 +137,11 @@ class GetExamQuestions:
     estudiante podría descargarlo la noche anterior; y se exige estar
     **matriculado**, porque conocer el `session_id` de un examen ajeno no debería
     dar acceso a sus preguntas.
+
+    Si el examen tiene bancos atados, las preguntas salen de ahí y se **sortean
+    por estudiante**. El sorteo es determinista: el mismo estudiante recibe
+    siempre las mismas, aunque recargue la página a mitad del examen. Si no lo
+    fuera, al recargar vería preguntas nuevas y perdería lo respondido.
     """
 
     def __init__(
@@ -143,12 +151,14 @@ class GetExamQuestions:
         clock: Clock,
         participants: ParticipantRepository | None = None,
         dev_student_id: UUID = DEFAULT_DEV_STUDENT_ID,
+        banks: QuestionBankRepository | None = None,
     ) -> None:
         self._questions = questions
         self._sessions = sessions
         self._clock = clock
         self._participants = participants
         self._dev_student_id = dev_student_id
+        self._banks = banks
 
     def execute(
         self, session_id: UUID, *, actor: AuthenticatedUser | None = None
@@ -179,4 +189,40 @@ class GetExamQuestions:
         # consentido, tener la identidad resuelta y no haber entregado.
         ensure_can_take_exam(self._participants, session_id, actor, self._dev_student_id)
 
-        return [pregunta.for_student() for pregunta in self._questions.list_by_session(session_id)]
+        return [pregunta.for_student() for pregunta in self._para(sesion, actor)]
+
+    def _para(self, sesion: ExamSession, actor: AuthenticatedUser | None) -> Sequence[Question]:
+        """Las preguntas que le tocan a este estudiante.
+
+        Sin bancos atados, las del propio examen y en su orden: es como funcionaba
+        antes y los exámenes ya creados siguen igual.
+        """
+        bancos = self._banks.list_session_banks(sesion.id) if self._banks is not None else []
+        if not bancos:
+            return self._questions.list_by_session(sesion.id)
+
+        disponibles = self._questions.list_by_banks([b.id for b in bancos])
+
+        # La semilla del sorteo es la **matrícula**, no el estudiante: así dos
+        # intentos del mismo examen pueden traer preguntas distintas, que es lo
+        # que se espera de un segundo intento.
+        participante = (
+            self._participants.find(
+                sesion.id, actor.id if actor is not None else self._dev_student_id
+            )
+            if self._participants is not None
+            else None
+        )
+        if participante is None:
+            # Sin matrícula no se llega aquí (lo impide `ensure_can_take_exam`),
+            # salvo en el modo sin autenticación sin repositorio. Se entrega todo
+            # en orden en vez de fallar.
+            return disponibles
+
+        return draw_questions(
+            disponibles,
+            session_id=sesion.id,
+            participant_id=participante.id,
+            pool_size=sesion.question_pool_size,
+            shuffle=sesion.shuffle_questions,
+        )
