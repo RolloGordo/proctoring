@@ -82,6 +82,15 @@ from proctoring_api.application.use_cases.create_evidence_upload_url import (
     CreateEvidenceUploadUrl,
 )
 from proctoring_api.application.use_cases.create_exam_session import CreateExamSession
+from proctoring_api.application.use_cases.edit_exam_session import (
+    CancelExamSession,
+    DeleteExamSession,
+    UpdateExamSession,
+)
+from proctoring_api.application.use_cases.edit_questions import (
+    DeleteQuestion,
+    UpdateQuestion,
+)
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
 from proctoring_api.application.use_cases.join_exam_session import JoinExamSession
 from proctoring_api.application.use_cases.list_my_exams import ListMyExams
@@ -575,6 +584,17 @@ def create_app(
         bank_repository,
     )
     app.state.bank_repository = bank_repository
+    app.state.update_session = UpdateExamSession(
+        session_repository, participant_repository, course_repository
+    )
+    app.state.cancel_session = CancelExamSession(session_repository, clock)
+    app.state.delete_session = DeleteExamSession(session_repository, participant_repository)
+    app.state.update_question = UpdateQuestion(
+        question_repository, session_repository, bank_repository, answer_repository
+    )
+    app.state.delete_question = DeleteQuestion(
+        question_repository, session_repository, bank_repository, answer_repository
+    )
     app.state.create_bank = CreateQuestionBank(bank_repository, clock, settings.dev_teacher_id)
     app.state.list_banks = ListQuestionBanks(bank_repository, settings.dev_teacher_id)
     app.state.list_bank_questions = ListBankQuestions(bank_repository, question_repository)
@@ -599,6 +619,8 @@ def create_app(
         settings.dev_student_id,
         question_repository,
         answer_repository,
+        session_repository,
+        bank_repository,
     )
     app.state.list_my_exams = ListMyExams(
         participant_repository,

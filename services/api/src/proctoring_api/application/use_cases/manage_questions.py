@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from uuid import UUID
 
+from proctoring_api.application.exam_questions import questions_for
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.participant_repository import ParticipantRepository
@@ -15,6 +16,7 @@ from proctoring_api.application.ports.question_repository import QuestionReposit
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.application.use_cases.manage_enrollment import (
     DEFAULT_DEV_STUDENT_ID,
+    ExamCancelledError,
     ensure_can_take_exam,
 )
 from proctoring_api.domain.errors import AuthorizationError
@@ -25,7 +27,6 @@ from proctoring_api.domain.question import (
     Question,
     QuestionType,
 )
-from proctoring_api.domain.question_bank import draw_questions
 from proctoring_api.domain.user import AuthenticatedUser
 
 #: Tope por sesion. No es arbitrario: cada pregunta y sus opciones viajan al
@@ -179,6 +180,14 @@ class GetExamQuestions:
         if sesion is None:
             raise AuthorizationError("No tienes acceso a este examen")
 
+        # Lo primero: un estudiante ya dentro cuando su docente cancela el examen
+        # tiene que entender que paso, no leer "revisa la hora de inicio".
+        if sesion.is_cancelled:
+            raise ExamCancelledError(
+                "Tu docente cancelo este examen mientras lo rendias. "
+                "Lo que respondiste se guardo; habla con el."
+            )
+
         ahora = self._clock.now()
         if not (sesion.starts_at <= ahora <= sesion.ends_at):
             raise AuthorizationError(
@@ -194,15 +203,10 @@ class GetExamQuestions:
     def _para(self, sesion: ExamSession, actor: AuthenticatedUser | None) -> Sequence[Question]:
         """Las preguntas que le tocan a este estudiante.
 
-        Sin bancos atados, las del propio examen y en su orden: es como funcionaba
-        antes y los exámenes ya creados siguen igual.
+        El sorteo lo hace `questions_for`, que comparte con la calificación: si
+        cada uno tuviera el suyo y se separaran, se calificaría al estudiante por
+        preguntas que nunca vio.
         """
-        bancos = self._banks.list_session_banks(sesion.id) if self._banks is not None else []
-        if not bancos:
-            return self._questions.list_by_session(sesion.id)
-
-        disponibles = self._questions.list_by_banks([b.id for b in bancos])
-
         # La semilla del sorteo es la **matrícula**, no el estudiante: así dos
         # intentos del mismo examen pueden traer preguntas distintas, que es lo
         # que se espera de un segundo intento.
@@ -215,14 +219,10 @@ class GetExamQuestions:
         )
         if participante is None:
             # Sin matrícula no se llega aquí (lo impide `ensure_can_take_exam`),
-            # salvo en el modo sin autenticación sin repositorio. Se entrega todo
-            # en orden en vez de fallar.
-            return disponibles
+            # salvo en el modo sin autenticación sin repositorio de matrículas.
+            bancos = self._banks.list_session_banks(sesion.id) if self._banks is not None else []
+            if not bancos:
+                return self._questions.list_by_session(sesion.id)
+            return self._questions.list_by_banks([b.id for b in bancos])
 
-        return draw_questions(
-            disponibles,
-            session_id=sesion.id,
-            participant_id=participante.id,
-            pool_size=sesion.question_pool_size,
-            shuffle=sesion.shuffle_questions,
-        )
+        return questions_for(sesion, participante.id, self._questions, self._banks)

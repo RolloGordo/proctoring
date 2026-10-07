@@ -25,6 +25,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from proctoring_api.application.use_cases.ai_jobs import AudioJob, FaceJob
+from proctoring_api.application.use_cases.edit_exam_session import ExamSessionChanges
 from proctoring_api.application.use_cases.list_my_exams import MyExam
 from proctoring_api.application.use_cases.manage_banks import BankSummary
 from proctoring_api.application.use_cases.manage_courses import (
@@ -42,6 +43,7 @@ from proctoring_api.domain.decision import Decision, DecisionType
 from proctoring_api.domain.event import MAX_EVIDENCE_PATH_LENGTH, EventType, ProctoringEvent
 from proctoring_api.domain.evidence import EvidenceKind
 from proctoring_api.domain.exam_session import (
+    DEFAULT_MAX_SCORE,
     ExamSession,
     SessionStatus,
     SupervisionModule,
@@ -203,6 +205,8 @@ class ExamSessionRequest(BaseModel):
     #: Cuantas preguntas recibe cada estudiante. Solo aplica con bancos
     #: atados; sin ellos el examen usa sus propias preguntas, todas.
     question_pool_size: int | None = Field(default=None, gt=0, le=500)
+    #: Sobre cuanto se califica. 20 por defecto, que es la escala peruana.
+    max_score: Decimal = Field(default=DEFAULT_MAX_SCORE, gt=0, le=100)
     #: Solo se usa con `preset = custom`; con los demas manda el preset.
     modules: dict[SupervisionModule, dict[str, Any]] | None = None
 
@@ -254,6 +258,9 @@ class ExamSessionResponse(BaseModel):
     shuffle_questions: bool
     shuffle_options: bool
     allow_back_navigation: bool
+    question_pool_size: int | None
+    max_score: Decimal
+    cancelled_at: datetime | None
     modules: dict[SupervisionModule, dict[str, Any]]
 
     @classmethod
@@ -275,6 +282,9 @@ class ExamSessionResponse(BaseModel):
             shuffle_questions=session.shuffle_questions,
             shuffle_options=session.shuffle_options,
             allow_back_navigation=session.allow_back_navigation,
+            question_pool_size=session.question_pool_size,
+            max_score=session.max_score,
+            cancelled_at=session.cancelled_at,
             modules=session.modules,
         )
 
@@ -1043,3 +1053,69 @@ class AttachBankResponse(BaseModel):
     bank_id: UUID
     #: `True` si ya estaba atado. Atar dos veces no es un error.
     already_attached: bool
+
+
+class UpdateExamSessionRequest(BaseModel):
+    """Cuerpo de `PATCH /api/v1/sessions/{id}`.
+
+    Todo es opcional: lo que no se envia no se toca. Para **vaciar** un campo
+    opcional hay un `clear_*`, porque `null` ya significa "no lo cambies" y con
+    un solo mecanismo no habria forma de quitarle la descripcion a un examen que
+    ya la tiene.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    starts_at: datetime | None = None
+    duration_minutes: int | None = Field(default=None, gt=0, le=600)
+    entry_tolerance_minutes: int | None = Field(default=None, ge=0, le=120)
+    description: str | None = Field(default=None, max_length=2000)
+    course_id: UUID | None = None
+    preset: SupervisionPreset | None = None
+    max_score: Decimal | None = Field(default=None, gt=0, le=100)
+    question_pool_size: int | None = Field(default=None, gt=0, le=500)
+    shuffle_questions: bool | None = None
+    shuffle_options: bool | None = None
+    allow_back_navigation: bool | None = None
+    clear_description: bool = False
+    clear_course: bool = False
+    #: Vuelve a "todas las preguntas del banco".
+    clear_pool_size: bool = False
+
+    def to_changes(self) -> ExamSessionChanges:
+        return ExamSessionChanges(
+            title=self.title,
+            starts_at=self.starts_at,
+            duration_minutes=self.duration_minutes,
+            entry_tolerance_minutes=self.entry_tolerance_minutes,
+            description=self.description,
+            course_id=self.course_id,
+            preset=self.preset,
+            max_score=self.max_score,
+            question_pool_size=self.question_pool_size,
+            shuffle_questions=self.shuffle_questions,
+            shuffle_options=self.shuffle_options,
+            allow_back_navigation=self.allow_back_navigation,
+            clear_description=self.clear_description,
+            clear_course=self.clear_course,
+            clear_pool_size=self.clear_pool_size,
+        )
+
+
+class UpdateQuestionRequest(BaseModel):
+    """Cuerpo de `PATCH /api/v1/questions/{id}`.
+
+    Corregir el enunciado o los puntos de una pregunta ya creada. Las opciones se
+    envian **enteras** o no se envian: cambiar una sola dejaria al resto con
+    posiciones inconsistentes.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    statement: str | None = Field(default=None, min_length=1, max_length=5000)
+    points: Decimal | None = Field(default=None, ge=0, le=100)
+    options: list[QuestionOptionRequest] | None = None
+    correct_numeric_answer: Decimal | None = None
+    numeric_tolerance: Decimal | None = Field(default=None, ge=0)
+    correct_text_answer: str | None = Field(default=None, max_length=1000)

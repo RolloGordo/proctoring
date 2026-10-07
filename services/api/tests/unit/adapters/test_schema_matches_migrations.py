@@ -18,12 +18,8 @@ import pytest
 
 from proctoring_api.adapters.outbound.supabase import alert_repository, event_repository
 
-MIGRATION = (
-    Path(__file__).resolve().parents[5]
-    / "supabase"
-    / "migrations"
-    / "20261003120000_initial_schema.sql"
-)
+MIGRATIONS_DIR = Path(__file__).resolve().parents[5] / "supabase" / "migrations"
+MIGRATION = MIGRATIONS_DIR / "20261003120000_initial_schema.sql"
 
 #: `  nombre_columna tipo ...` al principio de linea dentro de un create table.
 COLUMN = re.compile(r"^\s{2}([a-z_]+)\s+[a-z]", re.IGNORECASE)
@@ -31,18 +27,74 @@ COLUMN = re.compile(r"^\s{2}([a-z_]+)\s+[a-z]", re.IGNORECASE)
 NOT_A_COLUMN = ("primary", "unique", "foreign", "check", "constraint")
 
 
+def all_migrations() -> str:
+    """Todas las migraciones concatenadas, en el orden en que se aplican.
+
+    El nombre empieza por la marca de tiempo, asi que ordenar por nombre es
+    ordenar por cuando se aplicaron.
+
+    Antes aqui se leia **solo** la migracion inicial, y entonces cualquier
+    migracion posterior que anadiera una columna ponia estas pruebas en rojo sin
+    que nada estuviera mal. Una prueba que falla cuando el codigo es correcto se
+    acaba borrando, que es como se pierde la unica guarda que compara el
+    adaptador con el SQL de verdad.
+    """
+    return "\n".join(
+        archivo.read_text(encoding="utf-8") for archivo in sorted(MIGRATIONS_DIR.glob("*.sql"))
+    )
+
+
 def columns_of(table: str) -> set[str]:
-    """Columnas declaradas para `public.<table>` en la migracion inicial."""
-    sql = MIGRATION.read_text(encoding="utf-8")
+    """Columnas que tiene `public.<table>` despues de todas las migraciones.
+
+    Suma el `create table` y los `alter table ... add column` posteriores, y
+    resta los `drop column`.
+    """
+    sql = all_migrations()
     match = re.search(rf"create table public\.{table} \((.*?)^\);", sql, re.DOTALL | re.MULTILINE)
-    assert match, f"No se encontro la tabla {table} en {MIGRATION.name}"
+    assert match, f"No se encontro la tabla {table} en supabase/migrations"
 
     columns = set()
     for line in match.group(1).splitlines():
         found = COLUMN.match(line)
         if found and found.group(1).lower() not in NOT_A_COLUMN:
             columns.add(found.group(1))
+
+    anadidas = re.findall(
+        rf"alter table (?:only )?(?:public\.)?{table}\s+add column (?:if not exists )?([a-z_]+)",
+        sql,
+        re.IGNORECASE,
+    )
+    columns.update(anadidas)
+
+    quitadas = re.findall(
+        rf"alter table (?:only )?(?:public\.)?{table}\s+drop column (?:if exists )?([a-z_]+)",
+        sql,
+        re.IGNORECASE,
+    )
+    columns.difference_update(quitadas)
+
     return columns
+
+
+def enum_values(enum_name: str) -> set[str]:
+    """Valores de un enum despues de todas las migraciones.
+
+    Igual que con las columnas: el `create type` mas los `add value` posteriores.
+    """
+    sql = all_migrations()
+    match = re.search(rf"create type public\.{enum_name} as enum \((.*?)\);", sql, re.DOTALL)
+    assert match, f"No se encontro el enum {enum_name}"
+
+    valores = set(re.findall(r"'([a-z_]+)'", match.group(1)))
+    valores.update(
+        re.findall(
+            rf"alter type (?:public\.)?{enum_name} add value (?:if not exists )?'([a-z_]+)'",
+            sql,
+            re.IGNORECASE,
+        )
+    )
+    return valores
 
 
 def selected_columns(constant: str) -> set[str]:
@@ -120,32 +172,20 @@ def test_event_type_enum_matches_the_database() -> None:
     """
     from proctoring_api.domain.event import EventType
 
-    sql = MIGRATION.read_text(encoding="utf-8")
-    match = re.search(r"create type public\.event_type as enum \((.*?)\);", sql, re.DOTALL)
-    assert match
-
-    in_database = set(re.findall(r"'([a-z_]+)'", match.group(1)))
+    in_database = enum_values("event_type")
     assert in_database == {event_type.value for event_type in EventType}
 
 
 def test_alert_severity_enum_matches_the_database() -> None:
     from proctoring_api.domain.severity import Severity
 
-    sql = MIGRATION.read_text(encoding="utf-8")
-    match = re.search(r"create type public\.alert_severity as enum \((.*?)\);", sql, re.DOTALL)
-    assert match
-
-    assert set(re.findall(r"'([a-z_]+)'", match.group(1))) == {s.value for s in Severity}
+    assert enum_values("alert_severity") == {s.value for s in Severity}
 
 
 def test_user_role_enum_matches_the_database() -> None:
     from proctoring_api.domain.user import UserRole
 
-    sql = MIGRATION.read_text(encoding="utf-8")
-    match = re.search(r"create type public\.user_role as enum \((.*?)\);", sql, re.DOTALL)
-    assert match
-
-    assert set(re.findall(r"'([a-z_]+)'", match.group(1))) == {r.value for r in UserRole}
+    assert enum_values("user_role") == {r.value for r in UserRole}
 
 
 class TestExamSessionsTable:
@@ -193,11 +233,7 @@ def test_session_enums_match_the_database(enum_name: str, domain_values: str) ->
     """
     import proctoring_api.domain.exam_session as exam_session
 
-    sql = MIGRATION.read_text(encoding="utf-8")
-    match = re.search(rf"create type public\.{enum_name} as enum \((.*?)\);", sql, re.DOTALL)
-    assert match, f"No se encontro el enum {enum_name}"
-
-    in_database = set(re.findall(r"'([a-z_]+)'", match.group(1)))
+    in_database = enum_values(enum_name)
     in_domain = {member.value for member in getattr(exam_session, domain_values)}
 
     assert in_database == in_domain

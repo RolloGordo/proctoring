@@ -14,7 +14,7 @@ from __future__ import annotations
 import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from proctoring_api.domain.answer import Answer
@@ -22,6 +22,9 @@ from proctoring_api.domain.question import Question, QuestionType
 
 #: Tipos que corrige una persona.
 MANUAL_TYPES = frozenset({QuestionType.ESSAY})
+
+#: Decimales de la nota final. Dos, para que 13.33 no se convierta en 13.
+SCORE_PLACES = Decimal("0.01")
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +52,22 @@ class ExamScore:
     pending_manual: bool
     #: Corrección de cada pregunta que el estudiante contestó.
     by_question: dict[UUID, GradedAnswer]
+
+    def on_scale(self, max_score: Decimal) -> Decimal:
+        """Los puntos ganados llevados a la escala del examen.
+
+        En Perú se califica sobre 20, pero el docente pone los puntos que
+        quiera a cada pregunta: 2 a una difícil y 1 a una fácil. Repartir
+        proporcionalmente sobre `max_score` es lo que le evita tener que hacer
+        cuentas para que sumen exactamente 20.
+
+        Un examen sin puntos —todas las preguntas valen cero, o no hay
+        preguntas— da cero y no una división por cero.
+        """
+        if self.maximum <= 0:
+            return Decimal(0)
+        bruto = self.earned / self.maximum * max_score
+        return bruto.quantize(SCORE_PLACES, rounding=ROUND_HALF_UP)
 
 
 def normalize_text(value: str) -> str:

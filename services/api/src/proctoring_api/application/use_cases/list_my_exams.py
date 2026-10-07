@@ -28,8 +28,9 @@ class MyExam:
     #: servidor, y no en el cliente: la hora de un equipo de estudiante no es
     #: fiable.
     can_enter_now: bool
-    #: Puntos de todo el examen, para mostrar "7 de 10". `None` mientras no se
-    #: entrega o si ya no hay preguntas guardadas.
+    #: Sobre cuanto se califica el examen, para mostrar "13.5 de 20". Es la
+    #: escala que fijo el docente (20 en Peru), no la suma de los puntos de las
+    #: preguntas: el estudiante lee su nota, no el reparto interno.
     max_score: float | None = None
     #: Si hay desarrollos que el docente aun no califica: la nota es parcial.
     pending_manual_review: bool = False
@@ -91,9 +92,7 @@ class ListMyExams:
                 session=sesiones[p.session_id],
                 participant=p,
                 can_enter_now=_can_continue(sesiones[p.session_id], p, ahora),
-                max_score=(
-                    float(resumen[p.session_id].total_points) if p.session_id in resumen else None
-                ),
+                max_score=float(sesiones[p.session_id].max_score),
                 pending_manual_review=(
                     resumen[p.session_id].has_manual_questions if p.session_id in resumen else False
                 ),

@@ -8,6 +8,7 @@ from decimal import Decimal
 from typing import Any, cast
 from uuid import UUID
 
+from postgrest.types import CountMethod
 from supabase import Client
 
 from proctoring_api.domain.answer import Answer
@@ -45,6 +46,17 @@ class SupabaseAnswerRepository:
         )
         rows = cast("list[dict[str, Any]]", response.data)
         return [_to_entity(row) for row in rows]
+
+    def count_by_question(self, question_id: UUID) -> int:
+        """Solo cuenta: no trae las respuestas, que no hacen falta para decidir."""
+        response = (
+            self._client.table(TABLE)
+            .select("id", count=CountMethod.exact)
+            .eq("question_id", str(question_id))
+            .limit(1)
+            .execute()
+        )
+        return response.count or 0
 
 
 def _to_row(answer: Answer) -> dict[str, Any]:

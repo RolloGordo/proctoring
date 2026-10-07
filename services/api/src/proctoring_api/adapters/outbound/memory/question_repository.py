@@ -77,6 +77,14 @@ class InMemoryQuestionRepository:
             )
         return summary
 
+    def find_by_id(self, question_id: UUID) -> Question | None:
+        with self._lock:
+            return self._questions.get(question_id)
+
+    def delete(self, question_id: UUID) -> None:
+        with self._lock:
+            self._questions.pop(question_id, None)
+
     def clear(self) -> None:
         """Vacia el repositorio. Solo para pruebas."""
         with self._lock:

@@ -24,3 +24,12 @@ class AnswerRepository(Protocol):
     def list_by_participant(self, participant_id: UUID) -> Sequence[Answer]:
         """Las respuestas de un participante, para retomar el examen."""
         ...
+
+    def count_by_question(self, question_id: UUID) -> int:
+        """Cuantos estudiantes respondieron esa pregunta.
+
+        Es lo que decide si una pregunta todavia se puede corregir: cambiarle la
+        alternativa correcta a una ya contestada reescribiria la nota de quien la
+        respondio bien.
+        """
+        ...

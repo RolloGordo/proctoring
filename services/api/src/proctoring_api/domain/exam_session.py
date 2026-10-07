@@ -9,8 +9,9 @@ separe y no en la demo.
 from __future__ import annotations
 
 import secrets
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -19,6 +20,11 @@ from proctoring_api.domain.errors import DomainError
 
 MAX_TITLE_LENGTH = 200
 MAX_DESCRIPTION_LENGTH = 2000
+
+#: Nota maxima por defecto. En Peru se califica sobre 20.
+DEFAULT_MAX_SCORE = Decimal(20)
+#: Tope de la escala. Mas que esto suele ser un error de tecleo.
+HIGHEST_MAX_SCORE = Decimal(100)
 
 
 class InvalidExamSessionError(DomainError):
@@ -32,6 +38,9 @@ class SessionStatus(StrEnum):
     SCHEDULED = "scheduled"
     IN_PROGRESS = "in_progress"
     FINISHED = "finished"
+    #: El docente lo retiro. No se borra la fila: los eventos, las alertas y las
+    #: respuestas son evidencia, y un examen cancelado sigue teniendo historia.
+    CANCELLED = "cancelled"
 
 
 class EntryState(StrEnum):
@@ -43,6 +52,9 @@ class EntryState(StrEnum):
     OPEN = "open"
     #: Paso la tolerancia de ingreso, o el examen ya termino.
     CLOSED = "closed"
+    #: El docente lo cancelo. Separado de `CLOSED` porque al estudiante hay que
+    #: decirle algo distinto: no llego tarde, el examen ya no existe.
+    CANCELLED = "cancelled"
 
 
 class SupervisionPreset(StrEnum):
@@ -187,6 +199,11 @@ class ExamSession:
     question_pool_size: int | None = None
     shuffle_options: bool = True
     allow_back_navigation: bool = True
+    #: Sobre cuanto se califica. Los puntos de las preguntas se reparten
+    #: proporcionalmente sobre esta nota, asi que el docente puede poner 2 puntos
+    #: a una pregunta y 1 a otra sin hacer cuentas para que sumen 20.
+    max_score: Decimal = DEFAULT_MAX_SCORE
+    cancelled_at: datetime | None = None
     modules: dict[SupervisionModule, dict[str, Any]] = field(default_factory=dict)
 
     @classmethod
@@ -207,6 +224,7 @@ class ExamSession:
         question_pool_size: int | None = None,
         shuffle_options: bool = True,
         allow_back_navigation: bool = True,
+        max_score: Decimal = DEFAULT_MAX_SCORE,
         modules: dict[SupervisionModule, dict[str, Any]] | None = None,
         session_id: UUID | None = None,
     ) -> ExamSession:
@@ -234,6 +252,7 @@ class ExamSession:
             raise InvalidExamSessionError("La tolerancia de ingreso no puede ser negativa")
         if max_attempts <= 0:
             raise InvalidExamSessionError("El numero de intentos debe ser mayor que cero")
+        _validate_max_score(max_score)
 
         if starts_at.tzinfo is None or starts_at.utcoffset() is None:
             raise InvalidExamSessionError("starts_at debe traer zona horaria; usa ISO-8601 en UTC")
@@ -267,6 +286,7 @@ class ExamSession:
             question_pool_size=question_pool_size,
             shuffle_options=shuffle_options,
             allow_back_navigation=allow_back_navigation,
+            max_score=max_score,
             modules=resolved,
         )
 
@@ -283,6 +303,11 @@ class ExamSession:
         docente. Con un booleano, el estudiante que llegaba pronto recibia
         "el plazo esta cerrado", que es lo contrario de lo que pasaba.
         """
+        # Lo primero, antes que el reloj: un examen cancelado no "todavia no
+        # empieza" ni "ya cerro". Simplemente no va a haber examen.
+        if self.is_cancelled:
+            return EntryState.CANCELLED
+
         if moment < self.starts_at:
             return EntryState.NOT_STARTED
 
@@ -296,3 +321,120 @@ class ExamSession:
         costar el examen, pero no se puede entrar una vez terminado.
         """
         return self.entry_state_at(moment) is EntryState.OPEN
+
+    @property
+    def is_cancelled(self) -> bool:
+        return self.status is SessionStatus.CANCELLED
+
+    def cancelled(self, moment: datetime) -> ExamSession:
+        """El examen retirado por su docente.
+
+        No borra nada: los eventos, las alertas y las respuestas de quien ya
+        entro siguen ahi. Un examen cancelado es un examen con historia, no un
+        examen que nunca existio.
+
+        Raises:
+            InvalidExamSessionError: si ya estaba cancelado. Cancelar dos veces
+                moveria la fecha y perderia cuando se decidio de verdad.
+        """
+        if self.is_cancelled:
+            raise InvalidExamSessionError("Este examen ya estaba cancelado")
+        return replace(self, status=SessionStatus.CANCELLED, cancelled_at=moment)
+
+    def with_changes(
+        self,
+        *,
+        title: str | None = None,
+        starts_at: datetime | None = None,
+        duration_minutes: int | None = None,
+        entry_tolerance_minutes: int | None = None,
+        description: str | None = None,
+        course_id: UUID | None = None,
+        preset: SupervisionPreset | None = None,
+        max_score: Decimal | None = None,
+        question_pool_size: int | None = None,
+        shuffle_questions: bool | None = None,
+        shuffle_options: bool | None = None,
+        allow_back_navigation: bool | None = None,
+        clear_description: bool = False,
+        clear_course: bool = False,
+        clear_pool_size: bool = False,
+    ) -> ExamSession:
+        """El mismo examen con los campos que se cambian, revalidado.
+
+        Lo que se omite no se toca. `None` significa "no lo cambies", que es lo
+        que hace falta para un PATCH; para *borrar* un valor opcional estan los
+        `clear_*`, porque si no no habria forma de quitar la descripcion de un
+        examen que ya la tiene.
+
+        Se revalida todo pasando por `create`, en vez de escribir los campos a
+        mano: si editar saltara las validaciones, se podria llegar por la puerta
+        de atras a un examen de duracion cero que `create` nunca habria aceptado.
+
+        Raises:
+            InvalidExamSessionError: si el resultado viola alguna regla, o si el
+                examen esta cancelado.
+        """
+        if self.is_cancelled:
+            raise InvalidExamSessionError("Un examen cancelado ya no se edita")
+
+        nuevo_preset = preset if preset is not None else self.preset
+        # Con `custom`, los modulos los eligio el docente y hay que conservarlos;
+        # con los demas, el preset los vuelve a resolver. Cambiar de `custom` a
+        # `strict` tiene que traer los modulos de `strict`, no los viejos.
+        modulos = self.modules if nuevo_preset is SupervisionPreset.CUSTOM else None
+
+        return ExamSession.create(
+            teacher_id=self.teacher_id,
+            title=title if title is not None else self.title,
+            starts_at=starts_at if starts_at is not None else self.starts_at,
+            duration_minutes=(
+                duration_minutes if duration_minutes is not None else self.duration_minutes
+            ),
+            access_code=self.access_code,
+            course_id=None
+            if clear_course
+            else (course_id if course_id is not None else self.course_id),
+            description=(
+                None
+                if clear_description
+                else (description if description is not None else self.description)
+            ),
+            entry_tolerance_minutes=(
+                entry_tolerance_minutes
+                if entry_tolerance_minutes is not None
+                else self.entry_tolerance_minutes
+            ),
+            preset=nuevo_preset,
+            max_attempts=self.max_attempts,
+            shuffle_questions=(
+                shuffle_questions if shuffle_questions is not None else self.shuffle_questions
+            ),
+            question_pool_size=(
+                None
+                if clear_pool_size
+                else (
+                    question_pool_size
+                    if question_pool_size is not None
+                    else self.question_pool_size
+                )
+            ),
+            shuffle_options=shuffle_options
+            if shuffle_options is not None
+            else self.shuffle_options,
+            allow_back_navigation=(
+                allow_back_navigation
+                if allow_back_navigation is not None
+                else self.allow_back_navigation
+            ),
+            max_score=max_score if max_score is not None else self.max_score,
+            modules=modulos,
+            session_id=self.id,
+        )
+
+
+def _validate_max_score(value: Decimal) -> None:
+    if value <= 0:
+        raise InvalidExamSessionError("La nota maxima debe ser mayor que cero")
+    if value > HIGHEST_MAX_SCORE:
+        raise InvalidExamSessionError(f"La nota maxima no puede pasar de {HIGHEST_MAX_SCORE}")
