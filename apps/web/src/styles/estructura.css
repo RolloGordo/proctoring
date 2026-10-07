@@ -308,14 +308,54 @@
   margin: var(--e3) 0 0;
 }
 
-/* Lista "por rendir" del estudiante */
-.lista-examenes {
+/* Lista "por rendir" del estudiante, y la de bancos del docente: las dos son
+   una columna de tarjetas, así que comparten la regla. */
+.lista-examenes,
+.lista-bancos {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--e3);
+}
+
+/* Elegir de qué bancos sale un examen, al crearlo. */
+.selector-bancos {
+  list-style: none;
+  margin: var(--e2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e1);
+}
+
+.selector-bancos > li {
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+}
+
+.selector-bancos label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--e3);
+  padding: var(--e3);
+  cursor: pointer;
+  margin: 0;
+}
+
+.selector-bancos input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  accent-color: var(--tinta);
+}
+
+.selector-bancos .cuenta {
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--tinta-suave);
 }
 
 .fila-examen {

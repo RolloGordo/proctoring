@@ -591,7 +591,7 @@ def create_app(
         participant_repository, session_repository, profile_repository
     )
     app.state.review_identity = ReviewParticipantIdentity(
-        participant_repository, session_repository, clock
+        participant_repository, session_repository, clock, settings.dev_teacher_id
     )
     app.state.submit_exam = SubmitExam(
         participant_repository,

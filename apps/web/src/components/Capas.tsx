@@ -34,6 +34,7 @@ const ENLACES: Record<Rol, Enlace[]> = {
       activo: (r) => r.startsWith('/sesiones') && r !== '/sesiones/nueva'
     },
     { a: '/sesiones/nueva', texto: 'Crear examen', activo: (r) => r === '/sesiones/nueva' },
+    { a: '/bancos', texto: 'Bancos de preguntas', activo: (r) => r.startsWith('/bancos') },
     { a: '/cursos', texto: 'Mis cursos', activo: (r) => r.startsWith('/cursos') }
   ],
   student: [

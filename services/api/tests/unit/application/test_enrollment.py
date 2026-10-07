@@ -242,6 +242,53 @@ class TestRevisionManualDeIdentidad:
                 sesion.id, LUIS.id, approve=True, actor=ANA
             )
 
+    def test_sin_autenticacion_el_revisor_es_el_docente_de_desarrollo(
+        self,
+        enroll: EnrollInExam,
+        participants: InMemoryParticipantRepository,
+        sessions: InMemoryExamSessionRepository,
+        sesion: ExamSession,
+        clock: FixedClock,
+    ) -> None:
+        """El revisor tiene que ser **una persona**, nunca otra cosa.
+
+        Antes, sin actor, se guardaba aquí el `session_id`: una pista de auditoría
+        falsa, y contra PostgreSQL un fallo de clave ajena a `profiles`. La
+        columna existe para responder "quién lo admitió".
+        """
+        enroll.execute(sesion.id, accepts_supervision=True, actor=None)
+        matricula = next(iter(participants.list_by_session(sesion.id)))
+        participants.save(matricula.verification_failed())
+        docente_dev = uuid4()
+
+        revisado = ReviewParticipantIdentity(participants, sessions, clock, docente_dev).execute(
+            sesion.id, matricula.student_id, approve=True, actor=None
+        )
+
+        assert revisado.verification_reviewed_by == docente_dev
+        assert revisado.verification_reviewed_by != sesion.id
+        assert revisado.verification_reviewed_by != matricula.student_id
+
+    def test_rechazar_sin_autenticacion_tambien_registra_una_persona(
+        self,
+        enroll: EnrollInExam,
+        participants: InMemoryParticipantRepository,
+        sessions: InMemoryExamSessionRepository,
+        sesion: ExamSession,
+        clock: FixedClock,
+    ) -> None:
+        """Rechazar pasa por la misma línea, así que se comprueba igual."""
+        enroll.execute(sesion.id, accepts_supervision=True, actor=None)
+        matricula = next(iter(participants.list_by_session(sesion.id)))
+        docente_dev = uuid4()
+
+        revisado = ReviewParticipantIdentity(participants, sessions, clock, docente_dev).execute(
+            sesion.id, matricula.student_id, approve=False, actor=None
+        )
+
+        assert revisado.verification_status is VerificationStatus.REJECTED
+        assert revisado.verification_reviewed_by == docente_dev
+
 
 class TestEntrega:
     def test_entregar_marca_la_hora(

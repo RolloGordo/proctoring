@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { BancosDelExamen } from '../components/BancosDelExamen'
 import { api, type Alert, type ExamSession, type ProctoringEvent } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
@@ -116,6 +117,8 @@ export function SesionEnVivo() {
         <Dato valor={resumen.eventos} etiqueta="Señales registradas" />
         <Dato valor={resumen.estudiantes} etiqueta="Estudiantes con actividad" />
       </div>
+
+      <BancosDelExamen sessionId={id} />
 
       {!supabase && (
         <p className="aviso aviso-neutro">
