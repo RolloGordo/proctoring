@@ -127,7 +127,7 @@ class TestPaquetesMalos:
         se come la memoria del servidor antes de que nadie mire su contenido."""
         datos = zip_con({"imsmanifest.xml": MANIFIESTO, "bomba.txt": b"\0" * 5_000_000})
 
-        with pytest.raises(ValueError, match="expande demasiado|pasa de"):
+        with pytest.raises(ValueError, match=r"expande demasiado|pasa de"):
             parse_package(datos)
 
     def test_una_ruta_que_se_escapa_se_descarta(self) -> None:
