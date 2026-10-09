@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" identifier="true_false" title="true_false" adaptive="false" timeDependent="false">
+  <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="identifier"><correctResponse><value>F</value></correctResponse></responseDeclaration>
+  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float" normalMaximum="1"/>
+  <itemBody><choiceInteraction responseIdentifier="RESPONSE" maxChoices="1"><prompt>Una clave primaria admite duplicados.</prompt><simpleChoice identifier="V">Verdadero</simpleChoice><simpleChoice identifier="F">Falso</simpleChoice></choiceInteraction></itemBody>
+  <responseProcessing template="http://www.imsglobal.org/question/qti_v2p1/rptemplates/match_correct"/>
+</assessmentItem>
