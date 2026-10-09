@@ -139,23 +139,19 @@ def verify_face(participant_id: str, capture_path: str) -> dict[str, Any]:
     comenzado = time.monotonic()
     job = _get(f"/api/v1/internal/face-jobs/{participant_id}", capture_path=capture_path)
 
-    # TODO(SPEC-005, Jesus): descargar las dos imagenes de Storage
-    #   (`job["reference_path"]` y `job["capture_path"]`, cada una en su bucket).
-    # TODO(SPEC-005): calcular embeddings y su similitud coseno. Candidato a
-    #   evaluar: InsightFace/ArcFace. Si `job["reference_embedding"]` ya viene,
-    #   reutilizarlo en vez de recalcularlo.
-    # TODO(SPEC-005): si no se detecta una cara, o se detectan varias, mandar
-    #   `inconclusive: true`. **No es lo mismo que "no coincide"**, y el docente
-    #   tiene que poder distinguirlo cuando revise.
-    similarity: float | None = None
-    inconclusive = True
-    model_version: str | None = None
+    from face_pipeline import FaceInconclusive, compare_job
 
-    logger.info(
-        "Verificacion pendiente de implementar para la matricula %s (umbral %.2f)",
-        participant_id,
-        job["similarity_threshold"],
-    )
+    similarity: float | None = None
+    inconclusive = False
+    model_version = f"insightface/{os.getenv('FACE_MODEL_NAME', 'buffalo_sc')}-cpu"
+    reference_embedding: list[float] | None = None
+    try:
+        similarity, reference_embedding = compare_job(job)
+    except FaceInconclusive as exc:
+        inconclusive = True
+        logger.info("Verificación facial inconclusa: %s", exc)
+    # Fallos de infraestructura (Storage, modelos no instalados) deben hacer
+    # fallar el job para reintento; no se deben camuflar como falta de coincidencia.
 
     return _post(
         f"/api/v1/internal/sessions/{job['session_id']}"
@@ -165,5 +161,6 @@ def verify_face(participant_id: str, capture_path: str) -> dict[str, Any]:
             "inconclusive": inconclusive,
             "latency_ms": int((time.monotonic() - comenzado) * 1000),
             "model_version": model_version,
+            "reference_embedding": reference_embedding,
         },
     )

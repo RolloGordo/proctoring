@@ -1,70 +1,62 @@
-/**
- * Detectores de visión. **Son plantillas: ninguno detecta nada todavía.**
- *
- * Esto es el sitio donde se enchufa MediaPipe (SPEC-005 y SPEC-007, Jesús). Lo
- * que ya está resuelto alrededor:
- *
- * - la cámara (`camara.ts`),
- * - agrupar fotogramas en un evento con duración (`seguimiento.ts`),
- * - mandarlo con reintentos (`emisor.ts`),
- * - los umbrales, que llegan de la configuración de la sesión.
- *
- * Lo único que falta es rellenar `observar`: mirar el fotograma y decir si la
- * condición se cumple **en este instante**. Nada de temporizadores ni de
- * contar eventos: de eso se encarga el seguimiento.
- *
- * ## Cómo enchufar un modelo
- *
- * ```ts
- * import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
- *
- * async preparar() {
- *   const wasm = await FilesetResolver.forVisionTasks('/mediapipe/wasm')
- *   this.landmarker = await FaceLandmarker.createFromOptions(wasm, {
- *     baseOptions: { modelAssetPath: '/mediapipe/face_landmarker.task' },
- *     numFaces: 2,
- *     outputFacialTransformationMatrixes: true,
- *     runningMode: 'VIDEO'
- *   })
- * }
- * ```
- *
- * Los `.wasm` y el modelo van **servidos por la propia web**, no desde un CDN:
- * la ventana del examen corre en modo kiosco y no debería pedirle nada a un
- * tercero mientras alguien rinde.
- *
- * ## Qué guardar en `metadata`
- *
- * Los números medidos **y** los umbrales con los que se compararon. Es lo que
- * después sostiene el informe de accuracy y de FPR; sin ellos, un resultado no
- * se puede revisar ni calibrar.
- */
-
+/** Detectores de SPEC-007. Sin grabación continua ni eventos por fotograma. */
+import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import type { Detector, Observacion, Veredicto } from '../tipos'
+import { angulosDesdeMatriz, reglasVision } from './vision-core'
 
-/** Umbrales que vienen de `session_modules.settings`. */
 export interface AjustesMirada {
-  /** Grados de giro de cabeza a partir de los cuales se considera fuera. */
   yaw_degrees?: number
   min_duration_ms?: number
 }
-
-export interface AjustesRostro {
+export interface AjustesRostro { min_duration_ms?: number }
+export interface AjustesPersonaExtra {
+  min_faces?: number
   min_duration_ms?: number
 }
 
-export interface AjustesPersonaExtra {
-  /** A partir de cuántos rostros se considera que hay alguien más. */
-  min_faces?: number
+interface Medicion {
+  caras: number
+  yaw: number | null
+  pitch: number | null
 }
 
-/**
- * Mirada fuera de la pantalla (`gaze_away`).
- *
- * **El más difícil de los tres y el que más falsos positivos puede dar:** mirar
- * al teclado o pensar mirando al techo no es copiar. Conviene medirlo con
- * grabaciones reales antes de confiar en el umbral.
- */
+/** MediaPipe se prepara una sola vez y se comparte para no triplicar la inferencia. */
+let preparando: Promise<FaceLandmarker> | undefined
+let instancia: FaceLandmarker | undefined
+let ultima: { video: HTMLVideoElement; frame: number; medicion: Medicion } | undefined
+
+async function motor(): Promise<void> {
+  if (!preparando) {
+    preparando = (async () => {
+      const wasm = await FilesetResolver.forVisionTasks('/mediapipe/wasm')
+      const modelo = await FaceLandmarker.createFromOptions(wasm, {
+        baseOptions: { modelAssetPath: '/mediapipe/face_landmarker.task' },
+        numFaces: 2,
+        outputFacialTransformationMatrixes: true,
+        runningMode: 'VIDEO'
+      })
+      instancia = modelo
+      return modelo
+    })().catch((error: unknown) => {
+      preparando = undefined
+      throw error
+    })
+  }
+  await preparando
+}
+
+function medicionDe({ video, ahoraMs }: Observacion): Medicion | null {
+  if (!video || !instancia || video.readyState < 2 || !video.videoWidth) return null
+  // AhoraMs viene de Date.now() en la aplicación. Es común para los tres detectores
+  // de cada ciclo, y MediaPipe necesita marcas monótonas para detectForVideo.
+  if (ultima?.video === video && ultima.frame === ahoraMs) return ultima.medicion
+  const resultado = instancia.detectForVideo(video, performance.now())
+  const caras = resultado.faceLandmarks.length
+  const angulos = caras === 1 ? angulosDesdeMatriz(resultado.facialTransformationMatrixes[0]) : null
+  const medicion = { caras, yaw: angulos?.yaw ?? null, pitch: angulos?.pitch ?? null }
+  ultima = { video, frame: ahoraMs, medicion }
+  return medicion
+}
+
 export class DetectorMirada implements Detector {
   readonly nombre = 'mirada'
   readonly evento = 'gaze_away' as const
@@ -76,59 +68,61 @@ export class DetectorMirada implements Detector {
     this.yawLimite = ajustes.yaw_degrees ?? 25
   }
 
-  async preparar(): Promise<void> {
-    // TODO(SPEC-007, Jesús): cargar FaceLandmarker de MediaPipe.
-  }
+  async preparar(): Promise<void> { await motor() }
 
-  observar(_observacion: Observacion): Veredicto {
-    // TODO(SPEC-007, Jesús): sacar yaw y pitch de la matriz de transformación
-    //   facial, o de la posición del iris. Devolver:
-    //
-    //   return {
-    //     activa: Math.abs(yaw) > this.yawLimite,
-    //     metadata: { source: 'mediapipe', yaw_deg: yaw, pitch_deg: pitch,
-    //                 threshold_deg: this.yawLimite, min_duration_ms: this.minimoMs }
-    //   }
-    return { activa: false, metadata: { threshold_deg: this.yawLimite } }
+  observar(observacion: Observacion): Veredicto {
+    const m = medicionDe(observacion)
+    if (!m) return { activa: false, metadata: { source: 'mediapipe', available: false } }
+    return {
+      activa: reglasVision(m.caras, m.yaw, this.yawLimite, 2).gaze_away,
+      metadata: {
+        source: 'mediapipe', faces_detected: m.caras, yaw_deg: m.yaw,
+        pitch_deg: m.pitch, threshold_deg: this.yawLimite,
+        min_duration_ms: this.minimoMs
+      }
+    }
   }
 }
 
-/** Rostro ausente (`face_absent`): no se detecta a nadie delante de la cámara. */
 export class DetectorRostroAusente implements Detector {
   readonly nombre = 'rostro-ausente'
   readonly evento = 'face_absent' as const
   readonly minimoMs: number
 
-  constructor(ajustes: AjustesRostro = {}) {
-    this.minimoMs = ajustes.min_duration_ms ?? 5000
-  }
+  constructor(ajustes: AjustesRostro = {}) { this.minimoMs = ajustes.min_duration_ms ?? 5000 }
+  async preparar(): Promise<void> { await motor() }
 
-  observar(_observacion: Observacion): Veredicto {
-    // TODO(SPEC-007, Jesús): activa cuando el detector devuelve 0 rostros.
-    //   metadata: { source: 'mediapipe', faces_detected: 0, min_duration_ms }
-    return { activa: false }
+  observar(observacion: Observacion): Veredicto {
+    const m = medicionDe(observacion)
+    if (!m) return { activa: false, metadata: { source: 'mediapipe', available: false } }
+    return {
+      activa: m.caras === 0,
+      metadata: { source: 'mediapipe', faces_detected: m.caras, min_duration_ms: this.minimoMs }
+    }
   }
 }
 
-/**
- * Otra persona en cámara (`extra_person`).
- *
- * Instantáneo en el contrato, pero aquí también lleva un mínimo: alguien que
- * cruza por detrás un segundo no es una segunda persona rindiendo el examen.
- */
 export class DetectorPersonaExtra implements Detector {
   readonly nombre = 'persona-extra'
   readonly evento = 'extra_person' as const
-  readonly minimoMs = 2000
+  readonly minimoMs: number
   private readonly minimoRostros: number
 
   constructor(ajustes: AjustesPersonaExtra = {}) {
-    this.minimoRostros = ajustes.min_faces ?? 2
+    this.minimoMs = ajustes.min_duration_ms ?? 2000
+    this.minimoRostros = Math.max(2, ajustes.min_faces ?? 2)
   }
+  async preparar(): Promise<void> { await motor() }
 
-  observar(_observacion: Observacion): Veredicto {
-    // TODO(SPEC-007, Jesús): activa cuando el nº de rostros >= this.minimoRostros.
-    //   metadata: { source: 'mediapipe', faces_detected: n }
-    return { activa: false, metadata: { min_faces: this.minimoRostros } }
+  observar(observacion: Observacion): Veredicto {
+    const m = medicionDe(observacion)
+    if (!m) return { activa: false, metadata: { source: 'mediapipe', available: false } }
+    return {
+      activa: m.caras >= this.minimoRostros,
+      metadata: {
+        source: 'mediapipe', faces_detected: m.caras,
+        min_faces: this.minimoRostros, min_duration_ms: this.minimoMs
+      }
+    }
   }
 }

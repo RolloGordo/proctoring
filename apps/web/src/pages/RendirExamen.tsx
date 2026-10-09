@@ -30,6 +30,7 @@ export function RendirExamen() {
 
   const [preguntas, setPreguntas] = useState<ExamQuestion[]>()
   const [matricula, setMatricula] = useState<Participant>()
+  const [modulosActivos, setModulosActivos] = useState<Record<string, Record<string, unknown>>>({})
   const [respuestas, setRespuestas] = useState<Record<string, NewAnswer>>({})
   const [error, setError] = useState<string>()
   const [guardado, setGuardado] = useState<EstadoGuardado>('limpio')
@@ -41,13 +42,15 @@ export function RendirExamen() {
     Promise.all([
       api.examQuestions(id, token),
       api.myAnswers(id, token),
-      api.myEnrollment(id, token)
+      api.myEnrollment(id, token),
+      api.myExams(token)
     ])
-      .then(([delExamen, yaRespondidas, mia]) => {
+      .then(([delExamen, yaRespondidas, mia, misExamenes]) => {
         if (cancelado) return
         setPreguntas(delExamen)
         setRespuestas(indexar(yaRespondidas))
         setMatricula(mia)
+        setModulosActivos(misExamenes.find((e) => e.session_id === id)?.modules ?? {})
       })
       .catch((fallo: Error) => !cancelado && setError(fallo.message))
 
@@ -61,7 +64,7 @@ export function RendirExamen() {
   // La supervisión se enciende aquí y no antes: el consentimiento se da en la
   // sala, y observar a alguien que todavía no aceptó sería justo lo que el
   // proyecto promete no hacer.
-  const detectores = useMemo(() => detectoresDe(matricula ? MODULOS_ACTIVOS : {}), [matricula])
+  const detectores = useMemo(() => detectoresDe(matricula ? modulosActivos : {}), [matricula, modulosActivos])
   const supervision = useSupervision({
     sessionId: id,
     studentId: userId,
@@ -369,12 +372,3 @@ function indexar(respuestas: Answer[]): Record<string, NewAnswer> {
   )
 }
 
-/**
- * Los módulos que se observan desde el navegador.
- *
- * Provisional: tienen que salir de `session.modules`, que es lo que el docente
- * eligió al crear el examen. Hoy la pantalla del examen no recibe la sesión
- * completa, solo las preguntas; en cuanto la reciba, esto se sustituye por sus
- * ajustes reales. Mientras los detectores sean plantillas vacías, da igual.
- */
-const MODULOS_ACTIVOS: Record<string, Record<string, unknown>> = {}

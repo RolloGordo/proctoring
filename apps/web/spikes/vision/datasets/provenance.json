@@ -1,0 +1,10 @@
+{
+  "task": "SPEC-007",
+  "collection_status": "awaiting_consented_recordings",
+  "source": "Grabaciones a realizar por el equipo, no incluidas en esta entrega",
+  "consent": "Pendiente de consentimiento escrito de 3 a 4 participantes",
+  "selection": "exploratory_not_final_test",
+  "planned_conditions": ["mirando_pantalla", "poca_luz", "con_lentes", "mirando_teclado", "mirando_lado", "sin_rostro", "persona_extra", "cruce_breve", "foto_ajena"],
+  "sample_count": 0,
+  "limitations": "No hay grabaciones, etiquetas temporales ni mediciones reales disponibles en el ZIP de origen. No se informan accuracy ni FPR ficticios."
+}

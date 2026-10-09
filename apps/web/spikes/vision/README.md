@@ -1,130 +1,39 @@
-# `apps/web/spikes/vision` — Spike de visión por computadora
+# SPEC-007 — Laboratorio de visión (J1 y J2)
 
-**Responsable:** Limay Capristan, Jesús
-**Backlog:** EN-008 / TA-00x (mirada, rostro ausente, persona adicional)
+## Estado real
+Código del spike, detectores y evaluadores implementados. Los videos consentidos no venían en `Taller.zip`; las métricas de accuracy/FPR siguen **pendientes de medición**. No se inventaron datos ni capturas.
 
-Esta carpeta está preparada pero **sin implementar**: es tuya.
+## Instalación y funcionamiento
 
-## Objetivo
+Desde `apps/web`: `npm install` (requiere Internet) y `npm run dev`. Abrir `http://localhost:5173/spikes/vision/`. Dar permiso a la cámara y hacer clic en **Encender cámara**. El video permanece en el navegador, sin grabación continua. Se dibujan landmarks y se calculan yaw/pitch. Los eventos se agrupan con `SeguimientoCondicion` y, al cerrarse, se descarga una captura JPEG y se registra un evento en la página. El botón de exportación genera `predictions.csv` por fotograma para medición, sin guardar imágenes continuamente.
 
-Demostrar, con código que corre en el navegador, las tres detecciones de visión. Todo esto va en
-el **cliente** (es detección liviana) usando MediaPipe sobre el `<video>` de la cámara. **No se
-envía video continuo**: solo el evento y, como mucho, una captura del `canvas` en el momento.
+### Modelo/recursos en origen local (obligatorio en kiosco)
 
-| Detección | Regla | `event_type` |
-|---|---|---|
-| Rostro ausente | sin rostro durante más de **5 s** | `face_absent` |
-| Persona adicional | más de un rostro en cuadro | `extra_person` |
-| Mirada fuera de pantalla | cabeza girada más de **25°** durante más de **3 s** | `gaze_away` |
+1. Tras `npm install`, copiar los archivos de `apps/web/node_modules/@mediapipe/tasks-vision/wasm/` a `apps/web/public/mediapipe/wasm/`.
+2. Descargar **con licencia y procedencia verificadas** el modelo oficial `face_landmarker.task` en `apps/web/public/mediapipe/face_landmarker.task`.
+3. **No incluir el modelo en el repositorio.** Desde `apps/web`, ejecutar `npm run vision:prepare -- --model <ruta_local_al_task>` para copiar WASM y modelo. El script `tools/prepare_assets.mjs` copia los `.wasm` y, si recibe `--model <ruta_local>` copia el modelo instalado con autorización. Nunca usa CDN al rendir.
 
-El presupuesto es: alerta al docente en **menos de 5 s**. Y la meta de calidad es accuracy ≥ 80 %
-con FPR < 20 %, así que los umbrales de arriba son un punto de partida que **tienes que validar
-con datos**, no un dogma.
+El modelo detecta la **orientación de cabeza**, aproximación imperfecta a la mirada ocular: mirar teclado/techo no implica fraude.
 
-## Montaje
+## Dataset (J1)
 
-```bash
-cd apps/web/spikes/vision
-npm create vite@latest . -- --template vanilla-ts
-npm install @mediapipe/tasks-vision
-npm run dev
-```
+Ver `datasets/README.md`. El comando `python tools/dataset.py verificar` confirma que existen videos consentidos, hashes correctos y etiquetas. Este ZIP incluye solamente el manifiesto vacío y la procedencia honesta.
 
-## Face Landmarker de MediaPipe
+## Evaluación J2
 
-```ts
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+1. Realizar clips con duración y etiquetas (`datasets/etiquetas/<id>.txt`).
+2. Abrir `http://localhost:5173/spikes/vision/`, seleccionar el clip local `P01_01.mp4` en el selector de video. El reproductor procesa fotogramas con el mismo modelo y, al terminar, descarga automáticamente `P01_01.csv` usando `video.currentTime` como tiempo de referencia. Guardar este CSV en `datasets/predictions/` sin subirlo a GitHub.
+3. Ejecutar desde `apps/web/spikes/vision`: `python tools/evaluate.py --predictions-dir datasets/predictions`.
+4. La salida `results/evaluation.json` incluye matriz de confusión, accuracy y FPR por detector, con hash del manifiesto y de las predicciones. Mantener el conjunto final separado del calibrado.
 
-const vision = await FilesetResolver.forVisionTasks(
-  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm'
-);
-const landmarker = await FaceLandmarker.createFromOptions(vision, {
-  baseOptions: {
-    modelAssetPath:
-      'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-    delegate: 'GPU',
-  },
-  runningMode: 'VIDEO',
-  numFaces: 2,                        // necesario para detectar persona adicional
-  outputFacialTransformationMatrixes: true,  // necesario para el angulo de la cabeza
-});
-```
+> El evaluador aplica duración mínima y compara eventos por segundos; no inventa resultados si faltan muestras. Una validación formal de extremos requiere confirmar sincronía entre tiempo del clip y el `time_ms` de las predicciones.
 
-En cada frame: `landmarker.detectForVideo(video, performance.now())`.
+## Umbrales iniciales (no validados)
 
-- `result.faceLandmarks.length` → 0 = rostro ausente, 2 o más = persona adicional.
-- `result.facialTransformationMatrixes[0]` → de esa matriz 4x4 sacas yaw y pitch
-  (rotación en Y y en X). El yaw es el que te dice si miró a un costado.
+| Detector | Umbral inicial | Duración mínima |
+|---|---:|---:|
+| mirada | 25° yaw | 3.000 ms |
+| rostro ausente | 0 rostros | 5.000 ms |
+| persona adicional | ≥2 rostros | 2.000 ms |
 
-## Lo importante: histéresis
-
-La detección frame a frame **parpadea**. Un `face_absent` por cada frame sin rostro genera cientos
-de eventos falsos y te revienta el FPR. Implementa un temporizador por condición:
-
-```
-condicion verdadera de forma continua >= umbral de tiempo  ->  emite UN evento con duration_ms
-condicion vuelve a falsa                                   ->  cierra y reinicia el temporizador
-```
-
-Es el mismo patrón que Rider necesita para `focus_lost`. Pónganse de acuerdo y compartan la
-utilidad si pueden.
-
-## Captura de evidencia
-
-Al emitir un evento, dibuja el frame en un `canvas` y saca `canvas.toBlob(..., 'image/jpeg', 0.7)`.
-En el spike basta con descargarla localmente. En la app real la captura se sube **directo a
-Storage** con una URL firmada que da la API, y en el evento solo va el `evidence_path`.
-
-## Envío del evento
-
-Contrato en [`packages/contracts`](../../../../packages/contracts/), con un ejemplo por tipo en
-`examples/`.
-
-```
-POST http://localhost:8000/api/v1/events
-Authorization: Bearer <access_token de Supabase Auth>
-```
-
-Dos cosas que te van a morder si no las sabes:
-
-- `gaze_away` **exige** `question_id`. Lo valida el dominio de la API y devuelve `400` si falta.
-- La API exige token y comprueba que el `student_id` sea el tuyo. Para el spike, arranca la API con
-  `AUTH_ENABLED=false` en tu `.env` (ya viene así en `.env.example`) y te ahorras el login.
-
-## Criterios de aceptación
-
-- [ ] `npm run dev` abre la cámara y dibuja los landmarks en vivo.
-- [ ] Taparse la cámara 6 s genera **un** `face_absent` con `duration_ms` ≈ 6000.
-- [ ] Que entre una segunda persona genera `extra_person`.
-- [ ] Girar la cabeza unos 30° durante 4 s genera **un** `gaze_away`; un giro rápido de 1 s **no**.
-- [ ] Se guarda una captura JPEG por evento.
-- [ ] Tabla con los umbrales probados y cuántos falsos positivos dio cada uno (esto es lo que
-      demuestra la meta de FPR < 20 %).
-
-## Evidencia para la semana
-
-Video de la cámara con los landmarks y los eventos apareciendo en consola, más la tabla de
-umbrales. Guárdalo en `docs/evidencias/semana-05/jesus/`.
-
-## Subir la captura
-
-No mandes la imagen a la API. Pide una URL firmada, sube el `Blob` del canvas directo a Storage, y
-en el evento pon solo la ruta:
-
-```ts
-const res = await fetch(`${API}/api/v1/evidence/upload-url`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    session_id: sessionId, student_id: studentId, kind: 'image', extension: 'jpg',
-  }),
-});
-const { path, url } = await res.json();
-
-canvas.toBlob(async (blob) => {
-  await fetch(url, { method: 'PUT', body: blob });
-  await enviarEvento({ ...evento, evidence_path: path });
-}, 'image/jpeg', 0.7);
-```
-
-Ya funciona en la API con `docker compose up`.
+Meta: accuracy ≥80 % y FPR <20 % por detector, aún por comprobar con J1.
