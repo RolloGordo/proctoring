@@ -1,6 +1,7 @@
 """Tareas que consume el worker de IA.
 
-**Esto es el esqueleto. Las partes marcadas con `TODO` son el trabajo real.**
+El audio y la verificación facial tienen implementación local.
+El detector sintético es experimental y está desactivado por defecto hasta medir P2.
 
 El reparto con la API es deliberado y conviene no romperlo:
 
@@ -44,9 +45,14 @@ from __future__ import annotations
 import logging
 import os
 import time
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
+from uuid import UUID
 
 import httpx
+
+from audio_runtime import download_audio, measure_audio
 
 logger = logging.getLogger(__name__)
 
@@ -85,42 +91,27 @@ def analyze_audio(event_id: str) -> dict[str, Any]:
     Returns:
         Lo que respondio la API, incluido `alerted`: si decidio avisar al docente.
     """
-    comenzado = time.monotonic()
+    started = time.monotonic()
+    event_id = str(UUID(event_id))
+    if not INTERNAL_TOKEN:
+        raise ValueError("INTERNAL_API_TOKEN is required")
     job = _get(f"/api/v1/internal/audio-jobs/{event_id}")
 
-    # TODO(SP-007, Pierreluiggi): descargar `job["audio_path"]` del bucket
-    #   `job["audio_bucket"]` en Supabase Storage.
-    # TODO(SP-007): transcribir en espanol con faster-whisper (`small`: 16,0 % WER
-    #   en MediaSpeech, 7,6 % en los audios propios; ver docs/SP-007-own-results.md).
-    # TODO(SP-008): similitud entre la transcripcion y `job["question_statement"]`
-    #   con sentence-transformers multilingue. Si el enunciado es `None` (la
-    #   pregunta ya no existe) no hay con que comparar: deja `similarity` en None.
-    # TODO(SP-008): puntuar si hay una segunda voz **sintetica**. Evaluar con un
-    #   motor TTS que no se haya usado para entrenar: es lo que dice si generaliza.
-    transcript: str | None = None
-    similarity: float | None = None
-    synthetic_voice_score: float | None = None
-    model_versions: dict[str, str] = {}
-
+    with TemporaryDirectory(prefix="proctoring-audio-") as temporary:
+        audio = Path(temporary) / "segment.audio"
+        download_audio(job, audio)
+        measurement = measure_audio(audio, job["question_statement"])
+    # Includes job fetch, download, cold model setup, inference and cleanup.
+    # The POST duration cannot be placed in its own body; log it separately.
+    measurement["processing_ms"] = int((time.monotonic() - started) * 1000)
+    measurement["model_versions"]["session_similarity_threshold"] = str(job["similarity_threshold"])
+    measurement["model_versions"]["session_synthetic_threshold"] = str(job["synthetic_threshold"])
+    result = _post(f"/api/v1/internal/audio-jobs/{event_id}/result", measurement)
+    elapsed_ms = int((time.monotonic() - started) * 1000)
     logger.info(
-        "Analisis pendiente de implementar para el evento %s (umbral similitud %.2f, "
-        "umbral voz sintetica %.2f)",
-        event_id,
-        job["similarity_threshold"],
-        job["synthetic_threshold"],
+        "Audio job %s worker_total_ms=%s budget_met=%s", event_id, elapsed_ms, elapsed_ms < 10000
     )
-
-    # La API decide si esto es una consulta a una IA. El worker solo manda numeros.
-    return _post(
-        f"/api/v1/internal/audio-jobs/{event_id}/result",
-        {
-            "transcript": transcript,
-            "similarity": similarity,
-            "synthetic_voice_score": synthetic_voice_score,
-            "processing_ms": int((time.monotonic() - comenzado) * 1000),
-            "model_versions": model_versions,
-        },
-    )
+    return result
 
 
 def verify_face(participant_id: str, capture_path: str) -> dict[str, Any]:

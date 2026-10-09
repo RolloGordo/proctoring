@@ -1,6 +1,6 @@
 # Semana 6 · P1 · Similitud con el enunciado
 
-Responsable: Pierreluiggi. Plan: 6 h estimadas. Rama: `feat/SPEC-008-similitud`.
+Responsable: Pierreluiggi. Nueva guía: 4 h estimadas. Rama prevista: `feat/SPEC-008-similitud`.
 No se registran esas horas como realizadas automáticamente.
 
 ## Archivos y propósito
@@ -10,7 +10,7 @@ No se registran esas horas como realizadas automáticamente.
   con calibración y calcula ROC, AUC y FPR sobre prueba final separada.
 - `spikes/prepare_pairs.py`: convierte el plan completado en manifiesto; calcula
   SHA-256 sobre los archivos reales y se niega a inventar referencias o grabaciones.
-- `docs/P1-recording-plan.json` y `P1-guia-grabacion.md`: 63 guiones originales
+- `docs/P1-recording-plan.json` y la guía personal separada: 63 guiones originales
   asistidos por IA, 21 preguntas × 3 clases. No son observaciones medidas.
 - `tests/test_similarity.py`: curvas con empates, puntuaciones inválidas y prueba
   de que alterar el test no altera el umbral elegido en calibración.
@@ -44,7 +44,7 @@ Desde `services/ai`:
 ```powershell
 uv sync --locked --extra similarity
 uv run python -m spikes.prepare_pairs docs/P1-recording-plan.json datasets/p1_own
-uv run --extra similarity python -m spikes.similarity datasets/p1_own/manifest.csv --revision e8f8c211226b894fcb81acc59f3b34ba3efd5f42 --reference-threshold 0.6 --output results/similarity_own_01.json
+uv run --extra similarity python -m spikes.similarity datasets/p1_own/manifest.csv --revision e8f8c211226b894fcb81acc59f3b34ba3efd5f42 --reference-threshold 0.6 --output results/similarity.json
 ```
 
 Primero completar el plan con archivos reales y referencias revisadas. Las

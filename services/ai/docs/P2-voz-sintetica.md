@@ -1,6 +1,6 @@
 # Semana 6 · P2 · Detector de voz sintética
 
-Responsable: Pierreluiggi. Plan: 8 h estimadas; no horas reales certificadas.
+Responsable: Pierreluiggi. Nueva guía: 6 h estimadas; no horas reales certificadas.
 Rama: `feat/SPEC-008-voz-sintetica`. Estado: implementación experimental, pendiente
 de dataset real y evaluación de los modelos completos.
 

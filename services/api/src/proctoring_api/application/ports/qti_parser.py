@@ -51,4 +51,6 @@ class QtiParser(Protocol):
             cuarenta preguntas no falle por una.
     """
 
-    def __call__(self, xml: bytes) -> QtiParseResult: ...
+    # Posicional (`/`): el puerto no tiene por que fijar como se llama el
+    # parametro en quien lo implemente.
+    def __call__(self, xml: bytes, /) -> QtiParseResult: ...

@@ -1,69 +1,175 @@
-/**
- * Detección de habla (`speech_detected`). **Es una plantilla: no detecta nada.**
- *
- * Aquí se enchufa Silero VAD (SPEC-008, Pierreluiggi). Es el detector más
- * distinto de los demás, porque **no basta con emitir el evento**: hay que subir
- * el fragmento de audio, o el worker no tendrá nada que transcribir.
- *
- * ## El flujo completo
- *
- * 1. El VAD dice que hay voz → `activa: true`.
- * 2. Cuando la condición se cierra, hay que:
- *    a. pedir una URL firmada: `POST /api/v1/evidence/upload-url` con
- *       `kind: "audio"` y la extensión (`webm`),
- *    b. subir el fragmento **directo a Storage** con esa URL,
- *    c. mandar el evento con `evidence_path` = la ruta devuelta.
- * 3. La API encola `tasks.analyze_audio` y el worker hace el resto.
- *
- * El audio **nunca pasa por la API**: es la regla de ADR-0004 y lo que hace
- * viable el plan gratuito.
- *
- * ## Lo que no se graba
- *
- * Solo los fragmentos **con habla**, nunca el micrófono continuo. Un examen de
- * 90 minutos grabado entero son cientos de megas y, sobre todo, es grabar a
- * alguien en su casa durante hora y media.
- *
- * ## La regla que no se toca
- *
- * `speech_detected` nace siempre con severidad **baja**. Hablar en voz alta es
- * legítimo. Solo la API, con lo que mida el worker (parecido al enunciado **y**
- * segunda voz sintética), puede escalarlo. No intentes decidirlo aquí.
- */
-
-import type { Detector, Observacion, Veredicto } from '../tipos'
+/** Silero VAD + bounded WebM recording using the consented shared stream. */
+import type { Detector, DetectorContext, Observacion, SenalDetectada, Veredicto } from '../tipos'
 
 export interface AjustesVoz {
-  /** Proporción de habla a partir de la cual se considera que alguien habló. */
   speech_ratio?: number
   min_duration_ms?: number
+}
+interface VadHandle {
+  start(): Promise<void>
+  pause(): Promise<void>
+  destroy(): Promise<void>
 }
 
 export class DetectorHabla implements Detector {
   readonly nombre = 'habla'
   readonly evento = 'speech_detected' as const
+  readonly ownsSegments = true
   readonly minimoMs: number
-  private readonly umbralHabla: number
+  private readonly threshold: number
+  private vad?: VadHandle
+  private context?: DetectorContext
+  private recorder?: MediaRecorder
+  private timer?: ReturnType<typeof setTimeout>
+  private speaking = false
+  private stopped = false
+  private startedAt = 0
+  private chunks: Blob[] = []
+  private sender?: (signal: SenalDetectada) => void
+  private discard = false
+  private stopping?: Promise<void>
+  private sampleRate = 0
+  private generation = 0
 
-  constructor(ajustes: AjustesVoz = {}) {
-    this.minimoMs = ajustes.min_duration_ms ?? 1500
-    this.umbralHabla = ajustes.speech_ratio ?? 0.6
+  constructor(settings: AjustesVoz = {}) {
+    this.minimoMs = settings.min_duration_ms ?? 1500
+    this.threshold = settings.speech_ratio ?? 0.6
+    if (
+      !Number.isFinite(this.threshold) ||
+      this.threshold <= 0 ||
+      this.threshold >= 1 ||
+      !Number.isFinite(this.minimoMs) ||
+      this.minimoMs < 100 ||
+      this.minimoMs > 10000
+    ) {
+      throw new Error('Configuración de voz inválida.')
+    }
   }
 
-  async preparar(): Promise<void> {
-    // TODO(SPEC-008, Pierreluiggi): cargar Silero VAD (onnxruntime-web) y abrir
-    //   un MediaRecorder sobre la pista de audio, para tener el fragmento listo
-    //   cuando la condición se cierre.
+  async preparar(context?: DetectorContext): Promise<void> {
+    const generation = ++this.generation
+    if (!context?.stream.getAudioTracks().length) throw new Error('Falta la pista de micrófono.')
+    if (!MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))
+      throw new Error('WebM/Opus no disponible.')
+    this.context = context
+    this.stopped = false
+    this.sampleRate = context.stream.getAudioTracks()[0].getSettings().sampleRate ?? 0
+    const { MicVAD } = await import('@ricky0123/vad-web')
+    if (this.stopped || generation !== this.generation) return
+    const vad = await MicVAD.new({
+      model: 'v5',
+      startOnLoad: false,
+      baseAssetPath: '/vad/',
+      onnxWASMBasePath: '/vad/',
+      getStream: async () => new MediaStream(context.stream.getAudioTracks()),
+      pauseStream: async () => {},
+      resumeStream: async () => new MediaStream(context.stream.getAudioTracks()),
+      positiveSpeechThreshold: this.threshold,
+      negativeSpeechThreshold: Math.max(0.05, this.threshold - 0.15),
+      minSpeechMs: this.minimoMs,
+      redemptionMs: 400,
+      preSpeechPadMs: 0,
+      submitUserSpeechOnPause: false,
+      onSpeechStart: () => {
+        if (this.stopped || generation !== this.generation) return
+        this.speaking = true
+        this.startSegment()
+      },
+      onSpeechEnd: () => {
+        if (generation !== this.generation) return
+        this.speaking = false
+        void this.finishSegment()
+      },
+      onVADMisfire: () => {
+        if (generation !== this.generation) return
+        this.speaking = false
+        void this.finishSegment(true)
+      }
+    })
+    if (this.stopped || generation !== this.generation) {
+      await vad.destroy()
+      return
+    }
+    this.vad = vad
+    await vad.start()
   }
 
-  observar(_observacion: Observacion): Veredicto {
-    // TODO(SPEC-008, Pierreluiggi): devolver `activa: true` mientras el VAD
-    //   detecte voz, con metadata { source: 'silero_vad', sample_rate,
-    //   speech_ratio }.
-    return { activa: false, metadata: { speech_ratio_threshold: this.umbralHabla } }
+  private startSegment(): void {
+    if (this.stopped || this.recorder || !this.context) return
+    this.startedAt = Date.now()
+    this.sender = this.context.captureSender()
+    this.chunks = []
+    this.discard = false
+    this.recorder = new MediaRecorder(new MediaStream(this.context.stream.getAudioTracks()), {
+      mimeType: 'audio/webm;codecs=opus',
+      audioBitsPerSecond: 32000
+    })
+    this.recorder.ondataavailable = (event) => {
+      if (event.data.size) this.chunks.push(event.data)
+    }
+    this.recorder.onerror = () => {
+      void this.finishSegment(true)
+    }
+    this.recorder.start()
+    this.timer = setTimeout(() => {
+      // Reset Silero's own PCM buffer too, not only MediaRecorder's buffer.
+      this.speaking = false
+      void (async () => {
+        await this.finishSegment()
+        await this.vad?.pause()
+        if (!this.stopped) await this.vad?.start()
+      })().catch(() => {
+        this.detener()
+      })
+    }, 10000)
+  }
+
+  private finishSegment(discard = false): Promise<void> {
+    this.discard ||= discard
+    if (this.stopping) return this.stopping
+    const recorder = this.recorder
+    if (!recorder) return Promise.resolve()
+    clearTimeout(this.timer)
+    const duration = Date.now() - this.startedAt
+    this.stopping = new Promise<void>((resolve) => {
+      recorder.onstop = () => {
+        const audio = new Blob(this.chunks, { type: 'audio/webm' })
+        if (!this.discard && duration >= this.minimoMs && audio.size) {
+          this.sender?.({
+            evento: 'speech_detected',
+            inicioMs: this.startedAt,
+            duracionMs: duration,
+            audio,
+            metadata: {
+              source: 'silero_vad_v5',
+              speech_ratio_threshold: this.threshold,
+              capture_sample_rate: this.sampleRate,
+              vad_sample_rate: 16000,
+              max_segment_ms: 10000,
+              min_duration_ms: this.minimoMs
+            }
+          })
+        }
+        this.chunks = []
+        this.recorder = undefined
+        this.stopping = undefined
+        resolve()
+        if (this.speaking && !this.stopped) this.startSegment()
+      }
+      if (recorder.state !== 'inactive') recorder.stop()
+    })
+    return this.stopping
+  }
+
+  observar(_observation: Observacion): Veredicto {
+    return { activa: this.speaking, metadata: { source: 'silero_vad_v5' } }
   }
 
   detener(): void {
-    // TODO(SPEC-008): parar el MediaRecorder y liberar el modelo.
+    ++this.generation
+    this.stopped = true
+    this.speaking = false
+    void this.finishSegment(true)
+    void this.vad?.destroy()
   }
 }

@@ -26,7 +26,7 @@ from proctoring_api.adapters.inbound.http.routers import (
     review,
     sessions,
 )
-from proctoring_api.adapters.inbound.qti.importer import parse_qti
+from proctoring_api.adapters.inbound.qti.package import parse_upload
 from proctoring_api.adapters.outbound.clock import SystemClock
 from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
 from proctoring_api.adapters.outbound.memory.answer_repository import InMemoryAnswerRepository
@@ -601,7 +601,7 @@ def create_app(
     app.state.list_banks = ListQuestionBanks(bank_repository, settings.dev_teacher_id)
     app.state.list_bank_questions = ListBankQuestions(bank_repository, question_repository)
     app.state.add_questions_to_bank = AddQuestionsToBank(bank_repository, question_repository)
-    app.state.import_qti = ImportQtiIntoBank(app.state.add_questions_to_bank, parse_qti)
+    app.state.import_qti = ImportQtiIntoBank(app.state.add_questions_to_bank, parse_upload)
     app.state.attach_bank = AttachBankToSession(bank_repository, session_repository)
     app.state.detach_bank = DetachBankFromSession(bank_repository, session_repository)
     app.state.list_session_banks = ListSessionBanks(bank_repository, session_repository)

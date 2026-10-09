@@ -179,7 +179,7 @@ def main() -> None:
     parser.add_argument("--revision", required=True)
     parser.add_argument("--reference-threshold", type=float, required=True)
     parser.add_argument("--offline", action="store_true")
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=Path, default=Path("results/similarity.json"))
     args = parser.parse_args()
     rows = load_pairs(args.manifest)  # Validate BEFORE downloading or running any model.
     if args.output.exists():

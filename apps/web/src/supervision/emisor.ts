@@ -8,6 +8,7 @@
 
 import { ApiError, api, type EventType } from '../lib/api'
 import type { SenalDetectada } from './tipos'
+import { uploadAudio } from './audioUpload'
 
 /** Tope de la cola. Más que esto es que la red lleva mucho rato caída. */
 const MAX_EN_COLA = 200
@@ -23,7 +24,7 @@ export interface ContextoEmision {
 }
 
 export class EmisorDeSenales {
-  private readonly cola: SenalDetectada[] = []
+  private readonly cola: Array<{ signal: SenalDetectada; context: ContextoEmision }> = []
   private enviando = false
   private temporizador: ReturnType<typeof setTimeout> | undefined
   private detenido = false
@@ -36,12 +37,32 @@ export class EmisorDeSenales {
   }
 
   emitir(senal: SenalDetectada): void {
+    this.enqueue(senal, { ...this.contexto })
+  }
+
+  /** Capture question at speech onset before asynchronous work. */
+  captureSender(): (signal: SenalDetectada) => void {
+    const context = { ...this.contexto }
+    return (signal) => this.enqueue(signal, context)
+  }
+
+  private enqueue(senal: SenalDetectada, context: ContextoEmision): void {
     if (this.detenido) return
     if (this.cola.length >= MAX_EN_COLA) {
-      // Se descarta la más antigua: lo reciente es lo que el docente mira.
-      this.cola.shift()
+      // Preserve the first entry while its upload/request is in flight.
+      console.error('[supervisión] cola llena; señal descartada')
+      return
     }
-    this.cola.push(senal)
+    if (
+      senal.evento === 'speech_detected' &&
+      (!context.questionId || (!senal.audio && !senal.evidencePath))
+    )
+      return
+    if (senal.audio && this.cola.filter((entry) => entry.signal.audio).length >= 3) {
+      console.error('[supervisión] cola de audio llena; fragmento descartado')
+      return
+    }
+    this.cola.push({ signal: senal, context })
     void this.vaciar()
   }
 
@@ -57,19 +78,24 @@ export class EmisorDeSenales {
     this.enviando = true
     try {
       while (this.cola.length > 0) {
-        const senal = this.cola[0]
+        const { signal: senal, context } = this.cola[0]
         try {
+          if (senal.audio && !senal.evidencePath) {
+            senal.evidencePath = await uploadAudio(senal.audio, context)
+            senal.audio = undefined
+          }
           await api.registerEvent(
             {
-              session_id: this.contexto.sessionId,
-              student_id: this.contexto.studentId,
-              question_id: this.contexto.questionId,
+              session_id: context.sessionId,
+              student_id: context.studentId,
+              question_id: context.questionId,
               event_type: senal.evento,
               started_at: new Date(senal.inicioMs).toISOString(),
               duration_ms: Math.round(senal.duracionMs),
-              metadata: senal.metadata
+              metadata: senal.metadata,
+              evidence_path: senal.evidencePath
             },
-            this.contexto.token
+            context.token
           )
           this.cola.shift()
         } catch (fallo) {

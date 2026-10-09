@@ -53,7 +53,9 @@ export interface Detector {
    * descarta y el examen **sigue**: un modelo que no carga no puede dejar a un
    * estudiante sin rendir.
    */
-  preparar?(): Promise<void>
+  preparar?(context?: DetectorContext): Promise<void>
+  /** Audio emits bounded segments instead of a second empty event. */
+  readonly ownsSegments?: boolean
   /** Mira el instante actual. Tiene que ser rápido: corre muchas veces por segundo. */
   observar(observacion: Observacion): Veredicto
   /** Libera lo que haya reservado. */
@@ -66,4 +68,11 @@ export interface SenalDetectada {
   inicioMs: number
   duracionMs: number
   metadata: Record<string, unknown>
+  audio?: Blob
+  evidencePath?: string
+}
+
+export interface DetectorContext {
+  stream: MediaStream
+  captureSender: () => (signal: SenalDetectada) => void
 }
