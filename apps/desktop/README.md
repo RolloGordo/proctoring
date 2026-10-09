@@ -98,7 +98,7 @@ Construida con [`electron-vite`](https://electron-vite.org/).
 
 ## Lo que pedía el enunciado (referencia)
 
-### 1. Ventana en modo kiosco y protegida (`src/main/window.ts`)
+### 1. Ventana en modo kiosco y protegida (`src/main/index.ts`)
 
 ```ts
 const win = new BrowserWindow({
@@ -170,7 +170,8 @@ viene así en `.env.example`) y los eventos entran sin cabecera. En cuanto el lo
 Hay un ejemplo válido por tipo de evento en `packages/contracts/examples/`. La respuesta es
 `201` con `{ "id": "...", "severity": "low|medium|high" }`.
 
-Pon la URL en una variable de entorno (`VITE_API_URL`), no la escribas fija.
+Pon el endpoint en la variable de entorno `PROCTORING_API_URL`, no lo escribas fijo. El valor por
+defecto es `http://localhost:8000/api/v1/events`.
 
 ### 6. Preload: solo lo necesario
 
@@ -185,19 +186,71 @@ Nada de `ipcRenderer` crudo ni `require` en el renderer.
 
 ## Criterios de aceptación
 
-- [ ] `npm run dev` abre la ventana en kiosco y a pantalla completa.
-- [ ] Al hacer Alt+Tab y volver, se registra **un** `focus_lost` con `duration_ms` correcto (±200 ms).
-- [ ] Conectar un segundo monitor genera `extra_display` en menos de 5 s.
-- [ ] Abrir Zoom o AnyDesk genera `suspicious_process` en menos de 15 s.
-- [ ] La ventana aparece en negro al intentar capturarla o compartir pantalla.
-- [ ] Los eventos llegan a la API y responden `201` (comprobable en los logs de la API).
-- [ ] `npm run lint` y `npm run build` pasan (el CI los va a correr).
+- [ ] `npm run dev` abre la ventana en kiosco y a pantalla completa. Pendiente de registrar una prueba manual.
+- [ ] Alt+Tab genera un solo `focus_lost`; comparar `duration_ms` con cronómetro y registrar el error (meta: ±200 ms).
+- [ ] Conectar un segundo monitor genera `extra_display` en menos de 5 s. Registrar el tiempo desde la conexión hasta `started_at`.
+- [ ] Abrir Zoom o AnyDesk genera `suspicious_process` en menos de 15 s. Registrar el tiempo observado.
+- [ ] Una captura externa con protección habilitada muestra la ventana en negro.
+- [ ] Los eventos llegan a la API y responden `201`; guardar los logs de la prueba con API activa.
+- [x] `npm run test`, `npm run lint` y `npm run build` pasan en el entorno de desarrollo.
 
 ## Evidencia para la semana
 
 Video corto mostrando: Alt+Tab → evento en los logs de la API; conectar monitor → evento; abrir
 Zoom → evento; intentar capturar pantalla → ventana en negro.
 Guárdalo en `docs/evidencias/semana-05/rider/`.
+
+## SPEC-006: estado de mediciones (R3)
+
+Las pruebas automatizadas verifican funciones y el formato de eventos, pero no sustituyen las
+mediciones en Windows. Las filas sin marcar requieren ejecutar la app y adjuntar el video al Notion
+del equipo. No se anotan tiempos hasta que se midan físicamente.
+
+| Medición              | Estado                                  | Cómo registrar el resultado                                                                                               |
+| --------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Pérdida de foco       | Pendiente en Windows                    | Cronómetro al alternar con Alt+Tab; comparar con `duration_ms`, contar eventos y anotar el error en ms.                   |
+| Monitor adicional     | Pendiente en equipo con segundo monitor | Anotar hora de conexión y `started_at`; calcular delta y verificar `< 5 s`.                                               |
+| Proceso sospechoso    | Pendiente en Windows con Zoom o AnyDesk | Anotar hora de apertura y hora del evento; verificar `< 15 s`.                                                            |
+| Protección de captura | Pendiente en Windows                    | Con `PROCTORING_DISABLE_CONTENT_PROTECTION` sin definir, guardar una captura externa en la que la ventana aparezca negra. |
+| Video de evidencia    | Pendiente                               | Repetir las cuatro pruebas y enlazar el video del Notion del equipo.                                                      |
+
+Para grabar las otras tres demostraciones, define `PROCTORING_DISABLE_CONTENT_PROTECTION=1`; quita
+esa variable antes de comprobar la captura negra. No presentar las pruebas unitarias como evidencia
+de las pruebas físicas.
+
+## SPEC-006: capturas y pantalla compartida (R1/R2)
+
+Las capturas se intentan solo para `suspicious_process`, `extra_display` y `screen_share`; no hay
+capturas periódicas. Se limita a 20 por sesión y a una captura cada 5 segundos. Los fallos de red o
+servidor al solicitar/subir una captura se reintentan hasta tres veces; si no se recuperan, el error
+se registra y el evento se envía sin `evidence_path`.
+
+La tarea original agrupa `extra_display` entre las señales altas, pero la API actualmente le asigna
+severidad `medium`. Se conserva la captura para ese evento porque el pedido la nombra explícitamente;
+no se modifica el nivel de riesgo.
+
+`screen_share` no se infiere solo porque Zoom o Teams estén abiertos: `ps-list` expone nombres y PID,
+no el estado de compartir pantalla ni un estado fiable de sus ventanas. `CptHost.exe` también se
+trata como indicio de una aplicación auxiliar, no como confirmación de una transmisión. Zoom, Teams
+y `CptHost` quedan reportados como `suspicious_process`; no se emite `screen_share` hasta contar con
+una señal verificable para evitar alertas falsas. La API todavía no ofrece una URL firmada de
+lectura; por eso la captura se almacena y queda vinculada al evento, pero aún no se puede mostrar en
+la revisión del caso. Para cerrar ese criterio hace falta coordinar el endpoint con el responsable
+de la API.
+
+## SPEC-003: resultados (R4)
+
+La web del docente ofrece `/sesiones/:id/resultados` desde la pantalla en vivo. Muestra entregas,
+nota media de las notas automáticas disponibles, casos enviados y pendientes de decisión, y acceso
+a la revisión individual. Si hay preguntas de desarrollo, las notas entregadas se etiquetan como
+parciales hasta su revisión manual.
+
+## Instalador (R5)
+
+El instalador se generó correctamente con `npm run build:win --prefix apps/desktop` en
+`dist/desktop-1.0.0-setup.exe` (106.4 MB, Electron 44.5.1). Confirmar que instala y arranca en otro
+equipo sigue siendo una prueba manual; la publicación en GitHub Releases requiere coordinación con
+quien mantiene el CI.
 
 ## Subir capturas y audio
 

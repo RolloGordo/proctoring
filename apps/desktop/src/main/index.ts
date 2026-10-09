@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { examContext, liveExamSessionId, setExamSession, setStudentFromToken } from './context'
+import { captureEvidenceForEvent } from './capturas'
 import { buildExtraDisplayEvent, buildFocusLostEvent } from './events'
 import { applyPermissionPolicy } from './permisos'
 import { applyWindowProtection } from './protection'
@@ -18,10 +19,21 @@ let processMonitor: ProcessMonitor | null = null
 
 function recordEvent(event: ProctoringEvent): void {
   events.push(event)
-  sendEvent(event)
   console.log('[event]', event.event_type, event.duration_ms)
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('events:new', event)
+  }
+  void deliverEvent(event)
+}
+
+async function deliverEvent(event: ProctoringEvent): Promise<void> {
+  let jpeg: Buffer | undefined
+  try {
+    jpeg = (await captureEvidenceForEvent(event)) ?? undefined
+  } catch (error) {
+    console.error('[event] no se pudo capturar evidencia; se envia el evento sin captura', error)
+  } finally {
+    sendEvent(event, jpeg)
   }
 }
 

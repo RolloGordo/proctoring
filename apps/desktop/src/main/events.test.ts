@@ -15,11 +15,13 @@ describe('findSuspicious', () => {
         { name: 'Zoom.exe', pid: 101 },
         { name: 'zoom', pid: 202 },
         { name: 'AnyDesk.EXE', pid: 303 },
+        { name: 'CptHost.exe', pid: 404 },
         { name: 'notepad.exe', pid: 404 }
       ])
     ).toEqual([
-      { processName: 'zoom', category: 'screen_share', pid: 101 },
-      { processName: 'anydesk', category: 'remote_desktop', pid: 303 }
+      { processName: 'zoom', category: 'communication', pid: 101 },
+      { processName: 'anydesk', category: 'remote_desktop', pid: 303 },
+      { processName: 'cpthost', category: 'communication_auxiliary', pid: 404 }
     ])
   })
 })
