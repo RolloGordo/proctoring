@@ -208,8 +208,15 @@ async function uploadEventEvidence(
 
   let storageResponse: Response
   try {
+    // PUT y no POST: la URL firmada de Supabase Storage responde 400
+    // ("headers must have required property 'authorization'") a un POST, porque
+    // esa ruta espera la cabecera de un cliente autenticado. Con PUT basta el
+    // token de la propia URL. Comprobado contra el Storage real: POST -> 400,
+    // PUT -> 200. El fallo era silencioso: la API devolvia 400, el remitente lo
+    // tomaba por "no disponible" y mandaba el evento sin captura, asi que los
+    // eventos llegaban y ninguna evidencia se guardaba nunca.
     storageResponse = await fetch(storageUrl, {
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'Content-Type': 'image/jpeg',
         'x-upsert': 'false',

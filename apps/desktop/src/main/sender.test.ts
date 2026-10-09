@@ -77,6 +77,16 @@ describe('event sender authentication', () => {
         )
       }
       if (url.endsWith('/api/v1/events')) return new Response('{}', { status: 201 })
+      // Storage. Se imita lo que hace Supabase de verdad: la URL firmada acepta
+      // PUT y responde 400 a un POST. Sin esto el simulacro aceptaba cualquier
+      // metodo y la prueba pasaba con una subida que en produccion nunca
+      // funciono.
+      if (init?.method !== 'PUT') {
+        return Response.json(
+          { statusCode: '400', message: "headers must have required property 'authorization'" },
+          { status: 400 }
+        )
+      }
       return new Response(null, { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -99,7 +109,10 @@ describe('event sender authentication', () => {
     await vi.waitFor(() => {
       expect(requests.at(-1)?.url).toBe('http://localhost:8000/api/v1/events')
     })
-    expect(requests.map((request) => request.method)).toEqual(['POST', 'POST', 'POST'])
+    // Pedir la URL y mandar el evento son POST a la API; **subir a Storage es
+    // PUT**. Si esto vuelve a decir POST, la subida devolvera 400 contra el
+    // Storage real y el evento se guardara sin captura sin que nadie se entere.
+    expect(requests.map((request) => request.method)).toEqual(['POST', 'PUT', 'POST'])
     expect(requests[0]?.url).toBe('http://localhost:8000/api/v1/evidence/upload-url')
     expect(requests[1]?.url).toBe(
       'https://example.supabase.co/storage/v1/object/upload/sign/evidences/session/student/evidence.jpg?token=signed-upload-token'
