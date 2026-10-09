@@ -22,3 +22,14 @@ export function reglasVision(caras: number, yaw: number | null, limiteYaw: numbe
     extra_person: caras >= minimoCaras
   }
 }
+
+/** El máximo es un límite operativo explícito, no un detector silencioso incapaz.
+ * Configuraciones mayores necesitan una decisión de rendimiento del equipo.
+ */
+export const MAX_ROSTROS_MODELO = 10
+export function capacidadParaUmbralRostros(minFaces: number): number {
+  if (!Number.isInteger(minFaces) || minFaces < 2 || minFaces > MAX_ROSTROS_MODELO) {
+    throw new RangeError(`min_faces debe estar entre 2 y ${MAX_ROSTROS_MODELO} (recibido: ${minFaces})`)
+  }
+  return minFaces
+}

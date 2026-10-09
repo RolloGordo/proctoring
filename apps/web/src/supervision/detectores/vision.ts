@@ -1,7 +1,7 @@
 /** Detectores de SPEC-007. Sin grabación continua ni eventos por fotograma. */
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
+import type { FaceLandmarker } from '@mediapipe/tasks-vision'
 import type { Detector, Observacion, Veredicto } from '../tipos'
-import { angulosDesdeMatriz, reglasVision } from './vision-core'
+import { angulosDesdeMatriz, capacidadParaUmbralRostros, reglasVision } from './vision-core'
 
 export interface AjustesMirada {
   yaw_degrees?: number
@@ -19,29 +19,47 @@ interface Medicion {
   pitch: number | null
 }
 
-/** MediaPipe se prepara una sola vez y se comparte para no triplicar la inferencia. */
-let preparando: Promise<FaceLandmarker> | undefined
+/** Modelo compartido: la biblioteca se importa solo al activar supervisión visual.
+ * Si una sesión exige min_faces=3, el modelo debe ser capaz de detectar 3 caras.
+ * La capacidad se puede ampliar entre sesiones sin repetir inferencia por detector.
+ */
+let configurando: Promise<void> | undefined
 let instancia: FaceLandmarker | undefined
+let capacidad = 0
 let ultima: { video: HTMLVideoElement; frame: number; medicion: Medicion } | undefined
 
-async function motor(): Promise<void> {
-  if (!preparando) {
-    preparando = (async () => {
+async function motor(rostrosNecesarios = 2): Promise<void> {
+  const requeridos = capacidadParaUmbralRostros(rostrosNecesarios)
+  if (instancia && capacidad >= requeridos) return
+
+  // Evita iniciar varios motores o cambiar las opciones simultáneamente.
+  if (configurando) {
+    await configurando
+    if (instancia && capacidad >= requeridos) return
+    return motor(requeridos)
+  }
+  configurando = (async () => {
+    if (instancia) {
+      await instancia.setOptions({ numFaces: requeridos })
+    } else {
+      // Import dinámico: la página del docente no descarga MediaPipe.
+      const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision')
       const wasm = await FilesetResolver.forVisionTasks('/mediapipe/wasm')
-      const modelo = await FaceLandmarker.createFromOptions(wasm, {
+      instancia = await FaceLandmarker.createFromOptions(wasm, {
         baseOptions: { modelAssetPath: '/mediapipe/face_landmarker.task' },
-        numFaces: 2,
+        numFaces: requeridos,
         outputFacialTransformationMatrixes: true,
         runningMode: 'VIDEO'
       })
-      instancia = modelo
-      return modelo
-    })().catch((error: unknown) => {
-      preparando = undefined
-      throw error
-    })
+    }
+    capacidad = requeridos
+    ultima = undefined
+  })()
+  try {
+    await configurando
+  } finally {
+    configurando = undefined
   }
-  await preparando
 }
 
 function medicionDe({ video, ahoraMs }: Observacion): Medicion | null {
@@ -110,9 +128,9 @@ export class DetectorPersonaExtra implements Detector {
 
   constructor(ajustes: AjustesPersonaExtra = {}) {
     this.minimoMs = ajustes.min_duration_ms ?? 2000
-    this.minimoRostros = Math.max(2, ajustes.min_faces ?? 2)
+    this.minimoRostros = ajustes.min_faces ?? 2
   }
-  async preparar(): Promise<void> { await motor() }
+  async preparar(): Promise<void> { await motor(this.minimoRostros) }
 
   observar(observacion: Observacion): Veredicto {
     const m = medicionDe(observacion)
@@ -121,7 +139,8 @@ export class DetectorPersonaExtra implements Detector {
       activa: m.caras >= this.minimoRostros,
       metadata: {
         source: 'mediapipe', faces_detected: m.caras,
-        min_faces: this.minimoRostros, min_duration_ms: this.minimoMs
+        min_faces: this.minimoRostros, model_num_faces: capacidad,
+        min_duration_ms: this.minimoMs
       }
     }
   }

@@ -37,3 +37,19 @@ Ver `datasets/README.md`. El comando `python tools/dataset.py verificar` confirm
 | persona adicional | ≥2 rostros | 2.000 ms |
 
 Meta: accuracy ≥80 % y FPR <20 % por detector, aún por comprobar con J1.
+
+## Ajuste tras revisión del equipo (9 de octubre)
+
+El prototipo configura `numFaces: 3` y ofrece el selector de
+`min_faces` 2/3 antes de iniciar un clip o cámara. El CSV exportado incluye
+`min_faces` para documentar el umbral ensayado. En la aplicación integrada el modelo es **dinámico**: si el
+docente configura `min_faces: 3`, MediaPipe se inicializa con capacidad para 3
+rostros o se amplía mediante `setOptions`. El máximo operativo explícito es 10:
+un valor fuera de 2–10 produce un error de preparación visible en consola, no
+una condición imposible que falle silenciosamente. El motor se importa con
+`import('@mediapipe/tasks-vision')` cuando se prepara la cámara, y la página de
+examen tiene carga diferida; el panel docente no necesita descargar ese módulo.
+
+**Pendiente de validación experimental:** dataset real etiquetado, accuracy/FPR,
+pruebas de `min_faces=3` con 3 voluntarios a la vez, y medición de rendimiento
+en máquina de examen. Sin esas pruebas la SPEC no se declara cerrada.
