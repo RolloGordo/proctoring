@@ -379,3 +379,77 @@ def test_fuera_de_la_ventana_no_se_sortea_nada(authed_app: FastAPI) -> None:
 
     assert respuesta.status_code == 403
     assert "no esta abierto" in respuesta.json()["detail"]
+
+
+def test_el_estudiante_puede_responder_una_pregunta_del_banco(authed_app: FastAPI) -> None:
+    """Un examen con banco tiene que poder **responderse**.
+
+    Las preguntas de un banco no son del examen: tienen `session_id` nulo y
+    cuelgan del banco. Si al guardar se valida contra las preguntas del examen
+    en vez de contra las que el estudiante recibio, un examen con banco se
+    muestra entero y no acepta ni una respuesta.
+    """
+    session_id = examen_con_banco(authed_app, cuantas=20, pool_size=5)
+
+    with TestClient(authed_app) as client:
+        recibidas = client.get(
+            f"/api/v1/exam/{session_id}/questions", headers=bearer(STUDENT_TOKEN)
+        ).json()
+        primera = recibidas[0]
+        guardado = client.put(
+            f"/api/v1/exam/{session_id}/answers",
+            json={
+                "answers": [
+                    {
+                        "question_id": primera["id"],
+                        "selected_option_id": primera["options"][0]["id"],
+                    }
+                ]
+            },
+            headers=bearer(STUDENT_TOKEN),
+        )
+
+    assert guardado.status_code == 200, guardado.text
+
+
+def test_una_pregunta_del_banco_que_no_le_salio_no_se_le_acepta(authed_app: FastAPI) -> None:
+    """El sorteo tambien acota lo que se puede responder.
+
+    Si se aceptara cualquier pregunta del banco, un estudiante podria responder
+    las veinte y llevarse puntos por preguntas que su examen nunca le mostro.
+    """
+    session_id = examen_con_banco(authed_app, cuantas=20, pool_size=5)
+
+    with TestClient(authed_app) as client:
+        suyas = {
+            q["id"]
+            for q in client.get(
+                f"/api/v1/exam/{session_id}/questions", headers=bearer(STUDENT_TOKEN)
+            ).json()
+        }
+        # Del banco, pero fuera de su sorteo: se saca de la lista del docente.
+        todas = client.get(
+            f"/api/v1/question-banks/{_banco_del_examen(client, session_id)}/questions",
+            headers=bearer(TEACHER_TOKEN),
+        ).json()
+        ajena = next(q for q in todas if q["id"] not in suyas)
+
+        guardado = client.put(
+            f"/api/v1/exam/{session_id}/answers",
+            json={
+                "answers": [
+                    {"question_id": ajena["id"], "selected_option_id": ajena["options"][0]["id"]}
+                ]
+            },
+            headers=bearer(STUDENT_TOKEN),
+        )
+
+    assert guardado.status_code == 400, guardado.text
+    assert "no es de este examen" in guardado.json()["detail"]
+
+
+def _banco_del_examen(client: TestClient, session_id: str) -> str:
+    atados = client.get(f"/api/v1/sessions/{session_id}/banks", headers=bearer(TEACHER_TOKEN))
+    assert atados.status_code == 200, atados.text
+    bank_id: str = atados.json()[0]["id"]
+    return bank_id

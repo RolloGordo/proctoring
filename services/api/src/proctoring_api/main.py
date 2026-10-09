@@ -641,6 +641,7 @@ def create_app(
         session_repository,
         clock,
         settings.dev_student_id,
+        bank_repository,
     )
     app.state.list_my_answers = ListMyAnswers(
         answer_repository, participant_repository, settings.dev_student_id
