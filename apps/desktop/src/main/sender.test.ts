@@ -50,4 +50,63 @@ describe('event sender authentication', () => {
     expect(requests[1]?.url).toContain('/auth/v1/token?grant_type=refresh_token')
     expect(requests[2]?.authorization).toBe('Bearer fresh-token')
   })
+
+  it('uploads evidence directly to Storage and returns its path', async () => {
+    vi.stubEnv('PROCTORING_SESSION_ID', '3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60')
+    vi.stubEnv('PROCTORING_STUDENT_ID', '7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71')
+    vi.stubEnv('SUPABASE_URL', 'https://example.supabase.co')
+    vi.stubEnv('SUPABASE_PUBLISHABLE_KEY', 'public-test-key')
+
+    const requests: Array<{ url: string; method: string | undefined; body?: string }> = []
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input)
+      requests.push({
+        url,
+        method: init?.method,
+        body: typeof init?.body === 'string' ? init.body : undefined
+      })
+      if (url.endsWith('/api/v1/evidence/upload-url')) {
+        return Response.json(
+          {
+            path: 'session/student/evidence.jpg',
+            url: '/object/upload/sign/evidences/session/student/evidence.jpg',
+            token: 'signed-upload-token',
+            expires_in_seconds: 7200
+          },
+          { status: 201 }
+        )
+      }
+      if (url.endsWith('/api/v1/events')) return new Response('{}', { status: 201 })
+      return new Response(null, { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.resetModules()
+
+    const { sendEvent, setAuthSession } = await import('./sender')
+    const event: ProctoringEvent = {
+      session_id: '3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60',
+      student_id: '7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71',
+      question_id: null,
+      event_type: 'suspicious_process',
+      started_at: '2026-10-03T14:21:05.120Z',
+      duration_ms: 0,
+      metadata: {},
+      evidence_path: null
+    }
+    setAuthSession({ accessToken: 'access-token', refreshToken: 'refresh-token' })
+    sendEvent(event, Buffer.from('jpeg-data'))
+
+    await vi.waitFor(() => {
+      expect(requests.at(-1)?.url).toBe('http://localhost:8000/api/v1/events')
+    })
+    expect(requests.map((request) => request.method)).toEqual(['POST', 'POST', 'POST'])
+    expect(requests[0]?.url).toBe('http://localhost:8000/api/v1/evidence/upload-url')
+    expect(requests[1]?.url).toBe(
+      'https://example.supabase.co/storage/v1/object/upload/sign/evidences/session/student/evidence.jpg?token=signed-upload-token'
+    )
+    expect(JSON.parse(requests[2]?.body ?? '{}')).toMatchObject({
+      event_type: 'suspicious_process',
+      evidence_path: 'session/student/evidence.jpg'
+    })
+  })
 })

@@ -3,9 +3,16 @@ import { examContext } from './context'
 const API_URL = process.env['PROCTORING_API_URL'] ?? 'http://localhost:8000/api/v1/events'
 const RETRY_MS = 5_000
 const MAX_QUEUE = 500
+const MAX_EVIDENCE_RETRIES = 3
 const NIL_UUID = '00000000-0000-0000-0000-000000000000'
 
-const queue: ProctoringEvent[] = []
+interface QueuedEvent {
+  event: ProctoringEvent
+  jpeg?: Buffer
+  evidenceRetries: number
+}
+
+const queue: QueuedEvent[] = []
 let sending = false
 let timer: NodeJS.Timeout | undefined
 let unauthorizedEvent: ProctoringEvent | null = null
@@ -92,13 +99,175 @@ async function refreshAccessToken(event: ProctoringEvent): Promise<boolean> {
   return true
 }
 
+function buildEvidenceUploadUrl(): string {
+  const endpoint = new URL(API_URL)
+  if (!endpoint.pathname.endsWith('/events')) {
+    throw new Error('PROCTORING_API_URL debe terminar en /api/v1/events')
+  }
+  endpoint.pathname = endpoint.pathname.replace(/\/events$/, '/evidence/upload-url')
+  return endpoint.toString()
+}
+
+function resolveStorageUploadUrl(url: string, token: string | null): string {
+  let resolved: URL
+  try {
+    resolved = new URL(url)
+  } catch {
+    const supabaseUrl = process.env['SUPABASE_URL']
+    if (!supabaseUrl) throw new Error('Falta SUPABASE_URL para resolver la URL firmada')
+    const storagePath = url.startsWith('/object/') ? `/storage/v1${url}` : url
+    resolved = new URL(storagePath, supabaseUrl)
+  }
+  if (token && !resolved.searchParams.has('token')) {
+    resolved.searchParams.set('token', token)
+  }
+  return resolved.toString()
+}
+
+type EvidenceUploadResult =
+  | { status: 'uploaded'; path: string }
+  | { status: 'retry' }
+  | { status: 'blocked' }
+  | { status: 'unavailable' }
+
+async function uploadEventEvidence(
+  event: ProctoringEvent,
+  jpeg: Buffer
+): Promise<EvidenceUploadResult> {
+  let uploadUrl: string
+  try {
+    uploadUrl = buildEvidenceUploadUrl()
+  } catch (error) {
+    console.error('[sender] no se pudo construir la URL para pedir evidencia', error)
+    return { status: 'unavailable' }
+  }
+
+  const requestUploadUrl = async (): Promise<Response> => {
+    return fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        ...(authSession ? { Authorization: `Bearer ${authSession.accessToken}` } : {}),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        session_id: event.session_id,
+        student_id: event.student_id,
+        kind: 'image',
+        extension: 'jpg'
+      }),
+      signal: AbortSignal.timeout(5_000)
+    })
+  }
+
+  let response: Response
+  try {
+    response = await requestUploadUrl()
+    if (response.status === 401 && (await refreshAccessToken(event))) {
+      response = await requestUploadUrl()
+    } else if (response.status === 401) {
+      return { status: 'blocked' }
+    }
+  } catch (error) {
+    console.error('[sender] no se pudo pedir la URL firmada de evidencia', error)
+    return { status: 'retry' }
+  }
+
+  if (!response.ok) {
+    console.error('[sender] la API rechazo la URL firmada de evidencia', response.status)
+    return response.status >= 500 ? { status: 'retry' } : { status: 'unavailable' }
+  }
+
+  let upload: unknown
+  try {
+    upload = await response.json()
+  } catch (error) {
+    console.error('[sender] respuesta invalida al pedir URL firmada de evidencia', error)
+    return { status: 'unavailable' }
+  }
+  if (
+    typeof upload !== 'object' ||
+    upload === null ||
+    !('path' in upload) ||
+    typeof upload.path !== 'string' ||
+    !('url' in upload) ||
+    typeof upload.url !== 'string' ||
+    ('token' in upload && upload.token !== null && typeof upload.token !== 'string')
+  ) {
+    console.error('[sender] respuesta incompleta al pedir URL firmada de evidencia')
+    return { status: 'unavailable' }
+  }
+
+  const token = 'token' in upload && typeof upload.token === 'string' ? upload.token : null
+  let storageUrl: string
+  try {
+    storageUrl = resolveStorageUploadUrl(upload.url, token)
+  } catch (error) {
+    console.error('[sender] URL firmada de Storage invalida', error)
+    return { status: 'unavailable' }
+  }
+
+  let storageResponse: Response
+  try {
+    storageResponse = await fetch(storageUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'image/jpeg',
+        'x-upsert': 'false',
+        ...(process.env['SUPABASE_PUBLISHABLE_KEY']
+          ? { apikey: process.env['SUPABASE_PUBLISHABLE_KEY'] }
+          : {})
+      },
+      body: new Uint8Array(jpeg),
+      signal: AbortSignal.timeout(10_000)
+    })
+  } catch (error) {
+    console.error('[sender] no se pudo subir la captura directamente a Storage', error)
+    return { status: 'retry' }
+  }
+
+  if (!storageResponse.ok) {
+    console.error('[sender] Storage rechazo la captura', storageResponse.status)
+    return storageResponse.status >= 500 ? { status: 'retry' } : { status: 'unavailable' }
+  }
+  return { status: 'uploaded', path: upload.path }
+}
+
 async function flush(): Promise<void> {
   if (sending) return
   sending = true
   let retriedAfterRefresh: ProctoringEvent | null = null
   try {
     while (queue.length > 0) {
-      const event = queue[0]
+      const queued = queue[0]
+      let event = queued.event
+
+      if (queued.jpeg) {
+        const evidence = await uploadEventEvidence(event, queued.jpeg)
+        if (evidence.status === 'blocked') return
+        if (evidence.status === 'retry') {
+          queued.evidenceRetries += 1
+          if (queued.evidenceRetries < MAX_EVIDENCE_RETRIES) {
+            scheduleRetry()
+            return
+          }
+          console.error(
+            '[sender] se agotaron los reintentos de evidencia; se envia el evento sin captura',
+            event.event_type
+          )
+          queued.jpeg = undefined
+        } else if (evidence.status === 'unavailable') {
+          console.error(
+            '[sender] no se pudo adjuntar evidencia; se envia el evento sin captura',
+            event.event_type
+          )
+          queued.jpeg = undefined
+        } else {
+          event = { ...event, evidence_path: evidence.path }
+          queued.event = event
+          queued.jpeg = undefined
+        }
+      }
+
       let response: Response
       try {
         response = await fetch(API_URL, {
@@ -118,7 +287,7 @@ async function flush(): Promise<void> {
       }
 
       if (response.ok) {
-        if (queue[0] === unauthorizedEvent) unauthorizedEvent = null
+        if (queued.event === unauthorizedEvent) unauthorizedEvent = null
         queue.shift()
       } else if (response.status === 401) {
         if (retriedAfterRefresh === event) {
@@ -158,12 +327,12 @@ export function setAuthSession(session: AuthSession | null): void {
   void flush()
 }
 
-export function sendEvent(event: ProctoringEvent): void {
+export function sendEvent(event: ProctoringEvent, jpeg?: Buffer): void {
   if (!canSend()) return
   if (queue.length >= MAX_QUEUE) {
     console.error('[sender] cola llena; se descarta el evento mas antiguo')
     queue.shift()
   }
-  queue.push(event)
+  queue.push({ event, jpeg, evidenceRetries: 0 })
   void flush()
 }

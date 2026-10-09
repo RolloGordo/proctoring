@@ -5,7 +5,11 @@ export const POLL_INTERVAL_MS = 10_000
 
 // Nombres en minuscula y sin ".exe". Coinciden con el nombre exacto del proceso.
 const WATCHLIST: Record<string, string> = {
-  zoom: 'screen_share',
+  zoom: 'communication',
+  teams: 'communication',
+  'ms-teams': 'communication',
+  msteams: 'communication',
+  cpthost: 'communication_auxiliary',
   anydesk: 'remote_desktop',
   teamviewer: 'remote_desktop',
   obs: 'screen_recorder',
@@ -15,7 +19,8 @@ const WATCHLIST: Record<string, string> = {
   vmware: 'virtual_machine',
   'vmware-vmx': 'virtual_machine',
   virtualbox: 'virtual_machine',
-  virtualboxvm: 'virtual_machine'
+  virtualboxvm: 'virtual_machine',
+  vboxservice: 'virtual_machine'
 }
 
 export interface ProcessInfo {
