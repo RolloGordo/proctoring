@@ -290,7 +290,7 @@ def main() -> None:
     parser.add_argument("--aasist-config", type=Path, required=True)
     parser.add_argument("--aasist-weights", type=Path, required=True)
     parser.add_argument("--offline", action="store_true")
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=Path, default=Path("results/synthetic_voice.json"))
     args = parser.parse_args()
     rows = load_manifest(args.manifest, args.held_out_engine)
     if args.output.exists():

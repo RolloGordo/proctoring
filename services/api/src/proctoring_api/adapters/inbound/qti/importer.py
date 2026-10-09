@@ -12,9 +12,12 @@ forma de calificar. Quien llame convierte `question_type` a `QuestionType`.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+from pathlib import PurePosixPath
 from typing import Any
+from urllib.parse import unquote, urlsplit
 from xml.etree import ElementTree as ET
 
 NS = "http://www.imsglobal.org/xsd/imsqti_v2p1"
@@ -236,7 +239,7 @@ def _parse_item(item: ET.Element) -> dict[str, Any]:
     return result
 
 
-def parse_qti(xml: str | bytes) -> ImportResult:
+def _safe_root(xml: str | bytes) -> ET.Element:
     """Convert one assessmentItem or a wrapper of items to NewQuestion kwargs.
 
     Malformed/unsafe documents raise ValueError. Unsupported individual items are
@@ -266,6 +269,12 @@ def parse_qti(xml: str | bytes) -> ImportResult:
                 "El archivo esta anidado demasiado profundo o tiene demasiados elementos"
             )
         stack.extend((child, depth + 1) for child in node)
+    return root
+
+
+def parse_qti(xml: str | bytes) -> ImportResult:
+    """Parse QTI items; unsupported individual items produce diagnostics."""
+    root = _safe_root(xml)
     items = list(root.iter(_tag("assessmentItem")))
     if not items:
         raise ValueError(
@@ -297,4 +306,81 @@ def parse_qti(xml: str | bytes) -> ImportResult:
                 )
         except ValueError as error:
             issues.append(ImportIssue(identifier, str(error)))
+    return ImportResult(tuple(questions), tuple(issues), tuple(warnings))
+
+
+def api_questions(result: ImportResult) -> list[dict[str, Any]]:
+    """Return JSON-ready questions for the existing bank endpoint."""
+    questions = []
+    for item in result.questions:
+        payload = item.copy()
+        payload["options"] = [
+            {"option_text": text, "is_correct": correct} for text, correct in item["options"]
+        ]
+        for key in ("points", "correct_numeric_answer", "numeric_tolerance"):
+            if payload[key] is not None:
+                payload[key] = str(payload[key])
+        questions.append(payload)
+    return questions
+
+
+def parse_manifest(manifest: str | bytes, resources: Mapping[str, bytes]) -> ImportResult:
+    """Pure IMS package import: caller supplies file bytes, never URLs or disk access.
+
+    A manifest only contains references. Missing/unsupported resources are reported;
+    this does not execute SCORM or import arbitrary SCORM learning objects.
+    """
+    root = _safe_root(manifest)
+    if root.tag != "{http://www.imsglobal.org/xsd/imscp_v1p1}manifest":
+        raise ValueError("Esto no es un manifiesto de paquete IMS")
+    if len(resources) > 200 or sum(map(len, resources.values())) > 20_000_000:
+        raise ValueError("El paquete pasa de 200 archivos o 20 MB")
+    questions: list[dict[str, Any]] = []
+    issues: list[ImportIssue] = []
+    warnings: list[ImportIssue] = []
+    seen: set[str] = set()
+    entries = root.findall("{*}resources/{*}resource")
+    if len(entries) > 200:
+        raise ValueError("El paquete declara demasiados recursos")
+    for resource in entries:
+        identifier = resource.get("identifier", "")
+        href = unquote(resource.get("href", ""))
+        try:
+            if resource.get("type") != "imsqti_item_xmlv2p1":
+                raise ValueError("Este recurso no es una pregunta QTI 2.1, asi que no se importa")
+            path = PurePosixPath(href)
+            parsed = urlsplit(href)
+            if (
+                not href
+                or parsed.scheme
+                or parsed.netloc
+                or parsed.query
+                or parsed.fragment
+                or path.is_absolute()
+                or "\\" in href
+                or ".." in path.parts
+                or ":" in href
+                or "\x00" in href
+            ):
+                raise ValueError("El paquete apunta a una ruta que no es segura")
+            if any("{http://www.w3.org/XML/1998/namespace}base" in n.attrib for n in root.iter()):
+                raise ValueError(
+                    "El manifiesto usa xml:base, que no se acepta: usa rutas relativas del paquete"
+                )
+            key = path.as_posix()
+            if key in seen:
+                raise ValueError("El manifiesto declara el mismo recurso dos veces")
+            seen.add(key)
+            if key not in resources:
+                raise ValueError("El paquete no trae el archivo al que apunta el manifiesto")
+            result = parse_qti(resources[key])
+            if len(questions) + len(result.questions) > 200:
+                raise ValueError("El paquete pasa de 200 preguntas")
+            questions.extend(result.questions)
+            issues.extend(result.issues)
+            warnings.extend(result.warnings)
+        except ValueError as error:
+            issues.append(ImportIssue(identifier, str(error)))
+    if not entries:
+        issues.append(ImportIssue("manifest", "El manifiesto no declara ningun recurso"))
     return ImportResult(tuple(questions), tuple(issues), tuple(warnings))

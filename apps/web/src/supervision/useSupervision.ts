@@ -89,9 +89,17 @@ export function useSupervision({
         const listos: Detector[] = []
         for (const detector of detectores) {
           try {
-            await detector.preparar?.()
+            await detector.preparar?.({
+              stream: camara.video.srcObject as MediaStream,
+              captureSender: () => emisor.captureSender()
+            })
+            if (cancelado) {
+              detector.detener?.()
+              return
+            }
             listos.push(detector)
           } catch (fallo) {
+            detector.detener?.()
             console.error(`[supervisión] no se pudo preparar ${detector.nombre}`, fallo)
           }
         }
@@ -100,6 +108,7 @@ export function useSupervision({
         temporizador = setInterval(() => {
           const ahoraMs = Date.now()
           for (const detector of listos) {
+            if (detector.ownsSegments) continue
             const seguimiento = seguimientos.get(detector.nombre)
             if (!seguimiento) continue
             let veredicto
@@ -146,7 +155,7 @@ export function useSupervision({
       for (const [nombre, seguimiento] of seguimientos) {
         const episodio = seguimiento.cerrar()
         const detector = detectores.find((d) => d.nombre === nombre)
-        if (episodio && detector) {
+        if (episodio && detector && !detector.ownsSegments) {
           emisor.emitir({
             evento: detector.evento,
             inicioMs: episodio.inicioMs,

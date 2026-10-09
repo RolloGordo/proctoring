@@ -1,10 +1,23 @@
 # `services/ai` — Servicio de IA de audio (FastAPI + workers RQ)
 
 **Responsable:** Zevallos Bocanegra, Pierreluiggi
-**Backlog:** EN-007 / TA-00x (detección de asistente de IA por voz, importación QTI)
+**Backlog:** SP-007 / TA-008 / TA-009 (previos); TA-012 y TA-013 (worker y similitud).
 
-Esta carpeta está preparada pero **sin implementar**: es tuya. Lee [`CLAUDE.md`](../../CLAUDE.md)
-§1 y §3 antes de empezar.
+**Actualización local 09/10/2026:** hay evaluadores P1/P2, worker P3, integración
+de audio web P4 y parser QTI P5. No se han completado las evaluaciones de datasets
+ni la aceptación con infraestructura real. Los apartados de planificación que
+siguen proceden del andamiaje inicial; consultar primero estas guías vigentes:
+
+- [P1: similitud](docs/P1-similitud.md).
+- [P2: voz sintética](docs/P2-voz-sintetica.md).
+- [P3: worker](docs/P3-worker-audio.md).
+- [P4: VAD web](docs/P4-vad-web.md).
+- [P5: QTI y manifiestos](docs/P5-qti-actualizacion.md).
+
+El Dockerfile heredado sigue siendo provisional y **no instala ni copia todo lo
+necesario para este worker**. La ejecución comprobada es local con uv. La imagen
+y composición Docker deben integrarse con Héctor; no se declaran verificadas.
+Lee [`CLAUDE.md`](../../CLAUDE.md) §1 y §3 antes de integrar.
 
 ## Objetivo
 
