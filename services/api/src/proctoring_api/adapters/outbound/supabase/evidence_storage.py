@@ -41,3 +41,16 @@ class SupabaseEvidenceStorage:
             token=str(token) if token else None,
             expires_in_seconds=UPLOAD_EXPIRY_SECONDS,
         )
+
+    def create_read_url(self, bucket: str, path: str, expires_in_seconds: int) -> str:
+        response = cast(
+            "dict[str, Any]",
+            self._client.storage.from_(bucket).create_signed_url(path, expires_in_seconds),
+        )
+        # Las mismas dos formas de la clave que en la subida: el SDK las ha
+        # cambiado entre versiones y una actualizacion no puede romper esto en
+        # silencio.
+        url = response.get("signed_url") or response.get("signedUrl") or ""
+        if not url:
+            raise RuntimeError(f"Storage no devolvio URL de lectura para {bucket}/{path}")
+        return str(url)

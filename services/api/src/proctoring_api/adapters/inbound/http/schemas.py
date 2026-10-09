@@ -805,6 +805,9 @@ class CaseResponse(BaseModel):
     alerts: list[AlertResponse]
     decisions: list[DecisionResponse]
     risk: RiskResponse
+    #: Un analisis por fragmento de audio con habla. Es lo que deja al docente
+    #: escuchar el fragmento marcado en vez de leer solo "posible consulta".
+    audio_analyses: list[AudioAnalysisResponse] = []
 
     @classmethod
     def from_entity(cls, case: CaseFile) -> CaseResponse:
@@ -821,6 +824,14 @@ class CaseResponse(BaseModel):
             alerts=[AlertResponse.from_entity(a) for a in case.alerts],
             decisions=[DecisionResponse.from_entity(d) for d in case.decisions],
             risk=RiskResponse.from_entity(case.risk),
+            # `alerted` no se guarda con el analisis: se deduce de si la API
+            # creo una alerta para ese evento, que es quien lo decide.
+            audio_analyses=[
+                AudioAnalysisResponse.from_entity(
+                    a, alerted=a.event_id in {al.event_id for al in case.alerts}
+                )
+                for a in case.audio_analyses
+            ],
         )
 
 
@@ -908,6 +919,9 @@ class AudioAnalysisResponse(BaseModel):
     synthetic_voice_score: float | None
     processing_ms: int | None
     processed_at: datetime
+    #: Con que pregunta coincidio lo que dijo. Sin esto el docente lee un numero
+    #: de similitud sin saber contra que se comparo.
+    matched_question_id: UUID | None = None
     #: `True` solo si se cumplieron **las dos** condiciones. Lo decide la API.
     alerted: bool
 
@@ -920,6 +934,7 @@ class AudioAnalysisResponse(BaseModel):
             synthetic_voice_score=analysis.synthetic_voice_score,
             processing_ms=analysis.processing_ms,
             processed_at=analysis.processed_at,
+            matched_question_id=analysis.matched_question_id,
             alerted=alerted,
         )
 
@@ -1163,3 +1178,20 @@ class QtiImportResponse(BaseModel):
             ],
             dry_run=dry_run,
         )
+
+
+class EvidenceReadUrlRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/sessions/{id}/students/{id}/evidence-url`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    #: La ruta tal cual vino en el evento o en el analisis de audio.
+    path: str = Field(min_length=1, max_length=400)
+    kind: EvidenceKind
+
+
+class EvidenceReadUrlResponse(BaseModel):
+    """Permiso temporal para **ver** un archivo de evidencia."""
+
+    url: str
+    expires_in_seconds: int

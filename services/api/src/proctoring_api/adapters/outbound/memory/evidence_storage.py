@@ -34,6 +34,10 @@ class InMemoryEvidenceStorage:
             expires_in_seconds=FAKE_EXPIRY_SECONDS,
         )
 
+    def create_read_url(self, bucket: str, path: str, expires_in_seconds: int) -> str:
+        self._issued.append((bucket, path))
+        return f"{self._base_url}/{bucket}/{path}?leer={expires_in_seconds}"
+
     @property
     def issued(self) -> list[tuple[str, str]]:
         """Permisos entregados, como (bucket, path). Solo para pruebas."""

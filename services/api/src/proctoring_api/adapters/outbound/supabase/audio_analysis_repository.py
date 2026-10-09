@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
@@ -38,6 +39,18 @@ class SupabaseAudioAnalysisRepository:
         )
         rows = cast("list[dict[str, Any]]", response.data)
         return _to_entity(rows[0]) if rows else None
+
+    def list_by_events(self, event_ids: Sequence[UUID]) -> Sequence[AudioAnalysis]:
+        if not event_ids:
+            return []
+        response = (
+            self._client.table(TABLE)
+            .select(COLUMNS)
+            .in_("event_id", [str(i) for i in event_ids])
+            .execute()
+        )
+        rows = cast("list[dict[str, Any]]", response.data)
+        return [_to_entity(row) for row in rows]
 
 
 def _to_row(analysis: AudioAnalysis) -> dict[str, Any]:

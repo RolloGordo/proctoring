@@ -73,6 +73,7 @@ from proctoring_api.application.use_cases.manage_questions import (
     GetExamQuestions,
     ListSessionQuestions,
 )
+from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.application.use_cases.review_case import (
     ListSessionDecisions,
@@ -323,6 +324,11 @@ def get_import_qti(request: Request) -> ImportQtiIntoBank:
     return use_case
 
 
+def get_evidence_read_url(request: Request) -> CreateEvidenceReadUrl:
+    use_case: CreateEvidenceReadUrl = request.app.state.evidence_read_url
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -400,3 +406,4 @@ DeleteExamSessionDep = Annotated[DeleteExamSession, Depends(get_delete_session)]
 UpdateQuestionDep = Annotated[UpdateQuestion, Depends(get_update_question)]
 DeleteQuestionDep = Annotated[DeleteQuestion, Depends(get_delete_question)]
 ImportQtiDep = Annotated[ImportQtiIntoBank, Depends(get_import_qti)]
+EvidenceReadUrlDep = Annotated[CreateEvidenceReadUrl, Depends(get_evidence_read_url)]

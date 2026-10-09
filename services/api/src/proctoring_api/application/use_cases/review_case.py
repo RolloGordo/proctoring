@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from proctoring_api.application.ports.alert_repository import AlertRepository
+from proctoring_api.application.ports.audio_analysis_repository import (
+    AudioAnalysisRepository,
+)
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.decision_repository import DecisionRepository
 from proctoring_api.application.ports.event_repository import EventRepository
@@ -16,6 +19,7 @@ from proctoring_api.application.ports.profile_repository import ProfileRepositor
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.application.use_cases.create_exam_session import DEFAULT_DEV_TEACHER_ID
 from proctoring_api.domain.alert import Alert
+from proctoring_api.domain.audio_analysis import AudioAnalysis
 from proctoring_api.domain.decision import Decision, DecisionType
 from proctoring_api.domain.errors import AuthorizationError
 from proctoring_api.domain.event import ProctoringEvent
@@ -35,6 +39,10 @@ class CaseFile:
     #: Del más reciente al más antiguo. La primera es la vigente.
     decisions: Sequence[Decision]
     risk: RiskAssessment
+    #: Lo que la IA midió sobre cada fragmento de audio del estudiante. Es lo
+    #: que permite al docente escuchar el fragmento marcado y ver con qué se
+    #: comparó, en vez de leer solo "posible consulta a IA".
+    audio_analyses: Sequence[AudioAnalysis] = ()
 
 
 class ReviewStudentCase:
@@ -52,6 +60,7 @@ class ReviewStudentCase:
         participants: ParticipantRepository,
         profiles: ProfileRepository,
         decisions: DecisionRepository,
+        audio_analyses: AudioAnalysisRepository | None = None,
     ) -> None:
         self._events = events
         self._alerts = alerts
@@ -59,6 +68,7 @@ class ReviewStudentCase:
         self._participants = participants
         self._profiles = profiles
         self._decisions = decisions
+        self._audio_analyses = audio_analyses
 
     def execute(
         self, session_id: UUID, student_id: UUID, *, actor: AuthenticatedUser | None = None
@@ -85,6 +95,11 @@ class ReviewStudentCase:
             alerts=self._alerts.list_by_session(session_id, student_id),
             decisions=self._decisions.list_by_session(session_id, student_id),
             risk=assess_risk(eventos),
+            audio_analyses=(
+                self._audio_analyses.list_by_events([e.id for e in eventos])
+                if self._audio_analyses is not None
+                else ()
+            ),
         )
 
 
