@@ -33,6 +33,7 @@ export function EditarSesion() {
   const [preset, setPreset] = useState<SupervisionPreset>('standard')
   const [notaMaxima, setNotaMaxima] = useState('20')
   const [descripcion, setDescripcion] = useState('')
+  const [guardarCodigo, setGuardarCodigo] = useState(false)
 
   useEffect(() => {
     api
@@ -46,6 +47,7 @@ export function EditarSesion() {
         setPreset(datos.preset === 'custom' ? 'standard' : datos.preset)
         setNotaMaxima(String(Number(datos.max_score)))
         setDescripcion(datos.description ?? '')
+        setGuardarCodigo(datos.reveal_code_at_start)
       })
       .catch((fallo: Error) => setError(fallo.message))
   }, [id, token])
@@ -65,6 +67,7 @@ export function EditarSesion() {
           entry_tolerance_minutes: tolerancia,
           preset,
           max_score: notaMaxima,
+          reveal_code_at_start: guardarCodigo,
           // Vaciar la descripción necesita el `clear_`: con `undefined` el
           // backend entiende "no lo cambies".
           ...(descripcion.trim()
@@ -122,7 +125,13 @@ export function EditarSesion() {
         <div>
           <h1>Editar examen</h1>
           <p className="subtitulo">
-            Código <strong>{sesion.access_code}</strong> — no cambia aunque edites el resto
+            {sesion.access_code === null ? (
+              <>El código se revela al empezar el examen</>
+            ) : (
+              <>
+                Código <strong>{sesion.access_code}</strong> — no cambia aunque edites el resto
+              </>
+            )}
           </p>
         </div>
         <Link to={`/sesiones/${id}`} className="boton boton-secundario">
@@ -206,6 +215,20 @@ export function EditarSesion() {
                 una pregunta y 1 a otra sin preocuparte de que sumen {notaMaxima || '20'}.
                 Con estudiantes ya dentro, la nota máxima deja de poderse cambiar.
               </p>
+
+              <div className="campo">
+                <label className="casilla">
+                  <input
+                    type="checkbox"
+                    checked={guardarCodigo}
+                    onChange={(e) => setGuardarCodigo(e.target.checked)}
+                  />
+                  <span>Mostrar el código de acceso solo al empezar</span>
+                </label>
+                <p className="ayuda">
+                  Hasta la hora de inicio no se muestra en ninguna pantalla, tampoco en la tuya.
+                </p>
+              </div>
 
               <label className="campo">
                 <span>Nivel de supervisión</span>

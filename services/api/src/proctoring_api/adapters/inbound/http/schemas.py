@@ -203,6 +203,10 @@ class ExamSessionRequest(BaseModel):
     shuffle_questions: bool = True
     shuffle_options: bool = True
     allow_back_navigation: bool = True
+    #: Guarda el codigo de acceso hasta la hora de inicio. Un codigo que se
+    #: puede leer con dos dias de antelacion es un codigo que circula con dos
+    #: dias de antelacion.
+    reveal_code_at_start: bool = False
     #: Cuantas preguntas recibe cada estudiante. Solo aplica con bancos
     #: atados; sin ellos el examen usa sus propias preguntas, todas.
     question_pool_size: int | None = Field(default=None, gt=0, le=500)
@@ -219,18 +223,19 @@ class ExamSessionSummary(BaseModel):
     title: str
     starts_at: datetime
     duration_minutes: int
-    access_code: str
+    #: `None` mientras el examen guarde su codigo (ver `reveal_code_at_start`).
+    access_code: str | None
     preset: SupervisionPreset
     status: SessionStatus
 
     @classmethod
-    def from_entity(cls, session: ExamSession) -> ExamSessionSummary:
+    def from_entity(cls, session: ExamSession, now: datetime) -> ExamSessionSummary:
         return cls(
             id=session.id,
             title=session.title,
             starts_at=session.starts_at,
             duration_minutes=session.duration_minutes,
-            access_code=session.access_code,
+            access_code=session.access_code if session.code_visible_at(now) else None,
             preset=session.preset,
             status=session.status,
         )
@@ -252,20 +257,26 @@ class ExamSessionResponse(BaseModel):
     ends_at: datetime
     duration_minutes: int
     entry_tolerance_minutes: int
-    access_code: str
+    #: `None` mientras el examen guarde su codigo.
+    #:
+    #: Se omite en la respuesta, no solo en la pantalla: si viniera en el JSON,
+    #: guardarlo seria una decoracion. El docente lo recibe en cuanto empieza el
+    #: examen, que es cuando lo necesita para dictarlo.
+    access_code: str | None
     preset: SupervisionPreset
     status: SessionStatus
     max_attempts: int
     shuffle_questions: bool
     shuffle_options: bool
     allow_back_navigation: bool
+    reveal_code_at_start: bool
     question_pool_size: int | None
     max_score: Decimal
     cancelled_at: datetime | None
     modules: dict[SupervisionModule, dict[str, Any]]
 
     @classmethod
-    def from_entity(cls, session: ExamSession) -> ExamSessionResponse:
+    def from_entity(cls, session: ExamSession, now: datetime) -> ExamSessionResponse:
         return cls(
             id=session.id,
             teacher_id=session.teacher_id,
@@ -276,13 +287,14 @@ class ExamSessionResponse(BaseModel):
             ends_at=session.ends_at,
             duration_minutes=session.duration_minutes,
             entry_tolerance_minutes=session.entry_tolerance_minutes,
-            access_code=session.access_code,
+            access_code=session.access_code if session.code_visible_at(now) else None,
             preset=session.preset,
             status=session.status,
             max_attempts=session.max_attempts,
             shuffle_questions=session.shuffle_questions,
             shuffle_options=session.shuffle_options,
             allow_back_navigation=session.allow_back_navigation,
+            reveal_code_at_start=session.reveal_code_at_start,
             question_pool_size=session.question_pool_size,
             max_score=session.max_score,
             cancelled_at=session.cancelled_at,
@@ -1101,6 +1113,7 @@ class UpdateExamSessionRequest(BaseModel):
     shuffle_questions: bool | None = None
     shuffle_options: bool | None = None
     allow_back_navigation: bool | None = None
+    reveal_code_at_start: bool | None = None
     clear_description: bool = False
     clear_course: bool = False
     #: Vuelve a "todas las preguntas del banco".
@@ -1120,6 +1133,7 @@ class UpdateExamSessionRequest(BaseModel):
             shuffle_questions=self.shuffle_questions,
             shuffle_options=self.shuffle_options,
             allow_back_navigation=self.allow_back_navigation,
+            reveal_code_at_start=self.reveal_code_at_start,
             clear_description=self.clear_description,
             clear_course=self.clear_course,
             clear_pool_size=self.clear_pool_size,

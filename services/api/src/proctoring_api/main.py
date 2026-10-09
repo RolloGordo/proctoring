@@ -488,6 +488,9 @@ def create_app(
     profile_repository = _build_profile_repository(settings, client)
     job_queue = _build_job_queue(settings)
     clock = clock or SystemClock()
+    # Lo necesita la capa HTTP para decidir si el codigo de acceso ya se puede
+    # mostrar: es una respuesta que depende de la hora.
+    app.state.clock = clock
 
     app.state.settings = settings
     app.state.event_repository = event_repository

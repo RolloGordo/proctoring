@@ -203,6 +203,14 @@ class ExamSession:
     question_pool_size: int | None = None
     shuffle_options: bool = True
     allow_back_navigation: bool = True
+    #: Si el codigo de acceso se guarda hasta la hora de inicio.
+    #:
+    #: Existe porque un codigo que el docente puede leer con dos dias de
+    #: antelacion es un codigo que puede circular con dos dias de antelacion, y
+    #: entonces entra a la sala quien no deberia. Con esto activado ni la API lo
+    #: devuelve antes de empezar: ocultarlo solo en la pantalla no serviria de
+    #: nada, porque viene en el JSON.
+    reveal_code_at_start: bool = False
     #: Sobre cuanto se califica. Los puntos de las preguntas se reparten
     #: proporcionalmente sobre esta nota, asi que el docente puede poner 2 puntos
     #: a una pregunta y 1 a otra sin hacer cuentas para que sumen 20.
@@ -228,6 +236,7 @@ class ExamSession:
         question_pool_size: int | None = None,
         shuffle_options: bool = True,
         allow_back_navigation: bool = True,
+        reveal_code_at_start: bool = False,
         max_score: Decimal = DEFAULT_MAX_SCORE,
         modules: dict[SupervisionModule, dict[str, Any]] | None = None,
         session_id: UUID | None = None,
@@ -290,9 +299,18 @@ class ExamSession:
             question_pool_size=question_pool_size,
             shuffle_options=shuffle_options,
             allow_back_navigation=allow_back_navigation,
+            reveal_code_at_start=reveal_code_at_start,
             max_score=max_score,
             modules=resolved,
         )
+
+    def code_visible_at(self, moment: datetime) -> bool:
+        """Si el codigo de acceso se puede mostrar en ese instante.
+
+        Sin `reveal_code_at_start`, siempre: es como funcionaban los examenes
+        antes de que existiera la opcion, y los ya creados siguen igual.
+        """
+        return not self.reveal_code_at_start or moment >= self.starts_at
 
     @property
     def ends_at(self) -> datetime:
@@ -360,6 +378,7 @@ class ExamSession:
         shuffle_questions: bool | None = None,
         shuffle_options: bool | None = None,
         allow_back_navigation: bool | None = None,
+        reveal_code_at_start: bool | None = None,
         clear_description: bool = False,
         clear_course: bool = False,
         clear_pool_size: bool = False,
@@ -430,6 +449,11 @@ class ExamSession:
                 allow_back_navigation
                 if allow_back_navigation is not None
                 else self.allow_back_navigation
+            ),
+            reveal_code_at_start=(
+                reveal_code_at_start
+                if reveal_code_at_start is not None
+                else self.reveal_code_at_start
             ),
             max_score=max_score if max_score is not None else self.max_score,
             modules=modulos,

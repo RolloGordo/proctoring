@@ -33,6 +33,7 @@ export function NuevaSesion() {
   const [fecha, setFecha] = useState(valorFechaPorDefecto())
   const [duracion, setDuracion] = useState(90)
   const [tolerancia, setTolerancia] = useState(10)
+  const [guardarCodigo, setGuardarCodigo] = useState(false)
   const [preset, setPreset] = useState<SupervisionPreset>('standard')
   const [descripcion, setDescripcion] = useState('')
   const [cursos, setCursos] = useState<Course[]>([])
@@ -86,7 +87,8 @@ export function NuevaSesion() {
           description: descripcion.trim() || null,
           course_id: cursoId || null,
           // Vacío significa "todas las del banco".
-          question_pool_size: cuantas ? Number(cuantas) : null
+          question_pool_size: cuantas ? Number(cuantas) : null,
+          reveal_code_at_start: guardarCodigo
         },
         token
       )
@@ -181,6 +183,22 @@ export function NuevaSesion() {
                   onChange={(e) => setTolerancia(Number(e.target.value))}
                 />
               </label>
+            </div>
+
+            <div className="campo">
+              <label className="casilla">
+                <input
+                  type="checkbox"
+                  checked={guardarCodigo}
+                  onChange={(e) => setGuardarCodigo(e.target.checked)}
+                />
+                <span>Mostrar el código de acceso solo al empezar</span>
+              </label>
+              <p className="ayuda">
+                Hasta la hora de inicio no se muestra en ninguna pantalla, tampoco en la tuya. Un
+                código que puedes leer con dos días de antelación es un código que puede circular
+                con dos días de antelación.
+              </p>
             </div>
 
             <div className="campo">

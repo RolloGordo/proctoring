@@ -13,6 +13,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.use_cases.ai_jobs import (
     GetAudioJob,
     GetFaceJob,
@@ -122,6 +123,11 @@ def get_create_exam_session(request: Request) -> CreateExamSession:
 def get_list_teacher_sessions(request: Request) -> ListTeacherSessions:
     use_case: ListTeacherSessions = request.app.state.list_teacher_sessions
     return use_case
+
+
+def get_clock(request: Request) -> Clock:
+    reloj: Clock = request.app.state.clock
+    return reloj
 
 
 def get_exam_session(request: Request) -> GetExamSession:
@@ -363,6 +369,7 @@ ListSessionAlertsDep = Annotated[ListSessionAlerts, Depends(get_list_session_ale
 CurrentUserDep = Annotated[AuthenticatedUser | None, Depends(get_current_user)]
 CreateExamSessionDep = Annotated[CreateExamSession, Depends(get_create_exam_session)]
 ListTeacherSessionsDep = Annotated[ListTeacherSessions, Depends(get_list_teacher_sessions)]
+ClockDep = Annotated[Clock, Depends(get_clock)]
 GetExamSessionDep = Annotated[GetExamSession, Depends(get_exam_session)]
 JoinExamSessionDep = Annotated[JoinExamSession, Depends(get_join_exam_session)]
 AddQuestionsDep = Annotated[AddQuestions, Depends(get_add_questions)]

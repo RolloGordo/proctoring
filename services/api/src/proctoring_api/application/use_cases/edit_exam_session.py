@@ -60,6 +60,7 @@ class ExamSessionChanges:
     shuffle_questions: bool | None = None
     shuffle_options: bool | None = None
     allow_back_navigation: bool | None = None
+    reveal_code_at_start: bool | None = None
     clear_description: bool = False
     clear_course: bool = False
     clear_pool_size: bool = False
@@ -143,6 +144,7 @@ class UpdateExamSession:
             shuffle_questions=changes.shuffle_questions,
             shuffle_options=changes.shuffle_options,
             allow_back_navigation=changes.allow_back_navigation,
+            reveal_code_at_start=changes.reveal_code_at_start,
             clear_description=changes.clear_description,
             clear_course=changes.clear_course,
             clear_pool_size=changes.clear_pool_size,

@@ -52,6 +52,7 @@ class CreateExamSessionInput:
     question_pool_size: int | None = None
     shuffle_options: bool = True
     allow_back_navigation: bool = True
+    reveal_code_at_start: bool = False
     #: Sobre cuanto se califica. 20 por defecto, que es la escala peruana.
     max_score: Decimal = DEFAULT_MAX_SCORE
     #: Solo se usa con `preset = custom`.
@@ -98,6 +99,7 @@ class CreateExamSession:
             question_pool_size=data.question_pool_size,
             shuffle_options=data.shuffle_options,
             allow_back_navigation=data.allow_back_navigation,
+            reveal_code_at_start=data.reveal_code_at_start,
             max_score=data.max_score,
             modules=data.modules,
         )

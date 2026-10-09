@@ -4,6 +4,7 @@ import { api, type ExamSessionSummary } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { ChipEstado } from '../components/ChipEstado'
 import { estadoExamen, fechaLarga, nombrePreset } from '../lib/formato'
+import { CodigoAcceso } from '../components/CodigoAcceso'
 
 export function Sesiones() {
   const { token } = useAuth()
@@ -76,7 +77,7 @@ export function Sesiones() {
                   <td>{sesion.duration_minutes} min</td>
                   <td>{nombrePreset(sesion.preset)}</td>
                   <td>
-                    <span className="codigo-acceso">{sesion.access_code}</span>
+                    <CodigoAcceso codigo={sesion.access_code} etiqueta={null} />
                   </td>
                   <td>
                     <ChipEstado

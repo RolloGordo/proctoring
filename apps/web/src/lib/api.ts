@@ -28,7 +28,13 @@ export interface ExamSessionSummary {
   title: string
   starts_at: string
   duration_minutes: number
-  access_code: string
+  /**
+   * `null` mientras el examen guarde su código (`reveal_code_at_start`).
+   *
+   * No es que la pantalla lo esconda: la API no lo manda. Un código que se
+   * puede leer con dos días de antelación circula con dos días de antelación.
+   */
+  access_code: string | null
   preset: SupervisionPreset
   status: SessionStatus
 }
@@ -43,6 +49,8 @@ export interface ExamSession extends ExamSessionSummary {
   shuffle_questions: boolean
   shuffle_options: boolean
   allow_back_navigation: boolean
+  /** Guarda el código de acceso hasta la hora de inicio. */
+  reveal_code_at_start: boolean
   question_pool_size: number | null
   /** Sobre cuánto se califica. 20 por defecto: la escala peruana. */
   max_score: string
@@ -330,6 +338,8 @@ export interface NewExamSession {
   question_pool_size?: number | null
   /** Sobre cuánto se califica. 20 por defecto: es la escala peruana. */
   max_score?: string | number | null
+  /** Guarda el código de acceso hasta la hora de inicio. */
+  reveal_code_at_start?: boolean
 }
 
 /**
@@ -352,6 +362,7 @@ export interface ExamSessionChanges {
   shuffle_questions?: boolean
   shuffle_options?: boolean
   allow_back_navigation?: boolean
+  reveal_code_at_start?: boolean
   clear_description?: boolean
   clear_course?: boolean
   clear_pool_size?: boolean

@@ -926,3 +926,10 @@ a {
   font-size: 0.8125rem;
   color: var(--tinta-media);
 }
+
+/* Un código guardado hasta la hora de inicio. Se marca con puntos y no con un
+   hueco: un espacio vacío donde debería haber un código se lee como un fallo. */
+.codigo-guardado {
+  color: var(--tinta-suave);
+  letter-spacing: 0.1em;
+}

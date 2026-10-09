@@ -4,6 +4,7 @@ import { ChipEstado } from '../components/ChipEstado'
 import { api, type Alert, type ExamSessionSummary } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { cuandoEmpieza, estadoExamen, fechaLarga, nombrePreset, soloHora } from '../lib/formato'
+import { CodigoAcceso } from '../components/CodigoAcceso'
 
 /** Cuántos exámenes en curso se consultan por alertas. Cada uno es una petición. */
 const MAX_CON_ALERTAS = 3
@@ -243,10 +244,7 @@ function TarjetaExamen({
         )}
       </div>
       <div className="tarjeta-examen-acciones">
-        <div className="codigo-bloque">
-          <span className="codigo-acceso">{examen.access_code}</span>
-          <p className="ayuda">Código de acceso</p>
-        </div>
+        <CodigoAcceso codigo={examen.access_code} />
         <div className="fila">
           <Link to={`/sesiones/${examen.id}`} className="boton">
             {principal}
