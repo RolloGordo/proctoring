@@ -1,0 +1,6 @@
+# Dependencias para SPEC-005 (instalación manual con uv pip en el worker).
+# No se añaden a pyproject para no modificar el entorno de audio ni su uv.lock.
+insightface==0.7.3
+onnxruntime>=1.19,<2
+opencv-python-headless>=4.10,<5
+numpy>=1.26,<3

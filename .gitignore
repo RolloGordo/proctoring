@@ -120,3 +120,9 @@ pnpm-debug.log*
 # Vite: variables locales del desarrollador
 .env.local
 .env.*.local
+
+# MediaPipe local: distribuir los modelos por instalación, nunca versionarlos.
+apps/web/public/mediapipe/
+apps/web/spikes/vision/datasets/etiquetas/
+apps/web/spikes/vision/datasets/predictions/
+*.task

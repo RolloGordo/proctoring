@@ -32,6 +32,12 @@ export function detectoresDe(modulos: Record<string, Record<string, unknown>>): 
   const detectores: Detector[] = []
   const yaPuestos = new Set<string>()
   for (const [modulo, ajustes] of Object.entries(modulos)) {
+    // `face_absent` no es un módulo elegible en el contrato, sino parte de gaze.
+    if (modulo === 'gaze' && !yaPuestos.has('rostro-ausente')) {
+      const ausente = new DetectorRostroAusente(ajustes as AjustesRostro)
+      yaPuestos.add(ausente.nombre)
+      detectores.push(ausente)
+    }
     const construir = CONSTRUCTORES[modulo]
     if (!construir) continue
     const detector = construir(ajustes ?? {})
