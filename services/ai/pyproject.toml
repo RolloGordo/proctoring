@@ -14,6 +14,19 @@ dependencies = [
     "redis>=5.0,<7",
 ]
 
+# Los modelos pesados son opcionales a proposito: el CI y el worker arrancan sin
+# ellos, y solo quien corre un experimento los instala. Cada extra corresponde a
+# un spike distinto; instalarlos todos no hace falta para nada.
+[project.optional-dependencies]
+similarity = [
+    "sentence-transformers>=3,<6",
+]
+voice = [
+    "scikit-learn>=1.5,<2",
+    "torch>=2.6,<3",
+    "transformers>=5,<6",
+]
+
 [dependency-groups]
 dev = [
     "mypy>=1.15,<2",
@@ -31,11 +44,21 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+# Pesos de modelos descargados: no son codigo nuestro.
+extend-exclude = ["models"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
 
+[tool.mypy]
+exclude = ["^models/"]
+
 # faster-whisper does not ship type stubs; keep checks enabled for our own code.
 [[tool.mypy.overrides]]
 module = ["faster_whisper.*"]
+ignore_missing_imports = true
+
+# Las librerias de modelos opcionales no estan en el CI ligero a proposito.
+[[tool.mypy.overrides]]
+module = ["sentence_transformers.*", "torch.*", "transformers.*", "sklearn.*"]
 ignore_missing_imports = true

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" identifier="essay" title="essay" adaptive="false" timeDependent="false">
+  <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="string"></responseDeclaration>
+  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float" normalMaximum="1"/>
+  <itemBody><p>Explica la integridad referencial.</p><extendedTextInteraction responseIdentifier="RESPONSE"/></itemBody>
+
+</assessmentItem>
