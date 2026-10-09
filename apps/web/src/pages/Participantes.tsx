@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { CamaraEnVivo } from '../components/CamaraEnVivo'
 import { api, type Decision, type Participant, type VerificationStatus } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
@@ -27,13 +28,18 @@ const ESTADOS: Record<VerificationStatus, { nombre: string; tono: 'low' | 'mediu
  */
 export function Participantes() {
   const { id = '' } = useParams()
-  const { token } = useAuth()
+  const { token, userId } = useAuth()
 
   const [participantes, setParticipantes] = useState<Participant[]>()
   const [error, setError] = useState<string>()
   const [enVivo, setEnVivo] = useState(false)
   const [revisando, setRevisando] = useState<string>()
   const [decisiones, setDecisiones] = useState<Decision[]>([])
+  const [monitoreoActivo, setMonitoreoActivo] = useState(false)
+  // El estudiante cuya cámara se está mirando. Uno a la vez: abrir el canal es
+  // lo que hace que ese estudiante empiece a enviar, así que no se abren los de
+  // todos «por si acaso». La cuadrícula completa es HU-015.
+  const [mirando, setMirando] = useState<string>()
 
   const cargar = useCallback(() => {
     api
@@ -43,6 +49,15 @@ export function Participantes() {
   }, [id, token])
 
   useEffect(cargar, [cargar])
+
+  // Si el docente activó el monitoreo en vivo para este examen. Si no está
+  // activo no se ofrece mirar: el estudiante no aceptó eso.
+  useEffect(() => {
+    api
+      .getSession(id, token)
+      .then((sesion) => setMonitoreoActivo('live_monitoring' in sesion.modules))
+      .catch(() => undefined)
+  }, [id, token])
 
   // Las decisiones son un complemento de la sala: si fallan, la sala sigue sirviendo.
   useEffect(() => {
@@ -122,6 +137,30 @@ export function Participantes() {
 
       {error && <p className="aviso">{error}</p>}
 
+      {mirando && userId && (
+        <div className="tarjeta">
+          <div className="tarjeta-cuerpo">
+            <div className="encabezado-seccion">
+              <h2>Cámara en vivo</h2>
+              <button type="button" className="boton boton-texto" onClick={() => setMirando(undefined)}>
+                Dejar de mirar
+              </button>
+            </div>
+            <CamaraEnVivo
+              sessionId={id}
+              studentId={mirando}
+              teacherId={userId}
+              nombre={nombreDe(participantes, mirando)}
+            />
+            <p className="ayuda">
+              No se está grabando. La imagen viaja y se pierde: solo se guardan las capturas de los
+              eventos que generaron alerta. Mientras no mires, el equipo del estudiante no envía
+              nada, y él ve en su pantalla que lo estás mirando.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="tarjeta">
         {participantes?.length === 0 ? (
           <div className="vacio">
@@ -190,7 +229,18 @@ export function Participantes() {
                   </td>
                   <td>
                     {participante.submitted_at ? null : participante.can_take_exam ? (
-                      <span className="tenue">Rindiendo</span>
+                      monitoreoActivo && userId ? (
+                        <button
+                          type="button"
+                          className="boton boton-texto"
+                          disabled={mirando === participante.student_id}
+                          onClick={() => setMirando(participante.student_id)}
+                        >
+                          {mirando === participante.student_id ? 'Mirando' : 'Ver cámara'}
+                        </button>
+                      ) : (
+                        <span className="tenue">Rindiendo</span>
+                      )
                     ) : (
                       <div className="fila">
                         <button
@@ -225,6 +275,11 @@ export function Participantes() {
       </p>
     </>
   )
+}
+
+/** El nombre con el que se rotula la cámara. */
+function nombreDe(participantes: Participant[] | undefined, studentId: string): string | undefined {
+  return (participantes ?? []).find((p) => p.student_id === studentId)?.student_name ?? undefined
 }
 
 /** La decisión vigente de un estudiante: la más reciente. */

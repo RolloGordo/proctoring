@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../lib/auth-context'
 import { soloHora } from '../lib/formato'
 import { detectoresDe } from '../supervision/detectores'
+import type { AjustesMonitoreo } from '../supervision/monitoreo'
 import { useSupervision } from '../supervision/useSupervision'
 
 /**
@@ -35,6 +36,7 @@ export function RendirExamen() {
   const [error, setError] = useState<string>()
   const [guardado, setGuardado] = useState<EstadoGuardado>('limpio')
   const [entregando, setEntregando] = useState(false)
+  const [observado, setObservado] = useState(false)
 
   useEffect(() => {
     let cancelado = false
@@ -65,6 +67,12 @@ export function RendirExamen() {
   // sala, y observar a alguien que todavía no aceptó sería justo lo que el
   // proyecto promete no hacer.
   const detectores = useMemo(() => detectoresDe(matricula ? modulosActivos : {}), [matricula, modulosActivos])
+  // El módulo de monitoreo en vivo no es un detector: no emite eventos, solo
+  // deja que el docente mire. Va aparte por eso.
+  const monitoreo = useMemo<AjustesMonitoreo | null>(
+    () => (matricula ? ((modulosActivos.live_monitoring as AjustesMonitoreo) ?? null) : null),
+    [matricula, modulosActivos]
+  )
   const supervision = useSupervision({
     sessionId: id,
     studentId: userId,
@@ -73,6 +81,8 @@ export function RendirExamen() {
     questionId: preguntas?.find((p) => !respuestas[p.id])?.id ?? null,
     token,
     detectores,
+    monitoreo,
+    onObservado: setObservado,
     activa: matricula?.submitted_at == null
   })
 
@@ -122,6 +132,13 @@ export function RendirExamen() {
           {entregando ? 'Entregando…' : 'Entregar examen'}
         </button>
       </div>
+
+      {observado && (
+        <p className="aviso aviso-neutro">
+          Tu docente está viendo tu cámara en este momento. No se está grabando: la imagen se
+          muestra y se descarta.
+        </p>
+      )}
 
       {supervision.tipo === 'fallo' && (
         <p className="aviso aviso-neutro">

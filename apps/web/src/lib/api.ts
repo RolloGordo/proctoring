@@ -235,6 +235,36 @@ export interface Decision {
   decided_at: string
 }
 
+/** Lo que el servicio de IA midió sobre un fragmento de audio. */
+export interface AudioAnalysis {
+  /**
+   * El evento del que salió.
+   *
+   * La **ruta del fragmento** no está aquí, está en ese evento
+   * (`ProctoringEvent.evidence_path`): el audio es evidencia del evento, y el
+   * análisis es lo que se midió sobre él.
+   */
+  event_id: string
+  transcript: string | null
+  /** Parecido con el enunciado de la pregunta, de 0 a 1. */
+  similarity: number | null
+  /** Qué tan sintética suena la segunda voz, de 0 a 1. */
+  synthetic_voice_score: number | null
+  /** La pregunta con la que se pareció, si hubo alguna. */
+  matched_question_id: string | null
+  processing_ms: number | null
+  processed_at: string
+  /**
+   * Si este fragmento generó alerta.
+   *
+   * Hablar en voz alta **no** alerta: hacen falta las dos condiciones
+   * (parecido al enunciado y segunda voz sintética). Esto dice si se
+   * cumplieron, y es lo que distingue «leyó la pregunta» de «preguntó a una
+   * IA» en la pantalla del docente.
+   */
+  alerted: boolean
+}
+
 /** Todo lo que el docente necesita para decidir sobre un estudiante. */
 export interface CaseFile {
   participant: Participant
@@ -243,7 +273,11 @@ export interface CaseFile {
   /** De la más reciente a la más antigua: la primera es la vigente. */
   decisions: Decision[]
   risk: Risk
+  audio_analyses: AudioAnalysis[]
 }
+
+/** Qué bucket mirar. El mismo valor que pide la API. */
+export type EvidenceKind = 'image' | 'audio' | 'reference_face'
 
 /** Un curso del docente. */
 export interface Course {
@@ -458,6 +492,26 @@ export const api = {
 
   reviewCase: (sessionId: string, studentId: string, token?: string): Promise<CaseFile> =>
     request(`/api/v1/sessions/${sessionId}/students/${studentId}/case`, undefined, token),
+
+  /**
+   * URL temporal para ver una captura o escuchar un fragmento.
+   *
+   * Los tres buckets son privados: sin esto, un `evidence_path` no se puede
+   * abrir desde el navegador. **El enlace caduca** (`expires_in_seconds`), así
+   * que se pide cuando el docente va a mirar, no al cargar la pantalla.
+   */
+  evidenceUrl: (
+    sessionId: string,
+    studentId: string,
+    path: string,
+    kind: EvidenceKind,
+    token?: string
+  ): Promise<{ url: string; expires_in_seconds: number }> =>
+    request(
+      `/api/v1/sessions/${sessionId}/students/${studentId}/evidence-url`,
+      { method: 'POST', body: JSON.stringify({ path, kind }) },
+      token
+    ),
 
   decide: (
     sessionId: string,

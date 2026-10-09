@@ -11,8 +11,10 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { supabase } from '../lib/supabase'
 import { abrirCamara, CamaraNoDisponibleError } from './camara'
 import { EmisorDeSenales } from './emisor'
+import { publicarFotogramas, type AjustesMonitoreo, type Publicacion } from './monitoreo'
 import { SeguimientoCondicion } from './seguimiento'
 import type { Detector } from './tipos'
 
@@ -28,6 +30,21 @@ export interface OpcionesSupervision {
   detectores: Detector[]
   /** Si hace falta el micrófono (detección de habla). */
   conAudio?: boolean
+  /**
+   * Ajustes del módulo `live_monitoring`, o `null` si el docente no lo activó.
+   *
+   * Activarlo enciende la cámara aunque no haya ningún detector: un examen con
+   * supervisión mínima pero monitoreo en vivo es una combinación válida.
+   */
+  monitoreo?: AjustesMonitoreo | null
+  /**
+   * Avisa cuando el docente empieza o deja de mirar la cámara.
+   *
+   * Lo pide la pantalla para decírselo al estudiante. Va por callback y no en
+   * el valor devuelto para que un cambio de estado de la pantalla no reinicie
+   * la cámara.
+   */
+  onObservado?: (observado: boolean) => void
   /** Permite apagarlo todo (por ejemplo, si el examen ya se entregó). */
   activa?: boolean
 }
@@ -45,15 +62,25 @@ export function useSupervision({
   token,
   detectores,
   conAudio = false,
+  monitoreo = null,
+  onObservado,
   activa = true
 }: OpcionesSupervision): EstadoSupervision {
   const [estado, setEstado] = useState<EstadoSupervision>({ tipo: 'apagada' })
   const emisorRef = useRef<EmisorDeSenales | null>(null)
 
+  // Por referencia: si entrara en las dependencias del efecto, cada renderizado
+  // de la pantalla apagaría y encendería la cámara.
+  const observadoRef = useRef(onObservado)
+  useEffect(() => {
+    observadoRef.current = onObservado
+  }, [onObservado])
+
   // Sin estudiante no se puede reportar nada: la API exige que el `student_id`
   // coincida con el del token. Se calcula aqui, no dentro del efecto: poner el
   // estado en 'apagada' desde dentro provocaria un renderizado de mas.
-  const habilitada = activa && detectores.length > 0 && studentId !== undefined
+  const habilitada =
+    activa && (detectores.length > 0 || monitoreo !== null) && studentId !== undefined
 
   // La pregunta cambia mientras el estudiante responde; el emisor se entera sin
   // reiniciar la cámara.
@@ -64,9 +91,14 @@ export function useSupervision({
   useEffect(() => {
     if (!habilitada || studentId === undefined) return
 
+    // En una constante: el estrechamiento de `studentId` no sobrevive dentro de
+    // `encender`, porque es un parámetro desestructurado y no una constante.
+    const alumnoId = studentId
+
     let cancelado = false
     let cerrarCamara: (() => void) | null = null
     let temporizador: ReturnType<typeof setInterval> | undefined
+    let envioEnVivo: Publicacion | null = null
 
     const emisor = new EmisorDeSenales({ sessionId, studentId, questionId, token })
     emisorRef.current = emisor
@@ -84,6 +116,20 @@ export function useSupervision({
           return
         }
         cerrarCamara = camara.cerrar
+
+        // El monitoreo en vivo usa el mismo `<video>` que los detectores: una
+        // sola cámara abierta. Y no empieza a enviar por abrirse: espera a que
+        // el docente entre al canal.
+        if (monitoreo !== null && supabase) {
+          envioEnVivo = publicarFotogramas({
+            cliente: supabase,
+            sessionId,
+            studentId: alumnoId,
+            video: camara.video,
+            ajustes: monitoreo,
+            onObservado: (observado) => observadoRef.current?.(observado)
+          })
+        }
 
         // Un detector que no carga se descarta y los demás siguen.
         const listos: Detector[] = []
@@ -167,12 +213,16 @@ export function useSupervision({
       }
       void emisor.cerrar()
       emisorRef.current = null
+      // Antes de apagar la cámara: salir del canal deja de anunciar presencia,
+      // y el docente ve «desconectado» en lugar de una imagen congelada.
+      void envioEnVivo?.detener()
+      observadoRef.current?.(false)
       cerrarCamara?.()
     }
     // `questionId` se actualiza por su propio efecto: incluirlo aquí reiniciaría
     // la cámara en cada pregunta.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [habilitada, sessionId, studentId, token, detectores, conAudio])
+  }, [habilitada, sessionId, studentId, token, detectores, conAudio, monitoreo])
 
   return habilitada ? estado : { tipo: 'apagada' }
 }

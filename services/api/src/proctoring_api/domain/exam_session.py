@@ -146,7 +146,11 @@ DEFAULT_MODULE_SETTINGS: dict[SupervisionModule, dict[str, Any]] = {
     SupervisionModule.SCREEN_CAPTURE: {"scan_interval_ms": 10000},
     SupervisionModule.OBJECTS: {},
     SupervisionModule.COPY_PASTE_BLOCK: {},
-    SupervisionModule.LIVE_MONITORING: {},
+    # Un fotograma por segundo a 320 px: basta para ver quien esta y que
+    # hace, y no es video. Subirlo cuesta en tres sitios a la vez (la CPU
+    # del estudiante, la cuota de Realtime y la pantalla del docente), asi
+    # que el valor por defecto es el minimo util, no el maximo posible.
+    SupervisionModule.LIVE_MONITORING: {"fps": 1, "width": 320, "quality": 0.5},
 }
 
 

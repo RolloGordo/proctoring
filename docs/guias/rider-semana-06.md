@@ -1,7 +1,7 @@
 # Rider · lo que queda de la semana 6
 
-**Cierre: domingo 11/10.** Son 8 puntos en seis tareas. Cuatro las puedes empezar
-ahora mismo; dos esperan a que Héctor entregue un endpoint.
+**Cierre: domingo 11/10.** Son 8 puntos en seis tareas, y **ya puedes empezar
+las seis**: las dos que esperaban algo mío ya lo tienen (sección 4).
 
 Antes de nada:
 
@@ -125,41 +125,72 @@ ya abierta.
 
 ---
 
-## 4. Lo que espera a Héctor
+## 4. Lo que esperaba a Héctor: ya está
 
-Estas dos no las puedes empezar hasta que él entregue. **Déjalas para el final** y
-si no llega el endpoint, se pasan a la semana 7 sin drama.
+Las dos estaban bloqueadas por mí. **Ya no.** Están en `develop`, así que el
+`git pull` del principio te las trae.
 
 ### HU-023 — Ver la evidencia en la revisión del caso (2 pt)
 
 Es el criterio que dejaste abierto en tu R1: las capturas se suben y quedan
 enlazadas al evento, pero el docente no puede verlas.
 
-**Lo que falta por mi parte:** la API no tiene URL firmada de **lectura**. Hoy
-`/sessions/{id}/students/{id}/case` devuelve eventos con su `evidence_path`, pero
-ese path no se puede abrir desde el navegador. Además el caso **no incluye los
-análisis de audio**, así que tampoco hay de dónde sacar el fragmento marcado.
+**Lo que te faltaba, y ya tienes:**
 
-Voy a entregarte las dos cosas: el endpoint de lectura y los análisis de audio
-dentro del caso.
+1. `POST /api/v1/sessions/{session_id}/students/{student_id}/evidence-url`
+   con `{ "path": "...", "kind": "image" | "audio" | "reference_face" }`
+   devuelve `{ "url": "...", "expires_in_seconds": 900 }`. El `path` es el
+   `evidence_path` que ya viene en cada evento, tal cual. En la web es
+   `api.evidenceUrl(...)`.
+2. `GET /sessions/{id}/students/{id}/case` ahora trae `audio_analyses`, con
+   `transcript`, `similarity`, `synthetic_voice_score`, `matched_question_id` y
+   un `alerted` que dice si ese fragmento generó alerta.
 
-**Cuando estén**, lo tuyo es `apps/web/src/pages/RevisionCaso.tsx`: mostrar la
-captura de cada evento que la tenga, agrupadas por categoría, y un reproductor
-para los fragmentos de audio marcados como posible consulta a IA.
+   La **ruta del audio** no está en el análisis: está en el evento, que se
+   encuentra por `event_id`. El análisis es lo que se midió; el fragmento es
+   evidencia del evento. Así que para el reproductor: `analisis.event_id` →
+   el evento → su `evidence_path` → `api.evidenceUrl(..., 'audio')`.
+
+El enlace **caduca en 15 minutos**. No lo guardes en estado al cargar la página
+y lo uses media hora después: pídelo cuando el docente vaya a mirar la captura.
+
+**Lo tuyo:** `apps/web/src/pages/RevisionCaso.tsx`. Mostrar la captura de cada
+evento que la tenga, agrupadas por categoría, y un reproductor para los
+fragmentos marcados como posible consulta a IA.
 
 ### HU-015 — Cuadrícula de cámaras en vivo (2 pt)
 
-Aquí hay un problema de diseño que es mío, no tuyo, y prefiero decírtelo antes de
-que te pongas: **no hay por dónde mandar una miniatura periódica**. El contrato de
-eventos tiene nueve tipos y ninguno sirve para «una foto cada 30 s», y usar
-`identity_check` para esto sería ensuciar el modelo.
+Te dije que el problema de diseño era mío. Ya está resuelto, y **no hace falta
+nada más del servidor**: el componente de una cámara existe y funciona.
 
-Lo resuelvo como parte del monitoreo en vivo (HU-022) y te paso el contrato
-cerrado: por dónde viaja el fotograma y cómo lo pide el docente. Mientras tanto
-puedes ir mirando `apps/web/src/supervision/camara.ts`, que ya tiene el acceso a
-la cámara resuelto y es de donde saldrá el fotograma.
+**El componente:** `apps/web/src/components/CamaraEnVivo.tsx`.
 
----
+```tsx
+<CamaraEnVivo sessionId={id} studentId={p.student_id} teacherId={userId} nombre={p.student_name} />
+```
+
+Lo tuyo es componerlo en una cuadrícula en la pantalla en vivo
+(`apps/web/src/pages/SesionEnVivo.tsx`), con los estudiantes que están rindiendo
+(`can_take_exam && !submitted_at` de `api.listParticipants`). Hay un ejemplo de
+una sola cámara ya funcionando en `apps/web/src/pages/Participantes.tsx`.
+
+**Dos cosas que importan y no se ven en el tipo:**
+
+1. **Montar el componente es lo que hace que ese estudiante empiece a enviar.**
+   El estudiante solo captura mientras el docente está en su canal. Así que una
+   cuadrícula de 30 cámaras enciende 30 envíos. Si la clase es grande, pagina o
+   monta solo las visibles; no las montes todas «por si acaso».
+2. **No se graba, y el estudiante ve que lo estás mirando.** Si en la pantalla
+   pones algo tipo «grabando», estarías diciendo lo contrario de lo que el
+   sistema hace. El texto que ya está en `Participantes.tsx` sirve de ejemplo.
+
+El módulo tiene que estar activo en el examen (`live_monitoring` en
+`session.modules`, que viene con el preset `strict`). Si no está, no ofrezcas la
+cámara: el estudiante no aceptó eso.
+
+El contrato completo —nombre del canal, forma del mensaje, por qué un canal por
+estudiante— está en `apps/web/src/supervision/README.md`, sección «El monitoreo
+en vivo no es un detector».
 
 ## Antes de subir
 
