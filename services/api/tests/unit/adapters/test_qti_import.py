@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from spikes.qti_import import MAX_XML_BYTES, NS, parse_qti
+from proctoring_api.adapters.inbound.qti.importer import MAX_XML_BYTES, NS, parse_qti
 
-FIXTURES = Path(__file__).parent / "fixtures" / "qti"
+FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "qti"
 
 
 def fixture(name: str) -> str:
@@ -56,7 +56,9 @@ def test_five_types(kind: str) -> None:
     elif kind == "fill_blank":
         assert question["correct_text_answer"] == "primaria"
         assert "____" in question["statement"]
-        assert result.warnings and "Target API" in result.warnings[0].reason
+        # El aviso lo lee el docente, asi que esta en espanol como el resto de
+        # la interfaz: se comprueba que avisa de la diferencia al calificar.
+        assert result.warnings and "tildes" in result.warnings[0].reason
     else:
         assert question["correct_text_answer"] is None
 
@@ -117,7 +119,7 @@ def test_size_encoding_and_item_limits() -> None:
     item = fixture("essay").split("?>", 1)[1]
     with pytest.raises(ValueError, match="200"):
         parse_qti(f"<items>{item * 201}</items>")
-    with pytest.raises(ValueError, match="nesting"):
+    with pytest.raises(ValueError, match="anidado"):
         parse_qti("<x>" * 70 + item + "</x>" * 70)
 
 

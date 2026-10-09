@@ -26,6 +26,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from proctoring_api.application.use_cases.ai_jobs import AudioJob, FaceJob
 from proctoring_api.application.use_cases.edit_exam_session import ExamSessionChanges
+from proctoring_api.application.use_cases.import_qti import QtiImportResult
 from proctoring_api.application.use_cases.list_my_exams import MyExam
 from proctoring_api.application.use_cases.manage_banks import BankSummary
 from proctoring_api.application.use_cases.manage_courses import (
@@ -386,6 +387,9 @@ class QuestionResponse(BaseModel):
     correct_numeric_answer: Decimal | None
     numeric_tolerance: Decimal | None
     correct_text_answer: str | None
+    #: De donde vino: `qti` si se importo, nulo si la escribio el docente. Deja
+    #: responder despues "esto lo importe, no lo escribi yo".
+    source_format: str | None = None
 
     @classmethod
     def from_entity(cls, question: Question) -> QuestionResponse:
@@ -409,6 +413,7 @@ class QuestionResponse(BaseModel):
             correct_numeric_answer=question.correct_numeric_answer,
             numeric_tolerance=question.numeric_tolerance,
             correct_text_answer=question.correct_text_answer,
+            source_format=question.source_format,
         )
 
 
@@ -1122,3 +1127,39 @@ class UpdateQuestionRequest(BaseModel):
     correct_numeric_answer: Decimal | None = None
     numeric_tolerance: Decimal | None = Field(default=None, ge=0)
     correct_text_answer: str | None = Field(default=None, max_length=1000)
+
+
+class QtiIssueResponse(BaseModel):
+    """Un item que no entro, o que se califica distinto aqui que en el origen."""
+
+    item_id: str
+    reason: str
+
+
+class QtiImportResponse(BaseModel):
+    """El resultado de importar un archivo QTI a un banco.
+
+    Lleva las tres listas a proposito. Un docente que importa cuarenta preguntas
+    y recibe solo "38 importadas" no sabe que perdio ni donde buscarlo.
+    """
+
+    imported_count: int
+    imported: list[QuestionResponse]
+    #: Items que no se pudieron representar sin cambiarles como se califican.
+    skipped: list[QtiIssueResponse]
+    #: Preguntas que **si** entraron, pero con una diferencia que conviene mirar.
+    warnings: list[QtiIssueResponse]
+    #: `True` cuando fue una prueba: no se guardo nada.
+    dry_run: bool = False
+
+    @classmethod
+    def from_result(cls, result: QtiImportResult, *, dry_run: bool) -> QtiImportResponse:
+        return cls(
+            imported_count=len(result.imported),
+            imported=[QuestionResponse.from_entity(q) for q in result.imported],
+            skipped=[QtiIssueResponse(item_id=i.item_id, reason=i.reason) for i in result.skipped],
+            warnings=[
+                QtiIssueResponse(item_id=i.item_id, reason=i.reason) for i in result.warnings
+            ],
+            dry_run=dry_run,
+        )
