@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { EditorPregunta, ListaPreguntas } from '../components/EditorPregunta'
+import { ImportarQti } from '../components/ImportarQti'
 import { api, type NewQuestion, type Question, type QuestionBank } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 
@@ -12,6 +13,13 @@ export function Banco() {
   const [banco, setBanco] = useState<QuestionBank>()
   const [preguntas, setPreguntas] = useState<Question[]>()
   const [error, setError] = useState<string>()
+
+  function recargar(): void {
+    api
+      .listBankQuestions(id, token)
+      .then(setPreguntas)
+      .catch((fallo: Error) => setError(fallo.message))
+  }
 
   useEffect(() => {
     // No hay endpoint de "un banco": se saca de la lista, que de todas formas
@@ -82,15 +90,14 @@ export function Banco() {
       <div className="columnas">
         <section>
           <div className="encabezado-seccion">
-            <h2>Añadir pregunta</h2>
+            <h2>Añadir preguntas</h2>
           </div>
 
           <div className="tarjeta">
             <div className="tarjeta-cuerpo">
+              <ImportarQti bancoId={id} onImportado={recargar} />
+              <hr className="separador" />
               <EditorPregunta onGuardar={agregar} textoBoton="Añadir al banco" />
-              <p className="ayuda" style={{ marginTop: 'var(--e3)' }}>
-                También podrás importar un archivo QTI y caerá aquí, sin escribir ninguna a mano.
-              </p>
             </div>
           </div>
         </section>

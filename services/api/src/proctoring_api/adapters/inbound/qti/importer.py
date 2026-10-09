@@ -1,8 +1,13 @@
-"""Pure, conservative QTI 2.1 importer; no filesystem, network or API imports.
+"""Importador conservador de QTI 2.1. Puro: sin disco, sin red, sin la API.
 
-Only single-response, text-only items are representable in NewQuestion. Unsupported
-items return diagnostics instead of silently changing their grading semantics.
-The API adapter converts question_type to QuestionType and builds NewQuestion.
+Escrito por Pierreluiggi Zevallos como spike en `services/ai/spikes/` y movido
+aqui al conectarlo: los dos servicios Python no pueden importarse entre si, y
+esto es analisis puro de la biblioteca estandar, sin modelos ni cola, asi que su
+sitio es el adaptador de entrada de la API y no una llamada de red.
+
+Solo son representables en `NewQuestion` los items de respuesta unica y de texto.
+Un item que no lo sea vuelve como diagnostico en vez de cambiarle en silencio su
+forma de calificar. Quien llame convierte `question_type` a `QuestionType`.
 """
 
 from __future__ import annotations
@@ -37,9 +42,9 @@ def _decimal(value: str) -> Decimal:
     try:
         result = Decimal(value)
     except InvalidOperation as error:
-        raise ValueError("Invalid decimal") from error
+        raise ValueError("Un numero no se entiende") from error
     if not result.is_finite():
-        raise ValueError("Non-finite decimal")
+        raise ValueError("Un numero no es finito")
     return result
 
 
@@ -66,10 +71,10 @@ def _statement(element: ET.Element) -> str:
 
 def _parse_item(item: ET.Element) -> dict[str, Any]:
     if item.get("adaptive", "false") != "false":
-        raise ValueError("Adaptive items are unsupported")
+        raise ValueError("Las preguntas adaptativas no se pueden importar")
     body = item.find(_tag("itemBody"))
     if body is None:
-        raise ValueError("Missing itemBody")
+        raise ValueError("A la pregunta le falta el enunciado")
     allowed = {
         "itemBody",
         "p",
@@ -88,21 +93,23 @@ def _parse_item(item: ET.Element) -> dict[str, Any]:
         "extendedTextInteraction",
     }
     if any(node.tag not in {_tag(name) for name in allowed} for node in body.iter()):
-        raise ValueError("Unsupported body content (media, math or interaction)")
+        raise ValueError(
+            "El enunciado lleva imagenes, formulas u otra interaccion que no sabemos representar"
+        )
     interactions = [node for node in body.iter() if node.tag.endswith("Interaction")]
     if len(interactions) != 1:
-        raise ValueError("Exactly one interaction is required")
+        raise ValueError("La pregunta tiene que pedir una sola respuesta")
     interaction = interactions[0]
     response_id = interaction.get("responseIdentifier")
     declarations = item.findall(_tag("responseDeclaration"))
     if len(declarations) != 1 or not response_id:
-        raise ValueError("Exactly one response declaration is required")
+        raise ValueError("La pregunta tiene que declarar una sola respuesta")
     response = declarations[0]
     if response.get("identifier") != response_id or response.get("cardinality") != "single":
-        raise ValueError("Invalid response binding or unsupported cardinality")
+        raise ValueError("La respuesta esta declarada de una forma que no sabemos leer")
     statement = " ".join(_statement(body).split())
     if not statement or statement == "____" or len(statement) > 5000:
-        raise ValueError("Statement must contain 1..5000 characters")
+        raise ValueError("El enunciado esta vacio o pasa de 5000 caracteres")
     points = Decimal(1)
     score = item.find(f"{_tag('outcomeDeclaration')}[@identifier='SCORE']")
     if score is not None:
@@ -128,12 +135,12 @@ def _parse_item(item: ET.Element) -> dict[str, Any]:
         assert processing is not None
         condition = processing.find(_tag("responseCondition"))
         if len(processing) != 1 or condition is None or len(condition) != 2:
-            raise ValueError("Unsupported custom grading")
+            raise ValueError("Usa una forma de calificar que no podemos reproducir")
         yes, no = list(condition)
         if yes.tag != _tag("responseIf") or no.tag != _tag("responseElse"):
-            raise ValueError("Unsupported custom grading branches")
+            raise ValueError("Usa una forma de calificar con ramas que no podemos reproducir")
         if len(yes) != 2 or len(no) != 1:
-            raise ValueError("Unsupported custom grading statements")
+            raise ValueError("Usa instrucciones de calificacion que no podemos reproducir")
         comparison, award = list(yes)
         if (
             interaction.tag != _tag("textEntryInteraction")
@@ -143,7 +150,7 @@ def _parse_item(item: ET.Element) -> dict[str, Any]:
             or comparison.get("includeLowerBound", "true") != "true"
             or comparison.get("includeUpperBound", "true") != "true"
         ):
-            raise ValueError("Only inclusive absolute numeric tolerance is supported")
+            raise ValueError("Solo admitimos tolerancia numerica absoluta e inclusiva")
         operands = list(comparison)
         if (
             len(operands) != 2
@@ -152,10 +159,10 @@ def _parse_item(item: ET.Element) -> dict[str, Any]:
             or operands[1].tag != _tag("correct")
             or operands[1].get("identifier") != response_id
         ):
-            raise ValueError("Unsupported numeric comparison operands")
+            raise ValueError("La comparacion numerica no se puede reproducir")
         tolerance = _decimal(comparison.get("tolerance", ""))
         if tolerance < 0:
-            raise ValueError("Negative tolerance")
+            raise ValueError("La tolerancia es negativa")
         for setter, expected in ((award, points), (no[0], Decimal(0))):
             if (
                 setter.tag != _tag("setOutcomeValue")
@@ -164,7 +171,7 @@ def _parse_item(item: ET.Element) -> dict[str, Any]:
                 or setter[0].tag != _tag("baseValue")
                 or _decimal(_text(setter[0])) != expected
             ):
-                raise ValueError("Unsupported scoring assignment")
+                raise ValueError("Asigna el puntaje de una forma que no sabemos leer")
         result["numeric_tolerance"] = tolerance
     elif processing is not None:
         templates = {
@@ -172,23 +179,25 @@ def _parse_item(item: ET.Element) -> dict[str, Any]:
             "http://www.imsglobal.org/question/qti_v2p1/rptemplates/match_correct.xml",
         }
         if list(processing) or processing.get("template") not in templates:
-            raise ValueError("Custom grading or mapping cannot be imported safely")
+            raise ValueError(
+                "Su forma de calificar no se puede importar sin cambiarle el significado"
+            )
         if points != 1:
             raise ValueError("match_correct awards one point; inconsistent normalMaximum")
     if response.find(_tag("mapping")) is not None:
-        raise ValueError("Partial-credit mappings are unsupported")
+        raise ValueError("No admitimos puntaje parcial por opcion")
     values = response.findall(f"{_tag('correctResponse')}/{_tag('value')}")
     base_type = response.get("baseType")
     if interaction.tag == _tag("extendedTextInteraction"):
         if base_type != "string" or values or processing is not None:
-            raise ValueError("Essay requires manual grading and a string response")
+            raise ValueError("Un desarrollo tiene que calificarse a mano y responderse con texto")
         return result
     if len(values) != 1 or not _text(values[0]):
-        raise ValueError("Exactly one correct response is required")
+        raise ValueError("Tiene que haber una sola respuesta correcta")
     answer = _text(values[0])
     if interaction.tag == _tag("choiceInteraction"):
         if base_type != "identifier" or interaction.get("maxChoices") != "1":
-            raise ValueError("Only single-choice identifier responses are supported")
+            raise ValueError("Solo admitimos preguntas de una sola alternativa")
         choices = interaction.findall(_tag("simpleChoice"))
         ids = [choice.get("identifier") for choice in choices]
         labels = [_text(choice) for choice in choices]
@@ -236,30 +245,35 @@ def parse_qti(xml: str | bytes) -> ImportResult:
     """
     raw = xml.encode("utf-8") if isinstance(xml, str) else xml
     if len(raw) > MAX_XML_BYTES:
-        raise ValueError("XML exceeds 1 MB")
+        raise ValueError("El archivo pasa de 1 MB")
     try:
         text = raw.decode("utf-8-sig")
     except UnicodeDecodeError as error:
-        raise ValueError("XML must be UTF-8") from error
+        raise ValueError("El archivo tiene que estar en UTF-8") from error
     if "\x00" in text or "<!DOCTYPE" in text.upper() or "<!ENTITY" in text.upper():
-        raise ValueError("DTD, entities and NUL bytes are forbidden")
+        raise ValueError("El archivo usa DTD o entidades XML, que no se aceptan por seguridad")
     try:
         root = ET.fromstring(text)
     except ET.ParseError as error:
-        raise ValueError(f"Malformed XML: {error}") from error
+        raise ValueError(f"El XML esta mal formado: {error}") from error
     stack = [(root, 0)]
     count = 0
     while stack:
         node, depth = stack.pop()
         count += 1
         if depth > 64 or count > 20000:
-            raise ValueError("XML nesting or node count exceeds limit")
+            raise ValueError(
+                "El archivo esta anidado demasiado profundo o tiene demasiados elementos"
+            )
         stack.extend((child, depth + 1) for child in node)
     items = list(root.iter(_tag("assessmentItem")))
     if not items:
-        raise ValueError("No QTI 2.1 assessmentItem found; manifest alone is insufficient")
+        raise ValueError(
+            "No se encontro ninguna pregunta QTI 2.1. Si subiste el manifiesto "
+            "del paquete, sube el archivo de preguntas"
+        )
     if len(items) > 200:
-        raise ValueError("At most 200 items are accepted")
+        raise ValueError("Un archivo admite como maximo 200 preguntas")
     questions: list[dict[str, Any]] = []
     issues: list[ImportIssue] = []
     warnings: list[ImportIssue] = []
@@ -268,7 +282,7 @@ def parse_qti(xml: str | bytes) -> ImportResult:
         identifier = item.get("identifier", "")
         try:
             if not identifier or identifier in seen:
-                raise ValueError("Missing or duplicate item identifier")
+                raise ValueError("La pregunta no tiene identificador, o esta repetido")
             seen.add(identifier)
             question = _parse_item(item)
             questions.append(question)
@@ -276,9 +290,9 @@ def parse_qti(xml: str | bytes) -> ImportResult:
                 warnings.append(
                     ImportIssue(
                         identifier,
-                        "Target API ignores case, accents (not ñ) and repeated whitespace "
-                        "in text grading; "
-                        "review this difference from QTI exact match before saving",
+                        "Al calificar ignoramos mayusculas, tildes (la ñ no) y los "
+                        "espacios de sobra, mientras que QTI exige coincidencia exacta. "
+                        "Revisa esa diferencia antes de usar esta pregunta",
                     )
                 )
         except ValueError as error:

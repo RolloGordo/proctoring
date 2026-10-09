@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 
 from proctoring_api.adapters.inbound.http.dependencies import (
     AddQuestionsToBankDep,
@@ -12,6 +12,7 @@ from proctoring_api.adapters.inbound.http.dependencies import (
     CreateBankDep,
     CurrentUserDep,
     DetachBankDep,
+    ImportQtiDep,
     ListBankQuestionsDep,
     ListBanksDep,
     ListSessionBanksDep,
@@ -22,6 +23,7 @@ from proctoring_api.adapters.inbound.http.schemas import (
     AttachBankResponse,
     CreateQuestionBankRequest,
     ErrorResponse,
+    QtiImportResponse,
     QuestionBankResponse,
     QuestionResponse,
 )
@@ -160,3 +162,60 @@ def detach_bank(
     """Quita el banco del examen. **Las preguntas del banco no se tocan.**"""
     use_case.execute(session_id, bank_id, actor=current_user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+#: Tope del archivo subido. El importador aplica el mismo limite, pero aqui se
+#: mira el `Content-Length` **antes** de leer el cuerpo: con solo la comprobacion
+#: de dentro, un archivo de 500 MB se cargaria entero en memoria para despues
+#: rechazarlo.
+MAX_QTI_BYTES = 1_000_000
+
+
+@router.post(
+    "/question-banks/{bank_id}/import/qti",
+    status_code=status.HTTP_201_CREATED,
+    response_model=QtiImportResponse,
+    summary="Importar un archivo QTI 2.1 a un banco (solo su docente)",
+    responses={
+        **AUTH_RESPONSES,
+        400: {"model": ErrorResponse, "description": "El archivo no es QTI 2.1 legible"},
+        413: {"model": ErrorResponse, "description": "El archivo pasa de 1 MB"},
+    },
+)
+async def import_qti(
+    bank_id: UUID,
+    request: Request,
+    use_case: ImportQtiDep,
+    current_user: CurrentUserDep,
+    dry_run: bool = False,
+) -> QtiImportResponse:
+    """Sube el XML que exporto tu plataforma y sus preguntas caen en el banco.
+
+    El cuerpo de la peticion **es** el archivo (`Content-Type: application/xml`).
+    No va en un formulario: es un unico documento y asi no hace falta analizar
+    multipart para nada.
+
+    Con `?dry_run=true` no se guarda nada y se devuelve lo que entraria. Sirve
+    para mirar el resultado antes de meter cuarenta preguntas en el banco.
+
+    La respuesta trae **tres** listas: lo importado, lo que se quedo fuera y de
+    que hay que avisar. Un item que no se entiende no aborta el lote; vuelve en
+    `skipped` con su motivo. Pero si una pregunta viola una regla del dominio no
+    se guarda **ninguna**: importar cuarenta no puede dejar veintinueve a medias.
+    """
+    declarado = request.headers.get("content-length")
+    if declarado is not None and declarado.isdigit() and int(declarado) > MAX_QTI_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"El archivo pasa del limite de {MAX_QTI_BYTES // 1000} KB",
+        )
+
+    xml = await request.body()
+    if len(xml) > MAX_QTI_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"El archivo pasa del limite de {MAX_QTI_BYTES // 1000} KB",
+        )
+
+    resultado = use_case.execute(bank_id, xml, actor=current_user, dry_run=dry_run)
+    return QtiImportResponse.from_result(resultado, dry_run=dry_run)

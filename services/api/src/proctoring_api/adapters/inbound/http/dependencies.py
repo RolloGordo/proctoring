@@ -35,6 +35,7 @@ from proctoring_api.application.use_cases.edit_questions import (
     UpdateQuestion,
 )
 from proctoring_api.application.use_cases.identify_user import IdentifyUser
+from proctoring_api.application.use_cases.import_qti import ImportQtiIntoBank
 from proctoring_api.application.use_cases.join_exam_session import JoinExamSession
 from proctoring_api.application.use_cases.list_my_exams import ListMyExams
 from proctoring_api.application.use_cases.list_session_alerts import ListSessionAlerts
@@ -317,6 +318,11 @@ def get_delete_question(request: Request) -> DeleteQuestion:
     return use_case
 
 
+def get_import_qti(request: Request) -> ImportQtiIntoBank:
+    use_case: ImportQtiIntoBank = request.app.state.import_qti
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -393,3 +399,4 @@ CancelExamSessionDep = Annotated[CancelExamSession, Depends(get_cancel_session)]
 DeleteExamSessionDep = Annotated[DeleteExamSession, Depends(get_delete_session)]
 UpdateQuestionDep = Annotated[UpdateQuestion, Depends(get_update_question)]
 DeleteQuestionDep = Annotated[DeleteQuestion, Depends(get_delete_question)]
+ImportQtiDep = Annotated[ImportQtiIntoBank, Depends(get_import_qti)]

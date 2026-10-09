@@ -343,6 +343,22 @@ export interface QuestionBank {
   question_count: number
 }
 
+/** Un ítem que no entró, o que se califica distinto aquí que en el origen. */
+export interface QtiIssue {
+  item_id: string
+  reason: string
+}
+
+export interface QtiImportResult {
+  imported_count: number
+  imported: Question[]
+  /** Ítems que no se pudieron representar sin cambiarles cómo se califican. */
+  skipped: QtiIssue[]
+  /** Preguntas que **sí** entraron, pero con una diferencia que conviene mirar. */
+  warnings: QtiIssue[]
+  dry_run: boolean
+}
+
 export interface NewQuestionBank {
   name: string
   course_id?: string | null
@@ -362,7 +378,9 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
   const headers = new Headers(init?.headers)
-  headers.set('Content-Type', 'application/json')
+  // JSON salvo que quien llama diga otra cosa: la importación QTI manda el
+  // archivo tal cual, y con `set` incondicional se anunciaba como JSON.
+  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
   // La API acepta peticiones sin token solo con AUTH_ENABLED=false, que es el
   // modo de desarrollo local. En cuanto se active, sin token responde 401.
   if (token) headers.set('Authorization', `Bearer ${token}`)
@@ -483,6 +501,23 @@ export const api = {
     request(
       `/api/v1/question-banks/${bankId}/questions`,
       { method: 'POST', body: JSON.stringify({ questions }) },
+      token
+    ),
+
+  /**
+   * Sube un archivo QTI a un banco. El cuerpo **es** el archivo, no un
+   * formulario: es un único documento y así no hace falta multipart.
+   *
+   * Con `dryRun` no se guarda nada y se devuelve lo que entraría.
+   */
+  importQti: (
+    bankId: string,
+    xml: string,
+    { token, dryRun = false }: { token?: string; dryRun?: boolean } = {}
+  ): Promise<QtiImportResult> =>
+    request(
+      `/api/v1/question-banks/${bankId}/import/qti${dryRun ? '?dry_run=true' : ''}`,
+      { method: 'POST', body: xml, headers: { 'Content-Type': 'application/xml' } },
       token
     ),
 
