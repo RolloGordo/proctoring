@@ -199,6 +199,8 @@ export interface MyExam {
   entry_tolerance_minutes: number
   can_enter_now: boolean
   modules: Record<string, Record<string, unknown>>
+  /** Si se puede volver a una pregunta ya respondida. */
+  allow_back_navigation: boolean
   verification_status: VerificationStatus
   can_take_exam: boolean
   consent_at: string | null

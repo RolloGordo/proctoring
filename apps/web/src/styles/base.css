@@ -933,3 +933,16 @@ a {
   color: var(--tinta-suave);
   letter-spacing: 0.1em;
 }
+
+/* Navegación del examen: una pregunta a la vez.
+
+   `space-between` con el aviso ocupando el hueco de «Anterior» cuando el
+   examen no deja volver: así «Siguiente» no se mueve de sitio según el
+   examen. */
+.navegacion-examen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e4);
+  margin-top: var(--e5);
+}

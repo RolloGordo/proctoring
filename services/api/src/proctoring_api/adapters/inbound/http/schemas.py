@@ -587,6 +587,12 @@ class MyExamResponse(BaseModel):
     #: Que se va a supervisar: la sala de espera lo muestra antes de que el
     #: estudiante entre, igual que `JoinExamResponse`.
     modules: dict[SupervisionModule, dict[str, Any]]
+    #: Si se puede volver a una pregunta ya respondida.
+    #:
+    #: Lo necesita la pantalla del examen para no ofrecer un "Anterior" que la
+    #: API va a rechazar. La regla la aplica la API; esto solo evita que el
+    #: estudiante descubra el limite chocandose con un error.
+    allow_back_navigation: bool
     verification_status: VerificationStatus
     can_take_exam: bool
     consent_at: datetime | None
@@ -614,6 +620,7 @@ class MyExamResponse(BaseModel):
             entry_tolerance_minutes=exam.session.entry_tolerance_minutes,
             can_enter_now=exam.can_enter_now,
             modules=exam.session.modules,
+            allow_back_navigation=exam.session.allow_back_navigation,
             verification_status=exam.participant.verification_status,
             can_take_exam=exam.participant.can_take_exam,
             consent_at=exam.participant.consent_at,

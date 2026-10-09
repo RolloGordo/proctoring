@@ -37,6 +37,11 @@ export function RendirExamen() {
   const [guardado, setGuardado] = useState<EstadoGuardado>('limpio')
   const [entregando, setEntregando] = useState(false)
   const [observado, setObservado] = useState(false)
+  // En que pregunta esta. El examen va de una en una: es la unica forma de que
+  // "no volver atras" signifique algo, y ademas es lo que deja saber **cual**
+  // es la pregunta en curso cuando se registra un evento.
+  const [enCurso, setEnCurso] = useState(0)
+  const [volverAtras, setVolverAtras] = useState(true)
 
   useEffect(() => {
     let cancelado = false
@@ -49,10 +54,16 @@ export function RendirExamen() {
     ])
       .then(([delExamen, yaRespondidas, mia, misExamenes]) => {
         if (cancelado) return
+        const previas = indexar(yaRespondidas)
         setPreguntas(delExamen)
-        setRespuestas(indexar(yaRespondidas))
+        setRespuestas(previas)
         setMatricula(mia)
-        setModulosActivos(misExamenes.find((e) => e.session_id === id)?.modules ?? {})
+        const mio = misExamenes.find((e) => e.session_id === id)
+        setModulosActivos(mio?.modules ?? {})
+        setVolverAtras(mio?.allow_back_navigation ?? true)
+        // Al retomar, se sigue en la primera sin responder y no en la uno.
+        const sinResponder = delExamen.findIndex((p) => !(p.id in previas))
+        setEnCurso(sinResponder === -1 ? Math.max(delExamen.length - 1, 0) : sinResponder)
       })
       .catch((fallo: Error) => !cancelado && setError(fallo.message))
 
@@ -76,9 +87,10 @@ export function RendirExamen() {
   const supervision = useSupervision({
     sessionId: id,
     studentId: userId,
-    // La pregunta en curso: por ahora la primera sin responder, que es donde
-    // está mirando. Cuando haya navegación pregunta a pregunta saldrá de ahí.
-    questionId: preguntas?.find((p) => !respuestas[p.id])?.id ?? null,
+    // La pregunta que tiene delante. Importa de verdad: es contra este
+    // enunciado contra el que el servicio de IA compara lo que el estudiante
+    // dice en voz alta, y con la pregunta equivocada esa comparación no vale.
+    questionId: preguntas?.[enCurso]?.id ?? null,
     token,
     detectores,
     monitoreo,
@@ -109,6 +121,10 @@ export function RendirExamen() {
 
   const respondidas = Object.keys(respuestas).length
   const total = preguntas?.length ?? 0
+  const actual = preguntas?.[enCurso]
+  // Sin volver atras, una respuesta enviada ya no se cambia: la API la rechaza,
+  // asi que el campo se deshabilita en vez de dejar que lo descubra chocandose.
+  const bloqueada = !volverAtras && actual !== undefined && actual.id in respuestas
 
   if (matricula?.submitted_at) return <Entregado cuando={matricula.submitted_at} />
   if (error && !preguntas) return <NoSePuede mensaje={error} />
@@ -157,36 +173,71 @@ export function RendirExamen() {
           </div>
         </div>
       ) : (
-        <ol className="lista-preguntas">
-          {preguntas.map((pregunta) => (
-            <li key={pregunta.id} className="tarjeta">
-              <div className="tarjeta-cuerpo">
-                <div className="fila" style={{ justifyContent: 'space-between' }}>
-                  <h4>Pregunta {pregunta.position}</h4>
-                  <span className="tenue">{pregunta.points} pts</span>
-                </div>
-                <p className="enunciado">{pregunta.statement}</p>
-                <CampoRespuesta
-                  pregunta={pregunta}
-                  respuesta={respuestas[pregunta.id]}
-                  onResponder={responder}
-                />
+        <>
+          <div className="tarjeta">
+            <div className="tarjeta-cuerpo">
+              <div className="fila" style={{ justifyContent: 'space-between' }}>
+                <h4>
+                  Pregunta {enCurso + 1} de {total}
+                </h4>
+                <span className="tenue">{actual?.points} pts</span>
               </div>
-            </li>
-          ))}
-        </ol>
-      )}
+              {actual && (
+                <>
+                  <p className="enunciado">{actual.statement}</p>
+                  <CampoRespuesta
+                    pregunta={actual}
+                    respuesta={respuestas[actual.id]}
+                    onResponder={responder}
+                    bloqueada={bloqueada}
+                  />
+                </>
+              )}
+              {bloqueada && (
+                <p className="ayuda">Ya respondiste esta pregunta y este examen no deja volver.</p>
+              )}
+            </div>
+          </div>
 
-      <div className="fila" style={{ justifyContent: 'flex-end', marginTop: 'var(--e6)' }}>
-        <button
-          type="button"
-          className="boton"
-          onClick={() => void entregar()}
-          disabled={entregando || guardado === 'guardando'}
-        >
-          {entregando ? 'Entregando…' : 'Entregar examen'}
-        </button>
-      </div>
+          <div className="navegacion-examen">
+            {volverAtras ? (
+              <button
+                type="button"
+                className="boton boton-secundario"
+                onClick={() => setEnCurso((n) => Math.max(n - 1, 0))}
+                disabled={enCurso === 0}
+              >
+                Anterior
+              </button>
+            ) : (
+              // Solo mientras todavia se pueda responder: una vez bloqueada, lo
+              // dice la propia pregunta y repetirlo aqui sobra.
+              <p className="ayuda" style={{ margin: 0 }}>
+                {bloqueada ? '' : 'Este examen no permite volver a una pregunta ya respondida.'}
+              </p>
+            )}
+
+            {enCurso < total - 1 ? (
+              <button
+                type="button"
+                className="boton"
+                onClick={() => setEnCurso((n) => Math.min(n + 1, total - 1))}
+              >
+                Siguiente
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="boton"
+                onClick={() => void entregar()}
+                disabled={entregando || guardado === 'guardando'}
+              >
+                {entregando ? 'Entregando…' : 'Entregar examen'}
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -194,11 +245,14 @@ export function RendirExamen() {
 function CampoRespuesta({
   pregunta,
   respuesta,
-  onResponder
+  onResponder,
+  bloqueada = false
 }: {
   pregunta: ExamQuestion
   respuesta: NewAnswer | undefined
   onResponder: (respuesta: NewAnswer) => void
+  /** Ya respondida en un examen que no deja volver: se ve, no se cambia. */
+  bloqueada?: boolean
 }) {
   if (pregunta.question_type === 'multiple_choice' || pregunta.question_type === 'true_false') {
     return (
@@ -208,6 +262,7 @@ function CampoRespuesta({
             <label>
               <input
                 type="radio"
+                disabled={bloqueada}
                 name={pregunta.id}
                 value={opcion.id}
                 checked={respuesta?.selected_option_id === opcion.id}
@@ -230,6 +285,7 @@ function CampoRespuesta({
         <input
           type="number"
           step="any"
+          disabled={bloqueada}
           defaultValue={respuesta?.numeric_answer ?? ''}
           // onBlur y no onChange: guardar en cada tecla mandaría "4" cuando el
           // estudiante va escribiendo "42".
@@ -249,6 +305,7 @@ function CampoRespuesta({
       {largo ? (
         <textarea
           rows={6}
+          disabled={bloqueada}
           maxLength={10000}
           defaultValue={respuesta?.text_answer ?? ''}
           onBlur={(e) => {
@@ -258,6 +315,7 @@ function CampoRespuesta({
         />
       ) : (
         <input
+          disabled={bloqueada}
           maxLength={1000}
           defaultValue={respuesta?.text_answer ?? ''}
           onBlur={(e) => {

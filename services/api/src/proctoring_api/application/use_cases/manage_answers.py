@@ -134,6 +134,11 @@ class SaveAnswers:
                 )
             )
 
+        if not sesion.allow_back_navigation:
+            _ensure_not_already_answered(
+                self._answers.list_by_participant(participante.id), construidas
+            )
+
         self._answers.save_many(construidas)
         return construidas
 
@@ -154,6 +159,24 @@ class SaveAnswers:
         if participante is None:
             raise AuthorizationError("No estas matriculado en este examen")
         return sesion, participante
+
+
+def _ensure_not_already_answered(ya_guardadas: Sequence[Answer], nuevas: Sequence[Answer]) -> None:
+    """Sin navegacion hacia atras, una respuesta guardada ya no se cambia.
+
+    Es lo que `allow_back_navigation = false` significa en la practica: se
+    avanza y no se revisa. Tiene que comprobarse aqui y no solo en la pantalla,
+    porque esconder el boton "Anterior" no impide repetir la peticion.
+
+    La primera respuesta a cada pregunta siempre pasa; lo que se rechaza es
+    cambiarla. Y se mira **antes** de guardar nada: si en un lote viene una
+    pregunta ya respondida, no se guarda media peticion.
+    """
+    respondidas = {respuesta.question_id for respuesta in ya_guardadas}
+    if any(nueva.question_id in respondidas for nueva in nuevas):
+        raise InvalidAnswerError(
+            "Este examen no permite volver atras: una respuesta ya enviada no se cambia"
+        )
 
 
 class ListMyAnswers:
