@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Suspense, lazy, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { CapaExamen, CapaPanel, CapaPublica } from './components/Capas'
 import { ProveedorAuth } from './lib/auth'
@@ -20,10 +20,20 @@ import { Portada } from './pages/Portada'
 import { RevisionCaso } from './pages/RevisionCaso'
 import { Resultados } from './pages/Resultados'
 import { Preguntas } from './pages/Preguntas'
-import { RendirExamen } from './pages/RendirExamen'
 import { SalaDeEspera } from './pages/SalaDeEspera'
 import { SesionEnVivo } from './pages/SesionEnVivo'
 import { Sesiones } from './pages/Sesiones'
+
+/**
+ * La pantalla del examen se carga solo al entrar en ella.
+ *
+ * Arrastra MediaPipe, que son unos 140 kB que el panel del docente no usa
+ * para nada. Sin esto, abrir «Mis exámenes» descarga el modelo de visión.
+ */
+const RendirExamen = lazy(async () => {
+  const modulo = await import('./pages/RendirExamen')
+  return { default: modulo.RendirExamen }
+})
 
 /**
  * Deja pasar solo a quien corresponde.
@@ -222,7 +232,9 @@ function Aplicacion() {
           element={
             <Zona rol="student">
               <CapaExamen>
-                <RendirExamen />
+                <Suspense fallback={<p className="tenue">Cargando examen…</p>}>
+                  <RendirExamen />
+                </Suspense>
               </CapaExamen>
             </Zona>
           }

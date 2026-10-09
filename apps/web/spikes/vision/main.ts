@@ -7,6 +7,7 @@ const canvas = document.querySelector<HTMLCanvasElement>('#overlay')!
 const context = canvas.getContext('2d')!
 const status = document.querySelector<HTMLElement>('#status')!
 const events = document.querySelector<HTMLElement>('#events')!
+const minFacesSelect = document.querySelector<HTMLSelectElement>('#min-faces')!
 let stream: MediaStream | undefined
 let model: FaceLandmarker | undefined
 let running = false
@@ -20,7 +21,7 @@ const tracking = {
   extra_person: new SeguimientoCondicion({ minimoMs: 2000 })
 }
 const log: string[] = []
-let predictions: string[] = ['time_ms,faces,yaw_deg,pitch_deg,gaze_away,face_absent,extra_person']
+let predictions: string[] = ['time_ms,faces,yaw_deg,pitch_deg,gaze_away,face_absent,extra_person,min_faces']
 const started = { value: 0 }
 function download(filename: string, blob: Blob) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click()
@@ -42,11 +43,12 @@ function tick() {
   const r = model.detectForVideo(video, nowMonotonic)
   const faces = r.faceLandmarks.length
   const angles = faces === 1 ? angulosDesdeMatriz(r.facialTransformationMatrixes[0]) : null
-  const flags = reglasVision(faces, angles?.yaw ?? null, 25, 2)
+  const minFaces = Number(minFacesSelect.value)
+  const flags = reglasVision(faces, angles?.yaw ?? null, 25, minFaces)
   const now = Date.now()
   predictions.push([
     (clipUrl ? video.currentTime * 1000 : now - started.value).toFixed(0),faces,angles?.yaw ?? '',angles?.pitch ?? '',
-    +flags.gaze_away,+flags.face_absent,+flags.extra_person
+    +flags.gaze_away,+flags.face_absent,+flags.extra_person,minFaces
   ].join(','))
   context.clearRect(0, 0, canvas.width, canvas.height)
   context.fillStyle = '#4fffa6'
@@ -64,7 +66,7 @@ function tick() {
   frame = requestAnimationFrame(tick)
 }
 async function stop() {
-  running = false; cancelAnimationFrame(frame)
+  running = false; minFacesSelect.disabled = false; cancelAnimationFrame(frame)
   for (const kind of Object.keys(tracking) as (keyof typeof tracking)[]) {
     const episode = tracking[kind].cerrar()
     if (episode) log.push(`${kind}: ${episode.duracionMs} ms (cierre)`)
@@ -82,13 +84,13 @@ document.querySelector<HTMLButtonElement>('#start')!.onclick = async () => {
     const wasm = await FilesetResolver.forVisionTasks('/mediapipe/wasm')
     model ??= await FaceLandmarker.createFromOptions(wasm, {
       baseOptions: { modelAssetPath: '/mediapipe/face_landmarker.task' },
-      numFaces: 2, outputFacialTransformationMatrixes: true, runningMode: 'VIDEO'
+      numFaces: 3, outputFacialTransformationMatrixes: true, runningMode: 'VIDEO'
     })
     clipName = 'camera'
-    predictions = ['time_ms,faces,yaw_deg,pitch_deg,gaze_away,face_absent,extra_person']
+    predictions = ['time_ms,faces,yaw_deg,pitch_deg,gaze_away,face_absent,extra_person,min_faces']
     stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
     video.srcObject = stream; await video.play()
-    started.value = Date.now(); running = true; tick()
+    started.value = Date.now(); minFacesSelect.disabled = true; running = true; tick()
   } catch (e) { status.textContent = `No se pudo iniciar: ${String(e)}`; await stop() }
 }
 document.querySelector<HTMLInputElement>('#clip')!.onchange = async (event) => {
@@ -99,16 +101,16 @@ document.querySelector<HTMLInputElement>('#clip')!.onchange = async (event) => {
     const wasm = await FilesetResolver.forVisionTasks('/mediapipe/wasm')
     model ??= await FaceLandmarker.createFromOptions(wasm, {
       baseOptions: { modelAssetPath: '/mediapipe/face_landmarker.task' },
-      numFaces: 2, outputFacialTransformationMatrixes: true, runningMode: 'VIDEO'
+      numFaces: 3, outputFacialTransformationMatrixes: true, runningMode: 'VIDEO'
     })
-    predictions = ['time_ms,faces,yaw_deg,pitch_deg,gaze_away,face_absent,extra_person']
+    predictions = ['time_ms,faces,yaw_deg,pitch_deg,gaze_away,face_absent,extra_person,min_faces']
     log.length = 0; events.textContent = 'Ninguno'
     clipName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_')
     clipUrl = URL.createObjectURL(file)
     video.src = clipUrl
     video.onended = () => { void stop(); download(`${clipName}.csv`, new Blob([predictions.join('\n') + '\n'], { type: 'text/csv' })) }
     await video.play()
-    started.value = Date.now(); running = true; tick()
+    started.value = Date.now(); minFacesSelect.disabled = true; running = true; tick()
   } catch (e) { status.textContent = `Error del clip: ${String(e)}`; await stop() }
 }
 document.querySelector<HTMLButtonElement>('#stop')!.onclick = () => { void stop() }

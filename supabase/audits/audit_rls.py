@@ -58,8 +58,8 @@ def main() -> None:
     check_read('answers_other_student', 'answers', participant_id='eq.' + args.other_participant_id)
     # La columna is_correct se guarda en question_options, no en questions.
     check_read('question_options_is_correct', 'question_options', select='is_correct')
-    # En J5 ningún estudiante debe poder consultar decisions directamente.
-    check_read('decisions', 'decisions')
+    # Se permite leer decisiones propias; siguen ocultas las de otro estudiante.
+    check_read('decisions_other_student', 'decisions', student_id='eq.' + args.other_student_id)
     if args.allow_write:
         payload = {
             'session_id': args.session_id, 'student_id': args.other_student_id,
