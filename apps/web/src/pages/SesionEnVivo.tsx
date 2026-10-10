@@ -5,6 +5,7 @@ import { api, type Alert, type ExamSession, type ProctoringEvent } from '../lib/
 import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
 import { duracion, fechaLarga, nombreEvento, nombrePreset, soloHora } from '../lib/formato'
+import { CodigoAcceso } from '../components/CodigoAcceso'
 
 /**
  * Pantalla en vivo del docente.
@@ -97,8 +98,7 @@ export function SesionEnVivo() {
         </div>
         <div className="acciones-sesion">
           <div style={{ textAlign: 'right' }}>
-            <span className="codigo-acceso">{sesion.access_code}</span>
-            <p className="ayuda">Código de acceso</p>
+            <CodigoAcceso codigo={sesion.access_code} />
           </div>
           <div className="fila">
             <Link to={`/sesiones/${id}/preguntas`} className="boton boton-secundario">

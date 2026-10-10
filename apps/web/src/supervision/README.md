@@ -118,3 +118,51 @@ lógica temporal.
 ```bash
 npm test --prefix apps/web
 ```
+
+## El monitoreo en vivo no es un detector
+
+`live_monitoring` no emite ningún evento: solo deja que el docente mire. Por eso
+no está en `detectores/` sino en [`monitoreo.ts`](./monitoreo.ts), que es **el
+contrato de las dos puntas** (quien publica y quien mira).
+
+Cómo viaja el fotograma:
+
+| | |
+|---|---|
+| Canal | `monitoreo:<session_id>:<student_id>`, uno **por estudiante** |
+| Transporte | Supabase Realtime, `broadcast`, con `private: true` |
+| Mensaje | evento `fotograma`, `{ jpeg: string (base64, sin `data:`), capturadoEn: number }` |
+| Ritmo | `session_modules.settings` → `{ fps: 1, width: 320, quality: 0.5 }` |
+| Autorización | RLS sobre `realtime.messages` ([migración](../../../../supabase/migrations/20261009180000_live_monitoring_channel.sql)) |
+
+Tres cosas que conviene entender antes de tocarlo:
+
+**Un canal por estudiante, no por sesión.** Con un canal común, para publicar su
+fotograma el estudiante tendría que poder unirse, y unirse implica poder
+recibir: vería la cámara de sus compañeros.
+
+**Si nadie mira, no se envía.** El estudiante se entera por *presence* de que el
+docente entró al canal, y solo entonces captura. Mientras nadie mira, el
+fotograma no sale de su equipo, y el examen se lo dice al estudiante. Eso
+significa que **montar `CamaraEnVivo` es lo que enciende el envío** y
+desmontarla lo que lo apaga: una cuadrícula no debe montar las cámaras que no se
+están viendo.
+
+**`private: true` es la línea que sostiene todo.** Sin ella Realtime no consulta
+RLS y cualquiera que adivine el nombre del canal ve la cámara. Y no se nota: el
+monitoreo seguiría funcionando igual de bien. Hay una prueba que falla si
+desaparece.
+
+Para el docente ya está [`CamaraEnVivo`](../components/CamaraEnVivo.tsx): una
+cámara, con su estado (`En vivo` / `Sin señal` / `Desconectado`). La cuadrícula
+de varias (HU-015) es componerla en un `grid`; no hace falta nada más del
+servidor.
+
+### Nada de esto se graba
+
+El fotograma viaja y se pierde. No pasa por la API, no entra en Storage y no
+queda en ninguna tabla. Lo que se conserva al terminar el examen son las
+capturas de los eventos que fueron alerta y los fragmentos de audio marcados,
+que tienen su propio camino. Un canal que guardara los fotogramas sería
+grabación continua de vídeo con otro nombre, y es justo lo que la pantalla de
+consentimiento promete que no pasa.

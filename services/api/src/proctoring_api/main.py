@@ -131,6 +131,7 @@ from proctoring_api.application.use_cases.manage_questions import (
     GetExamQuestions,
     ListSessionQuestions,
 )
+from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.application.use_cases.review_case import (
     ListSessionDecisions,
@@ -487,6 +488,9 @@ def create_app(
     profile_repository = _build_profile_repository(settings, client)
     job_queue = _build_job_queue(settings)
     clock = clock or SystemClock()
+    # Lo necesita la capa HTTP para decidir si el codigo de acceso ya se puede
+    # mostrar: es una respuesta que depende de la hora.
+    app.state.clock = clock
 
     app.state.settings = settings
     app.state.event_repository = event_repository
@@ -553,6 +557,7 @@ def create_app(
         participant_repository,
         profile_repository,
         decision_repository,
+        audio_analysis_repository,
     )
     app.state.record_decision = RecordDecision(
         decision_repository,
@@ -639,17 +644,19 @@ def create_app(
         session_repository,
         clock,
         settings.dev_student_id,
+        bank_repository,
     )
     app.state.list_my_answers = ListMyAnswers(
         answer_repository, participant_repository, settings.dev_student_id
     )
-    app.state.create_evidence_upload_url = CreateEvidenceUploadUrl(
-        evidence_storage,
-        {
-            EvidenceKind.IMAGE: settings.supabase_evidence_bucket,
-            EvidenceKind.AUDIO: settings.supabase_audio_bucket,
-            EvidenceKind.REFERENCE_FACE: settings.supabase_reference_faces_bucket,
-        },
+    buckets = {
+        EvidenceKind.IMAGE: settings.supabase_evidence_bucket,
+        EvidenceKind.AUDIO: settings.supabase_audio_bucket,
+        EvidenceKind.REFERENCE_FACE: settings.supabase_reference_faces_bucket,
+    }
+    app.state.create_evidence_upload_url = CreateEvidenceUploadUrl(evidence_storage, buckets)
+    app.state.evidence_read_url = CreateEvidenceReadUrl(
+        evidence_storage, buckets, session_repository
     )
 
     register_error_handlers(app)

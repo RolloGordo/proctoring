@@ -203,6 +203,10 @@ class ExamSessionRequest(BaseModel):
     shuffle_questions: bool = True
     shuffle_options: bool = True
     allow_back_navigation: bool = True
+    #: Guarda el codigo de acceso hasta la hora de inicio. Un codigo que se
+    #: puede leer con dos dias de antelacion es un codigo que circula con dos
+    #: dias de antelacion.
+    reveal_code_at_start: bool = False
     #: Cuantas preguntas recibe cada estudiante. Solo aplica con bancos
     #: atados; sin ellos el examen usa sus propias preguntas, todas.
     question_pool_size: int | None = Field(default=None, gt=0, le=500)
@@ -219,18 +223,19 @@ class ExamSessionSummary(BaseModel):
     title: str
     starts_at: datetime
     duration_minutes: int
-    access_code: str
+    #: `None` mientras el examen guarde su codigo (ver `reveal_code_at_start`).
+    access_code: str | None
     preset: SupervisionPreset
     status: SessionStatus
 
     @classmethod
-    def from_entity(cls, session: ExamSession) -> ExamSessionSummary:
+    def from_entity(cls, session: ExamSession, now: datetime) -> ExamSessionSummary:
         return cls(
             id=session.id,
             title=session.title,
             starts_at=session.starts_at,
             duration_minutes=session.duration_minutes,
-            access_code=session.access_code,
+            access_code=session.access_code if session.code_visible_at(now) else None,
             preset=session.preset,
             status=session.status,
         )
@@ -252,20 +257,26 @@ class ExamSessionResponse(BaseModel):
     ends_at: datetime
     duration_minutes: int
     entry_tolerance_minutes: int
-    access_code: str
+    #: `None` mientras el examen guarde su codigo.
+    #:
+    #: Se omite en la respuesta, no solo en la pantalla: si viniera en el JSON,
+    #: guardarlo seria una decoracion. El docente lo recibe en cuanto empieza el
+    #: examen, que es cuando lo necesita para dictarlo.
+    access_code: str | None
     preset: SupervisionPreset
     status: SessionStatus
     max_attempts: int
     shuffle_questions: bool
     shuffle_options: bool
     allow_back_navigation: bool
+    reveal_code_at_start: bool
     question_pool_size: int | None
     max_score: Decimal
     cancelled_at: datetime | None
     modules: dict[SupervisionModule, dict[str, Any]]
 
     @classmethod
-    def from_entity(cls, session: ExamSession) -> ExamSessionResponse:
+    def from_entity(cls, session: ExamSession, now: datetime) -> ExamSessionResponse:
         return cls(
             id=session.id,
             teacher_id=session.teacher_id,
@@ -276,13 +287,14 @@ class ExamSessionResponse(BaseModel):
             ends_at=session.ends_at,
             duration_minutes=session.duration_minutes,
             entry_tolerance_minutes=session.entry_tolerance_minutes,
-            access_code=session.access_code,
+            access_code=session.access_code if session.code_visible_at(now) else None,
             preset=session.preset,
             status=session.status,
             max_attempts=session.max_attempts,
             shuffle_questions=session.shuffle_questions,
             shuffle_options=session.shuffle_options,
             allow_back_navigation=session.allow_back_navigation,
+            reveal_code_at_start=session.reveal_code_at_start,
             question_pool_size=session.question_pool_size,
             max_score=session.max_score,
             cancelled_at=session.cancelled_at,
@@ -575,6 +587,12 @@ class MyExamResponse(BaseModel):
     #: Que se va a supervisar: la sala de espera lo muestra antes de que el
     #: estudiante entre, igual que `JoinExamResponse`.
     modules: dict[SupervisionModule, dict[str, Any]]
+    #: Si se puede volver a una pregunta ya respondida.
+    #:
+    #: Lo necesita la pantalla del examen para no ofrecer un "Anterior" que la
+    #: API va a rechazar. La regla la aplica la API; esto solo evita que el
+    #: estudiante descubra el limite chocandose con un error.
+    allow_back_navigation: bool
     verification_status: VerificationStatus
     can_take_exam: bool
     consent_at: datetime | None
@@ -602,6 +620,7 @@ class MyExamResponse(BaseModel):
             entry_tolerance_minutes=exam.session.entry_tolerance_minutes,
             can_enter_now=exam.can_enter_now,
             modules=exam.session.modules,
+            allow_back_navigation=exam.session.allow_back_navigation,
             verification_status=exam.participant.verification_status,
             can_take_exam=exam.participant.can_take_exam,
             consent_at=exam.participant.consent_at,
@@ -805,6 +824,9 @@ class CaseResponse(BaseModel):
     alerts: list[AlertResponse]
     decisions: list[DecisionResponse]
     risk: RiskResponse
+    #: Un analisis por fragmento de audio con habla. Es lo que deja al docente
+    #: escuchar el fragmento marcado en vez de leer solo "posible consulta".
+    audio_analyses: list[AudioAnalysisResponse] = []
 
     @classmethod
     def from_entity(cls, case: CaseFile) -> CaseResponse:
@@ -821,6 +843,14 @@ class CaseResponse(BaseModel):
             alerts=[AlertResponse.from_entity(a) for a in case.alerts],
             decisions=[DecisionResponse.from_entity(d) for d in case.decisions],
             risk=RiskResponse.from_entity(case.risk),
+            # `alerted` no se guarda con el analisis: se deduce de si la API
+            # creo una alerta para ese evento, que es quien lo decide.
+            audio_analyses=[
+                AudioAnalysisResponse.from_entity(
+                    a, alerted=a.event_id in {al.event_id for al in case.alerts}
+                )
+                for a in case.audio_analyses
+            ],
         )
 
 
@@ -908,6 +938,9 @@ class AudioAnalysisResponse(BaseModel):
     synthetic_voice_score: float | None
     processing_ms: int | None
     processed_at: datetime
+    #: Con que pregunta coincidio lo que dijo. Sin esto el docente lee un numero
+    #: de similitud sin saber contra que se comparo.
+    matched_question_id: UUID | None = None
     #: `True` solo si se cumplieron **las dos** condiciones. Lo decide la API.
     alerted: bool
 
@@ -920,6 +953,7 @@ class AudioAnalysisResponse(BaseModel):
             synthetic_voice_score=analysis.synthetic_voice_score,
             processing_ms=analysis.processing_ms,
             processed_at=analysis.processed_at,
+            matched_question_id=analysis.matched_question_id,
             alerted=alerted,
         )
 
@@ -1086,6 +1120,7 @@ class UpdateExamSessionRequest(BaseModel):
     shuffle_questions: bool | None = None
     shuffle_options: bool | None = None
     allow_back_navigation: bool | None = None
+    reveal_code_at_start: bool | None = None
     clear_description: bool = False
     clear_course: bool = False
     #: Vuelve a "todas las preguntas del banco".
@@ -1105,6 +1140,7 @@ class UpdateExamSessionRequest(BaseModel):
             shuffle_questions=self.shuffle_questions,
             shuffle_options=self.shuffle_options,
             allow_back_navigation=self.allow_back_navigation,
+            reveal_code_at_start=self.reveal_code_at_start,
             clear_description=self.clear_description,
             clear_course=self.clear_course,
             clear_pool_size=self.clear_pool_size,
@@ -1163,3 +1199,20 @@ class QtiImportResponse(BaseModel):
             ],
             dry_run=dry_run,
         )
+
+
+class EvidenceReadUrlRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/sessions/{id}/students/{id}/evidence-url`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    #: La ruta tal cual vino en el evento o en el analisis de audio.
+    path: str = Field(min_length=1, max_length=400)
+    kind: EvidenceKind
+
+
+class EvidenceReadUrlResponse(BaseModel):
+    """Permiso temporal para **ver** un archivo de evidencia."""
+
+    url: str
+    expires_in_seconds: int

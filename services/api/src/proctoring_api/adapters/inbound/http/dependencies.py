@@ -13,6 +13,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.use_cases.ai_jobs import (
     GetAudioJob,
     GetFaceJob,
@@ -73,6 +74,7 @@ from proctoring_api.application.use_cases.manage_questions import (
     GetExamQuestions,
     ListSessionQuestions,
 )
+from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.application.use_cases.review_case import (
     ListSessionDecisions,
@@ -121,6 +123,11 @@ def get_create_exam_session(request: Request) -> CreateExamSession:
 def get_list_teacher_sessions(request: Request) -> ListTeacherSessions:
     use_case: ListTeacherSessions = request.app.state.list_teacher_sessions
     return use_case
+
+
+def get_clock(request: Request) -> Clock:
+    reloj: Clock = request.app.state.clock
+    return reloj
 
 
 def get_exam_session(request: Request) -> GetExamSession:
@@ -323,6 +330,11 @@ def get_import_qti(request: Request) -> ImportQtiIntoBank:
     return use_case
 
 
+def get_evidence_read_url(request: Request) -> CreateEvidenceReadUrl:
+    use_case: CreateEvidenceReadUrl = request.app.state.evidence_read_url
+    return use_case
+
+
 def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
@@ -357,6 +369,7 @@ ListSessionAlertsDep = Annotated[ListSessionAlerts, Depends(get_list_session_ale
 CurrentUserDep = Annotated[AuthenticatedUser | None, Depends(get_current_user)]
 CreateExamSessionDep = Annotated[CreateExamSession, Depends(get_create_exam_session)]
 ListTeacherSessionsDep = Annotated[ListTeacherSessions, Depends(get_list_teacher_sessions)]
+ClockDep = Annotated[Clock, Depends(get_clock)]
 GetExamSessionDep = Annotated[GetExamSession, Depends(get_exam_session)]
 JoinExamSessionDep = Annotated[JoinExamSession, Depends(get_join_exam_session)]
 AddQuestionsDep = Annotated[AddQuestions, Depends(get_add_questions)]
@@ -400,3 +413,4 @@ DeleteExamSessionDep = Annotated[DeleteExamSession, Depends(get_delete_session)]
 UpdateQuestionDep = Annotated[UpdateQuestion, Depends(get_update_question)]
 DeleteQuestionDep = Annotated[DeleteQuestion, Depends(get_delete_question)]
 ImportQtiDep = Annotated[ImportQtiIntoBank, Depends(get_import_qti)]
+EvidenceReadUrlDep = Annotated[CreateEvidenceReadUrl, Depends(get_evidence_read_url)]

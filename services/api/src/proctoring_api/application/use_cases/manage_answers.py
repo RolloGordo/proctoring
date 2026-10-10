@@ -8,10 +8,12 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
+from proctoring_api.application.exam_questions import questions_for
 from proctoring_api.application.ports.answer_repository import AnswerRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.participant_repository import ParticipantRepository
+from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.use_cases.manage_enrollment import (
     DEFAULT_DEV_STUDENT_ID,
@@ -19,6 +21,7 @@ from proctoring_api.application.use_cases.manage_enrollment import (
 )
 from proctoring_api.domain.answer import Answer, InvalidAnswerError
 from proctoring_api.domain.errors import AuthorizationError
+from proctoring_api.domain.exam_session import ExamSession
 from proctoring_api.domain.participant import SessionParticipant
 from proctoring_api.domain.user import AuthenticatedUser
 
@@ -60,6 +63,7 @@ class SaveAnswers:
         sessions: ExamSessionRepository,
         clock: Clock,
         dev_student_id: UUID = DEFAULT_DEV_STUDENT_ID,
+        banks: QuestionBankRepository | None = None,
     ) -> None:
         self._answers = answers
         self._questions = questions
@@ -67,6 +71,7 @@ class SaveAnswers:
         self._sessions = sessions
         self._clock = clock
         self._dev_student_id = dev_student_id
+        self._banks = banks
 
     def execute(
         self,
@@ -95,13 +100,20 @@ class SaveAnswers:
             )
 
         ahora = self._clock.now()
-        participante = self._require_participant(session_id, actor, ahora)
+        sesion, participante = self._require_participant(session_id, actor, ahora)
 
-        # Las preguntas del examen, indexadas: responder una pregunta de otro
-        # examen tiene que fallar aunque se conozca su id.
+        # Las preguntas **de este estudiante**, indexadas: responder una pregunta
+        # de otro examen tiene que fallar aunque se conozca su id.
+        #
+        # El mismo `questions_for` que las entrega y que las califica, y no las
+        # del examen a secas. Las de un banco no son del examen —tienen
+        # `session_id` nulo y cuelgan del banco—, asi que validar contra el
+        # examen dejaba un examen con banco que se mostraba entero y no aceptaba
+        # ni una respuesta. Y de paso, una pregunta del banco que a este
+        # estudiante no le salio en el sorteo tampoco se le acepta.
         del_examen = {
             pregunta.id: pregunta.for_student()
-            for pregunta in self._questions.list_by_session(session_id)
+            for pregunta in questions_for(sesion, participante.id, self._questions, self._banks)
         }
 
         # Se construyen todas antes de guardar ninguna: si la tercera viene mal,
@@ -122,12 +134,17 @@ class SaveAnswers:
                 )
             )
 
+        if not sesion.allow_back_navigation:
+            _ensure_not_already_answered(
+                self._answers.list_by_participant(participante.id), construidas
+            )
+
         self._answers.save_many(construidas)
         return construidas
 
     def _require_participant(
         self, session_id: UUID, actor: AuthenticatedUser | None, ahora: datetime
-    ) -> SessionParticipant:
+    ) -> tuple[ExamSession, SessionParticipant]:
         sesion = self._sessions.find_by_id(session_id)
         if sesion is None:
             raise AuthorizationError("No tienes acceso a este examen")
@@ -141,7 +158,25 @@ class SaveAnswers:
         participante = self._participants.find(session_id, quien)
         if participante is None:
             raise AuthorizationError("No estas matriculado en este examen")
-        return participante
+        return sesion, participante
+
+
+def _ensure_not_already_answered(ya_guardadas: Sequence[Answer], nuevas: Sequence[Answer]) -> None:
+    """Sin navegacion hacia atras, una respuesta guardada ya no se cambia.
+
+    Es lo que `allow_back_navigation = false` significa en la practica: se
+    avanza y no se revisa. Tiene que comprobarse aqui y no solo en la pantalla,
+    porque esconder el boton "Anterior" no impide repetir la peticion.
+
+    La primera respuesta a cada pregunta siempre pasa; lo que se rechaza es
+    cambiarla. Y se mira **antes** de guardar nada: si en un lote viene una
+    pregunta ya respondida, no se guarda media peticion.
+    """
+    respondidas = {respuesta.question_id for respuesta in ya_guardadas}
+    if any(nueva.question_id in respondidas for nueva in nuevas):
+        raise InvalidAnswerError(
+            "Este examen no permite volver atras: una respuesta ya enviada no se cambia"
+        )
 
 
 class ListMyAnswers:

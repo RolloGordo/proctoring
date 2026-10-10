@@ -8,6 +8,7 @@ from fastapi import APIRouter, status
 
 from proctoring_api.adapters.inbound.http.dependencies import (
     CurrentUserDep,
+    EvidenceReadUrlDep,
     ListDecisionsDep,
     RecordDecisionDep,
     ReviewCaseDep,
@@ -17,7 +18,10 @@ from proctoring_api.adapters.inbound.http.schemas import (
     DecisionRequest,
     DecisionResponse,
     ErrorResponse,
+    EvidenceReadUrlRequest,
+    EvidenceReadUrlResponse,
 )
+from proctoring_api.application.use_cases.read_evidence import READ_EXPIRY_SECONDS
 
 router = APIRouter(prefix="/api/v1", tags=["review"])
 
@@ -92,3 +96,31 @@ def list_decisions(
     return [
         DecisionResponse.from_entity(d) for d in use_case.execute(session_id, actor=current_user)
     ]
+
+
+@router.post(
+    "/sessions/{session_id}/students/{student_id}/evidence-url",
+    response_model=EvidenceReadUrlResponse,
+    summary="URL temporal para ver una evidencia (solo el docente dueño)",
+    responses=AUTH_RESPONSES,
+)
+def create_evidence_read_url(
+    session_id: UUID,
+    student_id: UUID,
+    payload: EvidenceReadUrlRequest,
+    use_case: EvidenceReadUrlDep,
+    current_user: CurrentUserDep,
+) -> EvidenceReadUrlResponse:
+    """Devuelve un enlace firmado para abrir una captura o un fragmento de audio.
+
+    Los tres buckets son privados, asi que sin esto una captura se guarda y
+    nadie puede mirarla.
+
+    El enlace **caduca**: uno copiado de la pantalla de revision no puede
+    convertirse en acceso permanente a la cara de un estudiante. Y la ruta tiene
+    que empezar por `{session_id}/{student_id}/`, que es como la escribe el
+    servidor al firmar la subida: sin esa comprobacion, un docente podria pedir
+    la URL de cualquier archivo del bucket cambiando el cuerpo de la peticion.
+    """
+    url = use_case.execute(session_id, student_id, payload.path, payload.kind, actor=current_user)
+    return EvidenceReadUrlResponse(url=url, expires_in_seconds=READ_EXPIRY_SECONDS)

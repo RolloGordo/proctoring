@@ -8,6 +8,7 @@ from fastapi import APIRouter, Response, status
 
 from proctoring_api.adapters.inbound.http.dependencies import (
     CancelExamSessionDep,
+    ClockDep,
     CreateExamSessionDep,
     CurrentUserDep,
     DeleteExamSessionDep,
@@ -50,6 +51,7 @@ def create_exam_session(
     payload: ExamSessionRequest,
     use_case: CreateExamSessionDep,
     current_user: CurrentUserDep,
+    clock: ClockDep,
 ) -> ExamSessionResponse:
     """Programa un examen y devuelve su codigo de acceso.
 
@@ -72,12 +74,13 @@ def create_exam_session(
             question_pool_size=payload.question_pool_size,
             shuffle_options=payload.shuffle_options,
             allow_back_navigation=payload.allow_back_navigation,
+            reveal_code_at_start=payload.reveal_code_at_start,
             max_score=payload.max_score,
             modules=payload.modules or {},
         ),
         actor=current_user,
     )
-    return ExamSessionResponse.from_entity(session)
+    return ExamSessionResponse.from_entity(session, clock.now())
 
 
 @router.get(
@@ -89,6 +92,7 @@ def create_exam_session(
 def list_my_sessions(
     use_case: ListTeacherSessionsDep,
     current_user: CurrentUserDep,
+    clock: ClockDep,
 ) -> list[ExamSessionSummary]:
     """Sesiones del docente que pregunta, de la mas proxima a la mas antigua.
 
@@ -96,7 +100,8 @@ def list_my_sessions(
     pedir las de otro.
     """
     return [
-        ExamSessionSummary.from_entity(session) for session in use_case.execute(actor=current_user)
+        ExamSessionSummary.from_entity(session, clock.now())
+        for session in use_case.execute(actor=current_user)
     ]
 
 
@@ -110,13 +115,16 @@ def get_exam_session(
     session_id: UUID,
     use_case: GetExamSessionDep,
     current_user: CurrentUserDep,
+    clock: ClockDep,
 ) -> ExamSessionResponse:
     """Sesion con sus modulos y umbrales.
 
     Una sesion ajena y una inexistente responden lo mismo (403), para no
     permitir averiguar que sesiones existen.
     """
-    return ExamSessionResponse.from_entity(use_case.execute(session_id, actor=current_user))
+    return ExamSessionResponse.from_entity(
+        use_case.execute(session_id, actor=current_user), clock.now()
+    )
 
 
 @router.post(
@@ -173,6 +181,7 @@ def update_exam_session(
     payload: UpdateExamSessionRequest,
     use_case: UpdateExamSessionDep,
     current_user: CurrentUserDep,
+    clock: ClockDep,
 ) -> ExamSessionResponse:
     """Cambia lo que el docente se equivocó al crear.
 
@@ -185,7 +194,7 @@ def update_exam_session(
     una regla y a otros con otra.
     """
     corregida = use_case.execute(session_id, payload.to_changes(), actor=current_user)
-    return ExamSessionResponse.from_entity(corregida)
+    return ExamSessionResponse.from_entity(corregida, clock.now())
 
 
 @router.post(
@@ -201,6 +210,7 @@ def cancel_exam_session(
     session_id: UUID,
     use_case: CancelExamSessionDep,
     current_user: CurrentUserDep,
+    clock: ClockDep,
 ) -> ExamSessionResponse:
     """Retira el examen sin borrar nada.
 
@@ -209,7 +219,7 @@ def cancel_exam_session(
     las alertas y las respuestas de quien ya entró siguen ahí: son evidencia.
     """
     cancelada = use_case.execute(session_id, actor=current_user)
-    return ExamSessionResponse.from_entity(cancelada)
+    return ExamSessionResponse.from_entity(cancelada, clock.now())
 
 
 @router.delete(

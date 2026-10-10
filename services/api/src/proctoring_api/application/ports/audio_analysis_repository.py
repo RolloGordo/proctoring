@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol
 from uuid import UUID
 
@@ -21,4 +22,13 @@ class AudioAnalysisRepository(Protocol):
 
     def find_by_event(self, event_id: UUID) -> AudioAnalysis | None:
         """El analisis de un evento, o `None` si todavia no se proceso."""
+        ...
+
+    def list_by_events(self, event_ids: Sequence[UUID]) -> Sequence[AudioAnalysis]:
+        """Los analisis de varios eventos, en una sola consulta.
+
+        Existe para la revision de un caso, que muestra todos los fragmentos de
+        audio de un estudiante: pedirlos de uno en uno seria una consulta por
+        evento en la pantalla donde el docente decide.
+        """
         ...

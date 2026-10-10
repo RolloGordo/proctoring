@@ -30,3 +30,13 @@ class EvidenceStorage(Protocol):
         subir a otra parte del bucket ni sobrescribir evidencia ajena.
         """
         ...
+
+    def create_read_url(self, bucket: str, path: str, expires_in_seconds: int) -> str:
+        """URL firmada para **leer** un archivo de evidencia.
+
+        Los tres buckets son privados: sin esto, una captura se guarda y nadie
+        puede verla. La URL caduca a proposito, para que un enlace copiado de la
+        pantalla de revision no se convierta en acceso permanente a la cara de
+        un estudiante.
+        """
+        ...

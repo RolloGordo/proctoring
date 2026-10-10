@@ -115,3 +115,35 @@ export async function capturarFotograma(
   contexto.drawImage(video, 0, 0, lienzo.width, lienzo.height)
   return new Promise((resolver) => lienzo.toBlob(resolver, 'image/jpeg', calidad))
 }
+
+/**
+ * Captura el fotograma actual reescalado, como JPEG en base64 sin el prefijo
+ * `data:`.
+ *
+ * Es lo que viaja por el canal de monitoreo en vivo, y por eso es distinto de
+ * `capturarFotograma`: ahí interesa la evidencia a resolución completa, aquí
+ * interesa que quepa en un mensaje y que no cueste ancho de banda. 320 px
+ * bastan para que el docente vea quién está y qué hace.
+ *
+ * Síncrono (`toDataURL`) en lugar de `toBlob`: a 320 px tarda menos de un
+ * milisegundo, y así el envío periódico no acumula promesas pendientes si la
+ * red va lenta.
+ */
+export function capturarFotogramaBase64(
+  video: HTMLVideoElement,
+  { ancho = 320, calidad = 0.5 }: { ancho?: number; calidad?: number } = {}
+): string | null {
+  if (!video.videoWidth || !video.videoHeight) return null
+
+  const lienzo = document.createElement('canvas')
+  // Nunca se amplía: si la cámara da menos, se manda lo que hay.
+  lienzo.width = Math.min(ancho, video.videoWidth)
+  lienzo.height = Math.round((lienzo.width * video.videoHeight) / video.videoWidth)
+  const contexto = lienzo.getContext('2d')
+  if (!contexto) return null
+  contexto.drawImage(video, 0, 0, lienzo.width, lienzo.height)
+
+  const url = lienzo.toDataURL('image/jpeg', calidad)
+  const coma = url.indexOf(',')
+  return coma === -1 ? null : url.slice(coma + 1)
+}
