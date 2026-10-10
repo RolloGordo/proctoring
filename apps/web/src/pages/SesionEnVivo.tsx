@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { BancosDelExamen } from '../components/BancosDelExamen'
-import { api, type Alert, type ExamSession, type ProctoringEvent } from '../lib/api'
+import { CamaraEnVivo } from '../components/CamaraEnVivo'
+import {
+  api,
+  type Alert,
+  type ExamSession,
+  type Participant,
+  type ProctoringEvent
+} from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
 import { duracion, fechaLarga, nombreEvento, nombrePreset, soloHora } from '../lib/formato'
 import { CodigoAcceso } from '../components/CodigoAcceso'
+
+const CAMARAS_POR_PAGINA = 6
 
 /**
  * Pantalla en vivo del docente.
@@ -19,11 +28,20 @@ import { CodigoAcceso } from '../components/CodigoAcceso'
  */
 export function SesionEnVivo() {
   const { id = '' } = useParams()
-  const { token } = useAuth()
+  const { token, userId } = useAuth()
 
   const [sesion, setSesion] = useState<ExamSession>()
   const [alertas, setAlertas] = useState<Alert[]>([])
   const [eventos, setEventos] = useState<ProctoringEvent[]>([])
+  const [estadoParticipantes, setEstadoParticipantes] = useState<{
+    sessionId: string
+    datos: Participant[]
+  }>()
+  const [falloParticipantes, setFalloParticipantes] = useState<{
+    sessionId: string
+    mensaje: string
+  }>()
+  const [paginaCamaras, setPaginaCamaras] = useState({ sessionId: '', indice: 0 })
   const [enVivo, setEnVivo] = useState(false)
   const [error, setError] = useState<string>()
 
@@ -35,6 +53,16 @@ export function SesionEnVivo() {
     vistas.current.add(alerta.id)
     setAlertas((previas) => [alerta, ...previas])
   }, [])
+
+  const cargarParticipantes = useCallback(() => {
+    api
+      .listParticipants(id, token)
+      .then((datos) => {
+        setEstadoParticipantes({ sessionId: id, datos })
+        setFalloParticipantes(undefined)
+      })
+      .catch((fallo: Error) => setFalloParticipantes({ sessionId: id, mensaje: fallo.message }))
+  }, [id, token])
 
   useEffect(() => {
     if (!id) return
@@ -56,6 +84,10 @@ export function SesionEnVivo() {
   }, [id, token])
 
   useEffect(() => {
+    cargarParticipantes()
+  }, [cargarParticipantes])
+
+  useEffect(() => {
     if (!supabase || !id) return
 
     // Se fija en una constante local: TypeScript no puede saber que el modulo
@@ -68,13 +100,23 @@ export function SesionEnVivo() {
         { event: 'INSERT', schema: 'public', table: 'alerts', filter: `session_id=eq.${id}` },
         (mensaje) => agregar(mensaje.new as Alert)
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'session_participants',
+          filter: `session_id=eq.${id}`
+        },
+        cargarParticipantes
+      )
       .subscribe((estado) => setEnVivo(estado === 'SUBSCRIBED'))
 
     return () => {
       void cliente.removeChannel(canal)
       setEnVivo(false)
     }
-  }, [id, agregar])
+  }, [id, agregar, cargarParticipantes])
 
   const resumen = useMemo(() => {
     const porSeveridad = { high: 0, medium: 0, low: 0 }
@@ -82,6 +124,29 @@ export function SesionEnVivo() {
     const estudiantes = new Set(eventos.map((e) => e.student_id)).size
     return { ...porSeveridad, estudiantes, eventos: eventos.length }
   }, [alertas, eventos])
+
+  const participantes = useMemo(
+    () => (estadoParticipantes?.sessionId === id ? estadoParticipantes.datos : []),
+    [estadoParticipantes, id]
+  )
+  const errorParticipantes =
+    falloParticipantes?.sessionId === id ? falloParticipantes.mensaje : undefined
+  const participantesCargados =
+    estadoParticipantes?.sessionId === id || falloParticipantes?.sessionId === id
+  const participantesActivos = useMemo(
+    () =>
+      participantes.filter(
+        (participante) => participante.can_take_exam && !participante.submitted_at
+      ),
+    [participantes]
+  )
+  const totalPaginasCamaras = Math.ceil(participantesActivos.length / CAMARAS_POR_PAGINA)
+  const indicePagina = paginaCamaras.sessionId === id ? paginaCamaras.indice : 0
+  const paginaVisible = Math.min(indicePagina, Math.max(0, totalPaginasCamaras - 1))
+  const camarasVisibles = participantesActivos.slice(
+    paginaVisible * CAMARAS_POR_PAGINA,
+    (paginaVisible + 1) * CAMARAS_POR_PAGINA
+  )
 
   if (error) return <p className="aviso">{error}</p>
   if (!sesion) return <p className="tenue">Cargando examen…</p>
@@ -125,6 +190,78 @@ export function SesionEnVivo() {
       </div>
 
       <BancosDelExamen sessionId={id} />
+
+      {'live_monitoring' in sesion.modules && (
+        <section className="bloque">
+          <div className="encabezado-seccion">
+            <h2>Cámaras en vivo</h2>
+            <span className="tenue">{participantesActivos.length} estudiantes rindiendo</span>
+          </div>
+          <div className="tarjeta">
+            <div className="tarjeta-cuerpo">
+              <p className="ayuda">
+                No se está grabando. Las imágenes se transmiten solo mientras las miras y no se
+                guardan. El estudiante ve en su pantalla cuando su cámara está siendo observada.
+              </p>
+              {errorParticipantes && <p className="aviso">{errorParticipantes}</p>}
+              {!participantesCargados ? (
+                <p className="tenue">Cargando participantes…</p>
+              ) : participantesActivos.length === 0 ? (
+                <p className="tenue">No hay estudiantes rindiendo en este momento.</p>
+              ) : !userId ? (
+                <p className="aviso">No se pudo identificar al docente para abrir las cámaras.</p>
+              ) : (
+                <>
+                  <div className="cuadricula-camaras">
+                    {camarasVisibles.map((participante) => (
+                      <CamaraEnVivo
+                        key={participante.student_id}
+                        sessionId={id}
+                        studentId={participante.student_id}
+                        teacherId={userId}
+                        nombre={participante.student_name ?? undefined}
+                      />
+                    ))}
+                  </div>
+                  {totalPaginasCamaras > 1 && (
+                    <nav className="paginacion-camaras" aria-label="Páginas de cámaras">
+                      <button
+                        type="button"
+                        className="boton boton-secundario"
+                        onClick={() =>
+                          setPaginaCamaras({
+                            sessionId: id,
+                            indice: Math.max(0, paginaVisible - 1)
+                          })
+                        }
+                        disabled={paginaVisible === 0}
+                      >
+                        Anterior
+                      </button>
+                      <span className="tenue">
+                        Página {paginaVisible + 1} de {totalPaginasCamaras}
+                      </span>
+                      <button
+                        type="button"
+                        className="boton boton-secundario"
+                        onClick={() =>
+                          setPaginaCamaras({
+                            sessionId: id,
+                            indice: Math.min(totalPaginasCamaras - 1, paginaVisible + 1)
+                          })
+                        }
+                        disabled={paginaVisible >= totalPaginasCamaras - 1}
+                      >
+                        Siguiente
+                      </button>
+                    </nav>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {!supabase && (
         <p className="aviso aviso-neutro">

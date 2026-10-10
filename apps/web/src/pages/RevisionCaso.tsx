@@ -1,6 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type CaseFile, type DecisionType } from '../lib/api'
+import {
+  api,
+  type AudioAnalysis,
+  type CaseFile,
+  type DecisionType,
+  type EventType,
+  type ProctoringEvent
+} from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import {
   DECISIONES,
@@ -79,6 +86,16 @@ export function RevisionCaso() {
   const quien = participant.student_name ?? participant.student_id.slice(0, 8)
   const longitud = justificacion.trim().length
   const puedeGuardar = decision !== undefined && longitud >= MINIMO && !guardando
+  const eventosPorCategoria = events.reduce((grupos, evento) => {
+    const path = evento.evidence_path
+    if (!path || evento.event_type === 'speech_detected') return grupos
+    const grupo = grupos.get(evento.event_type) ?? []
+    grupo.push({ evento, path })
+    grupos.set(evento.event_type, grupo)
+    return grupos
+  }, new Map<EventType, { evento: ProctoringEvent; path: string }[]>())
+  const eventosPorId = new Map(events.map((evento) => [evento.id, evento]))
+  const analisisAlertados = caso.audio_analyses.filter((analisis) => analisis.alerted)
 
   return (
     <>
@@ -187,6 +204,89 @@ export function RevisionCaso() {
 
       <section className="bloque">
         <div className="encabezado-seccion">
+          <h2>Evidencia</h2>
+        </div>
+        <div className="tarjeta">
+          <div className="tarjeta-cuerpo">
+            <h3>Capturas por tipo de señal</h3>
+            {eventosPorCategoria.size === 0 ? (
+              <p className="tenue">No hay capturas asociadas a las señales de este caso.</p>
+            ) : (
+              <div className="evidencia-categorias">
+                {[...eventosPorCategoria].map(([tipo, capturas]) => (
+                  <details className="evidencia-categoria" key={tipo}>
+                    <summary>
+                      {nombreEvento(tipo)} <span className="tenue">({capturas.length})</span>
+                    </summary>
+                    <ul className="lista-evidencias">
+                      {capturas.map(({ evento, path }) => (
+                        <li key={evento.id} className="evidencia-item">
+                          <div>
+                            <strong>{soloHora(evento.started_at)}</strong>
+                            <p className="ayuda">
+                              {detalleEvento(evento.metadata) || 'Captura del evento'}
+                            </p>
+                          </div>
+                          <EvidenciaImagen
+                            sessionId={id}
+                            studentId={estudianteId}
+                            path={path}
+                            token={token}
+                            nombre={nombreEvento(evento.event_type)}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ))}
+              </div>
+            )}
+
+            <h3 className="evidencia-subtitulo">Fragmentos señalados como posible consulta a IA</h3>
+            {analisisAlertados.length === 0 ? (
+              <p className="tenue">No hay fragmentos de audio señalados como alerta.</p>
+            ) : (
+              <ul className="lista-evidencias">
+                {analisisAlertados.map((analisis) => {
+                  const evento = eventosPorId.get(analisis.event_id)
+                  return (
+                    <li key={analisis.event_id} className="evidencia-item evidencia-audio">
+                      <div>
+                        <strong>
+                          {evento ? soloHora(evento.started_at) : 'Fragmento de audio'}
+                        </strong>
+                        {analisis.transcript && (
+                          <p className="justificacion">“{analisis.transcript}”</p>
+                        )}
+                        <p className="ayuda">
+                          Similitud: {porcentaje(analisis.similarity)} · Voz sintética:{' '}
+                          {porcentaje(analisis.synthetic_voice_score)}
+                        </p>
+                      </div>
+                      {evento?.evidence_path ? (
+                        <FragmentoAudio
+                          sessionId={id}
+                          studentId={estudianteId}
+                          path={evento.evidence_path}
+                          token={token}
+                          analisis={analisis}
+                        />
+                      ) : (
+                        <p className="ayuda">
+                          Este análisis no tiene un fragmento de audio disponible.
+                        </p>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="bloque">
+        <div className="encabezado-seccion">
           <h2>Tu decisión</h2>
         </div>
 
@@ -269,4 +369,133 @@ export function RevisionCaso() {
       </section>
     </>
   )
+}
+
+function EvidenciaImagen({
+  sessionId,
+  studentId,
+  path,
+  token,
+  nombre
+}: {
+  sessionId: string
+  studentId: string
+  path: string
+  token?: string
+  nombre: string
+}) {
+  const [url, setUrl] = useState<string>()
+  const [error, setError] = useState<string>()
+  const [cargando, setCargando] = useState(false)
+
+  async function mostrar(): Promise<void> {
+    setCargando(true)
+    setError(undefined)
+    try {
+      const evidencia = await api.evidenceUrl(sessionId, studentId, path, 'image', token)
+      setUrl(evidencia.url)
+    } catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : 'No se pudo cargar la captura')
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  return (
+    <div className="evidencia-recurso">
+      <button
+        type="button"
+        className="boton boton-secundario"
+        onClick={() => void mostrar()}
+        disabled={cargando}
+      >
+        {cargando ? 'Cargando…' : url ? 'Renovar enlace' : 'Ver captura'}
+      </button>
+      {error && <p className="aviso">{error}</p>}
+      {url && (
+        <img
+          className="evidencia-captura"
+          src={url}
+          alt={`Captura de ${nombre}`}
+          onError={() => {
+            setUrl(undefined)
+            setError('El enlace venció o la captura no está disponible. Solicita uno nuevo.')
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function FragmentoAudio({
+  sessionId,
+  studentId,
+  path,
+  token,
+  analisis
+}: {
+  sessionId: string
+  studentId: string
+  path: string
+  token?: string
+  analisis: AudioAnalysis
+}) {
+  const [url, setUrl] = useState<string>()
+  const [error, setError] = useState<string>()
+  const [cargando, setCargando] = useState(false)
+
+  async function reproducir(): Promise<void> {
+    setCargando(true)
+    setError(undefined)
+    try {
+      const evidencia = await api.evidenceUrl(sessionId, studentId, path, 'audio', token)
+      setUrl(evidencia.url)
+    } catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : 'No se pudo cargar el audio')
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  return (
+    <div className="evidencia-recurso">
+      {!url && (
+        <button
+          type="button"
+          className="boton boton-secundario"
+          onClick={() => void reproducir()}
+          disabled={cargando}
+        >
+          {cargando ? 'Cargando…' : 'Cargar audio'}
+        </button>
+      )}
+      {error && <p className="aviso">{error}</p>}
+      {url && (
+        <>
+          <audio
+            controls
+            preload="none"
+            src={url}
+            aria-label={`Audio señalado como posible consulta a IA${analisis.processed_at ? `, analizado ${fechaLarga(analisis.processed_at)}` : ''}`}
+            onError={() => {
+              setUrl(undefined)
+              setError('El enlace venció o el audio no está disponible. Cárgalo de nuevo.')
+            }}
+          />
+          <button
+            type="button"
+            className="boton boton-texto"
+            onClick={() => void reproducir()}
+            disabled={cargando}
+          >
+            Renovar enlace
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+function porcentaje(valor: number | null): string {
+  return valor === null ? '—' : `${Math.round(valor * 100)}%`
 }
