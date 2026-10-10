@@ -4,6 +4,20 @@ Una por integrante, con **qué archivos tocar y qué hacer exactamente**. No
 repiten la arquitectura: para eso está [`CLAUDE.md`](../../CLAUDE.md) y
 [`docs/estado-y-plan-de-trabajo.md`](../estado-y-plan-de-trabajo.md).
 
+### Lo que queda de la semana 6
+
+Lo primero que hay que mirar. Dice **exactamente** qué falta por persona,
+comprobado contra `develop` y no de memoria. Cada uno es autocontenido.
+
+| Quién | Qué le queda |
+|---|---|
+| Rider Rodriguez | [rider-semana-06.md](rider-semana-06.md) — 4 tareas |
+| Jesús Limay | [jesus-semana-06.md](jesus-semana-06.md) — 1 tarea |
+| Pierreluiggi Zevallos | [pierreluiggi-semana-06.md](pierreluiggi-semana-06.md) — 1 tarea |
+| Los tres | [semana-06-que-falta.md](semana-06-que-falta.md) — resumen de una página |
+
+### Guías de área (de fondo, no cambian cada semana)
+
 | Quién | Guía | Qué le toca |
 |---|---|---|
 | Jesús Limay | [jesus-vision.md](jesus-vision.md) | Rostro, mirada, persona adicional, verificación de identidad |
