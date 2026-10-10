@@ -30,11 +30,10 @@ export function webBaseUrl(): string {
  *   primero iniciar sesión; el estudiante entra, escribe su código y el examen
  *   sale de ahí. No hay que configurar nada a mano.
  */
-export function examUrl(): string {
+export function examUrl(sessionId?: string): string {
   const base = webBaseUrl()
-  return examContext.session_id === NIL_UUID
-    ? `${base}/examen`
-    : `${base}/examen/${examContext.session_id}/sala`
+  const targetSessionId = sessionId ?? examContext.session_id
+  return targetSessionId === NIL_UUID ? `${base}/examen` : `${base}/examen/${targetSessionId}/sala`
 }
 
 /**
@@ -46,9 +45,9 @@ export function examUrl(): string {
  *
  * Devuelve qué se cargó, para que quien llame pueda decirlo en el registro.
  */
-export function loadExam(win: BrowserWindow): 'examen' | 'panel' {
-  if (process.env['PROCTORING_PANEL'] !== '1') {
-    const url = examUrl()
+export function loadExam(win: BrowserWindow, sessionId?: string): 'examen' | 'panel' {
+  if (process.env['PROCTORING_PANEL'] !== '1' || sessionId !== undefined) {
+    const url = examUrl(sessionId)
     // La supervision no empieza al abrir la app sino al llegar a /rendir, tras
     // el consentimiento. Aunque el entorno traiga un examen para abrir la sala,
     // no se registra nada hasta entonces.

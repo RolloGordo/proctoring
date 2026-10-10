@@ -1,5 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain, screen, session } from 'electron'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { examContext, liveExamSessionId, setExamSession, setStudentFromToken } from './context'
@@ -8,14 +8,17 @@ import { buildExtraDisplayEvent, buildFocusLostEvent } from './events'
 import { applyPermissionPolicy } from './permisos'
 import { applyWindowProtection } from './protection'
 import { startProcessMonitor, type ProcessMonitor } from './processes'
+import { examSessionFromArguments } from './protocol'
 import { sendEvent, setAuthSession } from './sender'
-import { loadExam, recoverFromLoadFailure, restrictNavigation, webBaseUrl } from './web'
+import { examUrl, loadExam, recoverFromLoadFailure, restrictNavigation, webBaseUrl } from './web'
 
 // Se conservan para mostrarlos en el panel local.
 const events: ProctoringEvent[] = []
 let mainWindow: BrowserWindow | null = null
 let blurStartedAt: number | null = null
 let processMonitor: ProcessMonitor | null = null
+let appIsReady = false
+let pendingProtocolSessionId: string | undefined
 
 function recordEvent(event: ProctoringEvent): void {
   events.push(event)
@@ -92,7 +95,7 @@ function isAuthSession(value: unknown): value is AuthSession {
   )
 }
 
-function createWindow(): BrowserWindow {
+function createWindow(protocolSessionId?: string): BrowserWindow {
   const win = new BrowserWindow({
     width: 900,
     height: 670,
@@ -142,7 +145,7 @@ function createWindow(): BrowserWindow {
   // La ventana carga la MISMA web del examen, no una copia en Electron. Sin
   // sesion configurada carga el panel local de eventos, que es la herramienta
   // de diagnostico del proceso principal.
-  const cargado = loadExam(win)
+  const cargado = loadExam(win, protocolSessionId)
   if (cargado === 'panel') {
     console.log(
       '[ventana] sin PROCTORING_SESSION_ID se abre el panel local de eventos, no el examen'
@@ -156,46 +159,98 @@ function createWindow(): BrowserWindow {
   return win
 }
 
-app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.proctoring.desktop')
+function openProtocolExam(sessionId: string): void {
+  if (!appIsReady) {
+    pendingProtocolSessionId = sessionId
+    return
+  }
 
-  // Camara y microfono solo para el examen, y solo desde su propio origen: la
-  // deteccion de mirada y de habla corre en la web que carga esta ventana.
-  applyPermissionPolicy(session.defaultSession, webBaseUrl())
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    mainWindow = createWindow(sessionId)
+    return
+  }
 
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+  void mainWindow.loadURL(examUrl(sessionId))
+}
 
-  ipcMain.handle('events:list', () => events)
-  ipcMain.handle('displays:count', () => screen.getAllDisplays().length)
-  // El panel avisa en pantalla si no hay contexto: sin el, los eventos no
-  // salen de la app y conviene que se vea sin abrir la consola.
-  ipcMain.handle('context:get', () => examContext)
-  ipcMain.handle('auth:set-session', (_event, session: unknown) => {
-    if (session !== null && !isAuthSession(session)) {
-      throw new TypeError('La sesion de autenticacion de Supabase no es valida')
+function registerProtocolClient(): void {
+  const registered = is.dev
+    ? process.argv[1]
+      ? app.setAsDefaultProtocolClient('proctoring', process.execPath, [resolve(process.argv[1])])
+      : false
+    : app.setAsDefaultProtocolClient('proctoring')
+
+  if (!registered) {
+    console.warn('[protocolo] no se pudo registrar proctoring:// como protocolo predeterminado')
+  }
+}
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
+
+if (!hasSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, commandLine) => {
+    const sessionId = examSessionFromArguments(commandLine)
+    if (sessionId) {
+      openProtocolExam(sessionId)
+    } else if (commandLine.some((argument) => argument.startsWith('proctoring:'))) {
+      console.warn('[protocolo] enlace proctoring:// invalido; se ignora')
     }
-    setAuthSession(session)
-    // Quien rinde es quien dice el token. Con null (cerro sesion) vuelve al
-    // respaldo del entorno.
-    setStudentFromToken(session?.accessToken ?? null)
   })
 
-  screen.on('display-added', () => checkDisplays('display_added'))
-  // El contrato no tiene evento para "monitor retirado": solo se actualiza el contador
-  screen.on('display-removed', () => notifyDisplayCount())
+  app.whenReady().then(() => {
+    appIsReady = true
+    electronApp.setAppUserModelId('com.proctoring.desktop')
+    registerProtocolClient()
 
-  mainWindow = createWindow()
-  processMonitor = startProcessMonitor(recordEvent)
+    // Camara y microfono solo para el examen, y solo desde su propio origen: la
+    // deteccion de mirada y de habla corre en la web que carga esta ventana.
+    applyPermissionPolicy(session.defaultSession, webBaseUrl())
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow()
+    app.on('browser-window-created', (_, window) => {
+      optimizer.watchWindowShortcuts(window)
+    })
+
+    ipcMain.handle('events:list', () => events)
+    ipcMain.handle('displays:count', () => screen.getAllDisplays().length)
+    // El panel avisa en pantalla si no hay contexto: sin el, los eventos no
+    // salen de la app y conviene que se vea sin abrir la consola.
+    ipcMain.handle('context:get', () => examContext)
+    ipcMain.handle('auth:set-session', (_event, session: unknown) => {
+      if (session !== null && !isAuthSession(session)) {
+        throw new TypeError('La sesion de autenticacion de Supabase no es valida')
+      }
+      setAuthSession(session)
+      // Quien rinde es quien dice el token. Con null (cerro sesion) vuelve al
+      // respaldo del entorno.
+      setStudentFromToken(session?.accessToken ?? null)
+    })
+
+    screen.on('display-added', () => checkDisplays('display_added'))
+    // El contrato no tiene evento para "monitor retirado": solo se actualiza el contador
+    screen.on('display-removed', () => notifyDisplayCount())
+
+    const protocolSessionId = pendingProtocolSessionId ?? examSessionFromArguments(process.argv)
+    pendingProtocolSessionId = undefined
+    if (!protocolSessionId && process.argv.some((argument) => argument.startsWith('proctoring:'))) {
+      console.warn('[protocolo] enlace proctoring:// invalido; se ignora')
+    }
+
+    mainWindow = createWindow(protocolSessionId ?? undefined)
+    processMonitor = startProcessMonitor(recordEvent)
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow()
+    })
   })
-})
 
-app.on('before-quit', () => processMonitor?.stop())
+  app.on('before-quit', () => processMonitor?.stop())
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit()
+  })
+}

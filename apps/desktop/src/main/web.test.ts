@@ -40,4 +40,12 @@ describe('examUrl', () => {
     setExamSession('3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60')
     expect(examUrl()).toBe('http://localhost:5173/examen/3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60/sala')
   })
+
+  it('un enlace de protocolo abre la sala del examen indicado', () => {
+    delete process.env['PROCTORING_WEB_URL']
+    setExamSession(null)
+    expect(examUrl('3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60')).toBe(
+      'http://localhost:5173/examen/3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60/sala'
+    )
+  })
 })
