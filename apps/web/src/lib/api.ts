@@ -113,6 +113,17 @@ export type QuestionType = 'multiple_choice' | 'true_false' | 'numeric' | 'fill_
 export type VerificationStatus =
   'pending' | 'verified' | 'failed' | 'manually_approved' | 'rejected'
 
+/** Contrato de la API para autorizar la subida directa a Storage. */
+export interface IdentityPhotoUpload {
+  path: string
+  url: string
+  token: string | null
+  expires_in_seconds: number
+}
+
+export type IdentityPhotoKind = 'reference_face' | 'image'
+
+
 /** Opcion como la ve el estudiante: sin `is_correct`. */
 export interface ExamOption {
   id: string
@@ -651,6 +662,42 @@ export const api = {
 
   myEnrollment: (sessionId: string, token?: string): Promise<Participant> =>
     request(`/api/v1/exam/${sessionId}/me`, undefined, token),
+
+  /** HU-006: permisos para un JPEG; el binario no pasa por la API. */
+  identityPhotoUpload: (
+    sessionId: string,
+    studentId: string,
+    kind: IdentityPhotoKind,
+    token?: string
+  ): Promise<IdentityPhotoUpload> =>
+    request(
+      '/api/v1/evidence/upload-url',
+      {
+        method: 'POST',
+        body: JSON.stringify({ session_id: sessionId, student_id: studentId, kind, extension: 'jpg' })
+      },
+      token
+    ),
+
+  /** Se registra una vez; si el estudiante lo solicita, la API permite reemplazarla. */
+  registerReferenceFace: (storagePath: string, token?: string): Promise<{ storage_path: string }> =>
+    request(
+      '/api/v1/me/reference-face',
+      { method: 'POST', body: JSON.stringify({ storage_path: storagePath }) },
+      token
+    ),
+
+  /** 202: trabajo encolado; no significa que el rostro haya coincidido. */
+  requestIdentityCheck: (
+    sessionId: string,
+    capturePath: string,
+    token?: string
+  ): Promise<Participant> =>
+    request(
+      `/api/v1/exam/${sessionId}/identity/check`,
+      { method: 'POST', body: JSON.stringify({ capture_path: capturePath }) },
+      token
+    ),
 
   saveAnswers: (sessionId: string, answers: NewAnswer[], token?: string): Promise<Answer[]> =>
     request(

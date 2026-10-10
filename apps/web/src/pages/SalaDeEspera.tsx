@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth-context'
 import { recordarExamen, recuperarExamen } from '../lib/examen-guardado'
 import { cuandoEmpieza, fechaLarga } from '../lib/formato'
+import { VerificacionFacialEspera } from './VerificacionFacialEspera'
 
 /** Nombre legible de cada módulo de supervisión, para que el estudiante sepa
  *  qué se va a observar. Decírselo no es un trámite: es la base del
@@ -165,6 +166,7 @@ export function SalaDeEspera() {
   // Antes de la hora no se ofrece aceptar: pulsarlo daba un error, y encima uno
   // que decía lo contrario de lo que pasaba («el plazo está cerrado»).
   const todaviaNoEmpieza = empiezaEn > 0 && !examen.can_enter_now
+  const requiereVerificacionFacial = 'face_verification' in examen.modules
 
   return (
     <div className="centrado-estrecho">
@@ -249,6 +251,17 @@ export function SalaDeEspera() {
         </p>
       )}
 
+      {yaConsintio && matricula && !matricula.can_take_exam && !yaEntrego &&
+        requiereVerificacionFacial && (
+          <VerificacionFacialEspera
+            sessionId={id}
+            studentId={matricula.student_id}
+            token={token}
+            verificationStatus={matricula.verification_status}
+            onCheckRequested={setMatricula}
+          />
+        )}
+
       {error && <p className="aviso">{error}</p>}
 
       {!yaEntrego && (
@@ -263,13 +276,15 @@ export function SalaDeEspera() {
                 </p>
               </>
             ) : yaConsintio ? (
-              <Link
-                to={`/examen/${id}/rendir`}
-                className="boton"
-                aria-disabled={!matricula?.can_take_exam}
-              >
-                Entrar al examen
-              </Link>
+              matricula?.can_take_exam ? (
+                <Link to={`/examen/${id}/rendir`} className="boton">
+                  Entrar al examen
+                </Link>
+              ) : (
+                <button type="button" className="boton" disabled>
+                  Esperando verificación o admisión del docente
+                </button>
+              )
             ) : (
               <>
                 <label className="casilla">
@@ -290,7 +305,7 @@ export function SalaDeEspera() {
                   disabled={!acepta || entrando}
                   style={{ marginTop: 'var(--e4)' }}
                 >
-                  {entrando ? 'Entrando…' : 'Aceptar y entrar al examen'}
+                  {entrando ? 'Guardando consentimiento…' : 'Aceptar y continuar'}
                 </button>
               </>
             )}
