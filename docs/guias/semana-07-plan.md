@@ -1,105 +1,99 @@
-# Semana 7 · cierre del Sprint 1
+# Semana 7 · cerrar el Sprint 1 de verdad
 
-**Entrega: sábado 17/10.** Ese día el sistema tiene que estar **desplegado y
-funcionando en público**: web y aplicación de escritorio. Lo pidió el profesor
-en la reunión del 10/10 — semanas 7, 11 y 15 con el software desplegado.
+**Lunes 12/10 → viernes 16/10.** Revisión del sprint el sábado 17.
 
-Cada uno tiene su archivo con el detalle:
+Cada uno tiene su archivo:
 
-- [Héctor](./hector-semana-07.md) — despliegue, revisión y correcciones
-- [Rider](./rider-semana-07.md) — experiencia de uso: docente y estudiante
+- [Héctor](./hector-semana-07.md) — revisión, pruebas, correcciones y preparar el despliegue
+- [Rider](./rider-semana-07.md) — que el sistema se entienda y se use
 - [Jesús](./jesus-semana-07.md) — módulo de cámara
 - [Pierreluiggi](./pierreluiggi-semana-07.md) — módulo de micrófono y voz
+
+Backlog actualizado: `docs/Backlog_v6_real.csv`.
+
+---
+
+## La regla de esta semana
+
+**No des por funcionando nada que no hayas visto funcionar.**
+
+Tenemos mucho código que pasa pruebas automatizadas y que nadie ha visto correr
+contra el sistema real. Eso no es lo mismo, y confundirlo es cómo se llega a una
+demo que se rompe delante del profesor.
+
+Esta semana, una tarea no está hecha cuando compila. Está hecha cuando:
+
+1. La probaste **contra Supabase real**, con sesión iniciada, como la usaría una
+   persona.
+2. La probaste **cuando falla**: sin permiso, sin red, con mala luz, con el
+   micrófono silenciado.
+3. Tienes **una captura o un vídeo** de que funciona.
+
+Si al probar encuentras que falta algo, eso también es tu tarea. «Mejorar y
+añadir» es parte del trabajo, no una tarea aparte.
+
+---
+
+## El despliegue se prepara, no se publica
+
+El profesor pidió el sistema desplegado en las semanas 7, 11 y 15. Pero publicar
+algo que no está probado es enseñar una demo rota, así que esta semana:
+
+- **TA-078** deja todo listo: cuentas, variables, CORS, CI/CD.
+- **EN-012** (publicar) está en la semana 8 y **depende** de que las tres pruebas
+  de aceptación estén en verde: `TA-063` (prueba de humo), `TA-064` (worker de
+  audio) y `TA-065` (verificación facial).
+
+Si las tres llegan a verde esta semana, se publica el viernes y llegamos a lo
+que pidió. Si no, se publica en cuanto lleguen y **se dice por qué** — eso es
+mejor que una demo que se cae.
+
+---
+
+## Lo que arreglé en el backlog
+
+**Tres tareas decían «Sprint 2» con fechas del Sprint 1.** `HU-011`, `SP-010` y
+`HU-015` tenían fechas 05/10→09/10 y Semana 6, pero el sprint puesto era el 2.
+Cualquier conteo por sprint salía mal. Corregido.
+
+**Lo que no se cerró en la semana 6 pasó a la 7**, con nota de que viene de
+atrás: `DO-004`, `TA-015`, `EN-011`, `TA-060` (Rider) y `TA-062` (Pierreluiggi).
+Dejarlas en la semana 6 habría escondido la deuda.
+
+**Las ceremonias y la revisión del backlog pasan al Scrum Master.** El profesor
+fue explícito: el que lleva la semana revisa el backlog **junto con** su equipo,
+no cada uno por su lado.
 
 ---
 
 ## Lo que el profesor pidió y no es código
 
-Esto va primero porque es lo único donde dijo explícitamente que estamos mal.
+Esto es lo único donde dijo claramente que estamos mal, y no se arregla
+programando.
 
-### Las ceremonias
+**Las ceremonias.** Esperaba seis y encontró una, con «estudiante uno, uno, uno»
+copiado y pegado. Pide **dos dailies por semana**, grabadas, **el vídeo en
+Drive** (no en Notion, por el espacio) y **los acuerdos escritos en Notion** con
+nombres reales.
 
-Dijo: **«hasta ahorita yo debí haber visto seis»**, y vio una, con «estudiante
-uno, uno, uno» copiado y pegado. Lo que pide:
-
-- **Dos dailies por semana.** Una donde se acuerda lo que va a hacer cada uno, y
-  otra donde cada uno **expone al Scrum Master de turno** lo que hizo.
-- **Grabadas.** En Discord o donde sea, le da igual la plataforma.
-- **El vídeo en Drive**, no en Notion. Textual: «para que no me revientes el
-  Notion, mi capacidad de disco».
-- **Los acuerdos escritos en Notion**, en la sección Ceremonias, con nombres
-  reales.
-
-No es burocracia: es la mitad de lo que evalúa. Y tiene razón en el fondo — en
-esa reunión quedó claro que ninguno sabía en qué andaban los otros.
-
-### El Scrum Master rota, y revisa el backlog con cada uno
-
-El de la semana **repasa el backlog persona por persona** y va cerrando sus
-tareas una a una. Dijo también que esa persona **desarrolla menos**, porque se
-le va el tiempo en coordinar. Encaja con que esta semana Héctor revise, pruebe
-y despliegue en vez de escribir funcionalidad nueva.
-
-### Higiene del backlog
-
-«La integración con Supabase **no es una historia de usuario**». Una historia
-necesita interacción de una persona; lo demás es **habilitador** o **tarea
-técnica**. Conviene repasar los títulos antes de que lo vuelva a mirar.
+**Los títulos del backlog.** «La integración con Supabase no es una historia de
+usuario». Una historia necesita interacción de una persona; lo demás es
+habilitador o tarea técnica.
 
 ---
 
-## Decisiones tomadas esta semana
+## Decisiones tomadas
 
-### Transcripción: se va faster-whisper, entra Deepgram
+**Deepgram sustituye a faster-whisper** (`TA-070`), en el worker de
+`services/ai`, no en el navegador. El profesor lo pidió por el peso del
+instalador; el motivo real es otro y vale la pena saberlo: el modelo **no viaja
+en el `.exe`**, corre en el servidor. Lo que pasa es que 1 GB no entra cómodo en
+un Space gratuito, y sin eso no hay servicio de IA desplegado.
 
-El profesor insistió en usar una API en vez de un modelo propio. **Tenía razón,
-aunque por un motivo distinto del que dijo:** él pensaba que el modelo viaja en
-el instalador. Lo comprobé y no: `faster-whisper` vive en `services/ai`, en el
-servidor, y el `.exe` no lleva ningún modelo.
-
-El problema real es otro y es más urgente: **un modelo de 1 GB no entra cómodo
-en un Hugging Face Space gratuito.** Arranque en frío eterno y memoria justa. Si
-queremos el servicio de IA desplegado el sábado, Deepgram es el camino.
-
-Va **en el worker de `services/ai`**, no en el navegador: la clave no puede
-acabar en la máquina del estudiante.
-
-### Los detectores del navegador ya no se caen en producción
-
-Esto ya está arreglado y subido. Lo cuento porque explica un fallo que nos
-habría costado la demo: `vision.ts` pedía `/mediapipe/wasm` y
-`face_landmarker.task`, esa carpeta estaba en `.gitignore` y el script que la
-prepara no estaba enganchado al build. **En Vercel habrían sido 404.**
-
-Y no se habría visto: `useSupervision` descarta un detector que no carga y deja
-seguir el examen. La web publicada habría corrido todos los exámenes **sin
-visión y sin avisar a nadie**.
-
-Ahora los `.wasm` se copian de `node_modules` en el `prebuild` —igual que
-Pierreluiggi ya hacía con el VAD—, el modelo está versionado con su licencia y
-su hash, y **si falta, el build falla** en vez de publicar un examen ciego.
-
-### El estudiante ve las alertas durante el examen, con detalle
-
-Hasta ahora las veía al terminar. A partir de esta semana se le avisa en el
-momento y **diciéndole qué se detectó**: «se detectó una segunda persona», no un
-genérico.
-
-Es la opción más transparente y la más defendible: el sistema es un auditor, no
-una trampa. Quien tiene mala luz o a quien se le cruzó alguien puede corregirlo;
-quien va a copiar, de todas formas lo va a descubrir a la segunda.
-
----
-
-## El reparto
-
-| Quién | De qué se encarga |
-|---|---|
-| **Héctor** | Despliegue completo (web + escritorio), revisar los avances, probar la aplicación y corregir lo que aparezca |
-| **Rider** | Que crear exámenes, calificarlos, el banco y la edición se entiendan y se usen sin pelearse. Más vistas de estudiante. Descarga de la app en la portada. Que no se pueda rendir desde el navegador |
-| **Jesús** | Módulo de cámara: capturas de lo sospechoso, calibración, métricas |
-| **Pierreluiggi** | Módulo de micrófono y voz: Deepgram, permiso de micrófono antes del examen, guardado de fragmentos |
-| **Jesús + Pierreluiggi** | Las alertas que el estudiante ve durante el examen |
+**El estudiante ve las alertas durante el examen, con detalle** (`HU-025`). Antes
+las veía al terminar. Ahora se le dice la señal concreta: «se detectó una segunda
+persona», no un genérico. Es lo más transparente y lo más defendible: el sistema
+audita, no caza.
 
 ---
 
@@ -117,18 +111,21 @@ npm install --prefix apps/web
 docker compose up -d --build api
 ```
 
-El `npm install` importa esta semana: cambió el `package.json` de la web y hay un
-paso nuevo de preparación de assets. El `--build` del contenedor tampoco es
-opcional, nunca lo es: la API no recarga sola y el error parece del código recién
-bajado.
+El `npm install` importa esta semana: cambió el `package.json` de la web. El
+`--build` del contenedor nunca es opcional — la API no recarga sola y el error
+parece del código recién bajado.
 
 ---
 
-## Cómo sabemos que la semana está cerrada
+## Carga de la semana
 
-- [ ] Web desplegada y accesible desde fuera de nuestras máquinas
-- [ ] API desplegada, con la web apuntando a ella
-- [ ] Instalador descargable desde la portada, y funcionando contra la web desplegada
-- [ ] Un examen completo rendido de punta a punta en el sistema desplegado
-- [ ] Dos ceremonias grabadas, con el vídeo en Drive y los acuerdos en Notion
-- [ ] Backlog revisado por el Scrum Master con cada integrante
+| Quién | Tareas | Puntos |
+|---|---|---|
+| Rider | 12 | 16 |
+| Pierreluiggi | 7 | 12 |
+| Jesús | 6 | 10 |
+| Héctor | 6 | 9 |
+
+Rider va cargado porque arrastra cuatro tareas de la semana 6, aunque son
+baratas (medir y publicar, no construir). Si no entra todo, lo primero que se
+mueve a la semana 8 es `HU-029` o `TA-077`.

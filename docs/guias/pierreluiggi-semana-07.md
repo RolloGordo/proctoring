@@ -1,11 +1,19 @@
 # Pierreluiggi · semana 7
 
-**Entrega: sábado 17/10.** Esa semana el sistema tiene que estar desplegado y
-funcionando en público.
+**Lunes 12/10 → viernes 16/10.** Revisión del sprint el sábado 17.
 
 Eres el dueño de **todo lo que entra por el micrófono**: permiso, captura,
-transcripción, análisis y el guardado del fragmento. Y compartes con Jesús las
-alertas que el estudiante ve mientras rinde.
+transcripción, análisis y guardado del fragmento. Y compartes con Jesús el aviso
+que el estudiante ve mientras rinde.
+
+**7 tareas, 12 puntos.**
+
+## La regla de esta semana
+
+**No des por funcionando nada que no hayas visto funcionar.** Tu módulo pasa
+pruebas automatizadas, pero esas simulan `fetch` y simulan el audio. Esta semana
+todo se prueba contra Supabase y Storage reales, y también **cuando falla**: sin
+permiso, sin red, con el micrófono silenciado.
 
 ## Antes de nada
 
@@ -23,93 +31,99 @@ docker compose up -d --build api
 
 ---
 
-## 1. Deepgram sustituye a faster-whisper
-
-El profesor lo pidió en la reunión y tiene razón, aunque conviene que sepas el
-motivo real, porque no es el que él dijo.
-
-Él pensaba que el modelo viaja dentro del instalador y que por eso la app pesaría
-un giga. **No es así:** `faster-whisper` corre en `services/ai`, en el servidor, y
-el `.exe` no lleva ningún modelo. Eso puedes decírselo.
-
-El problema de verdad es el despliegue: **un modelo de 1 GB no entra cómodo en un
-Hugging Face Space gratuito**. Arranque en frío larguísimo y memoria al límite.
-Si queremos el servicio de IA publicado el sábado, hay que quitarlo.
-
-### Qué cambia exactamente
+## TA-070 · Deepgram sustituye a faster-whisper · 2 pt
 
 **Archivo:** `services/ai/audio_runtime.py`, por dentro de `measure_audio`.
 
 El contrato **no se toca**. El worker sigue recibiendo el mismo trabajo
-(`GET /internal/audio-jobs/{event_id}`) y sigue devolviendo lo mismo
+(`GET /internal/audio-jobs/{event_id}`) y devolviendo los mismos campos
 (`transcript`, `similarity`, `synthetic_voice_score`, `processing_ms`,
-`model_versions`). Solo cambia de dónde sale el `transcript`.
+`model_versions`). Solo cambia de dónde sale el texto.
 
 ```
-antes:  descargar audio -> faster-whisper local -> texto
-ahora:  descargar audio -> POST a Deepgram -> texto
+antes:  descargar audio → faster-whisper local → texto
+ahora:  descargar audio → POST a Deepgram → texto
 ```
 
-**La clave va en el servidor**, nunca en el navegador. `.env` en local y
-**GitHub Secrets** en el despliegue. Si la clave acaba en el cliente, cualquiera
-se gasta el crédito.
+**El motivo real, para que lo sepas.** El profesor lo pidió porque pensaba que el
+modelo viaja dentro del instalador y que por eso la app pesaría un giga. Lo
+comprobé y **no es así**: `faster-whisper` corre en `services/ai`, en el
+servidor, y el `.exe` no lleva ningún modelo. Eso puedes decírselo.
 
-**Quita la dependencia** de `faster-whisper` del `pyproject.toml` y del
-`requirements`. Es la mitad del beneficio: sin ella la imagen del servicio
-adelgaza y se puede desplegar.
+Lo que sí es cierto, y es más urgente: **1 GB no entra cómodo en un Hugging Face
+Space gratuito**. Arranque en frío larguísimo y memoria al límite. Sin quitarlo
+no hay servicio de IA desplegado.
 
-### Lo que no cambia, y conviene que no cambie
+**Qué tienes que hacer:**
 
-`model_versions` sigue existiendo. Pon ahí `{"stt": "deepgram-nova-2"}` o lo que
-uses. Es lo que permite comparar mediciones viejas con nuevas: si dentro de tres
-semanas el FPR sube, hay que poder saber con qué se midió cada cosa.
+- [ ] La transcripción sale de Deepgram
+- [ ] La clave va en `.env` y GitHub Secrets. **Nunca en el repositorio**, ni de ejemplo
+- [ ] Quitar `faster-whisper` de `pyproject.toml` y del `requirements` — es la mitad del beneficio
+- [ ] `model_versions` dice qué motor se usó, para poder comparar mediciones viejas con nuevas
+- [ ] **Probado con un audio real subido a Storage**, no con un simulacro
 
-> **Guarda tus mediciones con faster-whisper.** El WER de 17,7 % que ya tienes es
-> un resultado válido y citable. No lo borres: es la comparativa que justifica el
-> cambio, y eso en el informe vale más que el cambio en sí.
+> **Guarda tu medición con faster-whisper.** El WER de 17,7 % que ya tienes es un
+> resultado válido. No lo borres: es la comparativa que justifica el cambio, y
+> eso en el informe vale más que el cambio en sí.
 
 ---
 
-## 2. El micrófono se pide y se prueba **antes** del examen
+## TA-071 · Pedir y probar el micrófono antes del examen · 2 pt
 
-Hoy el micrófono se abre cuando empieza el examen. Si el estudiante lo tiene
-silenciado, o eligió el micrófono que no es, se entera cuando ya está rindiendo
-—o no se entera nunca y nosotros creemos que no habló.
+Hoy el micrófono se abre cuando el examen ya empezó. Si el estudiante lo tiene
+silenciado, o eligió el aparato que no era, se entera tarde — o no se entera
+nunca y nosotros creemos que no habló.
 
-Lo que falta es una comprobación en la **sala de espera**, junto a la de cámara
-que acaba de hacer Jesús:
+Va en la **sala de espera**, junto a la comprobación de cámara que hizo Jesús.
 
-1. Pedir el micrófono (ya tienes `abrirCamara({ audio: true })` en
-   `apps/web/src/supervision/camara.ts`; reutilízalo, resuelve los permisos y
-   traduce los errores).
-2. **Mostrar que entra sonido.** Una barra de nivel que se mueva al hablar. Un
-   texto que diga «micrófono listo» no prueba nada: el estudiante tiene que
-   *ver* que su voz llega.
-3. Pedirle que diga una frase corta y confirmar que el VAD la detecta. Eso
-   prueba la cadena entera, no solo el permiso.
-4. Si falla, decir qué hacer: elegir otro micrófono, quitar el silencio, dar
-   permiso en la barra del navegador.
+- [ ] Se pide el micrófono después del consentimiento
+- [ ] **Una barra de nivel que se mueva al hablar.** Un texto que diga «micrófono listo» no prueba nada: tiene que *ver* que su voz llega
+- [ ] Se le pide una frase corta y se confirma que el VAD la detecta — eso prueba la cadena entera, no solo el permiso
+- [ ] Los errores dicen qué hacer: elegir otro aparato, quitar el silencio, dar permiso
+- [ ] **Probado con el micrófono desconectado, silenciado y con permiso denegado**
 
-**Un micrófono que no funciona no puede impedir rendir.** Igual que con la cara:
-se avisa, queda registrado y el docente decide. Nadie se queda sin examen por un
-periférico.
+Reutiliza `abrirCamara({ audio: true })` de `apps/web/src/supervision/camara.ts`:
+ya resuelve permisos y traduce los errores del navegador. No lo reimplementes.
+
+> **Un micrófono que no funciona no puede impedir rendir.** Igual que con la
+> cara: se avisa, queda registrado y el docente decide. Nadie se queda sin examen
+> por un periférico.
 
 ---
 
-## 3. Guardar el fragmento cuando la voz es rara
+## TA-072 · Completar el guardado del fragmento señalado · 1 pt
 
-Esto ya funciona a medias y hay que cerrarlo. Hoy se sube el fragmento de **todo**
-`speech_detected`. Lo que falta es que el docente pueda **oír** lo que se marcó,
-y que no se suba audio que no aporta.
+Hay piezas puestas, pero **nadie ha visto la cadena entera funcionar**. Eso es lo
+que hay que cerrar.
 
-- El fragmento se sube solo si hay habla (el VAD ya lo hace, bien).
-- Rider ya construyó el reproductor en la revisión del caso y lee
-  `audio_analyses[].alerted`. Comprueba de punta a punta que un fragmento
-  marcado se puede reproducir desde ahí.
-- Revisa cuánto está ocupando. El profesor preguntó por la acumulación de
-  espacio y es una pregunta justa: Storage gratuito tiene límite.
+- [ ] Un fragmento con alerta **se reproduce** desde la revisión del caso (Rider ya hizo el reproductor)
+- [ ] Solo se sube audio con habla, nunca el micrófono continuo
+- [ ] Mide **cuánto espacio ocupa por examen** y anótalo
+- [ ] Probado contra Storage real, no contra el almacenamiento en memoria
 
-### La regla que no se toca
+El profesor preguntó por la acumulación de espacio y es una pregunta justa:
+Storage gratuito tiene límite.
+
+---
+
+## TA-064 · Aceptación del worker con Redis y Storage reales · 2 pt
+
+Esta es la que de verdad dice si tu módulo funciona. Hasta ahora el worker se ha
+probado en local y con simulacros.
+
+- [ ] Un evento `speech_detected` real encola un trabajo en Redis
+- [ ] El worker lo recoge, descarga el audio de Storage y lo analiza
+- [ ] El resultado vuelve a la API y aparece en la revisión del caso
+- [ ] Probado con el worker en un proceso aparte, no en el mismo de la API
+
+**Es una de las tres pruebas de las que depende el despliegue.** Hasta que esta
+esté en verde, no publicamos.
+
+---
+
+## HU-009 · Alerta de consulta a IA por voz, versión 1 · 1 pt
+
+La regla que no se toca:
 
 > Solo hay alerta si se cumplen **las dos** condiciones: lo que dijo se parece al
 > enunciado **y** responde una segunda voz sintética.
@@ -119,38 +133,46 @@ y que no se suba audio que no aporta.
 `speech_detected` nace **siempre** con severidad baja. Solo la API la escala. No
 lo decidas en el cliente ni en el worker.
 
+- [ ] Probado con los dos casos: alguien leyendo en voz alta (sin alerta) y alguien preguntándole a una IA (con alerta)
+
 ---
 
-## 4. Las alertas del estudiante, con Jesús
+## HU-025 · El aviso al estudiante, con Jesús · 2 pt
 
 Hasta ahora el estudiante veía las alertas **al terminar**. Ahora se le avisa
 **durante**, y **diciéndole qué se detectó**: «se detectó una segunda voz», no un
 genérico.
 
 Tú pones las de audio, Jesús las de cámara, pero **el aviso en pantalla es uno
-solo**: pónganse de acuerdo en el componente antes de escribir dos. Si cada uno
-hace el suyo, el estudiante acaba con dos cajas distintas diciendo cosas
-parecidas.
-
-Sugerencia de reparto: que uno haga el componente y el otro lo use. Decídanlo en
+solo**. Pónganse de acuerdo en el componente **antes** de escribir dos, o el
+estudiante acaba con dos cajas distintas diciendo cosas parecidas. Decídanlo en
 la daily, no por mensajes sueltos.
 
-Cuidado con una cosa: **un aviso que aparece cada tres segundos es ruido** y
-pone nervioso a quien no está haciendo nada malo. Agrupa, y no repitas el mismo
-aviso mientras la condición siga activa.
+- [ ] Un solo componente compartido
+- [ ] No se repite el mismo aviso mientras la condición siga activa — **un aviso cada tres segundos es ruido** y pone nervioso a quien no hace nada malo
+- [ ] El tono documenta, no acusa: nada de «estás copiando»
+- [ ] No tapa el enunciado de la pregunta — háblalo con Rider, que está tocando esa pantalla
+- [ ] Probado con los dos módulos disparando a la vez
 
 ---
 
-## 5. Lo que te quedó de la semana 6
+## TA-062 · Lo que arrastras de la semana 6 · 2 pt
 
-**TA-062** sigue abierta: grabaciones del equipo y medición de **similitud y voz
-sintética**. Lo comprobé, en `services/ai/results/` no hay ni una medición de
-esas dos cosas.
+Las mediciones de **similitud y voz sintética**. Lo comprobé: en
+`services/ai/results/` no hay ni una.
 
 Es el diferencial del proyecto y lo único del equipo que sigue sin un solo
-número. Si esta semana no entra entera, al menos deja el conjunto de control
-—gente leyendo la pregunta en voz alta, sin trampa— que es el que mide los
-falsos positivos.
+número. Tres grupos de grabación:
+
+| Grupo | Qué se graba | Qué debe dar |
+|---|---|---|
+| **Control legítimo** | Alguien lee la pregunta en voz alta y nada más | similitud alta, voz sintética baja → **sin alerta** |
+| **Habla cualquiera** | Conversación normal, no sobre el examen | similitud baja → **sin alerta** |
+| **La trampa** | Lee la pregunta y una IA responde en voz alta | ambas altas → **alerta** |
+
+El primero importa más que los otros dos juntos: es el que mide **falsos
+positivos**, y la meta es FPR < 20 %. Si acusamos a alguien por leer en voz alta,
+el sistema no sirve.
 
 ---
 
@@ -166,4 +188,4 @@ cd services/api && uv run ruff check . && uv run mypy src && uv run pytest
 
 Rama `feat/<codigo>-<descripcion>`, commits en inglés con el código del backlog,
 PR hacia `develop`. Mira el diff antes de añadir, y **la clave de Deepgram no
-entra al repositorio** ni en un ejemplo.
+entra al repositorio**.
