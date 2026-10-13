@@ -4,7 +4,17 @@ Una por integrante, con **qué archivos tocar y qué hacer exactamente**. No
 repiten la arquitectura: para eso está [`CLAUDE.md`](../../CLAUDE.md) y
 [`docs/estado-y-plan-de-trabajo.md`](../estado-y-plan-de-trabajo.md).
 
-### Lo que queda de la semana 6
+### Semana 7 · cierre del Sprint 1 (entrega sábado 17/10)
+
+| Quién | Guía |
+|---|---|
+| Todos | [semana-07-plan.md](semana-07-plan.md) — el plan, las ceremonias y las decisiones |
+| Héctor Silva | [hector-semana-07.md](hector-semana-07.md) — despliegue, revisión, correcciones |
+| Rider Rodriguez | [rider-semana-07.md](rider-semana-07.md) — experiencia de uso |
+| Jesús Limay | [jesus-semana-07.md](jesus-semana-07.md) — módulo de cámara |
+| Pierreluiggi Zevallos | [pierreluiggi-semana-07.md](pierreluiggi-semana-07.md) — micrófono y voz |
+
+### Lo que quedó de la semana 6
 
 Lo primero que hay que mirar. Dice **exactamente** qué falta por persona,
 comprobado contra `develop` y no de memoria. Cada uno es autocontenido.
