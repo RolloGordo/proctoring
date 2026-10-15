@@ -15,29 +15,51 @@ export function Curso() {
   const { id = '' } = useParams()
   const { token } = useAuth()
   const [curso, setCurso] = useState<Course>()
-  const [miembros, setMiembros] = useState<CourseMember[]>()
-  const [error, setError] = useState<string>()
+  const [miembrosData, setMiembrosData] = useState<{
+    courseId: string
+    miembros: CourseMember[]
+  }>()
+  const [errorCursoCarga, setErrorCursoCarga] = useState<{ courseId: string; message: string }>()
+  const [errorMiembrosCarga, setErrorMiembrosCarga] = useState<{
+    courseId: string
+    message: string
+  }>()
+  const [errorAccion, setErrorAccion] = useState<string>()
   const [aviso, setAviso] = useState<string>()
   const [correo, setCorreo] = useState('')
   const [matriculando, setMatriculando] = useState(false)
+  const [reintentoMiembros, setReintentoMiembros] = useState(0)
 
   useEffect(() => {
     let cancelado = false
-    Promise.all([api.getCourse(id, token), api.listCourseMembers(id, token)])
-      .then(([datosCurso, datosMiembros]) => {
+    api
+      .getCourse(id, token)
+      .then((datosCurso) => {
         if (cancelado) return
         setCurso(datosCurso)
-        setMiembros(datosMiembros)
+        setErrorCursoCarga(undefined)
       })
-      .catch((fallo: Error) => !cancelado && setError(fallo.message))
+      .catch((fallo: Error) => {
+        if (!cancelado) setErrorCursoCarga({ courseId: id, message: fallo.message })
+      })
+    api
+      .listCourseMembers(id, token)
+      .then((datosMiembros) => {
+        if (cancelado) return
+        setMiembrosData({ courseId: id, miembros: datosMiembros })
+        setErrorMiembrosCarga(undefined)
+      })
+      .catch((fallo: Error) => {
+        if (!cancelado) setErrorMiembrosCarga({ courseId: id, message: fallo.message })
+      })
     return () => {
       cancelado = true
     }
-  }, [id, token])
+  }, [id, token, reintentoMiembros])
 
   async function matricular(evento: FormEvent): Promise<void> {
     evento.preventDefault()
-    setError(undefined)
+    setErrorAccion(undefined)
     setAviso(undefined)
     setMatriculando(true)
     try {
@@ -45,29 +67,50 @@ export function Curso() {
       if (resultado.already_enrolled) {
         setAviso('Ese estudiante ya estaba en el curso.')
       } else {
-        setMiembros((previos) => [...(previos ?? []), resultado.student])
+        setMiembrosData((previos) => ({
+          courseId: id,
+          miembros: [...(previos?.courseId === id ? previos.miembros : []), resultado.student]
+        }))
         setAviso(`${resultado.student.full_name ?? resultado.student.email} se unió al curso.`)
       }
       setCorreo('')
     } catch (fallo) {
-      setError(fallo instanceof Error ? fallo.message : 'No se pudo matricular')
+      setErrorAccion(fallo instanceof Error ? fallo.message : 'No se pudo matricular')
     } finally {
       setMatriculando(false)
     }
   }
 
-  if (error && !curso) return <p className="aviso">{error}</p>
-  if (!curso) return <p className="tenue">Cargando…</p>
+  const cursoActual = curso?.id === id ? curso : undefined
+  const miembros = miembrosData?.courseId === id ? miembrosData.miembros : undefined
+  const errorCurso = errorCursoCarga?.courseId === id ? errorCursoCarga.message : undefined
+  const errorMiembros = errorMiembrosCarga?.courseId === id ? errorMiembrosCarga.message : undefined
+
+  if (errorCurso && !cursoActual) {
+    return (
+      <div className="aviso" role="alert">
+        <p>No se pudo cargar el curso: {errorCurso}</p>
+        <button
+          type="button"
+          className="boton boton-secundario"
+          onClick={() => setReintentoMiembros((valor) => valor + 1)}
+        >
+          Volver a cargar el curso
+        </button>
+      </div>
+    )
+  }
+  if (!cursoActual) return <p className="tenue">Cargando…</p>
 
   return (
     <>
       <div className="encabezado-pagina">
         <div>
-          <h1>{curso.name}</h1>
+          <h1>{cursoActual.name}</h1>
           <p className="subtitulo">
-            {curso.section ? `Sección ${curso.section} · ` : ''}
-            {miembros?.length ?? curso.student_count}{' '}
-            {(miembros?.length ?? curso.student_count) === 1 ? 'estudiante' : 'estudiantes'}
+            {cursoActual.section ? `Sección ${cursoActual.section} · ` : ''}
+            {miembros?.length ?? cursoActual.student_count}{' '}
+            {(miembros?.length ?? cursoActual.student_count) === 1 ? 'estudiante' : 'estudiantes'}
           </p>
         </div>
         <Link to="/cursos" className="boton boton-secundario">
@@ -79,7 +122,7 @@ export function Curso() {
         <div className="tarjeta">
           <div className="tarjeta-cuerpo">
             <h2>Matricular a un estudiante</h2>
-            <form onSubmit={(e) => void matricular(e)} noValidate className="formulario-curso">
+            <form onSubmit={(e) => void matricular(e)} className="formulario-curso">
               <label className="campo">
                 <span>Correo del estudiante</span>
                 <input
@@ -96,15 +139,41 @@ export function Curso() {
                 {matriculando ? 'Matriculando…' : 'Matricular'}
               </button>
             </form>
-            {error && <p className="aviso">{error}</p>}
+            {errorAccion && <p className="aviso">{errorAccion}</p>}
             {aviso && <p className="aviso aviso-neutro">{aviso}</p>}
           </div>
         </div>
       </section>
 
       <section className="bloque">
+        <div className="encabezado-seccion">
+          <h2>Bancos de este curso</h2>
+          <Link to={`/bancos?curso=${encodeURIComponent(id)}`} className="boton boton-secundario">
+            Ver bancos del curso
+          </Link>
+        </div>
+        <p className="ayuda">
+          Desde esa vista puedes revisar los bancos asociados y distinguir los que aún no tienen
+          curso.
+        </p>
+      </section>
+
+      <section className="bloque">
         <h2>Estudiantes</h2>
-        {miembros?.length === 0 ? (
+        {errorMiembros ? (
+          <div className="aviso" role="alert">
+            <p>No se pudo cargar la lista de estudiantes: {errorMiembros}</p>
+            <button
+              type="button"
+              className="boton boton-secundario"
+              onClick={() => setReintentoMiembros((valor) => valor + 1)}
+            >
+              Volver a cargar estudiantes
+            </button>
+          </div>
+        ) : !miembros ? (
+          <p className="tenue">Cargando estudiantes…</p>
+        ) : miembros.length === 0 ? (
           <div className="tarjeta">
             <div className="vacio">
               <h3>Nadie está matriculado todavía</h3>
@@ -122,7 +191,7 @@ export function Curso() {
                 </tr>
               </thead>
               <tbody>
-                {miembros?.map((m) => (
+                {miembros.map((m) => (
                   <tr key={m.student_id}>
                     <td>{m.full_name ?? <span className="tenue">Sin perfil</span>}</td>
                     <td className="tenue">{m.email ?? '—'}</td>
