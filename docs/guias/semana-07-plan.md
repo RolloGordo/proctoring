@@ -50,6 +50,32 @@ mejor que una demo que se cae.
 
 ---
 
+## Corrección: lo que faltaba de la daily del 13/10
+
+El backlog v6 se escribió **sin esa reunión delante**, así que faltaban cuatro
+encargos concretos. Están en `docs/Backlog_v7_real.csv`:
+
+| | |
+|---|---|
+| `TA-080` | Importar PDF y otros formatos a un banco (Rider) |
+| `TA-081` | Atar los bancos a un curso (Rider) |
+| `TA-082` | Probar y arreglar el apartado de cursos (Rider) |
+| `TA-083` | La cámara sigue encendida durante todo el examen (Jesús) |
+
+**El importador de PDF no era trabajo extra.** Se encargó en esa daily, con
+estas palabras: «¿por qué solamente pide XML? ¿Qué pasa si el profesor quiere
+acumular los PDFs que tiene de toda la semana y convertirlos en un banco?».
+
+Dos cosas más que se dijeron y no estaban escritas:
+
+**Web *y* escritorio, las dos.** Se repitió tres veces: «todos se encargan de
+web y escritorio, no solamente en un solo lado». Ahora es criterio de aceptación
+en las ocho tareas donde aplica.
+
+**La fecha límite es el jueves 15**, no el viernes. «Máximo jueves entonces,
+chicos», porque el viernes hay expo de Corpus. El v6 decía viernes; corregido
+para todo el equipo, y el 16 queda solo para el despliegue de Héctor.
+
 ## Lo que arreglé en el backlog
 
 **Tres tareas decían «Sprint 2» con fechas del Sprint 1.** `HU-011`, `SP-010` y
