@@ -1,10 +1,110 @@
-import { expect, it } from 'vitest'
-import { avisoParaEvento } from './avisos'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  avisoParaEvento,
+  DURACION_AVISO_MS,
+  GestorDeAvisos,
+  SILENCIO_MISMA_SENAL_MS,
+  VENTANA_SIMULTANEIDAD_MS,
+  type AvisoVisible
+} from './avisos'
 
-it('avisos concretos sin acusación para rostro, giro, persona y voz', () => {
-  for (const tipo of ['gaze_away', 'face_absent', 'extra_person', 'speech_detected'] as const) {
-    const aviso = avisoParaEvento(tipo)
-    expect(aviso?.titulo.length).toBeGreaterThan(6)
-    expect(aviso?.detalle).not.toMatch(/estás copiando|es una trampa/i)
-  }
+describe('qué se le dice al estudiante', () => {
+  it('hablar en voz alta no se presenta como una infracción', () => {
+    // Es la promesa del proyecto: leer la pregunta para concentrarse es
+    // legítimo, y el texto que el estudiante lee tiene que decirlo.
+    const aviso = avisoParaEvento('speech_detected')
+
+    expect(aviso?.detalle).toContain('no significa una infracción')
+  })
+
+  it.each(['gaze_away', 'face_absent', 'extra_person', 'speech_detected'] as const)(
+    '%s se explica sin acusar',
+    (evento) => {
+      const aviso = avisoParaEvento(evento)
+
+      expect(aviso).not.toBeNull()
+      expect(aviso!.detalle.toLowerCase()).not.toMatch(/copiando|trampa|infracción detectada/)
+    }
+  )
+
+  it('un evento que no se le muestra al estudiante no inventa texto', () => {
+    expect(avisoParaEvento('focus_lost')).toBeNull()
+  })
+})
+
+describe('cuándo se le dice', () => {
+  let visto: AvisoVisible | null
+  let gestor: GestorDeAvisos
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    visto = null
+    gestor = new GestorDeAvisos()
+    gestor.suscribir((a) => (visto = a))
+  })
+
+  it('la primera señal se ve', () => {
+    gestor.registrar('gaze_away', 0)
+
+    expect(visto?.titulo).toBe('Orientación de cabeza fuera de pantalla')
+  })
+
+  it('la misma señal repetida no vuelve a avisar en seguida', () => {
+    // Mirar a un lado medio minuto cierra varios episodios seguidos. Sin esto,
+    // el estudiante recibe un aviso detrás de otro y deja de leerlos.
+    gestor.registrar('gaze_away', 0)
+    const segunda = gestor.registrar('gaze_away', SILENCIO_MISMA_SENAL_MS - 1)
+
+    expect(segunda).toBe(false)
+  })
+
+  it('pasado el silencio, vuelve a avisar', () => {
+    gestor.registrar('gaze_away', 0)
+
+    expect(gestor.registrar('gaze_away', SILENCIO_MISMA_SENAL_MS + 1)).toBe(true)
+  })
+
+  it('dos señales a la vez son un aviso, no dos', () => {
+    // Si la cámara y el micrófono saltan juntos es un suceso. Dos cajas
+    // encima del enunciado es exactamente lo que no se quiere.
+    gestor.registrar('gaze_away', 0)
+    gestor.registrar('speech_detected', VENTANA_SIMULTANEIDAD_MS - 1)
+
+    expect(visto?.eventos).toEqual(['gaze_away', 'speech_detected'])
+    expect(visto?.titulo).toBe('Se detectaron varias señales')
+  })
+
+  it('señales separadas no se juntan', () => {
+    gestor.registrar('gaze_away', 0)
+    gestor.registrar('speech_detected', VENTANA_SIMULTANEIDAD_MS + 1000)
+
+    expect(visto?.eventos).toEqual(['speech_detected'])
+  })
+
+  it('el aviso se retira solo', () => {
+    // Nadie tiene que cerrar una caja para poder seguir respondiendo.
+    gestor.registrar('extra_person', 0)
+    expect(visto).not.toBeNull()
+
+    vi.advanceTimersByTime(DURACION_AVISO_MS + 10)
+
+    expect(visto).toBeNull()
+  })
+
+  it('se puede descartar antes de tiempo', () => {
+    gestor.registrar('extra_person', 0)
+
+    gestor.descartar()
+
+    expect(visto).toBeNull()
+  })
+
+  it('al destruirlo no quedan temporizadores sueltos', () => {
+    gestor.registrar('face_absent', 0)
+
+    gestor.destruir()
+    vi.advanceTimersByTime(DURACION_AVISO_MS * 3)
+
+    expect(vi.getTimerCount()).toBe(0)
+  })
 })
