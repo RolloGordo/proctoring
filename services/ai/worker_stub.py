@@ -21,7 +21,9 @@ import os
 import sys
 
 from redis import Redis
-from rq import Queue, Worker
+from rq import Queue, SimpleWorker, Worker
+
+WorkerClass = SimpleWorker if sys.platform == "win32" else Worker
 
 #: Las mismas colas que usa la API (ver el adaptador `redis_queue/job_queue.py`).
 #: `high` va primero: la verificacion facial tiene a alguien esperando en pantalla,
@@ -48,7 +50,7 @@ def main() -> int:
     logger.info("Conectado a Redis. Escuchando las colas: %s", ", ".join(QUEUES))
     logger.info("Esperando trabajos. Manda un evento speech_detected a la API.")
 
-    worker = Worker(
+    worker = WorkerClass(
         [Queue(name, connection=connection) for name in QUEUES],
         connection=connection,
     )
