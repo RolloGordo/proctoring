@@ -17,16 +17,20 @@ import httpx
 SIM_REVISION = "e8f8c211226b894fcb81acc59f3b34ba3efd5f42"
 MAX_AUDIO_BYTES = 8_000_000
 
+DEFAULT_ASR_PROVIDER = "deepgram"
+ASR_PROVIDERS = ("deepgram", "faster-whisper")
+LOCAL_ASR_EXTRA = "asr-local"
+
 
 def download_audio(job: dict[str, Any], destination: Path) -> None:
     """Download a bounded private object from the configured Storage origin only.
 
-    The job now carries a short-lived signed URL, so the worker does not need
-    the service role key -- that key bypasses RLS and opens the whole database,
-    and handing it out just to read a wav is giving away the master key.
+    The job carries a short-lived signed URL, so the worker does not need the
+    service role key -- that key bypasses RLS and opens every table and every
+    bucket, and handing it out just to read a wav is giving away the master key.
 
-    The old path stays as a fallback while the deployment catches up, and for
-    the in-memory mode where there is no storage to sign against.
+    The old path stays as a fallback for the in-memory mode, where there is no
+    storage to sign against.
     """
     signed = job.get("audio_url")
     if isinstance(signed, str) and signed:
@@ -54,15 +58,15 @@ def download_audio(job: dict[str, Any], destination: Path) -> None:
     if not key:
         raise ValueError("Missing Storage server credential")
     url = f"{base}/storage/v1/object/authenticated/{quote(bucket, safe='')}/{quote(path, safe='/')}"
+    # Never forward server credentials through a redirect.
     _download(url, destination, headers={"Authorization": f"Bearer {key}", "apikey": key})
 
 
 def _download(url: str, destination: Path, headers: dict[str, str]) -> None:
     """Fetch a bounded object. Both paths share the same limits on purpose.
 
-    Never follows a redirect: with the service-role path that would forward the
-    credential somewhere we did not choose, and with the signed path a redirect
-    is not something Storage should be doing either.
+    Never follows a redirect: on the service-role path that would forward the
+    credential somewhere we did not choose.
     """
     with httpx.stream(
         "GET",
@@ -85,18 +89,68 @@ def _download(url: str, destination: Path, headers: dict[str, str]) -> None:
             raise ValueError("Empty audio")
 
 
+def asr_provider() -> str:
+    """Provider chosen by ``ASR_PROVIDER``; unset or blank means Deepgram."""
+    name = os.getenv("ASR_PROVIDER", "").strip().lower() or DEFAULT_ASR_PROVIDER
+    if name not in ASR_PROVIDERS:
+        # The value is not echoed: someone may have pasted a secret in the wrong variable.
+        raise ValueError(f"Unknown ASR_PROVIDER; expected one of: {', '.join(ASR_PROVIDERS)}")
+    return name
+
+
 @lru_cache(maxsize=1)
-def asr_model() -> Any:
+def _local_asr_model() -> Any:
+    """Faster-Whisper is expensive to load, so only this one is cached.
+
+    It is an optional extra, absent from the production image. Asking for it without the
+    extra fails with an actionable message instead of a bare ``ModuleNotFoundError``.
+    """
+    if importlib.util.find_spec("faster_whisper") is None:
+        raise RuntimeError(
+            "ASR_PROVIDER=faster-whisper needs the optional extra "
+            f"'{LOCAL_ASR_EXTRA}' (uv sync --extra {LOCAL_ASR_EXTRA})"
+        )
     from spikes.transcribe import Transcriber
 
     return Transcriber("small", offline=True)
+
+
+def asr_model() -> Any:
+    """Return the configured transcriber (``.transcribe(path)`` and ``.version``).
+
+    The provider is read on every call, so changing ``ASR_PROVIDER`` can never be masked
+    by a cached instance. Deepgram is cheap to build and is deliberately not cached: its
+    key and timeout are then always the current ones, and a missing key fails here,
+    before any network request.
+
+    There is no fallback between providers: a Deepgram misconfiguration must surface as
+    a failed job, never as a transcript silently produced by another engine.
+    """
+    if asr_provider() == "deepgram":
+        from deepgram_transcriber import DeepgramTranscriber
+
+        return DeepgramTranscriber()
+    return _local_asr_model()
+
+
+def _asr_version(asr: Any) -> str:
+    version = getattr(asr, "version", None)
+    # A transcriber without an identifier is recorded as unknown, never mislabelled.
+    return version if isinstance(version, str) and version else "asr-unknown"
 
 
 @lru_cache(maxsize=1)
 def similarity_model() -> Any:
     from spikes.similarity import SimilarityModel
 
-    return SimilarityModel(SIM_REVISION, offline=True)
+    try:
+        return SimilarityModel(SIM_REVISION, offline=True)
+    except OSError:
+        raise RuntimeError(
+            "Similarity model could not be loaded offline. Prepare the pinned model "
+            "and mount its cache at SIMILARITY_CACHE_DIR (default: models). "
+            "No model download was attempted."
+        ) from None
 
 
 class AasistScorer:
@@ -151,18 +205,20 @@ def measure_audio(path: Path, question: str | None) -> dict[str, Any]:
     from spikes.synthetic_voice import decode_audio
 
     waveform = decode_audio(path)  # Bounds duration/decoded memory before ASR.
-    transcript = str(asr_model().transcribe(path)["transcript"])
+    asr = asr_model()
+    # Validate local prerequisites before a billable external transcription request.
+    model = similarity_model() if question is not None and question.strip() else None
+    detector = synthetic_model()
+    transcript = str(asr.transcribe(path)["transcript"])
     similarity = None
-    versions: dict[str, str] = {"asr": "faster-whisper-small-cpu-int8", "sim": "not-applicable"}
-    if question is not None and question.strip():
-        model = similarity_model()
+    versions: dict[str, str] = {"asr": _asr_version(asr), "sim": "not-applicable"}
+    if model is not None:
         try:
             similarity = model.score(question, transcript)
             versions["sim"] = f"multilingual-MiniLM-L12-v2@{SIM_REVISION}"
         except ValueError:
             # Long texts must not be silently truncated to manufacture similarity.
             versions["sim"] = "unavailable:input-outside-model-context"
-    detector = synthetic_model()
     score = detector.score(waveform) if detector else None
     versions["tts_det"] = detector.version if detector else "disabled:awaiting-dataset-validation"
     for number in (similarity, score):

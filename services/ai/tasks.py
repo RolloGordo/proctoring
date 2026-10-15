@@ -31,13 +31,16 @@ Si la implementas aquí, acabará habiendo dos reglas que se contradicen.
 | `PROCTORING_API_URL` | Base de la API, por ejemplo `http://api:8000` |
 | `INTERNAL_API_TOKEN` | El mismo secreto que tiene la API (`X-Internal-Token`) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Para descargar de Storage |
+| `DEEPGRAM_API_KEY` | Transcripción (Deepgram Nova-3, proveedor por defecto) |
+| `ASR_PROVIDER` | Opcional: `faster-whisper` solo para experimentos (extra `asr-local`) |
 
 ## Presupuesto de tiempo
 
-La alerta de IA por voz tiene que llegar en **menos de 10 s**. Con `small`, la
-transcripción de un fragmento de 10 s cuesta ~2,3 s, así que quedan ~7,7 s para la
-similitud y la voz sintética. Mide de punta a punta (`processing_ms`), no por
-partes: es el número que dice si la meta se cumple.
+La alerta de IA por voz tiene que llegar en **menos de 10 s**. Desde TA-070 la
+transcripción la hace Deepgram (red incluida, con un tope de 8 s por solicitud); las
+mediciones de Faster-Whisper `small` (~2,3 s por 10 s de audio) quedan como referencia
+histórica en `results/`. Mide de punta a punta (`processing_ms`), no por partes: es el
+número que dice si la meta se cumple.
 """
 
 from __future__ import annotations

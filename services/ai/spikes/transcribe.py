@@ -36,6 +36,16 @@ class Transcriber:
         self.model = model
         self.threads = threads
 
+    @property
+    def version(self) -> str:
+        """Que motor produjo la transcripcion, para poder comparar mediciones.
+
+        El mismo contrato que expone el transcriptor de Deepgram: quien llama no
+        tiene que saber cual de los dos esta usando. Las medidas viejas se
+        tomaron con esta cadena, asi que no cambia.
+        """
+        return f"faster-whisper-{self.model}-cpu-int8"
+
     def transcribe(self, audio: Path, reference: str | None = None) -> dict[str, Any]:
         if not audio.is_file():
             raise ValueError(f"No existe el audio: {audio}")
