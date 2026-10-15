@@ -1,24 +1,43 @@
 /*
  * Sistema de diseño de la web del docente.
  *
- * Los colores y la tipografía vienen del tema Agency de Start Bootstrap, que es
- * la referencia visual que pidió el equipo: Montserrat en mayúsculas para los
- * títulos, Roboto Slab para el texto, y un amarillo que se usa **poco** —
- * botones principales, estado activo y poco más. Un acento que aparece en todas
- * partes deja de ser acento.
+ * **Esto NO es una landing page.** Es una herramienta que un docente mira
+ * durante una hora seguida mientras vigila un examen, y que un estudiante ve
+ * mientras lo rinde. Manda la legibilidad, no el impacto.
  *
- * Esto NO es una landing page: es una herramienta que un docente mira durante
- * una hora seguida mientras vigila un examen. Por eso se conservan la
- * tipografía y la paleta, pero se bajan las escalas, se quitan las sombras
- * grandes y se usan esquinas poco redondeadas. Nada de degradados ni de
- * animaciones decorativas.
+ * Venía del tema Agency de Start Bootstrap: Montserrat en mayúsculas, Roboto
+ * Slab para el texto y un amarillo saturado. Eso se lee como plantilla, no como
+ * producto. Tres decisiones lo cambian:
+ *
+ * 1. **Una sola tipografía, la del sistema.** San Francisco en Mac, Segoe UI
+ *    Variable en Windows. Carga instantánea, cero peticiones externas durante
+ *    un examen, y se ve como una aplicación nativa. Además era incoherente
+ *    auto-alojar MediaPipe y el VAD para no tocar un CDN al rendir, y luego
+ *    bajar dos tipografías de Google en esa misma pantalla.
+ *
+ * 2. **Sin mayúsculas forzadas.** Las jerarquías se hacen con tamaño y peso.
+ *    Las mayúsculas se leen más despacio y gritan; quedan solo en etiquetas
+ *    diminutas, donde funcionan como rótulo y no como texto.
+ *
+ * 3. **El acento se usa poco.** La acción principal es tinta, no amarilla. El
+ *    amarillo queda para lo seleccionado y para el foco. Un acento que aparece
+ *    en todas partes deja de ser acento.
+ *
+ * Nada de degradados, de sombras grandes ni de animaciones decorativas.
  */
 
 :root {
   /* ---------- Paleta ---------- */
-  --amarillo: #ffc800;
-  --amarillo-oscuro: #e0b000;
-  --amarillo-tenue: #fff8e0;
+  /* Menos saturado que el #ffc800 de la plantilla: el puro vibra sobre blanco
+   * y cansa en una pantalla que se mira una hora seguida. */
+  --amarillo: #e8a700;
+  --amarillo-oscuro: #c58e00;
+  --amarillo-tenue: #fdf6e3;
+
+  /* La acción principal. Tinta, no amarillo: es lo que distingue una
+   * herramienta de una plantilla de agencia. */
+  --accion: #1a1d20;
+  --accion-hover: #343a40;
 
   --tinta: #212529;
   --tinta-media: #495057;
@@ -50,8 +69,13 @@
   --exito-fondo: #ecfdf3;
 
   /* ---------- Tipografía ---------- */
-  --titulo: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --texto: 'Roboto Slab', Georgia, 'Times New Roman', serif;
+  /* Una sola familia, la del sistema. `--titulo` y `--texto` se conservan
+   * como nombres porque los usan ~40 reglas: apuntan a lo mismo. */
+  --sistema:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --titulo: var(--sistema);
+  --texto: var(--sistema);
   --mono: 'SFMono-Regular', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
   /* ---------- Espaciado ---------- */

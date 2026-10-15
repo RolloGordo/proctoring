@@ -20,32 +20,35 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ---------- Títulos: Montserrat, mayúsculas, apretado ---------- */
+/* ---------- Títulos ----------
+ * Sin mayúsculas y sin separación de letras: la jerarquía la hacen el tamaño y
+ * el peso. El `-0.01em` es lo que hace que un titular grande no parezca suelto;
+ * a tamaños pequeños se deja a cero porque ahí aprieta la lectura. */
 h1,
 h2,
 h3,
 h4 {
   font-family: var(--titulo);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  font-weight: 600;
   color: var(--tinta);
   margin: 0;
+  line-height: 1.25;
 }
 
 h1 {
-  font-size: 1.75rem;
-  letter-spacing: 0.01em;
+  font-size: 1.625rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
 }
 h2 {
-  font-size: 1.25rem;
+  font-size: 1.1875rem;
+  letter-spacing: -0.01em;
 }
 h3 {
-  font-size: 1rem;
+  font-size: 0.9375rem;
 }
 h4 {
   font-size: 0.8125rem;
-  letter-spacing: 0.06em;
   color: var(--tinta-suave);
 }
 
@@ -59,10 +62,10 @@ a {
   text-underline-offset: 3px;
 }
 
-/* El subtítulo en cursiva bajo cada título es el gesto más reconocible del
-   tema Agency. Se conserva porque separa el "qué" del "por qué" sin ruido. */
+/* El subtítulo separa el "qué" del "por qué". Antes iba en cursiva, que era el
+   gesto más reconocible del tema Agency; ahora lo hace el color, que es como se
+   distingue el texto secundario sin que parezca una cita. */
 .subtitulo {
-  font-style: italic;
   color: var(--tinta-suave);
   margin: var(--e1) 0 0;
 }
@@ -118,8 +121,6 @@ a {
   font-family: var(--titulo);
   font-size: 0.75rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: rgb(255 255 255 / 70%);
   text-decoration: none;
   padding: var(--e2) 0;
@@ -173,15 +174,13 @@ a {
   justify-content: center;
   gap: var(--e2);
   font-family: var(--titulo);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 0.875rem;
+  font-weight: 500;
   padding: var(--e3) var(--e5);
   border: 1px solid transparent;
-  border-radius: var(--radio);
-  background: var(--amarillo);
-  color: var(--tinta);
+  border-radius: var(--radio-grande);
+  background: var(--accion);
+  color: var(--papel);
   cursor: pointer;
   text-decoration: none;
   transition:
@@ -190,7 +189,7 @@ a {
 }
 
 .boton:hover:not(:disabled) {
-  background: var(--amarillo-oscuro);
+  background: var(--accion-hover);
 }
 
 .boton:disabled {
@@ -231,8 +230,6 @@ a {
   font-family: var(--titulo);
   font-size: 0.6875rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--tinta-media);
   margin-bottom: var(--e2);
 }

@@ -142,8 +142,6 @@
   font-family: var(--titulo);
   font-size: 0.75rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: rgb(255 255 255 / 70%);
   text-decoration: none;
   transition:
@@ -190,8 +188,6 @@
   font-family: var(--titulo);
   font-size: 0.6875rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--amarillo);
   text-decoration: none;
 }
@@ -486,7 +482,6 @@
   gap: var(--e3);
   margin: 0 0 var(--e5);
   font-size: 1.25rem;
-  font-style: italic;
   color: rgb(255 255 255 / 80%);
 }
 
@@ -815,8 +810,6 @@
   font-family: var(--titulo);
   font-size: 0.8125rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 
 .decision-vigente {
