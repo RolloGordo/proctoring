@@ -123,7 +123,6 @@ export interface IdentityPhotoUpload {
 
 export type IdentityPhotoKind = 'reference_face' | 'image'
 
-
 /** Opcion como la ve el estudiante: sin `is_correct`. */
 export interface ExamOption {
   id: string
@@ -443,7 +442,18 @@ async function request<T>(path: string, init?: RequestInit, token?: string): Pro
   // modo de desarrollo local. En cuanto se active, sin token responde 401.
   if (token) headers.set('Authorization', `Bearer ${token}`)
 
-  const response = await fetch(`${BASE}${path}`, { ...init, headers })
+  let response: Response
+  try {
+    response = await fetch(`${BASE}${path}`, { ...init, headers })
+  } catch (fallo) {
+    if (fallo instanceof TypeError) {
+      throw new Error(
+        `No se pudo conectar con la API en ${BASE}. Comprueba que esté activa y accesible. ` +
+          'En local, puedes iniciarla con "docker compose up -d api". Si ya está activa, revisa CORS.'
+      )
+    }
+    throw fallo
+  }
 
   if (!response.ok) {
     throw new ApiError(response.status, await describeError(response))
@@ -488,11 +498,7 @@ export const api = {
   createSession: (data: NewExamSession, token?: string): Promise<ExamSession> =>
     request('/api/v1/sessions', { method: 'POST', body: JSON.stringify(data) }, token),
 
-  updateSession: (
-    id: string,
-    changes: ExamSessionChanges,
-    token?: string
-  ): Promise<ExamSession> =>
+  updateSession: (id: string, changes: ExamSessionChanges, token?: string): Promise<ExamSession> =>
     request(`/api/v1/sessions/${id}`, { method: 'PATCH', body: JSON.stringify(changes) }, token),
 
   cancelSession: (id: string, token?: string): Promise<ExamSession> =>
@@ -567,6 +573,9 @@ export const api = {
 
   createBank: (data: NewQuestionBank, token?: string): Promise<QuestionBank> =>
     request('/api/v1/question-banks', { method: 'POST', body: JSON.stringify(data) }, token),
+
+  deleteBank: (bankId: string, token?: string): Promise<void> =>
+    request(`/api/v1/question-banks/${bankId}`, { method: 'DELETE' }, token),
 
   listBankQuestions: (bankId: string, token?: string): Promise<Question[]> =>
     request(`/api/v1/question-banks/${bankId}/questions`, undefined, token),
@@ -674,7 +683,12 @@ export const api = {
       '/api/v1/evidence/upload-url',
       {
         method: 'POST',
-        body: JSON.stringify({ session_id: sessionId, student_id: studentId, kind, extension: 'jpg' })
+        body: JSON.stringify({
+          session_id: sessionId,
+          student_id: studentId,
+          kind,
+          extension: 'jpg'
+        })
       },
       token
     ),

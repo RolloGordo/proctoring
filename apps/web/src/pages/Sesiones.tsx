@@ -10,13 +10,18 @@ export function Sesiones() {
   const { token } = useAuth()
   const [sesiones, setSesiones] = useState<ExamSessionSummary[]>()
   const [error, setError] = useState<string>()
+  const [reintentos, setReintentos] = useState(0)
 
   useEffect(() => {
+    let cancelado = false
     api
       .listSessions(token)
-      .then(setSesiones)
-      .catch((fallo: Error) => setError(fallo.message))
-  }, [token])
+      .then((datos) => !cancelado && setSesiones(datos))
+      .catch((fallo: Error) => !cancelado && setError(fallo.message))
+    return () => {
+      cancelado = true
+    }
+  }, [token, reintentos])
 
   return (
     <>
@@ -33,7 +38,21 @@ export function Sesiones() {
         </Link>
       </div>
 
-      {error && <p className="aviso">{error}</p>}
+      {error && (
+        <div className="aviso" role="alert">
+          <p>{error}</p>
+          <button
+            type="button"
+            className="boton boton-secundario"
+            onClick={() => {
+              setError(undefined)
+              setReintentos((actual) => actual + 1)
+            }}
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {!sesiones && !error && <p className="tenue">Cargando exámenes…</p>}
 

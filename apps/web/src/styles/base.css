@@ -232,7 +232,7 @@ textarea::placeholder {
   margin-bottom: var(--e4);
 }
 
-.campo > label,
+.campo > label:not(.casilla),
 .campo > span {
   display: block;
   font-family: var(--titulo);
@@ -246,6 +246,8 @@ textarea::placeholder {
 .campo select,
 .campo textarea {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   font-family: var(--texto);
   font-size: 0.9375rem;
   color: var(--tinta);
@@ -274,8 +276,18 @@ textarea::placeholder {
 
 .rejilla-campos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0 var(--e4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--e2) var(--e4);
+}
+
+.rejilla-horario {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 560px) {
+  .rejilla-horario {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ---------- Tablas ---------- */
@@ -603,6 +615,10 @@ textarea::placeholder {
   align-items: start;
 }
 
+.columnas > section {
+  min-width: 0;
+}
+
 .encabezado-seccion {
   display: flex;
   align-items: baseline;
@@ -655,6 +671,7 @@ textarea::placeholder {
 
 /* ---------- Preguntas del examen ---------- */
 .lista-preguntas {
+  min-width: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
@@ -669,6 +686,12 @@ textarea::placeholder {
 
 .lista-preguntas.numerada > li {
   counter-increment: pregunta;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lista-preguntas .tarjeta-cuerpo {
+  min-width: 0;
 }
 
 .lista-preguntas.numerada h4::before {
@@ -686,9 +709,11 @@ textarea::placeholder {
 }
 
 .lista-opciones > li {
+  min-width: 0;
   padding: var(--e2) var(--e3);
   border-left: 3px solid var(--linea);
   background: var(--papel-gris);
+  overflow-wrap: anywhere;
 }
 
 /* La correcta se marca con color y con texto: el color solo no basta. */

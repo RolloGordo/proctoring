@@ -50,6 +50,7 @@ from proctoring_api.application.use_cases.manage_banks import (
     AddQuestionsToBank,
     AttachBankToSession,
     CreateQuestionBank,
+    DeleteQuestionBank,
     DetachBankFromSession,
     ListBankQuestions,
     ListQuestionBanks,
@@ -270,6 +271,11 @@ def get_create_bank(request: Request) -> CreateQuestionBank:
     return use_case
 
 
+def get_delete_bank(request: Request) -> DeleteQuestionBank:
+    use_case: DeleteQuestionBank = request.app.state.delete_bank
+    return use_case
+
+
 def get_list_banks(request: Request) -> ListQuestionBanks:
     use_case: ListQuestionBanks = request.app.state.list_banks
     return use_case
@@ -401,6 +407,7 @@ RecordIdentityCheckDep = Annotated[RecordIdentityCheck, Depends(get_record_ident
 RegisterReferenceFaceDep = Annotated[RegisterReferenceFace, Depends(get_register_reference_face)]
 RequestIdentityCheckDep = Annotated[RequestIdentityCheck, Depends(get_request_identity_check)]
 CreateBankDep = Annotated[CreateQuestionBank, Depends(get_create_bank)]
+DeleteBankDep = Annotated[DeleteQuestionBank, Depends(get_delete_bank)]
 ListBanksDep = Annotated[ListQuestionBanks, Depends(get_list_banks)]
 ListBankQuestionsDep = Annotated[ListBankQuestions, Depends(get_list_bank_questions)]
 AddQuestionsToBankDep = Annotated[AddQuestionsToBank, Depends(get_add_questions_to_bank)]

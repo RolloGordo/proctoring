@@ -16,8 +16,16 @@ class QuestionBankRepository(Protocol):
         """Crea el banco."""
         ...
 
+    def delete(self, bank_id: UUID) -> None:
+        """Borra el banco y sus preguntas si no hay referencias que lo impidan."""
+        ...
+
     def find_by_id(self, bank_id: UUID) -> QuestionBank | None:
         """El banco, o `None` si no existe."""
+        ...
+
+    def is_attached_to_session(self, bank_id: UUID) -> bool:
+        """Indica si un examen todavía usa este banco."""
         ...
 
     def list_by_teacher(self, teacher_id: UUID) -> Sequence[QuestionBank]:

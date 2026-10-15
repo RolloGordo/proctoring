@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
+from proctoring_api.application.ports.answer_repository import AnswerRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
@@ -18,7 +19,7 @@ from proctoring_api.application.use_cases.manage_questions import (
 )
 from proctoring_api.domain.errors import AuthorizationError
 from proctoring_api.domain.question import InvalidQuestionError, Question
-from proctoring_api.domain.question_bank import QuestionBank
+from proctoring_api.domain.question_bank import InvalidQuestionBankError, QuestionBank
 from proctoring_api.domain.user import AuthenticatedUser
 
 #: Tope por banco. Mas generoso que el de un examen porque un banco es
@@ -109,6 +110,37 @@ class ListQuestionBanks:
         # El conteo llega en una consulta para todos, no una por banco.
         conteo = self._banks.count_questions([b.id for b in bancos])
         return [BankSummary(bank=b, question_count=conteo.get(b.id, 0)) for b in bancos]
+
+
+class DeleteQuestionBank:
+    """Elimina un banco vacío de uso, junto con sus preguntas."""
+
+    def __init__(
+        self,
+        banks: QuestionBankRepository,
+        questions: QuestionRepository,
+        answers: AnswerRepository,
+    ) -> None:
+        self._banks = banks
+        self._questions = questions
+        self._answers = answers
+
+    def execute(self, bank_id: UUID, *, actor: AuthenticatedUser | None = None) -> None:
+        ensure_teacher_owns_bank(self._banks, bank_id, actor)
+        if self._banks.is_attached_to_session(bank_id):
+            raise InvalidQuestionBankError(
+                "No se puede eliminar este banco porque está vinculado a un examen."
+            )
+
+        if any(
+            self._answers.count_by_question(question.id) > 0
+            for question in self._questions.list_by_bank(bank_id)
+        ):
+            raise InvalidQuestionBankError(
+                "No se puede eliminar este banco porque tiene preguntas ya respondidas."
+            )
+
+        self._banks.delete(bank_id)
 
 
 class ListBankQuestions:

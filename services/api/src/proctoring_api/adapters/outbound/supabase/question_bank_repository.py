@@ -27,6 +27,9 @@ class SupabaseQuestionBankRepository:
     def save(self, bank: QuestionBank) -> None:
         self._client.table(BANKS_TABLE).insert(_to_row(bank)).execute()
 
+    def delete(self, bank_id: UUID) -> None:
+        self._client.table(BANKS_TABLE).delete().eq("id", str(bank_id)).execute()
+
     def find_by_id(self, bank_id: UUID) -> QuestionBank | None:
         response = (
             self._client.table(BANKS_TABLE)
@@ -37,6 +40,16 @@ class SupabaseQuestionBankRepository:
         )
         rows = cast("list[dict[str, Any]]", response.data)
         return _to_entity(rows[0]) if rows else None
+
+    def is_attached_to_session(self, bank_id: UUID) -> bool:
+        response = (
+            self._client.table(LINKS_TABLE)
+            .select("session_id")
+            .eq("bank_id", str(bank_id))
+            .limit(1)
+            .execute()
+        )
+        return bool(cast("list[dict[str, Any]]", response.data))
 
     def list_by_teacher(self, teacher_id: UUID) -> Sequence[QuestionBank]:
         response = (

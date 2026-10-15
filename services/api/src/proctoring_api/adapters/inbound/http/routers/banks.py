@@ -11,6 +11,7 @@ from proctoring_api.adapters.inbound.http.dependencies import (
     AttachBankDep,
     CreateBankDep,
     CurrentUserDep,
+    DeleteBankDep,
     DetachBankDep,
     ImportQtiDep,
     ListBankQuestionsDep,
@@ -72,6 +73,26 @@ def list_banks(use_case: ListBanksDep, current_user: CurrentUserDep) -> list[Que
     El docente sale del token: no hay parametro con el que pedir los de otro.
     """
     return [QuestionBankResponse.from_entity(b) for b in use_case.execute(actor=current_user)]
+
+
+@router.delete(
+    "/question-banks/{bank_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar un banco de preguntas (solo su docente)",
+    responses={
+        **AUTH_RESPONSES,
+        400: {
+            "model": ErrorResponse,
+            "description": "El banco está vinculado o ya tiene respuestas",
+        },
+    },
+)
+def delete_bank(
+    bank_id: UUID, use_case: DeleteBankDep, current_user: CurrentUserDep
+) -> Response:
+    """Elimina un banco y todas sus preguntas si no tienen referencias a exámenes."""
+    use_case.execute(bank_id, actor=current_user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(
