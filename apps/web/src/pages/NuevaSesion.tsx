@@ -30,7 +30,7 @@ export function NuevaSesion() {
   const { token } = useAuth()
   const navegar = useNavigate()
   const [titulo, setTitulo] = useState('')
-  const [fecha, setFecha] = useState(valorFechaPorDefecto())
+  const [inicio, setInicio] = useState(inicioPorDefecto)
   const [duracion, setDuracion] = useState(90)
   const [tolerancia, setTolerancia] = useState(10)
   const [guardarCodigo, setGuardarCodigo] = useState(false)
@@ -74,13 +74,17 @@ export function NuevaSesion() {
   async function enviar(evento: FormEvent): Promise<void> {
     evento.preventDefault()
     setError(undefined)
+    if (!titulo.trim()) {
+      setError('Escribe el título del examen.')
+      return
+    }
     setEnviando(true)
     try {
       const sesion = await api.createSession(
         {
-          title: titulo,
+          title: titulo.trim(),
           // El input datetime-local da hora local sin zona; la API exige UTC.
-          starts_at: new Date(fecha).toISOString(),
+          starts_at: new Date(`${inicio.fecha}T${inicio.hora}`).toISOString(),
           duration_minutes: duracion,
           entry_tolerance_minutes: tolerancia,
           preset,
@@ -137,11 +141,11 @@ export function NuevaSesion() {
 
       <div className="tarjeta" style={{ maxWidth: '760px' }}>
         <div className="tarjeta-cuerpo">
-          <form onSubmit={(e) => void enviar(e)} noValidate>
+          <form onSubmit={(e) => void enviar(e)}>
             {error && <p className="aviso">{error}</p>}
 
             <label className="campo">
-              <span>Título del examen</span>
+              <span>Título del examen (obligatorio)</span>
               <input
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
@@ -150,19 +154,35 @@ export function NuevaSesion() {
               />
             </label>
 
-            <div className="rejilla-campos">
+            <section className="bloque">
+              <h2>Horario</h2>
+              <p className="ayuda">
+                La fecha y la hora se interpretan según la zona horaria de este equipo.
+              </p>
+            </section>
+            <div className="rejilla-campos rejilla-horario">
               <label className="campo">
-                <span>Fecha y hora de inicio</span>
+                <span>Fecha de inicio (obligatorio)</span>
                 <input
-                  type="datetime-local"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
+                  type="date"
+                  value={inicio.fecha}
+                  onChange={(e) => setInicio((actual) => ({ ...actual, fecha: e.target.value }))}
                   required
                 />
               </label>
 
               <label className="campo">
-                <span>Duración (minutos)</span>
+                <span>Hora de inicio (obligatorio)</span>
+                <input
+                  type="time"
+                  value={inicio.hora}
+                  onChange={(e) => setInicio((actual) => ({ ...actual, hora: e.target.value }))}
+                  required
+                />
+              </label>
+
+              <label className="campo">
+                <span>Duración (minutos, obligatorio)</span>
                 <input
                   type="number"
                   min={1}
@@ -205,10 +225,9 @@ export function NuevaSesion() {
               <span>Preguntas</span>
               {bancos.length === 0 ? (
                 <p className="ayuda">
-                  No tienes bancos todavía. Puedes crear el examen y escribir las preguntas
-                  después, pero conviene{' '}
-                  <Link to="/bancos">crear un banco</Link> y escribirlas una sola vez: así se
-                  reutilizan y cada estudiante recibe un sorteo distinto.
+                  No tienes bancos todavía. Puedes crear el examen y escribir las preguntas después,
+                  pero conviene <Link to="/bancos">crear un banco</Link> y escribirlas una sola vez:
+                  así se reutilizan y cada estudiante recibe un sorteo distinto.
                 </p>
               ) : (
                 <>
@@ -324,11 +343,14 @@ export function NuevaSesion() {
   )
 }
 
-/** Mañana a las 08:00, en el formato que espera `datetime-local`. */
-function valorFechaPorDefecto(): string {
+/** Mañana a las 08:00 en la zona horaria local. */
+function inicioPorDefecto(): { fecha: string; hora: string } {
   const manana = new Date()
   manana.setDate(manana.getDate() + 1)
   manana.setHours(8, 0, 0, 0)
   const pad = (n: number): string => String(n).padStart(2, '0')
-  return `${manana.getFullYear()}-${pad(manana.getMonth() + 1)}-${pad(manana.getDate())}T${pad(manana.getHours())}:${pad(manana.getMinutes())}`
+  return {
+    fecha: `${manana.getFullYear()}-${pad(manana.getMonth() + 1)}-${pad(manana.getDate())}`,
+    hora: `${pad(manana.getHours())}:${pad(manana.getMinutes())}`
+  }
 }

@@ -9,6 +9,7 @@ import {
   type Participant
 } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
+import { formatRemainingTime, unansweredCount } from '../lib/exam-progress'
 import { soloHora } from '../lib/formato'
 import { detectoresDe } from '../supervision/detectores'
 import type { AjustesMonitoreo } from '../supervision/monitoreo'
@@ -31,12 +32,15 @@ export function RendirExamen() {
 
   const [preguntas, setPreguntas] = useState<ExamQuestion[]>()
   const [matricula, setMatricula] = useState<Participant>()
+  const [finExamen, setFinExamen] = useState<string>()
   const [modulosActivos, setModulosActivos] = useState<Record<string, Record<string, unknown>>>({})
   const [respuestas, setRespuestas] = useState<Record<string, NewAnswer>>({})
   const [error, setError] = useState<string>()
   const [guardado, setGuardado] = useState<EstadoGuardado>('limpio')
   const [entregando, setEntregando] = useState(false)
   const [observado, setObservado] = useState(false)
+  const [conectado, setConectado] = useState(() => navigator.onLine)
+  const [ahora, setAhora] = useState(() => Date.now())
   // En que pregunta esta. El examen va de una en una: es la unica forma de que
   // "no volver atras" signifique algo, y ademas es lo que deja saber **cual**
   // es la pregunta en curso cuando se registra un evento.
@@ -59,6 +63,7 @@ export function RendirExamen() {
         setRespuestas(previas)
         setMatricula(mia)
         const mio = misExamenes.find((e) => e.session_id === id)
+        setFinExamen(mio?.ends_at)
         setModulosActivos(mio?.modules ?? {})
         setVolverAtras(mio?.allow_back_navigation ?? true)
         // Al retomar, se sigue en la primera sin responder y no en la uno.
@@ -72,12 +77,34 @@ export function RendirExamen() {
     }
   }, [id, token])
 
-  const guardar = useGuardadoDiferido(id, token, setGuardado, setError)
+  const { guardar, reintentarGuardado } = useGuardadoDiferido(id, token, setGuardado, setError)
+
+  useEffect(() => {
+    const alConectar = (): void => {
+      setConectado(true)
+      if (guardado === 'error') reintentarGuardado()
+    }
+    const alDesconectar = (): void => setConectado(false)
+    window.addEventListener('online', alConectar)
+    window.addEventListener('offline', alDesconectar)
+    return () => {
+      window.removeEventListener('online', alConectar)
+      window.removeEventListener('offline', alDesconectar)
+    }
+  }, [guardado, reintentarGuardado])
+
+  useEffect(() => {
+    const temporizador = setInterval(() => setAhora(Date.now()), 1000)
+    return () => clearInterval(temporizador)
+  }, [])
 
   // La supervisión se enciende aquí y no antes: el consentimiento se da en la
   // sala, y observar a alguien que todavía no aceptó sería justo lo que el
   // proyecto promete no hacer.
-  const detectores = useMemo(() => detectoresDe(matricula ? modulosActivos : {}), [matricula, modulosActivos])
+  const detectores = useMemo(
+    () => detectoresDe(matricula ? modulosActivos : {}),
+    [matricula, modulosActivos]
+  )
   // El módulo de monitoreo en vivo no es un detector: no emite eventos, solo
   // deja que el docente mire. Va aparte por eso.
   const monitoreo = useMemo<AjustesMonitoreo | null>(
@@ -109,6 +136,12 @@ export function RendirExamen() {
 
   async function entregar(): Promise<void> {
     setError(undefined)
+    const faltantes = unansweredCount(total, respondidas)
+    const confirmacion =
+      faltantes === 0
+        ? '¿Quieres entregar el examen? Ya respondiste todas las preguntas.'
+        : `Te quedan ${faltantes} pregunta${faltantes === 1 ? '' : 's'} sin responder. ¿Quieres entregar el examen de todas formas?`
+    if (!window.confirm(confirmacion)) return
     setEntregando(true)
     try {
       setMatricula(await api.submitExam(id, token))
@@ -121,7 +154,9 @@ export function RendirExamen() {
 
   const respondidas = Object.keys(respuestas).length
   const total = preguntas?.length ?? 0
+  const faltantes = unansweredCount(total, respondidas)
   const actual = preguntas?.[enCurso]
+  const restante = finExamen ? Math.max(0, new Date(finExamen).getTime() - ahora) : undefined
   // Sin volver atras, una respuesta enviada ya no se cambia: la API la rechaza,
   // asi que el campo se deshabilita en vez de dejar que lo descubra chocandose.
   const bloqueada = !volverAtras && actual !== undefined && actual.id in respuestas
@@ -135,19 +170,54 @@ export function RendirExamen() {
       <div className="barra-examen">
         <div>
           <strong>
-            {respondidas} de {total} respondidas
+            Pregunta {total > 0 ? enCurso + 1 : 0} de {total}
           </strong>
+          <p className="ayuda">
+            {respondidas} respondidas · {faltantes} sin responder
+          </p>
           <p className="ayuda">{textoGuardado(guardado)}</p>
+          {restante !== undefined && (
+            <p className="ayuda">
+              {restante === 0 ? (
+                <strong>El tiempo del examen terminó</strong>
+              ) : (
+                <>
+                  Tiempo restante: <strong>{formatRemainingTime(restante)}</strong>
+                </>
+              )}
+            </p>
+          )}
         </div>
         <button
           type="button"
           className="boton"
           onClick={() => void entregar()}
-          disabled={entregando || guardado === 'guardando'}
+          disabled={entregando || guardado === 'guardando' || guardado === 'error' || !conectado}
         >
           {entregando ? 'Entregando…' : 'Entregar examen'}
         </button>
       </div>
+
+      {!conectado && (
+        <p className="aviso">
+          Sin conexión. Las respuestas guardadas anteriormente permanecen en el servidor, pero los
+          cambios recientes no se guardarán hasta recuperar la conexión.
+        </p>
+      )}
+      {guardado === 'error' && (
+        <p className="aviso">
+          No se guardó la última respuesta. Comprueba la conexión y vuelve a intentarlo.
+          <button
+            type="button"
+            className="boton boton-secundario"
+            onClick={reintentarGuardado}
+            disabled={!conectado}
+            style={{ marginLeft: 'var(--e3)' }}
+          >
+            Reintentar guardado
+          </button>
+        </p>
+      )}
 
       {observado && (
         <p className="aviso aviso-neutro">
@@ -393,44 +463,67 @@ function useGuardadoDiferido(
   token: string | undefined,
   setGuardado: (estado: EstadoGuardado) => void,
   setError: (mensaje: string | undefined) => void
-): (respuesta: NewAnswer) => void {
+): { guardar: (respuesta: NewAnswer) => void; reintentarGuardado: () => void } {
   const pendientes = useRef(new Map<string, NewAnswer>())
   const temporizador = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const guardando = useRef(false)
 
-  const enviar = useCallback(() => {
+  const enviar = useCallback(async () => {
+    if (guardando.current) return
     const lote = [...pendientes.current.values()]
     pendientes.current.clear()
     if (lote.length === 0) return
 
-    api
-      .saveAnswers(sessionId, lote, token)
-      .then(() => {
-        setGuardado('guardado')
-        setError(undefined)
-      })
-      .catch((fallo: unknown) => {
-        setGuardado('error')
-        // Un 403 aquí no es un fallo de red: el examen cerró o ya se entregó, y
-        // el estudiante necesita saberlo con esas palabras.
-        setError(
-          fallo instanceof ApiError
-            ? fallo.message
-            : 'Se perdió la conexión. Tu última respuesta no se guardó.'
-        )
-      })
+    guardando.current = true
+    setGuardado('guardando')
+    setError(undefined)
+    try {
+      await api.saveAnswers(sessionId, lote, token)
+      setGuardado(pendientes.current.size > 0 ? 'guardando' : 'guardado')
+      setError(undefined)
+    } catch (fallo: unknown) {
+      for (const respuesta of lote) {
+        if (!pendientes.current.has(respuesta.question_id)) {
+          pendientes.current.set(respuesta.question_id, respuesta)
+        }
+      }
+      setGuardado('error')
+      // Un 403 aquí no es un fallo de red: el examen cerró o ya se entregó, y
+      // el estudiante necesita saberlo con esas palabras.
+      setError(
+        fallo instanceof ApiError
+          ? fallo.message
+          : 'Se perdió la conexión. Tu última respuesta no se guardó.'
+      )
+    } finally {
+      guardando.current = false
+    }
   }, [sessionId, token, setGuardado, setError])
 
   // Al desmontar se manda lo que quede: cerrar la pestaña no debería perder la
   // respuesta que estaba en el aire.
-  useEffect(() => () => enviar(), [enviar])
+  useEffect(
+    () => () => {
+      void enviar()
+    },
+    [enviar]
+  )
 
-  return useMemo(() => {
-    return (respuesta: NewAnswer) => {
+  const guardar = useCallback(
+    (respuesta: NewAnswer) => {
       pendientes.current.set(respuesta.question_id, respuesta)
       clearTimeout(temporizador.current)
       temporizador.current = setTimeout(enviar, 500)
-    }
+    },
+    [enviar]
+  )
+
+  const reintentarGuardado = useCallback(() => {
+    clearTimeout(temporizador.current)
+    void enviar()
   }, [enviar])
+
+  return { guardar, reintentarGuardado }
 }
 
 function indexar(respuestas: Answer[]): Record<string, NewAnswer> {
@@ -446,4 +539,3 @@ function indexar(respuestas: Answer[]): Record<string, NewAnswer> {
     ])
   )
 }
-

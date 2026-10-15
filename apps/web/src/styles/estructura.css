@@ -328,6 +328,29 @@
   gap: var(--e3);
 }
 
+.lista-bancos > li,
+.lista-bancos .tarjeta-cuerpo,
+.lista-bancos h4 {
+  min-width: 0;
+}
+
+.lista-bancos h4 {
+  overflow-wrap: anywhere;
+}
+
+.lista-bancos p {
+  overflow-wrap: anywhere;
+}
+
+.lista-bancos .tarjeta-cuerpo > .fila:first-child {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.fila-banco-acciones {
+  flex-wrap: wrap;
+}
+
 /* Elegir de qué bancos sale un examen, al crearlo. */
 .selector-bancos {
   list-style: none;
@@ -364,6 +387,85 @@
   white-space: nowrap;
   font-size: 0.875rem;
   color: var(--tinta-suave);
+}
+
+.ayuda-formatos {
+  margin: var(--e3) 0;
+  padding: var(--e3);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--papel-gris);
+}
+
+.ayuda-formatos summary {
+  color: var(--tinta-media);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ayuda-formatos p {
+  margin: var(--e3) 0;
+}
+
+.ayuda-formatos pre {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: var(--e3);
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.importacion-vista-previa {
+  width: 100%;
+  min-width: 0;
+  margin-top: var(--e3);
+  overflow-wrap: anywhere;
+}
+
+.importacion-vista-previa .tarjeta-cuerpo {
+  min-width: 0;
+}
+
+.importacion-vista-previa h4,
+.importacion-vista-previa p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.importacion-preguntas {
+  display: grid;
+  min-width: 0;
+  gap: var(--e2);
+  margin: var(--e3) 0;
+  padding-left: 1.5rem;
+}
+
+.importacion-preguntas li > * {
+  display: block;
+}
+
+.importacion-preguntas li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.importacion-preguntas li > strong,
+.importacion-preguntas li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.importacion-preguntas li > span {
+  color: var(--tinta-suave);
+  font-size: 0.875rem;
+}
+
+.importacion-acciones {
+  flex-wrap: wrap;
+  margin-top: var(--e3);
 }
 
 .fila-examen {

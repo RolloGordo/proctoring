@@ -1,6 +1,7 @@
-import { Suspense, lazy, type ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { Suspense, lazy, useEffect, type ReactNode } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { CapaExamen, CapaPanel, CapaPublica } from './components/Capas'
+import { RequireDesktopExam } from './components/RequireDesktopExam'
 import { ProveedorAuth } from './lib/auth'
 import { useAuth } from './lib/auth-context'
 import { inicioSegunRol, type Rol } from './lib/rutas'
@@ -15,6 +16,7 @@ import { Login } from './pages/Login'
 import { NuevaSesion } from './pages/NuevaSesion'
 import { PanelDocente } from './pages/PanelDocente'
 import { PanelEstudiante } from './pages/PanelEstudiante'
+import { DetalleExamenEstudiante } from './pages/DetalleExamenEstudiante'
 import { Participantes } from './pages/Participantes'
 import { Portada } from './pages/Portada'
 import { RevisionCaso } from './pages/RevisionCaso'
@@ -23,6 +25,7 @@ import { Preguntas } from './pages/Preguntas'
 import { SalaDeEspera } from './pages/SalaDeEspera'
 import { SesionEnVivo } from './pages/SesionEnVivo'
 import { Sesiones } from './pages/Sesiones'
+import { pageTitle } from './lib/exam-progress'
 
 /**
  * La pantalla del examen se carga solo al entrar en ella.
@@ -72,6 +75,25 @@ function Estudiante({ children }: { children: ReactNode }) {
   )
 }
 
+function EstudianteEnExamen({
+  children,
+  rindiendo = false
+}: {
+  children: ReactNode
+  rindiendo?: boolean
+}) {
+  const contenido = window.api ? (
+    rindiendo ? (
+      <CapaExamen>{children}</CapaExamen>
+    ) : (
+      <CapaPanel rol="student">{children}</CapaPanel>
+    )
+  ) : (
+    <RequireDesktopExam>{children}</RequireDesktopExam>
+  )
+  return <Zona rol="student">{contenido}</Zona>
+}
+
 function NoEncontrado() {
   return (
     <CapaPublica>
@@ -85,9 +107,20 @@ function NoEncontrado() {
   )
 }
 
+function TituloRuta() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    document.title = pageTitle(pathname)
+  }, [pathname])
+
+  return null
+}
+
 function Aplicacion() {
   return (
     <BrowserRouter>
+      <TituloRuta />
       <Routes>
         {/* Público */}
         <Route path="/" element={<Portada />} />
@@ -210,6 +243,14 @@ function Aplicacion() {
           }
         />
         <Route
+          path="/estudiante/examenes/:id"
+          element={
+            <Estudiante>
+              <DetalleExamenEstudiante />
+            </Estudiante>
+          }
+        />
+        <Route
           path="/examen"
           element={
             <Estudiante>
@@ -220,9 +261,9 @@ function Aplicacion() {
         <Route
           path="/examen/:id/sala"
           element={
-            <Estudiante>
+            <EstudianteEnExamen>
               <SalaDeEspera />
-            </Estudiante>
+            </EstudianteEnExamen>
           }
         />
 
@@ -230,13 +271,11 @@ function Aplicacion() {
         <Route
           path="/examen/:id/rendir"
           element={
-            <Zona rol="student">
-              <CapaExamen>
-                <Suspense fallback={<p className="tenue">Cargando examen…</p>}>
-                  <RendirExamen />
-                </Suspense>
-              </CapaExamen>
-            </Zona>
+            <EstudianteEnExamen rindiendo>
+              <Suspense fallback={<p className="tenue">Cargando examen…</p>}>
+                <RendirExamen />
+              </Suspense>
+            </EstudianteEnExamen>
           }
         />
 

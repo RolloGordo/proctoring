@@ -213,6 +213,27 @@ export function Portada() {
         </div>
       </section>
 
+      <section className="portada-seccion" id="aplicacion-estudiante">
+        <div className="contenedor">
+          <h2>Rinde el examen desde la app de escritorio</h2>
+          <p className="subtitulo portada-sub">
+            La app permite el modo de examen protegido y el acceso a las funciones de supervisión.
+            Antes de iniciar, revisa los permisos de cámara y micrófono que solicite tu equipo.
+          </p>
+          <a
+            href="https://github.com/RolloGordo/proctoring/releases"
+            className="boton"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Revisar versiones de la app
+          </a>
+          <p className="ayuda">
+            Si todavía no hay una versión publicada, solicita el instalador a tu docente.
+          </p>
+        </div>
+      </section>
+
       <section className="portada-seccion" id="principios">
         <div className="contenedor">
           <h2>Principios</h2>

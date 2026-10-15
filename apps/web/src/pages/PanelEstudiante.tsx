@@ -134,7 +134,11 @@ export function PanelEstudiante() {
                   <tbody>
                     {entregados.map((examen) => (
                       <tr key={examen.session_id}>
-                        <td>{examen.title}</td>
+                        <td>
+                          <Link to={`/estudiante/examenes/${examen.session_id}`}>
+                            {examen.title}
+                          </Link>
+                        </td>
                         <td className="hora">
                           {examen.submitted_at ? fechaLarga(examen.submitted_at) : '—'}
                         </td>
@@ -155,12 +159,7 @@ export function PanelEstudiante() {
 }
 
 function FilaPorRendir({ examen, ahora }: { examen: MyExam; ahora: number }) {
-  const estado = estadoExamen(
-    examen.starts_at,
-    examen.duration_minutes,
-    ahora,
-    examen.cancelled
-  )
+  const estado = estadoExamen(examen.starts_at, examen.duration_minutes, ahora, examen.cancelled)
   const empiezaEn = new Date(examen.starts_at).getTime() - ahora
 
   let detalle: string
