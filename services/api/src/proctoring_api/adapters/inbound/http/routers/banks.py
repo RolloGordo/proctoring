@@ -87,9 +87,7 @@ def list_banks(use_case: ListBanksDep, current_user: CurrentUserDep) -> list[Que
         },
     },
 )
-def delete_bank(
-    bank_id: UUID, use_case: DeleteBankDep, current_user: CurrentUserDep
-) -> Response:
+def delete_bank(bank_id: UUID, use_case: DeleteBankDep, current_user: CurrentUserDep) -> Response:
     """Elimina un banco y todas sus preguntas si no tienen referencias a exámenes."""
     use_case.execute(bank_id, actor=current_user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

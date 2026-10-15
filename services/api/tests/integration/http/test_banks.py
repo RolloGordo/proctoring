@@ -113,9 +113,7 @@ def test_el_docente_elimina_un_banco_y_todas_sus_preguntas(
     )
 
     assert respuesta.status_code == 204
-    assert authed_client.get(
-        "/api/v1/question-banks", headers=bearer(TEACHER_TOKEN)
-    ).json() == []
+    assert authed_client.get("/api/v1/question-banks", headers=bearer(TEACHER_TOKEN)).json() == []
 
 
 def test_no_se_elimina_un_banco_que_usa_un_examen(authed_client: TestClient) -> None:
