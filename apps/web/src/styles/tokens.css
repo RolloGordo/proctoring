@@ -41,7 +41,10 @@
 
   --tinta: #212529;
   --tinta-media: #495057;
-  --tinta-suave: #6c757d;
+  /* Medido: #6c757d daba 4.45 sobre --papel-gris y 4.10 sobre --papel-hundido,
+   * por debajo del 4.5 que exige WCAG AA para texto normal. Este pasa en las
+   * tres superficies (5.27 / 5.00 / 4.61) y es el minimo que hace falta. */
+  --tinta-suave: #646d75;
 
   --papel: #ffffff;
   --papel-gris: #f8f9fa;

@@ -62,6 +62,14 @@ a {
   text-underline-offset: 3px;
 }
 
+/* El gris por defecto del navegador se queda demasiado claro sobre blanco y el
+ * ejemplo no se lee. Este es el mismo tono del texto secundario. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--tinta-suave);
+  opacity: 1;
+}
+
 /* El subtítulo separa el "qué" del "por qué". Antes iba en cursiva, que era el
    gesto más reconocible del tema Agency; ahora lo hace el color, que es como se
    distingue el texto secundario sin que parezca una cita. */

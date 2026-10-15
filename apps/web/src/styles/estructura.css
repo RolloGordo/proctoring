@@ -25,6 +25,25 @@
 }
 
 /* Para fondos oscuros: borde claro y sin relleno. */
+/* La accion principal sobre fondo oscuro se invierte: papel con tinta.
+ *
+ * Desde que el boton principal es tinta en vez de amarillo, en la cabecera y en
+ * las secciones oscuras de la portada quedaba tinta sobre tinta y no se leia
+ * nada. Un boton negro sobre negro es invisible, no discreto. */
+.cabecera .boton:not(.boton-claro):not(.boton-texto),
+.portada-inicio .boton:not(.boton-claro):not(.boton-texto),
+.portada-oscura .boton:not(.boton-claro):not(.boton-texto) {
+  background: var(--papel);
+  color: var(--tinta);
+  border-color: transparent;
+}
+
+.cabecera .boton:not(.boton-claro):not(.boton-texto):hover:not(:disabled),
+.portada-inicio .boton:not(.boton-claro):not(.boton-texto):hover:not(:disabled),
+.portada-oscura .boton:not(.boton-claro):not(.boton-texto):hover:not(:disabled) {
+  background: var(--papel-gris);
+}
+
 .boton-claro {
   background: transparent;
   border-color: rgb(255 255 255 / 45%);
