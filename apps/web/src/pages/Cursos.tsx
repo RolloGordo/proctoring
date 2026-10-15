@@ -17,17 +17,22 @@ export function Cursos() {
   const [nombre, setNombre] = useState('')
   const [seccion, setSeccion] = useState('')
   const [creando, setCreando] = useState(false)
+  const [reintento, setReintento] = useState(0)
 
   useEffect(() => {
     let cancelado = false
     api
       .listCourses(token)
-      .then((datos) => !cancelado && setCursos(datos))
+      .then((datos) => {
+        if (cancelado) return
+        setCursos(datos)
+        setError(undefined)
+      })
       .catch((fallo: Error) => !cancelado && setError(fallo.message))
     return () => {
       cancelado = true
     }
-  }, [token])
+  }, [token, reintento])
 
   async function crear(evento: FormEvent): Promise<void> {
     evento.preventDefault()
@@ -90,6 +95,19 @@ export function Cursos() {
 
       <section className="bloque">
         {!cursos && !error && <p className="tenue">Cargando…</p>}
+
+        {!cursos && error && (
+          <div className="aviso" role="alert">
+            <p>No se pudieron cargar tus cursos: {error}</p>
+            <button
+              type="button"
+              className="boton boton-secundario"
+              onClick={() => setReintento((valor) => valor + 1)}
+            >
+              Volver a cargar cursos
+            </button>
+          </div>
+        )}
 
         {cursos?.length === 0 && (
           <div className="tarjeta">
