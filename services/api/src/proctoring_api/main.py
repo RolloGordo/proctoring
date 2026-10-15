@@ -516,12 +516,14 @@ def create_app(
     app.state.decision_repository = decision_repository
     app.state.audio_analysis_repository = audio_analysis_repository
     app.state.reference_face_repository = reference_face_repository
+    app.state.question_repository = question_repository
     # --- Servicio de IA: el worker mide, la API decide ---
     app.state.get_audio_job = GetAudioJob(
         event_repository,
         session_repository,
         question_repository,
         settings.supabase_audio_bucket,
+        evidence_storage,
     )
     app.state.record_audio_analysis = RecordAudioAnalysis(
         audio_analysis_repository,

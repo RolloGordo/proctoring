@@ -26,6 +26,7 @@ from proctoring_api.application.ports.alert_repository import AlertRepository
 from proctoring_api.application.ports.audio_analysis_repository import AudioAnalysisRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.event_repository import EventRepository
+from proctoring_api.application.ports.evidence_storage import EvidenceStorage
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.job_queue import JobQueue
 from proctoring_api.application.ports.participant_repository import ParticipantRepository
@@ -53,6 +54,11 @@ class JobNotFoundError(DomainError):
     """El trabajo pedido no existe o ya no tiene con qué ejecutarse."""
 
 
+#: Cuanto vive la URL del fragmento. El worker lo baja en cuanto recoge el
+#: trabajo; diez minutos cubren una cola lenta sin dejar un enlace util por ahi.
+AUDIO_URL_EXPIRY_SECONDS = 600
+
+
 @dataclass(frozen=True, slots=True)
 class AudioJob:
     """Todo lo que el worker necesita para analizar un fragmento de audio.
@@ -68,13 +74,24 @@ class AudioJob:
     #: El enunciado con el que comparar la transcripción. `None` si la pregunta
     #: ya no existe; entonces no hay nada que comparar.
     question_statement: str | None
-    #: Ruta dentro del bucket de audio. El worker la descarga de Storage.
+    #: Ruta dentro del bucket de audio. Se sigue sirviendo para poder registrar
+    #: de donde salio el fragmento, aunque el worker ya no la use para bajarlo.
     audio_path: str
     audio_bucket: str
     #: Los umbrales de **esta** sesión. El worker los recibe para poder registrar
     #: con qué se comparó, no para decidir con ellos.
     similarity_threshold: float
     synthetic_threshold: float
+    #: URL firmada y temporal para bajar el fragmento.
+    #:
+    #: Existe para que el worker **no necesite la service role key**. Antes se
+    #: le daba bucket + ruta y bajaba el archivo con la clave de servicio, que
+    #: salta RLS y abre la base entera: una credencial asi no deberia estar en
+    #: la maquina de nadie ni en un servicio de terceros solo para leer un wav.
+    #:
+    #: `None` si no hay almacenamiento configurado (modo en memoria), y
+    #: entonces el worker cae al camino antiguo.
+    audio_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,11 +121,13 @@ class GetAudioJob:
         sessions: ExamSessionRepository,
         questions: QuestionRepository,
         audio_bucket: str,
+        storage: EvidenceStorage | None = None,
     ) -> None:
         self._events = events
         self._sessions = sessions
         self._questions = questions
         self._audio_bucket = audio_bucket
+        self._storage = storage
 
     def execute(self, event_id: UUID) -> AudioJob:
         """Raises:
@@ -136,9 +155,25 @@ class GetAudioJob:
             question_statement=self._statement_of(event),
             audio_path=event.evidence_path,
             audio_bucket=self._audio_bucket,
+            audio_url=self._signed_url(event.evidence_path),
             similarity_threshold=thresholds.similarity,
             synthetic_threshold=thresholds.synthetic,
         )
+
+    def _signed_url(self, path: str) -> str | None:
+        """URL temporal para bajar el fragmento, o `None` sin almacenamiento.
+
+        Dura lo justo para que el worker lo descargue. Si falla, no se rompe el
+        trabajo: se devuelve `None` y el worker usa el camino antiguo.
+        """
+        if self._storage is None:
+            return None
+        try:
+            return self._storage.create_read_url(self._audio_bucket, path, AUDIO_URL_EXPIRY_SECONDS)
+        # Que Storage falle no puede tumbar el analisis: se cae al camino
+        # antiguo en vez de dejar el evento sin medir.
+        except Exception:
+            return None
 
     def _statement_of(self, event: ProctoringEvent) -> str | None:
         if event.question_id is None:
