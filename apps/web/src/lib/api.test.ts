@@ -52,6 +52,21 @@ describe('errores de la API', () => {
     expect(fallo.status).toBe(502)
     expect(fallo.message).toContain('502')
   })
+
+  it('traduce el fallo de conexión a la API a un mensaje accionable', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch')
+      })
+    )
+
+    const fallo = await api.listSessions().catch((e: unknown) => e)
+
+    expect(fallo).toBeInstanceOf(Error)
+    expect((fallo as Error).message).toContain('No se pudo conectar con la API')
+    expect((fallo as Error).message).not.toContain('Failed to fetch')
+  })
 })
 
 describe('autenticacion', () => {
@@ -71,5 +86,19 @@ describe('autenticacion', () => {
 
     expect(conToken.get('Authorization')).toBe('Bearer token-de-prueba')
     expect(sinToken.get('Authorization')).toBeNull()
+  })
+})
+
+describe('bancos de preguntas', () => {
+  it('elimina un banco con una petición DELETE autenticada', async () => {
+    const espia = vi.fn(async () => new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', espia)
+
+    await api.deleteBank('bank-123', 'token-de-prueba')
+
+    expect(espia).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/question-banks/bank-123'),
+      expect.objectContaining({ method: 'DELETE' })
+    )
   })
 })

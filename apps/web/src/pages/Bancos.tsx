@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { ImportarPreguntas } from '../components/ImportarPreguntas'
 import { api, type Course, type QuestionBank } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 
@@ -7,8 +8,8 @@ import { useAuth } from '../lib/auth-context'
  * Los bancos del docente.
  *
  * Un banco es un montón de preguntas que no pertenece a ningún examen: se
- * escribe una vez y se reutiliza. Es también donde cae lo que se importe de un
- * QTI.
+ * escribe una vez y se reutiliza. Se puede crear un banco vacío o importarlo
+ * directamente desde un archivo.
  */
 export function Bancos() {
   const { token } = useAuth()
@@ -20,6 +21,7 @@ export function Bancos() {
   const [cursoId, setCursoId] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [creando, setCreando] = useState(false)
+  const [eliminando, setEliminando] = useState<string>()
 
   useEffect(() => {
     api
@@ -52,6 +54,53 @@ export function Bancos() {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo crear el banco')
     } finally {
       setCreando(false)
+    }
+  }
+
+  async function crearBancoParaImportar(): Promise<QuestionBank> {
+    if (!nombre.trim()) throw new Error('Escribe el nombre del banco antes de importar.')
+    return api.createBank(
+      {
+        name: nombre.trim(),
+        course_id: cursoId || null,
+        description: descripcion.trim() || null
+      },
+      token
+    )
+  }
+
+  function actualizarTrasImportacion(
+    _bancoId: string,
+    _importadas: number,
+    completada: boolean
+  ): void {
+    api
+      .listBanks(token)
+      .then(setBancos)
+      .catch((fallo: Error) => setError(fallo.message))
+    if (completada) {
+      setNombre('')
+      setDescripcion('')
+    }
+  }
+
+  async function eliminar(banco: QuestionBank): Promise<void> {
+    if (
+      !confirm(
+        `¿Eliminar el banco "${banco.name}" y sus ${banco.question_count} preguntas? Esta acción no se puede deshacer.`
+      )
+    ) {
+      return
+    }
+    setError(undefined)
+    setEliminando(banco.id)
+    try {
+      await api.deleteBank(banco.id, token)
+      setBancos((previos) => (previos ?? []).filter((item) => item.id !== banco.id))
+    } catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : 'No se pudo eliminar el banco')
+    } finally {
+      setEliminando(undefined)
     }
   }
 
@@ -125,6 +174,12 @@ export function Bancos() {
                   {creando ? 'Creando…' : 'Crear banco'}
                 </button>
               </form>
+              <hr className="separador" />
+              <ImportarPreguntas
+                nombreBanco={nombre}
+                crearBanco={crearBancoParaImportar}
+                onImportado={actualizarTrasImportacion}
+              />
             </div>
           </div>
         </section>
@@ -156,10 +211,18 @@ export function Bancos() {
                       </span>
                     </div>
                     {banco.description && <p className="ayuda">{banco.description}</p>}
-                    <div className="fila" style={{ marginTop: 'var(--e2)' }}>
+                    <div className="fila fila-banco-acciones" style={{ marginTop: 'var(--e2)' }}>
                       <Link to={`/bancos/${banco.id}`} className="boton boton-secundario">
                         Ver y añadir preguntas
                       </Link>
+                      <button
+                        type="button"
+                        className="boton boton-peligro"
+                        disabled={eliminando !== undefined}
+                        onClick={() => void eliminar(banco)}
+                      >
+                        {eliminando === banco.id ? 'Eliminando…' : 'Eliminar banco'}
+                      </button>
                     </div>
                   </div>
                 </li>

@@ -3,17 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Proctoring — Panel del docente</title>
+    <title>Proctoring</title>
     <meta
       name="description"
-      content="Panel del docente del sistema de proctoring: sesiones de examen, alertas en vivo y revisión de evidencia."
+      content="Plataforma de exámenes remotos con supervisión transparente."
     />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Roboto+Slab:wght@300;400;700&display=swap"
-      rel="stylesheet"
-    />
+    <!--
+      Sin tipografias de Google a proposito.
+
+      El proyecto se toma el trabajo de auto-alojar MediaPipe y el VAD para no
+      tocar un CDN mientras alguien rinde; descargar dos tipografias de Google
+      en esa misma pantalla contradecia esa decision. Ahora se usa la del
+      sistema: carga instantanea, cero peticiones externas durante un examen, y
+      se ve como una aplicacion nativa en vez de como una plantilla.
+    -->
   </head>
   <body>
     <div id="root"></div>

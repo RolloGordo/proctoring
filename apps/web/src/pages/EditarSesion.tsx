@@ -28,6 +28,7 @@ export function EditarSesion() {
 
   const [titulo, setTitulo] = useState('')
   const [fecha, setFecha] = useState('')
+  const [hora, setHora] = useState('')
   const [duracion, setDuracion] = useState(90)
   const [tolerancia, setTolerancia] = useState(10)
   const [preset, setPreset] = useState<SupervisionPreset>('standard')
@@ -41,7 +42,9 @@ export function EditarSesion() {
       .then((datos) => {
         setSesion(datos)
         setTitulo(datos.title)
-        setFecha(aLocal(datos.starts_at))
+        const inicio = aLocal(datos.starts_at)
+        setFecha(inicio.fecha)
+        setHora(inicio.hora)
         setDuracion(datos.duration_minutes)
         setTolerancia(datos.entry_tolerance_minutes)
         setPreset(datos.preset === 'custom' ? 'standard' : datos.preset)
@@ -62,7 +65,7 @@ export function EditarSesion() {
         id,
         {
           title: titulo,
-          starts_at: new Date(fecha).toISOString(),
+          starts_at: new Date(`${fecha}T${hora}`).toISOString(),
           duration_minutes: duracion,
           entry_tolerance_minutes: tolerancia,
           preset,
@@ -144,8 +147,7 @@ export function EditarSesion() {
 
       {cancelado && (
         <p className="aviso">
-          Este examen está cancelado, así que ya no se edita. Sus estudiantes ven que lo
-          cancelaste.
+          Este examen está cancelado, así que ya no se edita. Sus estudiantes ven que lo cancelaste.
         </p>
       )}
 
@@ -163,13 +165,23 @@ export function EditarSesion() {
                 />
               </label>
 
-              <div className="rejilla-campos">
+              <div className="rejilla-campos rejilla-horario">
                 <label className="campo">
-                  <span>Fecha y hora de inicio</span>
+                  <span>Fecha de inicio</span>
                   <input
-                    type="datetime-local"
+                    type="date"
                     value={fecha}
                     onChange={(e) => setFecha(e.target.value)}
+                    required
+                  />
+                </label>
+
+                <label className="campo">
+                  <span>Hora de inicio</span>
+                  <input
+                    type="time"
+                    value={hora}
+                    onChange={(e) => setHora(e.target.value)}
                     required
                   />
                 </label>
@@ -211,9 +223,9 @@ export function EditarSesion() {
               </div>
 
               <p className="ayuda" style={{ marginTop: 'calc(-1 * var(--e3))' }}>
-                Los puntos de cada pregunta se reparten sobre esta nota. Puedes poner 2 puntos a
-                una pregunta y 1 a otra sin preocuparte de que sumen {notaMaxima || '20'}.
-                Con estudiantes ya dentro, la nota máxima deja de poderse cambiar.
+                Los puntos de cada pregunta se reparten sobre esta nota. Puedes poner 2 puntos a una
+                pregunta y 1 a otra sin preocuparte de que sumen {notaMaxima || '20'}. Con
+                estudiantes ya dentro, la nota máxima deja de poderse cambiar.
               </p>
 
               <div className="campo">
@@ -273,7 +285,11 @@ export function EditarSesion() {
                 alertas y lo que respondieron tus estudiantes. El código deja de servir y quien lo
                 use leerá que lo cancelaste.
               </p>
-              <button type="button" className="boton boton-secundario" onClick={() => void cancelar()}>
+              <button
+                type="button"
+                className="boton boton-secundario"
+                onClick={() => void cancelar()}
+              >
                 Cancelar examen
               </button>
             </>
@@ -292,9 +308,12 @@ export function EditarSesion() {
   )
 }
 
-/** Un ISO en UTC al formato local que espera `datetime-local`. */
-function aLocal(iso: string): string {
-  const fecha = new Date(iso)
+/** Divide un ISO en fecha y hora locales para los controles del formulario. */
+function aLocal(iso: string): { fecha: string; hora: string } {
+  const inicio = new Date(iso)
   const pad = (n: number): string => String(n).padStart(2, '0')
-  return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}T${pad(fecha.getHours())}:${pad(fecha.getMinutes())}`
+  return {
+    fecha: `${inicio.getFullYear()}-${pad(inicio.getMonth() + 1)}-${pad(inicio.getDate())}`,
+    hora: `${pad(inicio.getHours())}:${pad(inicio.getMinutes())}`
+  }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { EditorPregunta, ListaPreguntas } from '../components/EditorPregunta'
-import { ImportarQti } from '../components/ImportarQti'
+import { ImportarPreguntas } from '../components/ImportarPreguntas'
 import { api, type NewQuestion, type Question, type QuestionBank } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 
@@ -14,7 +14,7 @@ export function Banco() {
   const [preguntas, setPreguntas] = useState<Question[]>()
   const [error, setError] = useState<string>()
 
-  function recargar(): void {
+  function recargarPreguntas(): void {
     api
       .listBankQuestions(id, token)
       .then(setPreguntas)
@@ -38,9 +38,7 @@ export function Banco() {
     setError(undefined)
     try {
       const corregida = await api.updateQuestion(preguntaId, { points: puntos }, token)
-      setPreguntas((previas) =>
-        (previas ?? []).map((p) => (p.id === preguntaId ? corregida : p))
-      )
+      setPreguntas((previas) => (previas ?? []).map((p) => (p.id === preguntaId ? corregida : p)))
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudieron cambiar los puntos')
       throw fallo
@@ -95,7 +93,11 @@ export function Banco() {
 
           <div className="tarjeta">
             <div className="tarjeta-cuerpo">
-              <ImportarQti bancoId={id} onImportado={recargar} />
+              <ImportarPreguntas
+                bancoId={id}
+                nombreBanco={banco?.name}
+                onImportado={() => recargarPreguntas()}
+              />
               <hr className="separador" />
               <EditorPregunta onGuardar={agregar} textoBoton="Añadir al banco" />
             </div>

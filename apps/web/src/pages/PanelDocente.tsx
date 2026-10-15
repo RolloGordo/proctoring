@@ -21,6 +21,7 @@ export function PanelDocente() {
   const [sesiones, setSesiones] = useState<ExamSessionSummary[]>()
   const [alertas, setAlertas] = useState<Record<string, Alert[]>>({})
   const [error, setError] = useState<string>()
+  const [reintentos, setReintentos] = useState(0)
   // El estado de un examen cambia con la hora; un reloj por minuto basta.
   const [ahora, setAhora] = useState(() => Date.now())
 
@@ -38,7 +39,7 @@ export function PanelDocente() {
     return () => {
       cancelado = true
     }
-  }, [token])
+  }, [token, reintentos])
 
   const grupos = useMemo(() => {
     const todos = (sesiones ?? []).map((s) => ({
@@ -91,7 +92,21 @@ export function PanelDocente() {
         </Link>
       </div>
 
-      {error && <p className="aviso">{error}</p>}
+      {error && (
+        <div className="aviso" role="alert">
+          <p>{error}</p>
+          <button
+            type="button"
+            className="boton boton-secundario"
+            onClick={() => {
+              setError(undefined)
+              setReintentos((actual) => actual + 1)
+            }}
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
       {!sesiones && !error && <p className="tenue">Cargando…</p>}
 
       {sesiones && (

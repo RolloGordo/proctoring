@@ -107,6 +107,7 @@ from proctoring_api.application.use_cases.manage_banks import (
     AddQuestionsToBank,
     AttachBankToSession,
     CreateQuestionBank,
+    DeleteQuestionBank,
     DetachBankFromSession,
     ListBankQuestions,
     ListQuestionBanks,
@@ -605,6 +606,9 @@ def create_app(
         question_repository, session_repository, bank_repository, answer_repository
     )
     app.state.create_bank = CreateQuestionBank(bank_repository, clock, settings.dev_teacher_id)
+    app.state.delete_bank = DeleteQuestionBank(
+        bank_repository, question_repository, answer_repository
+    )
     app.state.list_banks = ListQuestionBanks(bank_repository, settings.dev_teacher_id)
     app.state.list_bank_questions = ListBankQuestions(bank_repository, question_repository)
     app.state.add_questions_to_bank = AddQuestionsToBank(bank_repository, question_repository)

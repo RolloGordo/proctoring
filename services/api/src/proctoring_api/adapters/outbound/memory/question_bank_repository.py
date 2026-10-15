@@ -26,9 +26,23 @@ class InMemoryQuestionBankRepository:
         with self._lock:
             self._banks[bank.id] = bank
 
+    def delete(self, bank_id: UUID) -> None:
+        with self._lock:
+            self._banks.pop(bank_id, None)
+            for atados in self._attached.values():
+                if bank_id in atados:
+                    atados.remove(bank_id)
+        if self._questions is not None:
+            for question in self._questions.list_by_bank(bank_id):
+                self._questions.delete(question.id)
+
     def find_by_id(self, bank_id: UUID) -> QuestionBank | None:
         with self._lock:
             return self._banks.get(bank_id)
+
+    def is_attached_to_session(self, bank_id: UUID) -> bool:
+        with self._lock:
+            return any(bank_id in atados for atados in self._attached.values())
 
     def list_by_teacher(self, teacher_id: UUID) -> Sequence[QuestionBank]:
         with self._lock:

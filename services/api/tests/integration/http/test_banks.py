@@ -102,6 +102,38 @@ def test_la_lista_cuenta_las_preguntas_de_cada_banco(authed_client: TestClient) 
     assert lista.json()[0]["question_count"] == 7
 
 
+def test_el_docente_elimina_un_banco_y_todas_sus_preguntas(
+    authed_client: TestClient,
+) -> None:
+    bank_id = crear_banco(authed_client, TEACHER_TOKEN)
+    llenar(authed_client, bank_id, TEACHER_TOKEN, 2)
+
+    respuesta = authed_client.delete(
+        f"/api/v1/question-banks/{bank_id}", headers=bearer(TEACHER_TOKEN)
+    )
+
+    assert respuesta.status_code == 204
+    assert authed_client.get("/api/v1/question-banks", headers=bearer(TEACHER_TOKEN)).json() == []
+
+
+def test_no_se_elimina_un_banco_que_usa_un_examen(authed_client: TestClient) -> None:
+    bank_id = crear_banco(authed_client, TEACHER_TOKEN)
+    session_id = crear_examen(authed_client)
+    atar = authed_client.post(
+        f"/api/v1/sessions/{session_id}/banks",
+        json={"bank_id": bank_id},
+        headers=bearer(TEACHER_TOKEN),
+    )
+    assert atar.status_code == 200
+
+    respuesta = authed_client.delete(
+        f"/api/v1/question-banks/{bank_id}", headers=bearer(TEACHER_TOKEN)
+    )
+
+    assert respuesta.status_code == 400
+    assert "vinculado a un examen" in respuesta.json()["detail"]
+
+
 def test_un_estudiante_no_crea_bancos(authed_client: TestClient) -> None:
     respuesta = authed_client.post(
         "/api/v1/question-banks", json={"name": "Mio"}, headers=bearer(STUDENT_TOKEN)
