@@ -60,6 +60,13 @@ services:
     build:
       context: ./services/ai
       dockerfile: Dockerfile
+      args:
+        # En local no se instala `similarity`: el worker de compose es el
+        # esqueleto y nadie tiene los pesos del modelo montados. Asi la imagen
+        # se queda en 471 MB en disco (113 MB al descargar) y no arrastra torch.
+        # La de produccion se construye con el valor por defecto del Dockerfile,
+        # que si lo trae, porque la similitud con el enunciado es el diferencial.
+        EXTRAS: ""
     container_name: proctoring-ai-worker
     env_file:
       - .env

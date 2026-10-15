@@ -3,12 +3,17 @@ name = "proctoring-audio-spike"
 version = "0.1.0"
 description = "SP-007 reproducible Spanish transcription experiment"
 requires-python = ">=3.12,<3.13"
+# Lo que necesita el worker desplegado, y nada mas. Transcribe por API
+# (Deepgram, TA-070), asi que aqui no entra ningun modelo: httpx para hablar con
+# el proveedor y con Storage, y la cola.
 dependencies = [
-    "av==16.1.0",
-    "faster-whisper>=1.2,<2",
     "httpx>=0.28,<1",
-    "huggingface-hub>=1,<2",
-    "truststore>=0.10,<1",
+    # No son opcionales: `measure_audio` decodifica con PyAV y numpy en cada
+    # trabajo de audio, antes de transcribir, para acotar duracion y memoria.
+    # Las dos entraban de rebote con faster-whisper (numpy ni estaba declarada),
+    # asi que al sacarlo del base el worker se quedaba sin decodificador.
+    "av==16.1.0",
+    "numpy>=2,<3",
     # worker_stub.py y tasks.py viven en este servicio y usan la cola.
     "rq>=2.0,<3",
     "redis>=5.0,<7",
@@ -17,14 +22,31 @@ dependencies = [
 # Los modelos pesados son opcionales a proposito: el CI y el worker arrancan sin
 # ellos, y solo quien corre un experimento los instala. Cada extra corresponde a
 # un spike distinto; instalarlos todos no hace falta para nada.
+#
+# `asr-local` existe por dos motivos. Uno, el worker de produccion vive en un
+# Space gratuito y el stack de faster-whisper (ctranslate2 + onnxruntime +
+# tokenizers, mas el modelo descargado) no entra: ese es el motivo real de
+# TA-070, no el peso del instalador. Dos, `audio_runtime._local_asr_model`
+# promete este nombre exacto en su mensaje de error, asi que tiene que existir.
+# Sigue siendo seleccionable con ASR_PROVIDER=faster-whisper para comparar
+# transcripciones contra la API sin depender de la red.
 [project.optional-dependencies]
+asr-local = [
+    "faster-whisper>=1.2,<2",
+    "huggingface-hub>=1,<2",
+    "truststore>=0.10,<1",
+]
 similarity = [
+    "huggingface-hub>=1,<2",
     "sentence-transformers>=3,<6",
+    "truststore>=0.10,<1",
 ]
 voice = [
+    "huggingface-hub>=1,<2",
     "scikit-learn>=1.5,<2",
     "torch>=2.6,<3",
     "transformers>=5,<6",
+    "truststore>=0.10,<1",
 ]
 
 [dependency-groups]
@@ -54,11 +76,21 @@ select = ["E", "F", "I", "UP"]
 exclude = ["^models/"]
 
 # faster-whisper does not ship type stubs; keep checks enabled for our own code.
+# av y numpy entraban de rebote con faster-whisper: al pasarlo al extra
+# `asr-local`, el CI ligero ya no los instala y mypy no los encontraria.
 [[tool.mypy.overrides]]
-module = ["faster_whisper.*"]
+module = ["faster_whisper.*", "av.*", "numpy.*"]
 ignore_missing_imports = true
 
 # Las librerias de modelos opcionales no estan en el CI ligero a proposito.
 [[tool.mypy.overrides]]
-module = ["sentence_transformers.*", "torch.*", "transformers.*", "sklearn.*"]
+module = [
+    "sentence_transformers.*",
+    "torch.*",
+    "transformers.*",
+    "sklearn.*",
+    # Solo los usa spikes/network.py, para descargar pesos.
+    "huggingface_hub.*",
+    "truststore.*",
+]
 ignore_missing_imports = true
