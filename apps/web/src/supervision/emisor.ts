@@ -9,6 +9,7 @@
 import { ApiError, api, type EventType } from '../lib/api'
 import type { SenalDetectada } from './tipos'
 import { uploadAudio } from './audioUpload'
+import { uploadImage } from './imageUpload'
 
 /** Tope de la cola. Más que esto es que la red lleva mucho rato caída. */
 const MAX_EN_COLA = 200
@@ -83,6 +84,16 @@ export class EmisorDeSenales {
           if (senal.audio && !senal.evidencePath) {
             senal.evidencePath = await uploadAudio(senal.audio, context)
             senal.audio = undefined
+          }
+          if (senal.image && !senal.evidencePath) {
+            const image = await senal.image
+            if (image) {
+              senal.evidencePath = await uploadImage(image, context)
+              senal.image = undefined
+            } else {
+              senal.metadata = { ...senal.metadata, capture_error: 'no_jpeg' }
+              senal.image = undefined
+            }
           }
           await api.registerEvent(
             {

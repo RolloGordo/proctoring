@@ -470,3 +470,56 @@ class TestVerificacionDeIdentidad:
         )
 
         assert respuesta.status_code == 202
+
+
+class TestElWorkerNoNecesitaLaClaveDeServicio:
+    """El trabajo trae una URL firmada para bajar el fragmento.
+
+    Antes se le daba bucket y ruta, y el worker descargaba el audio con la
+    service role key. Esa clave salta RLS y abre la base entera: tenerla en la
+    maquina de quien desarrolla el worker, y manana en un servicio de terceros,
+    solo para leer un wav, es regalar la llave maestra.
+    """
+
+    def test_el_trabajo_trae_una_url_firmada(self, client: TestClient, app: Any) -> None:
+        datos = examen_con_habla(app)
+
+        cuerpo = client.get(f"/api/v1/internal/audio-jobs/{datos['evento'].id}").json()
+
+        assert cuerpo["audio_url"], "sin URL el worker vuelve a necesitar la clave de servicio"
+
+    def test_la_url_apunta_al_fragmento_de_ese_evento(self, client: TestClient, app: Any) -> None:
+        datos = examen_con_habla(app)
+
+        cuerpo = client.get(f"/api/v1/internal/audio-jobs/{datos['evento'].id}").json()
+
+        assert cuerpo["audio_path"] in cuerpo["audio_url"]
+        assert cuerpo["audio_bucket"] in cuerpo["audio_url"]
+
+    def test_la_ruta_se_sigue_sirviendo(self, client: TestClient, app: Any) -> None:
+        """Para poder registrar de donde salio el fragmento, y como respaldo
+        mientras el worker termina de migrar."""
+        datos = examen_con_habla(app)
+
+        cuerpo = client.get(f"/api/v1/internal/audio-jobs/{datos['evento'].id}").json()
+
+        assert cuerpo["audio_path"] == "audio/fragmento.webm"
+        assert cuerpo["audio_bucket"]
+
+    def test_sin_almacenamiento_el_trabajo_sigue_sirviendo(self, app: Any) -> None:
+        """En modo memoria no hay URL que firmar. El trabajo no se cae por eso:
+        devuelve None y el worker usa el camino antiguo."""
+        from proctoring_api.application.use_cases.ai_jobs import GetAudioJob
+
+        datos = examen_con_habla(app)
+        sin_storage = GetAudioJob(
+            app.state.event_repository,
+            app.state.session_repository,
+            app.state.question_repository,
+            "audio-segments",
+        )
+
+        trabajo = sin_storage.execute(datos["evento"].id)
+
+        assert trabajo.audio_url is None
+        assert trabajo.audio_path == "audio/fragmento.webm"

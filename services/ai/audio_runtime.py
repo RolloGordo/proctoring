@@ -19,7 +19,20 @@ MAX_AUDIO_BYTES = 8_000_000
 
 
 def download_audio(job: dict[str, Any], destination: Path) -> None:
-    """Download a bounded private object from the configured Storage origin only."""
+    """Download a bounded private object from the configured Storage origin only.
+
+    The job now carries a short-lived signed URL, so the worker does not need
+    the service role key -- that key bypasses RLS and opens the whole database,
+    and handing it out just to read a wav is giving away the master key.
+
+    The old path stays as a fallback while the deployment catches up, and for
+    the in-memory mode where there is no storage to sign against.
+    """
+    signed = job.get("audio_url")
+    if isinstance(signed, str) and signed:
+        _download(signed, destination, headers={})
+        return
+
     base = os.environ["SUPABASE_URL"].rstrip("/")
     parsed = urlsplit(base)
     if parsed.scheme != "https" and not (
@@ -41,11 +54,20 @@ def download_audio(job: dict[str, Any], destination: Path) -> None:
     if not key:
         raise ValueError("Missing Storage server credential")
     url = f"{base}/storage/v1/object/authenticated/{quote(bucket, safe='')}/{quote(path, safe='/')}"
-    # Never forward server credentials through a redirect.
+    _download(url, destination, headers={"Authorization": f"Bearer {key}", "apikey": key})
+
+
+def _download(url: str, destination: Path, headers: dict[str, str]) -> None:
+    """Fetch a bounded object. Both paths share the same limits on purpose.
+
+    Never follows a redirect: with the service-role path that would forward the
+    credential somewhere we did not choose, and with the signed path a redirect
+    is not something Storage should be doing either.
+    """
     with httpx.stream(
         "GET",
         url,
-        headers={"Authorization": f"Bearer {key}", "apikey": key},
+        headers=headers,
         timeout=10,
         follow_redirects=False,
     ) as response:

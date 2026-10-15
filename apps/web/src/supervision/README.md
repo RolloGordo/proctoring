@@ -166,3 +166,23 @@ capturas de los eventos que fueron alerta y los fragmentos de audio marcados,
 que tienen su propio camino. Un canal que guardara los fotogramas sería
 grabación continua de vídeo con otro nombre, y es justo lo que la pantalla de
 consentimiento promete que no pasa.
+
+## Extensión Jesús Limay — semana 7 (TA-018 / HU-025)
+
+`useSupervision` mantiene una sola cámara durante el examen, notifica si se
+pierde y ofrece reintento desde `RendirExamen`. La vista previa local comparte
+`MediaStream` con los detectores y Realtime; no es una segunda cámara.
+
+`CapturasPorCondicion` obtiene **una foto durante la condición confirmada**
+(no al inicio/mitad/final ni por fotograma); `imageUpload.ts` pide URL firmada,
+sube JPEG por `PUT` y `emisor.ts` adjunta `evidence_path` al evento. El docente
+solo puede ver capturas que Storage haya recibido. Si la foto no pudo generarse
+se anota `capture_error` en metadata; no se inventa ruta.
+
+Los avisos visuales y de voz reutilizan `AvisoSupervision.tsx`, un único
+componente flotante sin lenguaje acusatorio. No se emite un aviso cada 3 s:
+`CapturasPorCondicion` limita el aviso al primer instante confirmado de cada
+episodio visual; el audio alerta cuando finaliza su segmento.
+
+Las métricas requieren datos etiquetados, separados entre calibración y prueba
+final: ver `docs/semana-07/PROTOCOLO_DE_PRUEBAS.md`.

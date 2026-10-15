@@ -122,7 +122,11 @@ pnpm-debug.log*
 .env.*.local
 
 # MediaPipe local: distribuir los modelos por instalación, nunca versionarlos.
-apps/web/public/mediapipe/
+apps/web/public/mediapipe/wasm/
+apps/web/public/mediapipe/provenance.json
 apps/web/spikes/vision/datasets/etiquetas/
 apps/web/spikes/vision/datasets/predictions/
 *.task
+# El modelo de MediaPipe no esta en npm, asi que este si se versiona: sin el,
+# un despliegue corre sin deteccion de vision y no avisa de nada.
+!apps/web/public/mediapipe/face_landmarker.task

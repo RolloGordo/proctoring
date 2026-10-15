@@ -10,9 +10,11 @@ import {
 } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { soloHora } from '../lib/formato'
-import { detectoresDe } from '../supervision/detectores'
+import { detectoresDe, necesitaAudio } from '../supervision/detectores'
 import type { AjustesMonitoreo } from '../supervision/monitoreo'
 import { useSupervision } from '../supervision/useSupervision'
+import { AvisoSupervision } from '../components/AvisoSupervision'
+import type { AvisoSupervision as DatosAviso } from '../supervision/avisos'
 
 /**
  * Pantalla del examen del estudiante.
@@ -37,6 +39,25 @@ export function RendirExamen() {
   const [guardado, setGuardado] = useState<EstadoGuardado>('limpio')
   const [entregando, setEntregando] = useState(false)
   const [observado, setObservado] = useState(false)
+  const [aviso, setAviso] = useState<DatosAviso | null>(null)
+  const [reintentoCamara, setReintentoCamara] = useState(0)
+  const vistaPrevia = useRef<HTMLVideoElement>(null)
+  const streamActual = useRef<MediaStream | null>(null)
+  // Se reutiliza el stream de supervisión; NO se abre una segunda cámara.
+  const mostrarCamara = useCallback((stream: MediaStream | null) => {
+    streamActual.current = stream
+    if (vistaPrevia.current) {
+      vistaPrevia.current.srcObject = stream
+      if (stream) void vistaPrevia.current.play().catch(() => undefined)
+    }
+  }, [])
+  const asociarVistaPrevia = useCallback((video: HTMLVideoElement | null) => {
+    vistaPrevia.current = video
+    if (video) {
+      video.srcObject = streamActual.current
+      if (streamActual.current) void video.play().catch(() => undefined)
+    }
+  }, [])
   // En que pregunta esta. El examen va de una en una: es la unica forma de que
   // "no volver atras" signifique algo, y ademas es lo que deja saber **cual**
   // es la pregunta en curso cuando se registra un evento.
@@ -93,8 +114,12 @@ export function RendirExamen() {
     questionId: preguntas?.[enCurso]?.id ?? null,
     token,
     detectores,
+    conAudio: necesitaAudio(detectores),
     monitoreo,
     onObservado: setObservado,
+    onAviso: setAviso,
+    onCamara: mostrarCamara,
+    reintento: reintentoCamara,
     activa: matricula?.submitted_at == null
   })
 
@@ -132,6 +157,7 @@ export function RendirExamen() {
 
   return (
     <div className="pantalla-examen">
+      <AvisoSupervision aviso={aviso} onCerrar={() => setAviso(null)} />
       <div className="barra-examen">
         <div>
           <strong>
@@ -149,6 +175,13 @@ export function RendirExamen() {
         </button>
       </div>
 
+      {supervision.tipo === 'activa' && (
+        <div className="indicador-camara-examen" aria-label="Cámara activa durante el examen">
+          <video ref={asociarVistaPrevia} muted playsInline autoPlay aria-label="Mi cámara activa" />
+          <span>● Cámara activa</span>
+        </div>
+      )}
+
       {observado && (
         <p className="aviso aviso-neutro">
           Tu docente está viendo tu cámara en este momento. No se está grabando: la imagen se
@@ -160,6 +193,9 @@ export function RendirExamen() {
         <p className="aviso aviso-neutro">
           {supervision.mensaje} Puedes seguir rindiendo: quedará registrado que la supervisión no se
           pudo activar, y tu docente lo verá al revisar.
+          <button type="button" className="boton boton-secundario" onClick={() => setReintentoCamara((n) => n + 1)}>
+            Reintentar cámara
+          </button>
         </p>
       )}
 

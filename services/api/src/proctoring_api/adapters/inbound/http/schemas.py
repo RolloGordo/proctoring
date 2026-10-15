@@ -899,6 +899,12 @@ class AudioJobResponse(BaseModel):
     #: Con que se va a comparar lo medido. El worker los registra, no decide con ellos.
     similarity_threshold: float
     synthetic_threshold: float
+    #: URL firmada y temporal para bajar el fragmento.
+    #:
+    #: Esta para que el worker **no necesite la service role key**: esa clave
+    #: salta RLS y abre la base entera, y no deberia vivir en la maquina de
+    #: nadie ni en un servicio de terceros solo para leer un wav.
+    audio_url: str | None = None
 
     @classmethod
     def from_entity(cls, job: AudioJob) -> AudioJobResponse:
@@ -910,6 +916,7 @@ class AudioJobResponse(BaseModel):
             question_statement=job.question_statement,
             audio_path=job.audio_path,
             audio_bucket=job.audio_bucket,
+            audio_url=job.audio_url,
             similarity_threshold=job.similarity_threshold,
             synthetic_threshold=job.synthetic_threshold,
         )
