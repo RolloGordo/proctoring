@@ -1,4 +1,4 @@
-import type { AvisoSupervision as Aviso } from '../supervision/avisos'
+import type { AvisoVisible as Aviso } from '../supervision/avisos'
 
 /** Componente compartido por cámara y audio; flotante, sin bloquear la pregunta. */
 export function AvisoSupervision({ aviso, onCerrar }: { aviso: Aviso | null; onCerrar: () => void }) {

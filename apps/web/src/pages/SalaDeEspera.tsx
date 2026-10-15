@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth-context'
 import { recordarExamen, recuperarExamen } from '../lib/examen-guardado'
 import { cuandoEmpieza, fechaLarga } from '../lib/formato'
 import { VerificacionFacialEspera } from './VerificacionFacialEspera'
+import { PruebaMicrofono } from '../supervision/PruebaMicrofono'
 
 /** Nombre legible de cada módulo de supervisión, para que el estudiante sepa
  *  qué se va a observar. Decírselo no es un trámite: es la base del
@@ -167,6 +168,7 @@ export function SalaDeEspera() {
   // que decía lo contrario de lo que pasaba («el plazo está cerrado»).
   const todaviaNoEmpieza = empiezaEn > 0 && !examen.can_enter_now
   const requiereVerificacionFacial = 'face_verification' in examen.modules
+  const requiereMicrofono = 'ai_voice' in examen.modules || 'external_voices' in examen.modules
 
   return (
     <div className="centrado-estrecho">
@@ -264,6 +266,8 @@ export function SalaDeEspera() {
 
       {error && <p className="aviso">{error}</p>}
 
+      {yaConsintio && !yaEntrego && requiereMicrofono && <PruebaMicrofono />}
+
       {!yaEntrego && (
         <div className="tarjeta">
           <div className="tarjeta-cuerpo">
@@ -277,9 +281,16 @@ export function SalaDeEspera() {
               </>
             ) : yaConsintio ? (
               matricula?.can_take_exam ? (
-                <Link to={`/examen/${id}/rendir`} className="boton">
-                  Entrar al examen
-                </Link>
+                <>
+                  {requiereMicrofono && (
+                    <p className="ayuda">
+                      La comprobación del micrófono no bloquea el ingreso al examen.
+                    </p>
+                  )}
+                  <Link to={`/examen/${id}/rendir`} className="boton">
+                    Entrar al examen
+                  </Link>
+                </>
               ) : (
                 <button type="button" className="boton" disabled>
                   Esperando verificación o admisión del docente

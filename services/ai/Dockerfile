@@ -1,28 +1,79 @@
 # syntax=docker/dockerfile:1
 #
-# Imagen del worker de IA. **Provisional**: solo lleva lo necesario para el
-# esqueleto (`worker_stub.py`). Cuando Pierreluiggi anada faster-whisper,
-# sentence-transformers e InsightFace, esto pasa a multi-stage con uv, como el
-# Dockerfile de services/api.
+# Imagen del worker de IA. Mismo patron que services/api: dependencias en una
+# capa aparte, runtime sin uv ni compiladores, usuario sin privilegios.
 #
-# Los modelos NO van en la imagen: se descargan en tiempo de ejecucion a un
-# volumen, porque pesan cientos de megabytes y el plan gratuito del registro no
-# los aguanta.
+# Los modelos NO van en la imagen. Se montan en un volumen, porque pesan
+# cientos de megabytes y porque `similarity_model()` carga en modo `offline=True`
+# a proposito: un trabajo de audio nunca descarga nada mientras un estudiante
+# rinde.
+#
+# La transcripcion va por API (Deepgram, TA-070), asi que aqui no entra
+# faster-whisper: vive en el extra `asr-local`, para comparar en local.
+# ---------------------------------------------------------------------------
+# Etapa 1 — dependencias
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim-bookworm AS builder
 
-FROM python:3.12-slim-bookworm
+COPY --from=ghcr.io/astral-sh/uv:0.12 /uv /bin/uv
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
+
+WORKDIR /app
+
+# `similarity` trae sentence-transformers, y con el torch. Es el diferencial del
+# proyecto —comparar lo que se dijo con el enunciado— asi que va por defecto;
+# queda como argumento para poder construir una imagen minima y medir la
+# diferencia.
+ARG EXTRAS="--extra similarity"
+
+COPY pyproject.toml uv.lock ./
+# [tool.uv] package = false: aqui no hay proyecto que instalar, solo dependencias.
+# --no-dev: ruff, mypy y pytest no pintan nada en produccion.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev ${EXTRAS}
+
+# ---------------------------------------------------------------------------
+# Etapa 2 — runtime
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim-bookworm AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app
 
 RUN groupadd --system --gid 1001 proctoring \
     && useradd --system --uid 1001 --gid proctoring --create-home proctoring
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir "rq>=2.0" "redis>=5.0"
+COPY --from=builder --chown=proctoring:proctoring /app/.venv /app/.venv
 
-COPY --chown=proctoring:proctoring tasks.py worker_stub.py ./
+# Solo lo que el worker ejecuta. Los demas spikes se quedan fuera: son
+# experimentos, no codigo de produccion.
+#   tasks.py              los trabajos que consume la cola
+#   worker_stub.py        el proceso que escucha
+#   audio_runtime.py      descarga, decodifica y mide el audio
+#   deepgram_transcriber  el proveedor de transcripcion
+#   face_pipeline.py      verificacion facial
+#   spikes/metrics.py     lo usa deepgram_transcriber
+#   spikes/network.py     descarga de pesos a traves del proxy TLS del sistema
+#   spikes/similarity.py  similitud con el enunciado
+#   spikes/synthetic_voice.py  de aqui sale `decode_audio`
+#   spikes/transcribe.py  save_json, y el ASR local si se pide
+COPY --chown=proctoring:proctoring \
+    tasks.py worker_stub.py audio_runtime.py deepgram_transcriber.py face_pipeline.py ./
+COPY --chown=proctoring:proctoring spikes/__init__.py spikes/metrics.py spikes/network.py \
+    spikes/similarity.py spikes/synthetic_voice.py spikes/transcribe.py ./spikes/
 
 USER proctoring
+
+# Comprueba que el proceso sigue vivo y que la cola responde. Un worker que
+# perdio Redis esta inservible aunque el contenedor siga en pie.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD python -c "import os,redis,sys; sys.exit(0 if redis.Redis.from_url(os.environ.get('REDIS_URL','redis://localhost:6379/0')).ping() else 1)"
 
 CMD ["python", "worker_stub.py"]

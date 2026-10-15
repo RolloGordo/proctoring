@@ -15,7 +15,7 @@ import { detectoresDe, necesitaAudio } from '../supervision/detectores'
 import type { AjustesMonitoreo } from '../supervision/monitoreo'
 import { useSupervision } from '../supervision/useSupervision'
 import { AvisoSupervision } from '../components/AvisoSupervision'
-import type { AvisoSupervision as DatosAviso } from '../supervision/avisos'
+import { GestorDeAvisos, type AvisoVisible } from '../supervision/avisos'
 
 /**
  * Pantalla del examen del estudiante.
@@ -43,7 +43,20 @@ export function RendirExamen() {
   const [observado, setObservado] = useState(false)
   const [conectado, setConectado] = useState(() => navigator.onLine)
   const [ahora, setAhora] = useState(() => Date.now())
-  const [aviso, setAviso] = useState<DatosAviso | null>(null)
+  // El gestor decide cuando se ve un aviso: silencia la repeticion, junta lo
+  // simultaneo y lo retira solo. Vive en un ref para que no se reinicie en
+  // cada renderizado y pierda lo que ya habia silenciado.
+  const [aviso, setAviso] = useState<AvisoVisible | null>(null)
+  const gestorAvisos = useRef<GestorDeAvisos>(undefined)
+  gestorAvisos.current ??= new GestorDeAvisos()
+  useEffect(() => {
+    const gestor = gestorAvisos.current
+    const quitar = gestor?.suscribir(setAviso)
+    return () => {
+      quitar?.()
+      gestor?.destruir()
+    }
+  }, [])
   const [reintentoCamara, setReintentoCamara] = useState(0)
   const vistaPrevia = useRef<HTMLVideoElement>(null)
   const streamActual = useRef<MediaStream | null>(null)
@@ -144,7 +157,7 @@ export function RendirExamen() {
     conAudio: necesitaAudio(detectores),
     monitoreo,
     onObservado: setObservado,
-    onAviso: setAviso,
+    onAviso: (a) => gestorAvisos.current?.registrar(a.tipo),
     onCamara: mostrarCamara,
     reintento: reintentoCamara,
     activa: matricula?.submitted_at == null
@@ -192,7 +205,7 @@ export function RendirExamen() {
 
   return (
     <div className="pantalla-examen">
-      <AvisoSupervision aviso={aviso} onCerrar={() => setAviso(null)} />
+      <AvisoSupervision aviso={aviso} onCerrar={() => gestorAvisos.current?.descartar()} />
       <div className="barra-examen">
         <div>
           <strong>
