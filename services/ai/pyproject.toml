@@ -59,6 +59,20 @@ dev = [
 [tool.uv]
 package = false
 
+# torch por defecto trae CUDA. Medido en la imagen de produccion: 3195 MB de
+# `nvidia` y 895 MB de `triton`, en un worker que nunca va a ver una GPU —mas
+# que todo lo demas junto—. En Linux se coge la rueda de CPU.
+#
+# El marcador deja Windows y macOS como estaban: ahi la rueda normal ya es de
+# CPU, asi que los spikes en local no cambian de resolucion.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
