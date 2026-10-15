@@ -52,12 +52,18 @@ for (const nombre of nombres) {
 // El modelo va versionado porque no está en npm. Si alguien lo borra, que se
 // entere aquí y no en mitad de un examen.
 try {
+  const crudo = await readFile(modelo)
+  // Comprobacion de tamano de Jesus: un archivo truncado o un marcador de LFS
+  // sin resolver pasaria el "existe" y moriria al cargarlo en el navegador.
+  if (crudo.length < 10_000) {
+    throw new Error('modelo truncado')
+  }
   procedencia.push({
     package: 'google/mediapipe-models (Apache-2.0)',
     file: 'face_landmarker.task',
-    sha256: createHash('sha256')
-      .update(await readFile(modelo))
-      .digest('hex')
+    sha256: createHash('sha256').update(crudo).digest('hex'),
+    // Anotado por Jesus: deja claro para que sirve y para que no.
+    uso: 'landmarks, deteccion de rostros y pose; NO da embeddings de identidad'
   })
 } catch {
   console.error(

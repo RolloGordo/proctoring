@@ -3,6 +3,7 @@ import type { Participant, VerificationStatus } from '../lib/api'
 import { api } from '../lib/api'
 import { subirFotoDeIdentidad } from '../lib/identidad'
 import { abrirCamara, capturarFotograma } from '../supervision/camara'
+import { contarRostrosEnCamara } from '../supervision/detectores/vision'
 
 interface Props {
   sessionId: string
@@ -87,6 +88,16 @@ export function VerificacionFacialEspera({
 
   async function fotografiar(): Promise<Blob> {
     if (!camara.current) throw new Error('Primero debes abrir la cámara.')
+    // Mismo FaceLandmarker que usan los detectores de cámara: no otra API facial.
+    // La presencia de una cara NO equivale a identidad verificada.
+    const caras = await contarRostrosEnCamara(camara.current.video)
+    if (caras !== 1) {
+      throw new Error(
+        caras === 0
+          ? 'MediaPipe no detecta tu rostro. Mejora la luz y vuelve al encuadre.'
+          : 'Debe aparecer solo tu rostro para registrar o verificar la fotografía.'
+      )
+    }
     const foto = await capturarFotograma(camara.current.video, 0.9)
     if (!foto || foto.size === 0) {
       throw new Error('La cámara no devolvió una fotografía válida. Revisa la iluminación.')

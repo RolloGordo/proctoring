@@ -12,7 +12,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { abrirCamara, CamaraNoDisponibleError } from './camara'
+import { abrirCamara, CamaraNoDisponibleError, capturarFotograma } from './camara'
+import { CapturasPorCondicion } from './capturasVision'
+import { avisoParaEvento, type AvisoSupervision } from './avisos'
+import type { SenalDetectada } from './tipos'
 import { EmisorDeSenales } from './emisor'
 import { publicarFotogramas, type AjustesMonitoreo, type Publicacion } from './monitoreo'
 import { SeguimientoCondicion } from './seguimiento'
@@ -45,6 +48,12 @@ export interface OpcionesSupervision {
    * la cámara.
    */
   onObservado?: (observado: boolean) => void
+  /** Un aviso por episodio, compartido con el módulo de audio. */
+  onAviso?: (aviso: AvisoSupervision) => void
+  /** Muestra una previsualización sin abrir otra cámara. */
+  onCamara?: (stream: MediaStream | null) => void
+  /** Botón de reintento si el navegador pierde la cámara. */
+  reintento?: number
   /** Permite apagarlo todo (por ejemplo, si el examen ya se entregó). */
   activa?: boolean
 }
@@ -64,6 +73,9 @@ export function useSupervision({
   conAudio = false,
   monitoreo = null,
   onObservado,
+  onAviso,
+  onCamara,
+  reintento = 0,
   activa = true
 }: OpcionesSupervision): EstadoSupervision {
   const [estado, setEstado] = useState<EstadoSupervision>({ tipo: 'apagada' })
@@ -75,6 +87,11 @@ export function useSupervision({
   useEffect(() => {
     observadoRef.current = onObservado
   }, [onObservado])
+
+  const callbacksRef = useRef({ onAviso, onCamara })
+  useEffect(() => {
+    callbacksRef.current = { onAviso, onCamara }
+  }, [onAviso, onCamara])
 
   // Sin estudiante no se puede reportar nada: la API exige que el `student_id`
   // coincida con el del token. Se calcula aqui, no dentro del efecto: poner el
@@ -99,6 +116,7 @@ export function useSupervision({
     let cerrarCamara: (() => void) | null = null
     let temporizador: ReturnType<typeof setInterval> | undefined
     let envioEnVivo: Publicacion | null = null
+    let quitarEscuchaCamara: (() => void) | null = null
 
     const emisor = new EmisorDeSenales({ sessionId, studentId, questionId, token })
     emisorRef.current = emisor
@@ -106,6 +124,14 @@ export function useSupervision({
       detectores.map((d) => [d.nombre, new SeguimientoCondicion({ minimoMs: d.minimoMs })])
     )
     const ultimaMetadata = new Map<string, Record<string, unknown>>()
+    const capturas = new Map(
+      detectores.filter((d) => d.evento !== 'speech_detected')
+        .map((d) => [d.nombre, new CapturasPorCondicion(d.minimoMs)])
+    )
+    const notificar = (evento: SenalDetectada['evento']) => {
+      const aviso = avisoParaEvento(evento)
+      if (aviso) callbacksRef.current.onAviso?.(aviso)
+    }
 
     async function encender(): Promise<void> {
       setEstado({ tipo: 'iniciando' })
@@ -116,6 +142,16 @@ export function useSupervision({
           return
         }
         cerrarCamara = camara.cerrar
+        const stream = camara.video.srcObject as MediaStream
+        callbacksRef.current.onCamara?.(stream)
+        const pista = stream.getVideoTracks()[0]
+        const perdidaCamara = () => {
+          if (!cancelado) {
+            setEstado({ tipo: 'fallo', mensaje: 'La cámara se desconectó. Reconéctala y selecciona Reintentar cámara.' })
+          }
+        }
+        pista?.addEventListener('ended', perdidaCamara)
+        quitarEscuchaCamara = () => pista?.removeEventListener('ended', perdidaCamara)
 
         // El monitoreo en vivo usa el mismo `<video>` que los detectores: una
         // sola cámara abierta. Y no empieza a enviar por abrirse: espera a que
@@ -137,7 +173,13 @@ export function useSupervision({
           try {
             await detector.preparar?.({
               stream: camara.video.srcObject as MediaStream,
-              captureSender: () => emisor.captureSender()
+              captureSender: () => {
+                const enviar = emisor.captureSender()
+                return (senal) => {
+                  enviar(senal)
+                  notificar(senal.evento)
+                }
+              }
             })
             if (cancelado) {
               detector.detener?.()
@@ -166,14 +208,24 @@ export function useSupervision({
             }
             if (veredicto.metadata) ultimaMetadata.set(detector.nombre, veredicto.metadata)
 
+            const capturador = capturas.get(detector.nombre)
+            if (capturador?.actualizar(
+              veredicto,
+              ahoraMs,
+              () => capturarFotograma(camara.video, 0.75)
+            )) notificar(detector.evento)
             const episodio = seguimiento.actualizar(veredicto.activa, ahoraMs)
             if (episodio) {
               emisor.emitir({
                 evento: detector.evento,
                 inicioMs: episodio.inicioMs,
                 duracionMs: episodio.duracionMs,
-                metadata: ultimaMetadata.get(detector.nombre) ?? {}
+                metadata: ultimaMetadata.get(detector.nombre) ?? {},
+                image: capturador?.consumir()
               })
+            } else if (!seguimiento.activa && capturador) {
+              // El episodio era demasiado corto: no se guarda ninguna captura.
+              capturador.reiniciar()
             }
           }
         }, INTERVALO_MS)
@@ -206,7 +258,8 @@ export function useSupervision({
             evento: detector.evento,
             inicioMs: episodio.inicioMs,
             duracionMs: episodio.duracionMs,
-            metadata: ultimaMetadata.get(nombre) ?? {}
+            metadata: ultimaMetadata.get(nombre) ?? {},
+            image: capturas.get(nombre)?.consumir()
           })
         }
         detector?.detener?.()
@@ -217,12 +270,14 @@ export function useSupervision({
       // y el docente ve «desconectado» en lugar de una imagen congelada.
       void envioEnVivo?.detener()
       observadoRef.current?.(false)
+      quitarEscuchaCamara?.()
+      callbacksRef.current.onCamara?.(null)
       cerrarCamara?.()
     }
     // `questionId` se actualiza por su propio efecto: incluirlo aquí reiniciaría
     // la cámara en cada pregunta.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [habilitada, sessionId, studentId, token, detectores, conAudio, monitoreo])
+  }, [habilitada, sessionId, studentId, token, detectores, conAudio, monitoreo, reintento])
 
   return habilitada ? estado : { tipo: 'apagada' }
 }

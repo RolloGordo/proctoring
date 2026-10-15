@@ -145,3 +145,14 @@ export class DetectorPersonaExtra implements Detector {
     }
   }
 }
+
+/** MediaPipe SOLO confirma que una fotografía de referencia tenga una cara visible.
+ * Esto NO verifica identidad ni calcula embeddings; el backend de identidad
+ * existente es otra pieza y requiere decisión del docente sobre la API.
+ */
+export async function contarRostrosEnCamara(video: HTMLVideoElement): Promise<number> {
+  await motor(2)
+  const result = medicionDe({ video, ahoraMs: Date.now() })
+  if (!result) throw new Error('MediaPipe no pudo evaluar la imagen de la cámara.')
+  return result.caras
+}

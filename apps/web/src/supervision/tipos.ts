@@ -69,6 +69,8 @@ export interface SenalDetectada {
   duracionMs: number
   metadata: Record<string, unknown>
   audio?: Blob
+  /** JPEG reservado cuando la detección ya superó su mínimo de duración. */
+  image?: Promise<Blob | null>
   evidencePath?: string
 }
 
