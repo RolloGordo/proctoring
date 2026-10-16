@@ -561,6 +561,11 @@ export const api = {
 
   myExams: (token?: string): Promise<MyExam[]> => request('/api/v1/me/exams', undefined, token),
 
+  /** Lo que el docente decidió sobre mi caso, y por qué. `null` mientras no
+   *  haya decisión: saber que un caso está bajo revisión no ayuda, presiona. */
+  myDecision: (sessionId: string, token?: string): Promise<Decision | null> =>
+    request(`/api/v1/me/exams/${sessionId}/decision`, undefined, token),
+
   myCourses: (token?: string): Promise<MyCourse[]> =>
     request('/api/v1/me/courses', undefined, token),
 

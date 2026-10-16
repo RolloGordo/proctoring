@@ -18,6 +18,7 @@ from proctoring_api.application.ports.participant_repository import ParticipantR
 from proctoring_api.application.ports.profile_repository import ProfileRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.application.use_cases.create_exam_session import DEFAULT_DEV_TEACHER_ID
+from proctoring_api.application.use_cases.manage_enrollment import DEFAULT_DEV_STUDENT_ID
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.audio_analysis import AudioAnalysis
 from proctoring_api.domain.decision import Decision, DecisionType
@@ -175,3 +176,47 @@ class ListSessionDecisions:
             raise AuthorizationError("Solo el docente ve las decisiones")
         ensure_teacher_owns_session(self._sessions, session_id, actor)
         return self._decisions.list_by_session(session_id)
+
+
+class GetMyDecision:
+    """La decision del docente sobre **mi** caso, con su justificacion.
+
+    El sistema le exige al docente justificar por escrito lo que decide, y hasta
+    ahora esa justificacion solo la veia el. Un sistema que se presenta como
+    auditor y no como juez, y que le promete al estudiante transparencia sobre
+    lo que se observa, no puede quedarse a medias justo en la parte que le
+    afecta: por que se decidio lo que se decidio.
+
+    Solo despues de decidida. Antes no hay nada que contar, y filtrar que un
+    caso esta bajo revision presionaria al estudiante sin darle informacion.
+    """
+
+    def __init__(
+        self,
+        decisions: DecisionRepository,
+        participants: ParticipantRepository | None = None,
+        dev_student_id: UUID = DEFAULT_DEV_STUDENT_ID,
+    ) -> None:
+        self._decisions = decisions
+        self._participants = participants
+        self._dev_student_id = dev_student_id
+
+    def execute(
+        self, session_id: UUID, *, actor: AuthenticatedUser | None = None
+    ) -> Decision | None:
+        """Devuelve la decision mas reciente sobre quien pregunta, o `None`.
+
+        Raises:
+            AuthorizationError: si lo pide un docente o si no esta matriculado.
+        """
+        if actor is not None and actor.is_teacher:
+            raise AuthorizationError("El docente ve sus decisiones desde la revision del caso")
+
+        quien = actor.id if actor is not None else self._dev_student_id
+        if self._participants is not None and self._participants.find(session_id, quien) is None:
+            raise AuthorizationError("No estas matriculado en este examen")
+
+        # `list_by_session` las entrega de la mas reciente a la mas antigua: si
+        # el docente se corrigio, lo que vale es lo ultimo que decidio.
+        decisiones = self._decisions.list_by_session(session_id, quien)
+        return decisiones[0] if decisiones else None

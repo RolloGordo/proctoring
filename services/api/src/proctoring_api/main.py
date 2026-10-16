@@ -136,6 +136,7 @@ from proctoring_api.application.use_cases.manage_questions import (
 from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.application.use_cases.review_case import (
+    GetMyDecision,
     ListSessionDecisions,
     RecordDecision,
     ReviewStudentCase,
@@ -571,6 +572,9 @@ def create_app(
         settings.dev_teacher_id,
     )
     app.state.list_decisions = ListSessionDecisions(decision_repository, session_repository)
+    app.state.get_my_decision = GetMyDecision(
+        decision_repository, participant_repository, settings.dev_student_id
+    )
     app.state.create_course = CreateCourse(course_repository, clock, settings.dev_teacher_id)
     app.state.list_teacher_courses = ListTeacherCourses(course_repository, settings.dev_teacher_id)
     app.state.get_course = GetCourse(course_repository)

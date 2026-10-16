@@ -419,6 +419,20 @@ input[type='file']::file-selector-button:hover {
   background: var(--accion-hover);
 }
 
+/* La justificación escrita del docente, citada tal cual.
+   Se presenta como cita y no como párrafo normal porque son sus palabras, no
+   las del sistema: quien la lee tiene que poder distinguirlas. */
+.justificacion {
+  margin: var(--e4) 0;
+  padding: var(--e3) var(--e4);
+  border-left: 3px solid var(--amarillo);
+  background: var(--papel-gris);
+  border-radius: 0 var(--radio) var(--radio) 0;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--tinta-media);
+}
+
 /* ---------- Etiquetas de severidad ---------- */
 .severidad {
   display: inline-block;

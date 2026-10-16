@@ -79,6 +79,7 @@ from proctoring_api.application.use_cases.manage_questions import (
 from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.application.use_cases.review_case import (
+    GetMyDecision,
     ListSessionDecisions,
     RecordDecision,
     ReviewStudentCase,
@@ -234,6 +235,11 @@ def get_review_case(request: Request) -> ReviewStudentCase:
 
 def get_record_decision(request: Request) -> RecordDecision:
     use_case: RecordDecision = request.app.state.record_decision
+    return use_case
+
+
+def get_my_decision(request: Request) -> GetMyDecision:
+    use_case: GetMyDecision = request.app.state.get_my_decision
     return use_case
 
 
@@ -409,6 +415,7 @@ ListMyCoursesDep = Annotated[ListMyCourses, Depends(get_list_my_courses)]
 ReviewCaseDep = Annotated[ReviewStudentCase, Depends(get_review_case)]
 RecordDecisionDep = Annotated[RecordDecision, Depends(get_record_decision)]
 ListDecisionsDep = Annotated[ListSessionDecisions, Depends(get_list_decisions)]
+MyDecisionDep = Annotated[GetMyDecision, Depends(get_my_decision)]
 GetAudioJobDep = Annotated[GetAudioJob, Depends(get_audio_job)]
 RecordAudioAnalysisDep = Annotated[RecordAudioAnalysis, Depends(get_record_audio_analysis)]
 GetFaceJobDep = Annotated[GetFaceJob, Depends(get_face_job)]

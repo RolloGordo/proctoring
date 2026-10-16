@@ -10,6 +10,7 @@ from proctoring_api.adapters.inbound.http.dependencies import (
     CurrentUserDep,
     EvidenceReadUrlDep,
     ListDecisionsDep,
+    MyDecisionDep,
     RecordDecisionDep,
     ReviewCaseDep,
 )
@@ -82,6 +83,28 @@ def record_decision(
             actor=current_user,
         )
     )
+
+
+@router.get(
+    "/me/exams/{session_id}/decision",
+    response_model=DecisionResponse | None,
+    summary="La decisión del docente sobre mi caso, con su justificación",
+    responses=AUTH_RESPONSES,
+)
+def my_decision(
+    session_id: UUID, use_case: MyDecisionDep, current_user: CurrentUserDep
+) -> DecisionResponse | None:
+    """Lo que el docente decidio sobre este estudiante, y por que.
+
+    El sistema le exige al docente justificar por escrito, y esa justificacion
+    solo la veia el. Decirle al estudiante que se le observa y callarle la razon
+    de lo que se decidio es transparencia a medias.
+
+    Devuelve `null` mientras no haya decision: que un caso este bajo revision no
+    es informacion que ayude a nadie, y presiona.
+    """
+    decision = use_case.execute(session_id, actor=current_user)
+    return DecisionResponse.from_entity(decision) if decision is not None else None
 
 
 @router.get(
