@@ -187,12 +187,64 @@ Nada de `ipcRenderer` crudo ni `require` en el renderer.
 ## Criterios de aceptación
 
 - [ ] `npm run dev` abre la ventana en kiosco y a pantalla completa. Pendiente de registrar una prueba manual.
-- [ ] Alt+Tab genera un solo `focus_lost`; comparar `duration_ms` con cronómetro y registrar el error (meta: ±200 ms).
-- [ ] Conectar un segundo monitor genera `extra_display` en menos de 5 s. Registrar el tiempo desde la conexión hasta `started_at`.
-- [ ] Abrir Zoom o AnyDesk genera `suspicious_process` en menos de 15 s. Registrar el tiempo observado.
+- [x] Alt+Tab genera un solo `focus_lost`; comparar `duration_ms` con cronómetro y registrar el error (meta: ±200 ms). **Medido, ver abajo.**
+- [x] Conectar un segundo monitor genera `extra_display` en menos de 5 s. **Medido, ver abajo.**
+- [x] Abrir Zoom o AnyDesk genera `suspicious_process` en menos de 15 s. **Medido, ver abajo.**
 - [ ] Una captura externa con protección habilitada muestra la ventana en negro.
 - [ ] Los eventos llegan a la API y responden `201`; guardar los logs de la prueba con API activa.
 - [x] `npm run test`, `npm run lint` y `npm run build` pasan en el entorno de desarrollo.
+
+### Mediciones (TA-015 / DO-004)
+
+Tomadas a mano por Rider el 15/10/2026, en Windows, con cronómetro, un segundo
+monitor y software no permitido. Transcritas de su hoja.
+
+**`focus_lost`: exactitud de `duration_ms`.** Meta ±200 ms.
+
+| Cronómetro (s) | App (s) | Diferencia (s) | ¿Un solo evento? |
+|---:|---:|---:|:--:|
+| 10,23 | 10,32 | 0,09 | sí |
+| 12,95 | 13,08 | 0,13 | sí |
+| 5,36 | 5,37 | 0,01 | sí |
+| 6,98 | 7,04 | 0,06 | sí |
+| 15,70 | 15,72 | 0,02 | sí |
+| 4,36 | 4,38 | 0,02 | sí |
+| 2,73 | 2,76 | 0,03 | sí |
+
+Siete muestras, **error máximo 130 ms** y media 51 ms: dentro de la meta. Las
+siete dieron **un solo evento**, que era la otra mitad del criterio — importa
+porque un Alt+Tab que generase varios eventos inflaría el riesgo del estudiante
+por una sola acción.
+
+La app siempre mide **de más**, nunca de menos (las siete diferencias son
+positivas), lo que encaja con que el cronómetro se para a mano antes de que la
+ventana recupere el foco. Es el sesgo que conviene: no acorta la infracción.
+
+**`extra_display`: desde conectar el monitor hasta el registro.** Meta < 5 s.
+
+| Desconectado | Conectado | En el registro | Retardo |
+|---|---|---|---:|
+| 9:55:20 | 9:55:50 | 9:55:51 | 1 s |
+| 9:56:46 | 9:57:?0 | 9:57:11 | *por confirmar* |
+| 9:57:50 | 9:58:19 | 9:58:20 | 1 s |
+
+**`suspicious_process`: desde abrir el software hasta el registro.** Meta < 15 s.
+
+| Abierto | En el registro | Retardo |
+|---|---|---:|
+| 9:59:39 | 9:59:43 | 4 s |
+| 10:02:00 | 10:02:04 | 4 s |
+| 10:05:04 | 10:05:04 | *por confirmar* |
+
+Las dos filas marcadas *por confirmar* no se leen con seguridad en la hoja: en
+la segunda del monitor hay un dígito corregido encima, y la última de software
+da 0 s exactos, que no es plausible para un sondeo de procesos. **Rider: repite
+esas dos y apunta el número, o confirma la lectura.** El resto cumple con
+holgura, y el objetivo SMART del proyecto —alerta en menos de 5 s— se sostiene
+con lo medido hasta ahora.
+
+Falta medir el retardo de `extra_display` **al desconectar** el monitor: la hoja
+anota la hora de desconexión pero no el evento correspondiente.
 
 ## Evidencia para la semana
 
