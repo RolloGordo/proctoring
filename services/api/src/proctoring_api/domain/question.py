@@ -34,6 +34,11 @@ class QuestionType(StrEnum):
     """Mismos valores que el enum `question_type` de PostgreSQL."""
 
     MULTIPLE_CHOICE = "multiple_choice"
+    #: Varias alternativas y **varias** correctas: el estudiante marca todas las
+    #: que correspondan. Tipo aparte y no una variante de `MULTIPLE_CHOICE`,
+    #: porque cambiarle el significado al que ya existe habria cambiado en
+    #: silencio como se califican los examenes ya rendidos.
+    MULTIPLE_SELECT = "multiple_select"
     TRUE_FALSE = "true_false"
     NUMERIC = "numeric"
     FILL_BLANK = "fill_blank"
@@ -41,7 +46,9 @@ class QuestionType(StrEnum):
 
 
 #: Tipos que se responden eligiendo entre opciones.
-CHOICE_TYPES = frozenset({QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE})
+CHOICE_TYPES = frozenset(
+    {QuestionType.MULTIPLE_CHOICE, QuestionType.MULTIPLE_SELECT, QuestionType.TRUE_FALSE}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,6 +231,15 @@ def _build_options(
         raise InvalidQuestionError("Hay que marcar al menos una opcion correcta")
     if correctas == len(options):
         raise InvalidQuestionError("No todas las opciones pueden ser correctas")
+    # En `MULTIPLE_CHOICE` varias correctas significan "vale cualquiera de
+    # ellas", que es deliberado y lo necesita la importacion QTI. En
+    # `MULTIPLE_SELECT` significan "marca todas", asi que con una sola marcada
+    # seria lo primero disfrazado de lo segundo: se le pediria al estudiante
+    # que marque "todas las que correspondan" cuando solo hay una.
+    if question_type is QuestionType.MULTIPLE_SELECT and correctas < 2:
+        raise InvalidQuestionError(
+            "Una pregunta de varias respuestas correctas necesita al menos dos"
+        )
 
     # El texto se toma ya limpio de `textos`; la marca, de la entrada original.
     return tuple(

@@ -78,6 +78,70 @@ class TestOpciones:
         assert grade_answer(q, respuesta(q, selected_option_id=q.options[1].id)).is_correct is True
 
 
+class TestVariasCorrectas:
+    """`MULTIPLE_SELECT`: se marcan todas las que correspondan.
+
+    La regla es **todo o nada**. Nota parcial seria mas amable, pero tambien
+    premia marcarlo todo, y entonces la pregunta deja de medir si alguien sabe
+    cuales son. Como es la regla con la que se califica a una persona, se prueba
+    entera en vez de confiar en que se entienda.
+    """
+
+    def tres(self) -> Question:
+        return pregunta(
+            QuestionType.MULTIPLE_SELECT,
+            options=[("A", True), ("B", True), ("C", False)],
+        )
+
+    def test_marcar_exactamente_las_correctas_acierta(self) -> None:
+        q = self.tres()
+
+        marcada = respuesta(q, selected_option_ids=(q.options[0].id, q.options[1].id))
+
+        assert grade_answer(q, marcada).is_correct is True
+        assert grade_answer(q, marcada).points == q.points
+
+    def test_el_orden_en_que_se_marcaron_da_igual(self) -> None:
+        q = self.tres()
+
+        al_reves = respuesta(q, selected_option_ids=(q.options[1].id, q.options[0].id))
+
+        assert grade_answer(q, al_reves).is_correct is True
+
+    def test_quedarse_corto_falla(self) -> None:
+        # Media respuesta no es media nota: o sabe cuales son o no.
+        q = self.tres()
+
+        assert (
+            grade_answer(q, respuesta(q, selected_option_ids=(q.options[0].id,))).is_correct
+            is False
+        )
+
+    def test_marcarlo_todo_falla(self) -> None:
+        # Lo que hace que la regla sirva: si marcarlo todo acertara, la pregunta
+        # no mediria nada. Cubre tambien el caso de marcar las correctas **y**
+        # ademas una incorrecta, que con estas opciones es lo mismo.
+        q = self.tres()
+
+        todas = respuesta(q, selected_option_ids=tuple(o.id for o in q.options))
+
+        assert grade_answer(q, todas).is_correct is False
+
+        con_sobra = respuesta(
+            q, selected_option_ids=(q.options[0].id, q.options[1].id, q.options[2].id)
+        )
+
+        assert grade_answer(q, con_sobra).is_correct is False
+
+    def test_no_marcar_nada_falla_pero_no_revienta(self) -> None:
+        q = self.tres()
+
+        assert grade_answer(q, respuesta(q, selected_option_ids=())).is_correct is False
+
+    def test_sin_responder_falla(self) -> None:
+        assert grade_answer(self.tres(), None).is_correct is False
+
+
 class TestNumericas:
     def test_acierta_con_el_valor_exacto(self) -> None:
         q = pregunta(QuestionType.NUMERIC, correct_numeric_answer=Decimal("10"))

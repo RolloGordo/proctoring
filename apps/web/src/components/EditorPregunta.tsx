@@ -4,6 +4,7 @@ import {
   LLEVA_OPCIONES,
   OPCIONES_INICIALES,
   TIPOS,
+  VARIAS_CORRECTAS,
   nombreDeTipo,
   sinCorrectaHuerfana,
   type OpcionEditable
@@ -274,39 +275,55 @@ function EditorOpciones({
   onCambio: (opciones: OpcionEditable[]) => void
 }) {
   // Verdadero o falso lleva exactamente dos: no tiene sentido dejar añadir más.
-  const puedeAgregar = tipo === 'multiple_choice' && opciones.length < 10
+  const puedeAgregar = tipo !== 'true_false' && opciones.length < 10
+  const varias = tipo === VARIAS_CORRECTAS
   const puedeQuitar = opciones.length > 2
 
   function cambiar(indice: number, cambios: Partial<OpcionEditable>): void {
     onCambio(opciones.map((o, i) => (i === indice ? { ...o, ...cambios } : o)))
   }
 
-  /** Marcar una correcta desmarca la anterior.
+  /** En una de respuesta única, marcar una desmarca la anterior.
    *
-   *  El dominio de la API admite varias correctas —hará falta al importar QTI—,
-   *  pero una respuesta guardada apunta a **una** opción (`selected_option_id`).
-   *  Una pregunta con dos correctas sería una que nadie puede responder entera,
-   *  así que el editor solo produce lo que el sistema sabe calificar. */
+   *  El dominio de la API admite varias correctas en `multiple_choice` —hace
+   *  falta al importar QTI, y significa «vale cualquiera de ellas»—, pero la
+   *  respuesta guardada apunta a **una** opción. Con varias marcadas el
+   *  estudiante no podría expresar su respuesta entera, así que el editor solo
+   *  produce lo que el sistema sabe calificar. Para marcar varias existe el
+   *  tipo de varias correctas, que se guarda distinto. */
   function marcarCorrecta(indice: number): void {
     onCambio(opciones.map((o, i) => ({ ...o, is_correct: i === indice })))
+  }
+
+  /** En una de varias correctas cada opción se marca y desmarca por su cuenta. */
+  function alternarCorrecta(indice: number): void {
+    onCambio(
+      opciones.map((o, i) => (i === indice ? { ...o, is_correct: !o.is_correct } : o))
+    )
   }
 
   return (
     <div className="campo">
       <span>Opciones</span>
       <p className="ayuda" style={{ marginBottom: 'var(--e2)' }}>
-        Marca cuál es la correcta. El estudiante elige una sola.
+        {varias
+          ? 'Marca todas las correctas, al menos dos. El estudiante acierta si marca exactamente esas.'
+          : 'Marca cuál es la correcta. El estudiante elige una sola.'}
       </p>
 
       <ul className="editor-opciones">
         {opciones.map((opcion, indice) => (
           <li key={indice}>
             <input
-              type="radio"
-              name="opcion-correcta"
+              type={varias ? 'checkbox' : 'radio'}
+              name={varias ? undefined : 'opcion-correcta'}
               checked={opcion.is_correct}
-              onChange={() => marcarCorrecta(indice)}
-              aria-label={`La opción ${indice + 1} es la correcta`}
+              onChange={() => (varias ? alternarCorrecta(indice) : marcarCorrecta(indice))}
+              aria-label={
+                varias
+                  ? `La opción ${indice + 1} es una de las correctas`
+                  : `La opción ${indice + 1} es la correcta`
+              }
             />
             <input
               value={opcion.option_text}

@@ -200,6 +200,14 @@ export function DetalleExamenEstudiante() {
 
 function respuestaTexto(question: ExamQuestion, answer: Answer | undefined): string {
   if (!answer) return ''
+  if (answer.selected_option_ids?.length) {
+    // En el orden de la pregunta, no en el que se marcaron: el estudiante la
+    // vuelve a leer como la vio.
+    return question.options
+      .filter((option) => answer.selected_option_ids.includes(option.id))
+      .map((option) => option.option_text)
+      .join(' · ')
+  }
   if (answer.selected_option_id) {
     return (
       question.options.find((option) => option.id === answer.selected_option_id)?.option_text ??

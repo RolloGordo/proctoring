@@ -63,8 +63,12 @@ describe('sinCorrectaHuerfana', () => {
 })
 
 describe('tipos de pregunta', () => {
-  it('solo opción múltiple y verdadero/falso llevan alternativas', () => {
-    expect([...LLEVA_OPCIONES].sort()).toEqual(['multiple_choice', 'true_false'])
+  it('solo los tipos de alternativas llevan opciones', () => {
+    expect([...LLEVA_OPCIONES].sort()).toEqual([
+      'multiple_choice',
+      'multiple_select',
+      'true_false'
+    ])
   })
 
   it('cada tipo tiene un nombre en español', () => {

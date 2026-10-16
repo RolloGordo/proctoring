@@ -397,6 +397,43 @@ function CampoRespuesta({
     )
   }
 
+  if (pregunta.question_type === 'multiple_select') {
+    const marcadas = respuesta?.selected_option_ids ?? []
+    return (
+      <>
+        <p className="ayuda">Marca todas las que correspondan.</p>
+        <ul className="opciones-examen">
+          {pregunta.options.map((opcion) => (
+            <li key={opcion.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  disabled={bloqueada}
+                  value={opcion.id}
+                  checked={marcadas.includes(opcion.id)}
+                  onChange={() =>
+                    onResponder({
+                      question_id: pregunta.id,
+                      // Se manda el conjunto entero, no el cambio: así el
+                      // guardado es idempotente y reintentarlo no deja una
+                      // respuesta a medias.
+                      selected_option_ids: marcadas.includes(opcion.id)
+                        ? marcadas.filter((id) => id !== opcion.id)
+                        : pregunta.options
+                            .filter((o) => o.id === opcion.id || marcadas.includes(o.id))
+                            .map((o) => o.id)
+                    })
+                  }
+                />
+                <span>{opcion.option_text}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
+
   if (pregunta.question_type === 'numeric') {
     return (
       <label className="campo" style={{ maxWidth: '220px', marginBottom: 0 }}>
@@ -582,6 +619,7 @@ function indexar(respuestas: Answer[]): Record<string, NewAnswer> {
       {
         question_id: r.question_id,
         selected_option_id: r.selected_option_id,
+        selected_option_ids: r.selected_option_ids,
         text_answer: r.text_answer,
         numeric_answer: r.numeric_answer
       }

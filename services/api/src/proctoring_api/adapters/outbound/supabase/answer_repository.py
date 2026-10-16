@@ -15,8 +15,8 @@ from proctoring_api.domain.answer import Answer
 
 TABLE = "answers"
 COLUMNS = (
-    "id, participant_id, question_id, selected_option_id, text_answer, numeric_answer, "
-    "answered_at, is_correct, points_awarded"
+    "id, participant_id, question_id, selected_option_id, selected_option_ids, "
+    "text_answer, numeric_answer, answered_at, is_correct, points_awarded"
 )
 
 
@@ -67,6 +67,8 @@ def _to_row(answer: Answer) -> dict[str, Any]:
         "selected_option_id": (
             str(answer.selected_option_id) if answer.selected_option_id else None
         ),
+        # La columna es `uuid[] not null default '{}'`: una lista vacia, no null.
+        "selected_option_ids": [str(elegida) for elegida in answer.selected_option_ids],
         "text_answer": answer.text_answer,
         # numeric llega como texto para no perder decimales por el camino.
         "numeric_answer": str(answer.numeric_answer) if answer.numeric_answer is not None else None,
@@ -87,6 +89,7 @@ def _to_entity(row: dict[str, Any]) -> Answer:
         question_id=UUID(row["question_id"]),
         answered_at=datetime.fromisoformat(row["answered_at"]),
         selected_option_id=UUID(opcion) if opcion else None,
+        selected_option_ids=tuple(UUID(str(x)) for x in (row.get("selected_option_ids") or ())),
         text_answer=row.get("text_answer"),
         numeric_answer=Decimal(str(numero)) if numero is not None else None,
         is_correct=row.get("is_correct"),

@@ -108,7 +108,13 @@ export interface JoinedExam {
   modules: Record<string, Record<string, unknown>>
 }
 
-export type QuestionType = 'multiple_choice' | 'true_false' | 'numeric' | 'fill_blank' | 'essay'
+export type QuestionType =
+  | 'multiple_choice'
+  | 'multiple_select'
+  | 'true_false'
+  | 'numeric'
+  | 'fill_blank'
+  | 'essay'
 
 export type VerificationStatus =
   'pending' | 'verified' | 'failed' | 'manually_approved' | 'rejected'
@@ -185,6 +191,7 @@ export interface Participant {
 export interface Answer {
   question_id: string
   selected_option_id: string | null
+  selected_option_ids: string[]
   text_answer: string | null
   numeric_answer: string | null
   answered_at: string
@@ -194,6 +201,8 @@ export interface Answer {
 export interface NewAnswer {
   question_id: string
   selected_option_id?: string | null
+  /** Para las preguntas de varias respuestas correctas. */
+  selected_option_ids?: string[] | null
   text_answer?: string | null
   numeric_answer?: string | null
 }

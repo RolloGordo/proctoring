@@ -51,6 +51,7 @@ def save_answers(
         AnswerInput(
             question_id=respuesta.question_id,
             selected_option_id=respuesta.selected_option_id,
+            selected_option_ids=tuple(respuesta.selected_option_ids or ()),
             text_answer=respuesta.text_answer,
             numeric_answer=respuesta.numeric_answer,
         )

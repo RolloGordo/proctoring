@@ -52,7 +52,7 @@ from proctoring_api.domain.exam_session import (
 )
 from proctoring_api.domain.identity import IdentityCheck, IdentityResult
 from proctoring_api.domain.participant import SessionParticipant, VerificationStatus
-from proctoring_api.domain.question import ExamQuestion, Question, QuestionType
+from proctoring_api.domain.question import MAX_OPTIONS, ExamQuestion, Question, QuestionType
 from proctoring_api.domain.risk import RiskAssessment, RiskLevel
 from proctoring_api.domain.severity import Severity, default_severity
 
@@ -532,6 +532,9 @@ class AnswerRequest(BaseModel):
 
     question_id: UUID
     selected_option_id: UUID | None = None
+    #: Para las preguntas de varias respuestas correctas. El tope sigue al
+    #: maximo de opciones por pregunta: nadie puede marcar mas de las que hay.
+    selected_option_ids: list[UUID] | None = Field(default=None, max_length=MAX_OPTIONS)
     text_answer: str | None = Field(default=None, max_length=MAX_TEXT_ANSWER_LENGTH)
     numeric_answer: Decimal | None = None
 
@@ -553,6 +556,7 @@ class AnswerResponse(BaseModel):
 
     question_id: UUID
     selected_option_id: UUID | None
+    selected_option_ids: list[UUID]
     text_answer: str | None
     numeric_answer: Decimal | None
     answered_at: datetime
@@ -562,6 +566,7 @@ class AnswerResponse(BaseModel):
         return cls(
             question_id=answer.question_id,
             selected_option_id=answer.selected_option_id,
+            selected_option_ids=list(answer.selected_option_ids),
             text_answer=answer.text_answer,
             numeric_answer=answer.numeric_answer,
             answered_at=answer.answered_at,
