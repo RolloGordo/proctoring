@@ -376,7 +376,7 @@ def _build_job_queue(settings: Settings) -> JobQueue:
     if settings.job_queue == "redis":
         from proctoring_api.adapters.outbound.redis_queue.job_queue import RedisJobQueue
 
-        return RedisJobQueue(settings.redis_url)
+        return RedisJobQueue(settings.redis_url, settings.ai_service_url)
 
     # En memoria por defecto: la API levanta sin Redis y las pruebas corren sin
     # servicios externos.

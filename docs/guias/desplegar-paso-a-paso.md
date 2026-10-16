@@ -9,7 +9,7 @@ Vas a abrir cuatro webs y crear cuatro cosas. Todo en plan gratuito.
 |---|---|---|
 | 1 | Redis (la cola) | upstash.com |
 | 2 | La API | render.com |
-| 3 | El worker de IA | huggingface.co |
+| 3 | El worker de IA | render.com (otra vez) |
 | 4 | La web | vercel.com |
 
 Antes de empezar, ten a mano dos cosas del panel de Supabase
@@ -90,48 +90,65 @@ no puede entregar lo que mide y los trabajos fallan en silencio.
 5. **Create Web Service** y espera. La primera construcción tarda unos minutos.
 6. Cuando termine, arriba verás la dirección, algo como
    `https://proctoring-api.onrender.com`. **Apúntala**: es tu **URL de la API**.
-7. Comprueba que vive: abre `https://proctoring-api.onrender.com/health` en el
-   navegador. Tiene que responder algo, no un error.
+7. Comprueba que vive: abre esa dirección **añadiendo `/health` al final**.
+   Tiene que responder algo como
+   `{"status":"ok","env":"production","auth":"enabled"}`.
+
+   > Si abres la dirección a secas verás `{"detail":"Not Found"}`. **Eso es
+   > correcto**: la API no tiene ninguna página en la raíz, solo endpoints. El
+   > único sitio que confirma que está viva es `/health`.
 
 > **El plan gratuito se duerme** tras 15 minutos sin uso, y despertar tarda
 > unos 50 segundos. Antes de una demo, abre esa dirección un minuto antes.
 
 ---
 
-## 3. El worker de IA en Hugging Face
+## 3. El worker de IA, también en Render
 
-1. Entra en huggingface.co → **Sign Up**.
-2. Arriba a la derecha, tu foto → **New Space**.
-3. Rellena:
-   - **Space name:** `proctoring-ai`
-   - **Space SDK:** **Docker** → **Blank**
-   - **Visibility:** `Private`
-4. Créalo. Te deja en un repositorio vacío.
-5. Ese Space es un repositorio de git aparte. Desde tu máquina:
+> **Hugging Face ya no sirve.** Los Spaces de Docker pasaron a ser de pago; solo
+> los estáticos siguen siendo gratis, y el worker necesita ejecutar código. Da
+> igual: va en Render con los mismos pasos que acabas de hacer.
 
-```bash
-git clone https://huggingface.co/spaces/TU_USUARIO/proctoring-ai espacio-ai
-```
-
-```bash
-cp -r services/ai/* espacio-ai/ && cd espacio-ai && git add -A && git commit -m "worker" && git push
-```
-
-6. En el Space, **Settings → Variables and secrets**, añade como **Secrets**:
+1. En Render: **New +** → **Web Service** → el mismo repositorio.
+2. Rellena:
+   - **Name:** `proctoring-ai`
+   - **Language / Runtime:** `Docker`
+   - **Branch:** `develop`
+   - **Root Directory:** `services/ai` ← distinto del de la API
+   - **Instance Type:** `Free`
+3. En **Advanced → Add Environment Variable**:
 
    | Clave | Valor |
    |---|---|
-   | `REDIS_URL` | la misma del paso 1 |
+   | `REDIS_URL` | la misma del paso 1, **idéntica a la de la API** |
    | `PROCTORING_API_URL` | la URL de la API del paso 2 |
    | `INTERNAL_API_TOKEN` | el mismo secreto del paso 0 |
    | `DEEPGRAM_API_KEY` | la clave de Deepgram de Pierreluiggi |
 
-7. El Space se reconstruye solo. Cuando ponga **Running**, está escuchando la cola.
+4. **Create Web Service**. Cuando termine, te da una dirección como
+   `https://proctoring-ai-xxxx.onrender.com`. **Apúntala.**
+5. Comprueba que está conectado a la cola: abre esa dirección y añade `/health`.
+   Tiene que responder `{"queue": true, "queues": ["high", "audio"]}`.
 
-> El worker no tiene pantalla: lo que abre es un endpoint de salud que responde
-> `{"queue": true}`. Si responde eso, está conectado a la cola.
+   Si pone `"queue": false`, la `REDIS_URL` está mal.
 
----
+6. **Vuelve al servicio de la API** (`proctoring-api`) → **Environment** → añade
+   una variable más:
+
+   | Clave | Valor |
+   |---|---|
+   | `AI_SERVICE_URL` | la dirección del worker que acabas de apuntar |
+
+   **Este paso no es opcional.** El plan gratuito apaga un servicio tras un rato
+   sin peticiones, y un worker que solo consume de una cola no recibe ninguna:
+   se dormiría para siempre y los análisis de audio se acumularían sin que nadie
+   los mire. Con esta variable, la API lo despierta cada vez que encola algo.
+
+> **Lo que esto significa para la demo.** Si el worker llevaba rato dormido, el
+> primer análisis tarda lo que tarde en arrancar (unos 50 s), por encima del
+> presupuesto de 10 s del objetivo. Mientras se usa, se mantiene despierto. Si
+> vas a medir la latencia de verdad, levanta el worker en tu máquina apuntando
+> a la misma Redis y a la API desplegada: ahí no hay arranque en frío.
 
 ## 4. La web en Vercel
 
@@ -252,5 +269,6 @@ comprometerte con ningún instalador.
 | Render dice «no Dockerfile found» | El **Root Directory** no es `services/api` |
 | Vercel compila pero sale en blanco | El **Root Directory** no es `apps/web` |
 | Recargar una página da 404 | Falta el `vercel.json`; ya está en el repositorio, comprueba que desplegaste después de que entrara |
-| El worker no coge trabajos | `REDIS_URL` distinta en la API y en el Space |
-| El Space se reinicia en bucle | No encuentra el puerto. Comprueba que `salud.py` está en el Space |
+| El worker no coge trabajos | `REDIS_URL` distinta en la API y en el worker, o falta `AI_SERVICE_URL` en la API |
+| `{"detail":"Not Found"}` al abrir la API | Normal: no hay nada en la raíz. Usa `/health` |
+| El primer análisis de audio tarda un minuto | El worker estaba dormido. Normal en plan gratuito |

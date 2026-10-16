@@ -78,3 +78,81 @@ class TestRedisJobQueue:
 def test_ping_answers_false_without_redis() -> None:
     # Puerto cerrado a proposito: el adaptador no debe reventar, solo decir que no.
     assert RedisJobQueue("redis://localhost:6399/0").ping() is False
+
+
+@requires_redis
+class TestDespertarAlWorker:
+    """El aviso al worker cuando se encola (TA-078).
+
+    En un plan gratuito el worker se apaga tras un rato sin peticiones, y un
+    consumidor de cola no recibe ninguna: se dormiria para siempre y los
+    trabajos se acumularian sin que nadie los mire. Encolar es lo unico que
+    pasa justo antes de necesitarlo, asi que es donde se avisa.
+    """
+
+    def espera_al_hilo(self) -> None:
+        """Da su turno al hilo que toca al worker, que es `daemon`."""
+        import threading
+        import time
+
+        for _ in range(100):
+            if not any(h.name == "despertar-worker" for h in threading.enumerate()):
+                return
+            time.sleep(0.02)
+
+    def test_toca_el_worker_al_encolar_audio(self, monkeypatch) -> None:
+        tocados: list[str] = []
+        import proctoring_api.adapters.outbound.redis_queue.job_queue as modulo
+
+        monkeypatch.setattr(modulo.httpx, "get", lambda url, **_: tocados.append(url))
+        cola = RedisJobQueue(REDIS_URL, "https://worker.onrender.com")
+
+        cola.enqueue_audio_analysis(uuid4())
+        self.espera_al_hilo()
+
+        assert tocados == ["https://worker.onrender.com/health"]
+
+    def test_tambien_al_encolar_verificacion_facial(self, monkeypatch) -> None:
+        # La cola `high` tiene a alguien esperando en pantalla: si el worker
+        # duerme, esa espera no termina nunca.
+        tocados: list[str] = []
+        import proctoring_api.adapters.outbound.redis_queue.job_queue as modulo
+
+        monkeypatch.setattr(modulo.httpx, "get", lambda url, **_: tocados.append(url))
+        cola = RedisJobQueue(REDIS_URL, "https://worker.onrender.com/")
+
+        cola.enqueue_face_verification(uuid4(), "capturas/una.jpg")
+        self.espera_al_hilo()
+
+        # La barra final no se duplica.
+        assert tocados == ["https://worker.onrender.com/health"]
+
+    def test_si_el_worker_no_responde_el_trabajo_igual_se_encola(self, monkeypatch) -> None:
+        # Lo decisivo: el trabajo ya esta en Redis y se procesara cuando el
+        # worker despierte. Que el aviso falle no puede tumbar la peticion del
+        # estudiante.
+        import proctoring_api.adapters.outbound.redis_queue.job_queue as modulo
+
+        def revienta(*_args, **_kwargs):
+            raise OSError("sin red")
+
+        monkeypatch.setattr(modulo.httpx, "get", revienta)
+        cola = RedisJobQueue(REDIS_URL, "https://worker.onrender.com")
+
+        cola.enqueue_audio_analysis(uuid4())
+        self.espera_al_hilo()
+
+        assert cola._audio.count >= 1
+
+    def test_sin_url_configurada_no_toca_nada(self, monkeypatch) -> None:
+        # En local el worker esta siempre despierto; tocarlo seria ruido.
+        tocados: list[str] = []
+        import proctoring_api.adapters.outbound.redis_queue.job_queue as modulo
+
+        monkeypatch.setattr(modulo.httpx, "get", lambda url, **_: tocados.append(url))
+        cola = RedisJobQueue(REDIS_URL, "")
+
+        cola.enqueue_audio_analysis(uuid4())
+        self.espera_al_hilo()
+
+        assert tocados == []
