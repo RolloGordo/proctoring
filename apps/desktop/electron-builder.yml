@@ -38,6 +38,15 @@ linux:
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
+# De donde salen las descargas. Era `https://example.com/auto-updates`, el
+# marcador que trae la plantilla de electron-vite: no es nuestro y no existe.
+#
+# `electron-builder --publish` sube el instalador aqui, y la aplicacion consulta
+# esta misma publicacion al arrancar para avisar de que hay una version nueva
+# (`src/main/actualizaciones.ts`). Avisa, no se reemplaza sola: sin certificado
+# de firma la sustitucion automatica en Windows no es fiable, y en una
+# aplicacion de supervision conviene que el estudiante vea lo que instala.
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: RolloGordo
+  repo: proctoring
