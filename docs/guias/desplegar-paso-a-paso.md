@@ -162,8 +162,16 @@ no puede entregar lo que mide y los trabajos fallan en silencio.
    | Clave | Valor |
    |---|---|
    | `VITE_API_URL` | la URL de la API del paso 2, **sin barra al final** |
-   | `VITE_SUPABASE_URL` | la Project URL de Supabase |
+   | `VITE_SUPABASE_URL` | **solo el dominio**: `https://xxxx.supabase.co` |
    | `VITE_SUPABASE_PUBLISHABLE_KEY` | la clave **publicable** (la `anon`), nunca la de servicio |
+
+   > **Cuidado con la de Supabase.** En su panel aparece también una dirección
+   > terminada en `/rest/v1`, que es la de los ejemplos de la API. **Esa no.**
+   > El cliente añade él mismo `/auth/v1` o `/rest/v1` según lo que vaya a
+   > hacer, y con la ruta puesta el login falla con
+   > `Invalid path specified in request URL`, que no dice nada de lo que pasa.
+   > Si te equivocas, la web lo corrige sola y deja un aviso en la consola del
+   > navegador, pero corrígelo también en el panel.
 
 5. **Deploy**. Al terminar te da varias direcciones, y **elegir mal cuesta una
    tarde**. Ve a **Overview** y mira el apartado **Domains**: la que lleva el
