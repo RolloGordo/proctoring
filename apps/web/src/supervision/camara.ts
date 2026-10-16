@@ -98,6 +98,64 @@ export async function abrirCamara({
 }
 
 /**
+ * Abre **solo** el micrófono, sin encender la cámara.
+ *
+ * La comprobación previa al examen pregunta por el micrófono y nada más: pedir
+ * también la cámara haría que se encendiera su luz para una prueba de audio, y
+ * convertiría una cámara ocupada por otra aplicación en un fallo de micrófono.
+ *
+ * Devuelve el `MediaStream` y la función para apagarlo. **Hay que llamarla
+ * siempre** al terminar, o el indicador de micrófono se queda encendido.
+ */
+export async function abrirMicrofono(): Promise<{ stream: MediaStream; cerrar: () => void }> {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new CamaraNoDisponibleError(
+      'desconocido',
+      'Este navegador no permite usar el micrófono. Usa la aplicación de escritorio.'
+    )
+  }
+
+  let stream: MediaStream
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  } catch (error) {
+    throw traducirMicrofono(error)
+  }
+
+  return {
+    stream,
+    cerrar: () => {
+      for (const pista of stream.getTracks()) pista.stop()
+    }
+  }
+}
+
+/** Lo mismo que `traducir`, pero hablando de micrófono: decirle a alguien que
+ *  revise la cámara cuando lo que falla es el micrófono lo manda al sitio
+ *  equivocado. */
+function traducirMicrofono(error: unknown): CamaraNoDisponibleError {
+  const nombre = error instanceof DOMException ? error.name : ''
+  switch (nombre) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return new CamaraNoDisponibleError(
+        'denegado',
+        'No diste permiso para usar el micrófono. Búscalo en la barra de direcciones y vuelve a intentarlo.'
+      )
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return new CamaraNoDisponibleError('sin-camara', 'No se encontró un micrófono conectado.')
+    case 'NotReadableError':
+      return new CamaraNoDisponibleError(
+        'en-uso',
+        'Otra aplicación está usando el micrófono. Ciérrala y vuelve a intentarlo.'
+      )
+    default:
+      return new CamaraNoDisponibleError('desconocido', 'No se pudo abrir el micrófono.')
+  }
+}
+
+/**
  * Captura el fotograma actual como JPEG.
  *
  * **Solo se llama cuando ya hay un evento que justifica la captura**, nunca de
