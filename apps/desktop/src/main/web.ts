@@ -17,9 +17,27 @@ import { examContext, setExamSession } from './context'
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000'
 
-/** Dónde vive la web del examen. En producción, la URL del despliegue. */
+/**
+ * Dónde vive la web del examen.
+ *
+ * Tres sitios, en este orden, y el orden importa:
+ *
+ * 1. `PROCTORING_WEB_URL` del entorno, que permite apuntar una compilación a
+ *    otro sitio sin reconstruirla. Es lo que usamos para probar.
+ * 2. La **horneada al construir** (`__PROCTORING_WEB_URL__`). Es la que lleva
+ *    un instalador publicado, porque en el equipo de un estudiante no hay
+ *    ninguna variable de entorno que leer y el `.env` no viaja en el paquete.
+ * 3. El servidor de desarrollo, solo cuando no hay ninguna de las dos.
+ *
+ * De esta única dirección cuelgan cuatro cosas —qué carga la ventana, a dónde
+ * puede navegar, a qué origen se le conceden cámara y micrófono, y qué origen
+ * acepta el enlace `proctoring://`—, así que apuntarla bien es lo único que
+ * hace falta para mover la aplicación a producción.
+ */
 export function webBaseUrl(): string {
-  return (process.env['PROCTORING_WEB_URL'] ?? 'http://localhost:5173').replace(/\/$/, '')
+  const delEntorno = process.env['PROCTORING_WEB_URL']?.trim()
+  const horneada = typeof __PROCTORING_WEB_URL__ === 'string' ? __PROCTORING_WEB_URL__.trim() : ''
+  return (delEntorno || horneada || 'http://localhost:5173').replace(/\/$/, '')
 }
 
 /**
