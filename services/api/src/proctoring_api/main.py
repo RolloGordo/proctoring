@@ -130,6 +130,7 @@ from proctoring_api.application.use_cases.manage_enrollment import (
 from proctoring_api.application.use_cases.manage_questions import (
     AddQuestions,
     GetExamQuestions,
+    GetSubmittedExamQuestions,
     ListSessionQuestions,
 )
 from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
@@ -589,6 +590,13 @@ def create_app(
         question_repository,
         session_repository,
         clock,
+        participant_repository,
+        settings.dev_student_id,
+        bank_repository,
+    )
+    app.state.get_submitted_exam_questions = GetSubmittedExamQuestions(
+        question_repository,
+        session_repository,
         participant_repository,
         settings.dev_student_id,
         bank_repository,

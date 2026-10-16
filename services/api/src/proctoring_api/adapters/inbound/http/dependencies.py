@@ -73,6 +73,7 @@ from proctoring_api.application.use_cases.manage_enrollment import (
 from proctoring_api.application.use_cases.manage_questions import (
     AddQuestions,
     GetExamQuestions,
+    GetSubmittedExamQuestions,
     ListSessionQuestions,
 )
 from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
@@ -148,6 +149,11 @@ def get_add_questions(request: Request) -> AddQuestions:
 
 def get_list_session_questions(request: Request) -> ListSessionQuestions:
     use_case: ListSessionQuestions = request.app.state.list_session_questions
+    return use_case
+
+
+def get_submitted_exam_questions(request: Request) -> GetSubmittedExamQuestions:
+    use_case: GetSubmittedExamQuestions = request.app.state.get_submitted_exam_questions
     return use_case
 
 
@@ -381,6 +387,9 @@ JoinExamSessionDep = Annotated[JoinExamSession, Depends(get_join_exam_session)]
 AddQuestionsDep = Annotated[AddQuestions, Depends(get_add_questions)]
 ListSessionQuestionsDep = Annotated[ListSessionQuestions, Depends(get_list_session_questions)]
 GetExamQuestionsDep = Annotated[GetExamQuestions, Depends(get_exam_questions)]
+GetSubmittedExamQuestionsDep = Annotated[
+    GetSubmittedExamQuestions, Depends(get_submitted_exam_questions)
+]
 EnrollInExamDep = Annotated[EnrollInExam, Depends(get_enroll_in_exam)]
 ListParticipantsDep = Annotated[ListSessionParticipantsWithNames, Depends(get_list_participants)]
 ReviewIdentityDep = Annotated[ReviewParticipantIdentity, Depends(get_review_identity)]

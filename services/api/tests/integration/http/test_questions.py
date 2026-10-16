@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,7 +14,13 @@ from proctoring_api.application.use_cases.manage_enrollment import DEFAULT_DEV_S
 from proctoring_api.domain.exam_session import ExamSession
 from proctoring_api.domain.participant import SessionParticipant
 
-from tests.conftest import NOW, STUDENT_TOKEN, TEACHER_ID, TEACHER_TOKEN
+from tests.conftest import (
+    CONTRACT_STUDENT_ID,
+    NOW,
+    STUDENT_TOKEN,
+    TEACHER_ID,
+    TEACHER_TOKEN,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -274,3 +280,119 @@ def test_los_endpoints_estan_publicados(client: TestClient) -> None:
 
     assert "/api/v1/sessions/{session_id}/questions" in rutas
     assert "/api/v1/exam/{session_id}/questions" in rutas
+
+
+class TestRepasarUnExamenEntregado:
+    """`GET /exam/{id}/submitted-questions`.
+
+    Nace de un fallo visto a mano: el estudiante entraba a un examen terminado
+    desde su panel y leia «El examen no esta abierto en este momento», porque la
+    pantalla pedia las preguntas al endpoint de **rendir**, que se cierra con la
+    hora. Un examen entregado es justo cuando se quiere repasar.
+    """
+
+    def entregado(self, app: Any, session_id: str) -> None:
+        participante = (
+            SessionParticipant.enroll(
+                session_id=UUID(session_id),
+                student_id=DEFAULT_DEV_STUDENT_ID,
+                consented_at=NOW,
+            )
+            .verified(NOW)
+            .submitted(NOW)
+        )
+        app.state.participant_repository.save(participante)
+
+    def sesion_terminada(self, app: Any) -> str:
+        sesion = ExamSession.create(
+            teacher_id=TEACHER_ID,
+            title="Parcial de ayer",
+            starts_at=NOW - timedelta(days=1),
+            duration_minutes=90,
+        )
+        app.state.session_repository.save(sesion)
+        return str(sesion.id)
+
+    def test_un_examen_terminado_si_se_puede_repasar(self, client: TestClient, app: Any) -> None:
+        # El fallo exacto: por el endpoint de rendir esto respondia 403.
+        sesion = self.sesion_terminada(app)
+        client.post(f"/api/v1/sessions/{sesion}/questions", json={"questions": [UNA_PREGUNTA]})
+        self.entregado(app, sesion)
+
+        assert client.get(f"/api/v1/exam/{sesion}/questions").status_code == 403
+
+        respuesta = client.get(f"/api/v1/exam/{sesion}/submitted-questions")
+
+        assert respuesta.status_code == 200
+        assert respuesta.json()[0]["statement"] == UNA_PREGUNTA["statement"]
+
+    def test_sigue_sin_revelar_la_respuesta_correcta(self, client: TestClient, app: Any) -> None:
+        # Repasar no puede convertirse en la puerta trasera a la clave: el
+        # examen puede repetirse, y otro estudiante aun no lo ha rendido.
+        sesion = self.sesion_terminada(app)
+        client.post(f"/api/v1/sessions/{sesion}/questions", json={"questions": [UNA_PREGUNTA]})
+        self.entregado(app, sesion)
+
+        crudo = json.dumps(client.get(f"/api/v1/exam/{sesion}/submitted-questions").json())
+
+        assert "is_correct" not in crudo
+        assert "correct_text_answer" not in crudo
+
+    def test_antes_de_entregar_no_hay_nada_que_repasar(self, client: TestClient, app: Any) -> None:
+        # Si no, seria otra forma de leer el examen fuera de su horario.
+        sesion = self.sesion_terminada(app)
+        client.post(f"/api/v1/sessions/{sesion}/questions", json={"questions": [UNA_PREGUNTA]})
+        matricular_verificado(app, sesion)
+
+        respuesta = client.get(f"/api/v1/exam/{sesion}/submitted-questions")
+
+        assert respuesta.status_code == 403
+        assert "entregues" in respuesta.json()["detail"]
+
+    def test_sin_matricula_no_se_repasa_el_examen_de_otro(
+        self, client: TestClient, app: Any
+    ) -> None:
+        sesion = self.sesion_terminada(app)
+
+        assert client.get(f"/api/v1/exam/{sesion}/submitted-questions").status_code == 403
+
+    def test_una_sesion_inexistente_responde_igual(self, client: TestClient) -> None:
+        assert client.get(f"/api/v1/exam/{uuid4()}/submitted-questions").status_code == 403
+
+    def test_el_docente_tiene_su_propio_panel(
+        self, authed_client: TestClient, authed_app: Any
+    ) -> None:
+        sesion = self.sesion_terminada(authed_app)
+
+        respuesta = authed_client.get(
+            f"/api/v1/exam/{sesion}/submitted-questions", headers=bearer(TEACHER_TOKEN)
+        )
+
+        assert respuesta.status_code == 403
+
+    def test_el_estudiante_que_entrego_lo_ve_con_su_token(
+        self, authed_client: TestClient, authed_app: Any
+    ) -> None:
+        sesion = self.sesion_terminada(authed_app)
+        authed_client.post(
+            f"/api/v1/sessions/{sesion}/questions",
+            json={"questions": [UNA_PREGUNTA]},
+            headers=bearer(TEACHER_TOKEN),
+        )
+        participante = (
+            SessionParticipant.enroll(
+                session_id=UUID(sesion),
+                student_id=CONTRACT_STUDENT_ID,
+                consented_at=NOW,
+            )
+            .verified(NOW)
+            .submitted(NOW)
+        )
+        authed_app.state.participant_repository.save(participante)
+
+        respuesta = authed_client.get(
+            f"/api/v1/exam/{sesion}/submitted-questions", headers=bearer(STUDENT_TOKEN)
+        )
+
+        assert respuesta.status_code == 200
+        assert len(respuesta.json()) == 1

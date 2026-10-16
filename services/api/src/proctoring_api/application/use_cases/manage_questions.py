@@ -226,3 +226,79 @@ class GetExamQuestions:
             return self._questions.list_by_banks([b.id for b in bancos])
 
         return questions_for(sesion, participante.id, self._questions, self._banks)
+
+
+class GetSubmittedExamQuestions:
+    """Las preguntas que le tocaron, para repasar un examen **ya entregado**.
+
+    Es a proposito una lectura distinta de `GetExamQuestions`, y no un parametro
+    suyo. Aquella protege el examen **mientras se rinde**: exige la ventana
+    abierta y que no se haya entregado, porque si no un estudiante se descargaria
+    el examen la noche anterior. Reutilizarla para repasar hacia que un examen
+    terminado no se pudiera volver a ver nunca -- justo cuando el estudiante
+    quiere verlo, y justo lo que el sistema le promete al decirle que puede
+    consultar su evidencia.
+
+    Aqui lo que protege es otra cosa: solo se abre **despues de entregar**, y
+    solo para quien entrego. Antes de entregar no hay nada que repasar, y dejarla
+    abierta seria otra forma de leer el examen fuera de su horario.
+
+    El sorteo es el mismo (`questions_for` con la matricula como semilla), asi
+    que las preguntas coinciden una a una con las respuestas guardadas. Si cada
+    lectura sorteara por su cuenta, el repaso mostraria respuestas pegadas a
+    preguntas que el estudiante nunca vio.
+    """
+
+    def __init__(
+        self,
+        questions: QuestionRepository,
+        sessions: ExamSessionRepository,
+        participants: ParticipantRepository | None = None,
+        dev_student_id: UUID = DEFAULT_DEV_STUDENT_ID,
+        banks: QuestionBankRepository | None = None,
+    ) -> None:
+        self._questions = questions
+        self._sessions = sessions
+        self._participants = participants
+        self._dev_student_id = dev_student_id
+        self._banks = banks
+
+    def execute(
+        self, session_id: UUID, *, actor: AuthenticatedUser | None = None
+    ) -> Sequence[ExamQuestion]:
+        """Devuelve el examen entregado, sin respuestas correctas.
+
+        Raises:
+            AuthorizationError: si lo pide un docente, si la sesion no existe,
+                si no esta matriculado, o si todavia no ha entregado.
+        """
+        if actor is not None and actor.is_teacher:
+            raise AuthorizationError(
+                "Un docente revisa el examen de un estudiante desde su panel, no por aqui"
+            )
+
+        sesion = self._sessions.find_by_id(session_id)
+        if sesion is None:
+            raise AuthorizationError("No tienes acceso a este examen")
+
+        quien = actor.id if actor is not None else self._dev_student_id
+        participante = (
+            self._participants.find(session_id, quien) if self._participants is not None else None
+        )
+        if self._participants is not None:
+            if participante is None:
+                raise AuthorizationError("No estas matriculado en este examen")
+            if participante.submitted_at is None:
+                raise AuthorizationError("Vas a poder repasar este examen cuando lo entregues.")
+
+        if participante is None:
+            bancos = self._banks.list_session_banks(sesion.id) if self._banks is not None else []
+            preguntas = (
+                self._questions.list_by_banks([b.id for b in bancos])
+                if bancos
+                else self._questions.list_by_session(sesion.id)
+            )
+        else:
+            preguntas = questions_for(sesion, participante.id, self._questions, self._banks)
+
+        return [pregunta.for_student() for pregunta in preguntas]

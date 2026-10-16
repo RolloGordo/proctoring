@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 400" fill="none" role="img" aria-label="Estudiante rindiendo un examen con la cámara encendida">
+  <g stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.55">
+    <!-- escritorio -->
+    <path d="M60 330h400"/>
+    <!-- portatil -->
+    <path d="M150 330l18-128h184l18 128z"/>
+    <rect x="186" y="96" width="148" height="106" rx="6"/>
+    <path d="M150 330h220"/>
+    <!-- lineas del examen en pantalla -->
+    <path d="M202 124h88M202 142h116M202 160h74" opacity="0.7"/>
+    <!-- persona de espaldas -->
+    <circle cx="260" cy="238" r="26"/>
+    <path d="M214 330c6-30 24-46 46-46s40 16 46 46"/>
+  </g>
+  <!-- camara encendida -->
+  <g>
+    <circle cx="260" cy="88" r="5" fill="#e8a700"/>
+    <circle cx="260" cy="88" r="12" stroke="#e8a700" stroke-width="2" opacity="0.5"/>
+    <circle cx="260" cy="88" r="20" stroke="#e8a700" stroke-width="1.5" opacity="0.22"/>
+  </g>
+</svg>

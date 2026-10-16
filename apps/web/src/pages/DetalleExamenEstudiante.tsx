@@ -26,9 +26,13 @@ export function DetalleExamenEstudiante() {
   useEffect(() => {
     let cancelado = false
 
+    // `submittedExamQuestions`, no `examQuestions`: el segundo se cierra cuando
+    // pasa la hora del examen, así que entrar aquí a un examen terminado —que es
+    // justo cuando se quiere repasar— respondía «El examen no está abierto en
+    // este momento» y tumbaba la pantalla entera.
     Promise.all([
       api.myExams(token),
-      api.examQuestions(id, token),
+      api.submittedExamQuestions(id, token),
       api.myAnswers(id, token),
       api.listEvents(id, token)
     ])

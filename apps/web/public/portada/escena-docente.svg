@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 400" fill="none" role="img" aria-label="Docente revisando las alertas de un examen en curso">
+  <g stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.55">
+    <rect x="96" y="70" width="328" height="212" rx="10"/>
+    <path d="M96 108h328"/>
+    <circle cx="118" cy="89" r="4"/><circle cx="134" cy="89" r="4"/><circle cx="150" cy="89" r="4"/>
+    <!-- cuadricula de camaras -->
+    <rect x="120" y="128" width="84" height="60" rx="5"/>
+    <rect x="218" y="128" width="84" height="60" rx="5"/>
+    <rect x="316" y="128" width="84" height="60" rx="5"/>
+    <!-- lista de alertas -->
+    <path d="M120 212h180M120 232h140M120 252h160" opacity="0.7"/>
+    <path d="M260 282v34M200 330h120"/>
+  </g>
+  <!-- una tarjeta marcada: hay una senal que revisar -->
+  <rect x="218" y="128" width="84" height="60" rx="5" stroke="#e8a700" stroke-width="2.5"/>
+  <circle cx="302" cy="128" r="7" fill="#e8a700"/>
+  <path d="M340 212h52M340 232h38" stroke="#e8a700" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+</svg>

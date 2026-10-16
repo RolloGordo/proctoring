@@ -337,6 +337,88 @@ textarea::placeholder {
   background: var(--papel-gris);
 }
 
+/* La celda que manda de cada fila: lo que se busca al mirar la tabla.
+ *
+ * Una tabla se lee peor cuanto mas columnas tiene, porque el ancho se reparte
+ * y el dato importante acaba partido. Bajar lo secundario a una segunda linea
+ * bajo el titulo quita columnas y deja respirar al nombre. */
+.celda-titulo {
+  min-width: 14rem;
+}
+
+.celda-titulo > a,
+.celda-titulo > strong {
+  font-weight: 600;
+}
+
+.celda-detalle {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+}
+
+/* Numeros a la derecha y con cifras de ancho fijo: asi las unidades quedan
+   alineadas en columna y dos notas se comparan de un vistazo. */
+.tabla td.numero,
+.tabla th.numero {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabla td.numero {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* ---------- Selector de archivo ----------
+   Se estiliza el control nativo, no se esconde detras de una etiqueta falsa:
+   el truco de `opacity: 0` sobre un `label` rompe el foco por teclado y deja
+   al lector de pantalla sin saber que hay un campo. Aqui el input sigue siendo
+   el input, con su borde de foco y su nombre accesible. */
+input[type='file'] {
+  width: 100%;
+  padding: var(--e4);
+  font-family: var(--texto);
+  font-size: 0.875rem;
+  color: var(--tinta-media);
+  background: var(--papel-gris);
+  border: 1px dashed var(--linea-fuerte);
+  border-radius: var(--radio-grande);
+  cursor: pointer;
+  transition:
+    border-color var(--transicion),
+    background var(--transicion);
+}
+
+input[type='file']:hover:not(:disabled) {
+  border-color: var(--amarillo);
+  background: var(--amarillo-tenue);
+}
+
+input[type='file']:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+input[type='file']::file-selector-button {
+  margin-right: var(--e4);
+  font-family: var(--titulo);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: var(--e2) var(--e4);
+  color: var(--papel);
+  background: var(--accion);
+  border: 1px solid transparent;
+  border-radius: var(--radio-grande);
+  cursor: pointer;
+  transition: background var(--transicion);
+}
+
+input[type='file']::file-selector-button:hover {
+  background: var(--accion-hover);
+}
+
 /* ---------- Etiquetas de severidad ---------- */
 .severidad {
   display: inline-block;

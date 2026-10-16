@@ -128,21 +128,22 @@ export function PanelEstudiante() {
                     <tr>
                       <th>Examen</th>
                       <th>Entregado</th>
-                      <th>Nota</th>
+                      <th className="numero">Nota</th>
                     </tr>
                   </thead>
                   <tbody>
                     {entregados.map((examen) => (
                       <tr key={examen.session_id}>
-                        <td>
+                        <td className="celda-titulo">
                           <Link to={`/estudiante/examenes/${examen.session_id}`}>
                             {examen.title}
                           </Link>
+                          <span className="celda-detalle">Ver respuestas y señales</span>
                         </td>
                         <td className="hora">
                           {examen.submitted_at ? fechaLarga(examen.submitted_at) : '—'}
                         </td>
-                        <td>
+                        <td className="numero">
                           <Nota examen={examen} />
                         </td>
                       </tr>

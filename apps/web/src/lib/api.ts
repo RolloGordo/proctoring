@@ -662,6 +662,14 @@ export const api = {
   examQuestions: (sessionId: string, token?: string): Promise<ExamQuestion[]> =>
     request(`/api/v1/exam/${sessionId}/questions`, undefined, token),
 
+  /** Las preguntas de un examen **ya entregado**, para repasarlo.
+   *
+   *  No es `examQuestions`: ese se cierra cuando pasa la hora del examen, que
+   *  es lo correcto mientras se rinde pero dejaba un examen terminado imposible
+   *  de consultar. Sigue sin traer las respuestas correctas. */
+  submittedExamQuestions: (sessionId: string, token?: string): Promise<ExamQuestion[]> =>
+    request(`/api/v1/exam/${sessionId}/submitted-questions`, undefined, token),
+
   enroll: (sessionId: string, acceptsSupervision: boolean, token?: string): Promise<Participant> =>
     request(
       `/api/v1/exam/${sessionId}/enroll`,
