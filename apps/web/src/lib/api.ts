@@ -108,7 +108,13 @@ export interface JoinedExam {
   modules: Record<string, Record<string, unknown>>
 }
 
-export type QuestionType = 'multiple_choice' | 'true_false' | 'numeric' | 'fill_blank' | 'essay'
+export type QuestionType =
+  | 'multiple_choice'
+  | 'multiple_select'
+  | 'true_false'
+  | 'numeric'
+  | 'fill_blank'
+  | 'essay'
 
 export type VerificationStatus =
   'pending' | 'verified' | 'failed' | 'manually_approved' | 'rejected'
@@ -185,6 +191,7 @@ export interface Participant {
 export interface Answer {
   question_id: string
   selected_option_id: string | null
+  selected_option_ids: string[]
   text_answer: string | null
   numeric_answer: string | null
   answered_at: string
@@ -194,6 +201,8 @@ export interface Answer {
 export interface NewAnswer {
   question_id: string
   selected_option_id?: string | null
+  /** Para las preguntas de varias respuestas correctas. */
+  selected_option_ids?: string[] | null
   text_answer?: string | null
   numeric_answer?: string | null
 }
@@ -561,6 +570,11 @@ export const api = {
 
   myExams: (token?: string): Promise<MyExam[]> => request('/api/v1/me/exams', undefined, token),
 
+  /** Lo que el docente decidió sobre mi caso, y por qué. `null` mientras no
+   *  haya decisión: saber que un caso está bajo revisión no ayuda, presiona. */
+  myDecision: (sessionId: string, token?: string): Promise<Decision | null> =>
+    request(`/api/v1/me/exams/${sessionId}/decision`, undefined, token),
+
   myCourses: (token?: string): Promise<MyCourse[]> =>
     request('/api/v1/me/courses', undefined, token),
 
@@ -661,6 +675,14 @@ export const api = {
 
   examQuestions: (sessionId: string, token?: string): Promise<ExamQuestion[]> =>
     request(`/api/v1/exam/${sessionId}/questions`, undefined, token),
+
+  /** Las preguntas de un examen **ya entregado**, para repasarlo.
+   *
+   *  No es `examQuestions`: ese se cierra cuando pasa la hora del examen, que
+   *  es lo correcto mientras se rinde pero dejaba un examen terminado imposible
+   *  de consultar. Sigue sin traer las respuestas correctas. */
+  submittedExamQuestions: (sessionId: string, token?: string): Promise<ExamQuestion[]> =>
+    request(`/api/v1/exam/${sessionId}/submitted-questions`, undefined, token),
 
   enroll: (sessionId: string, acceptsSupervision: boolean, token?: string): Promise<Participant> =>
     request(

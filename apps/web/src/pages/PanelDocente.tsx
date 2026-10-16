@@ -174,18 +174,19 @@ export function PanelDocente() {
                       <tr>
                         <th>Examen</th>
                         <th>Inicio</th>
-                        <th>Supervisión</th>
                         <th>Estado</th>
                       </tr>
                     </thead>
                     <tbody>
                       {recientes.map((s) => (
                         <tr key={s.id}>
-                          <td>
+                          <td className="celda-titulo">
                             <Link to={`/sesiones/${s.id}`}>{s.title}</Link>
+                            <span className="celda-detalle">
+                              Supervisión {nombrePreset(s.preset).toLowerCase()}
+                            </span>
                           </td>
                           <td className="hora">{fechaLarga(s.starts_at)}</td>
-                          <td>{nombrePreset(s.preset)}</td>
                           <td>
                             <ChipEstado estado={s.estado} />
                           </td>

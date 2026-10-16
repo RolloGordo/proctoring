@@ -14,7 +14,8 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { abrirCamara, CamaraNoDisponibleError, capturarFotograma } from './camara'
 import { CapturasPorCondicion } from './capturasVision'
-import { avisoParaEvento, type AvisoSupervision } from './avisos'
+import { CameraHealthMonitor, meanVideoBrightness, type CameraHealth } from './cameraHealth'
+import { avisoCamara, avisoParaEvento, type AvisoSupervision } from './avisos'
 import type { SenalDetectada } from './tipos'
 import { EmisorDeSenales } from './emisor'
 import { publicarFotogramas, type AjustesMonitoreo, type Publicacion } from './monitoreo'
@@ -115,8 +116,11 @@ export function useSupervision({
     let cancelado = false
     let cerrarCamara: (() => void) | null = null
     let temporizador: ReturnType<typeof setInterval> | undefined
+    let chequeoCamara: ReturnType<typeof setInterval> | undefined
     let envioEnVivo: Publicacion | null = null
     let quitarEscuchaCamara: (() => void) | null = null
+    let ultimoFallo: CameraHealth | null = null
+    const saludCamara = new CameraHealthMonitor()
 
     const emisor = new EmisorDeSenales({ sessionId, studentId, questionId, token })
     emisorRef.current = emisor
@@ -145,11 +149,17 @@ export function useSupervision({
         const stream = camara.video.srcObject as MediaStream
         callbacksRef.current.onCamara?.(stream)
         const pista = stream.getVideoTracks()[0]
-        const perdidaCamara = () => {
-          if (!cancelado) {
-            setEstado({ tipo: 'fallo', mensaje: 'La cámara se desconectó. Reconéctala y selecciona Reintentar cámara.' })
-          }
+        const falloCamara = (tipo: Exclude<CameraHealth, 'active'>) => {
+          if (cancelado || ultimoFallo === tipo) return
+          ultimoFallo = tipo
+          const mensaje = tipo === 'interrupted'
+            ? 'La cámara se desconectó. Reconéctala y selecciona Reintentar cámara.'
+            : 'La cámara no está entregando imagen útil. Comprueba la luz o si otra aplicación está usando la cámara y pulsa Reintentar.'
+          setEstado({ tipo: 'fallo', mensaje })
+          callbacksRef.current.onAviso?.(avisoCamara(tipo))
+          envioEnVivo?.reportarCamara?.(tipo)
         }
+        const perdidaCamara = () => falloCamara('interrupted')
         pista?.addEventListener('ended', perdidaCamara)
         quitarEscuchaCamara = () => pista?.removeEventListener('ended', perdidaCamara)
 
@@ -166,6 +176,20 @@ export function useSupervision({
             onObservado: (observado) => observadoRef.current?.(observado)
           })
         }
+
+        // Lightweight diagnostic once per second; never stores the sampled image.
+        chequeoCamara = setInterval(() => {
+          const status = saludCamara.check(
+            Date.now(), camara.video.currentTime, pista?.readyState ?? 'ended',
+            meanVideoBrightness(camara.video)
+          )
+          if (status !== 'active') falloCamara(status)
+          else if (ultimoFallo !== null) {
+            ultimoFallo = null
+            envioEnVivo?.reportarCamara?.('active')
+            setEstado({ tipo: 'activa' })
+          }
+        }, 1000)
 
         // Un detector que no carga se descarta y los demás siguen.
         const listos: Detector[] = []
@@ -194,6 +218,8 @@ export function useSupervision({
         if (cancelado) return
 
         temporizador = setInterval(() => {
+          // Never run vision inference on a known stopped or unusable stream.
+          if (ultimoFallo !== null) return
           const ahoraMs = Date.now()
           for (const detector of listos) {
             if (detector.ownsSegments) continue
@@ -230,7 +256,7 @@ export function useSupervision({
           }
         }, INTERVALO_MS)
 
-        setEstado({ tipo: 'activa' })
+        if (ultimoFallo === null) setEstado({ tipo: 'activa' })
       } catch (fallo) {
         if (cancelado) return
         const mensaje =
@@ -240,6 +266,7 @@ export function useSupervision({
         // El examen sigue: se avisa y queda constancia, pero no se bloquea.
         console.error('[supervisión]', fallo)
         setEstado({ tipo: 'fallo', mensaje })
+        callbacksRef.current.onAviso?.(avisoCamara('interrupted'))
       }
     }
 
@@ -248,6 +275,7 @@ export function useSupervision({
     return () => {
       cancelado = true
       clearInterval(temporizador)
+      clearInterval(chequeoCamara)
       // Las condiciones abiertas se cierran antes de salir: si no, la última
       // señal de cada detector se perdería.
       for (const [nombre, seguimiento] of seguimientos) {

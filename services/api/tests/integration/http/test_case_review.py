@@ -331,3 +331,97 @@ class TestListarDecisiones:
             ).status_code
             == 403
         )
+
+
+class TestElEstudianteVeLaDecision:
+    """`GET /me/exams/{id}/decision`.
+
+    El sistema obliga al docente a justificar por escrito lo que decide, y esa
+    justificacion solo la veia el. Prometerle al estudiante transparencia sobre
+    lo que se observa y callarle por que se decidio lo que se decidio es
+    transparencia a medias.
+
+    Todo va con tokens reales: lo que se prueba es que cada quien ve lo suyo, y
+    sin autenticacion no hay "cada quien".
+    """
+
+    def decidir(self, client: TestClient, sesion: str, estudiante: str, tipo: str) -> None:
+        respuesta = client.post(
+            f"/api/v1/sessions/{sesion}/students/{estudiante}/decision",
+            json={"decision": tipo, "justification": JUSTIFICACION},
+            headers=bearer(TEACHER_TOKEN),
+        )
+        assert respuesta.status_code in (200, 201), respuesta.text
+
+    def mia(self, client: TestClient, sesion: str) -> Any:
+        return client.get(f"/api/v1/me/exams/{sesion}/decision", headers=bearer(STUDENT_TOKEN))
+
+    def test_ve_la_decision_y_su_justificacion(
+        self, authed_client: TestClient, authed_app: Any
+    ) -> None:
+        sesion, estudiante = caso(authed_app)
+        self.decidir(authed_client, sesion, estudiante, "dismissed")
+
+        respuesta = self.mia(authed_client, sesion)
+
+        assert respuesta.status_code == 200
+        cuerpo = respuesta.json()
+        assert cuerpo["decision"] == "dismissed"
+        assert cuerpo["justification"] == JUSTIFICACION
+
+    def test_sin_decision_devuelve_nulo_y_no_404(
+        self, authed_client: TestClient, authed_app: Any
+    ) -> None:
+        # Que un caso este bajo revision no es informacion que ayude: presiona.
+        sesion, _ = caso(authed_app)
+
+        respuesta = self.mia(authed_client, sesion)
+
+        assert respuesta.status_code == 200
+        assert respuesta.json() is None
+
+    def test_si_el_docente_se_corrige_vale_lo_ultimo(
+        self, authed_client: TestClient, authed_app: Any
+    ) -> None:
+        sesion, estudiante = caso(authed_app)
+        self.decidir(authed_client, sesion, estudiante, "confirmed")
+        self.decidir(authed_client, sesion, estudiante, "dismissed")
+
+        assert self.mia(authed_client, sesion).json()["decision"] == "dismissed"
+
+    def test_no_se_ve_la_decision_de_un_examen_ajeno(
+        self, authed_client: TestClient, authed_app: Any
+    ) -> None:
+        sesion = ExamSession.create(
+            teacher_id=TEACHER_ID,
+            title="Examen de otro grupo",
+            starts_at=NOW - timedelta(minutes=30),
+            duration_minutes=90,
+        )
+        authed_app.state.session_repository.save(sesion)
+
+        assert self.mia(authed_client, str(sesion.id)).status_code == 403
+
+    def test_una_sesion_inexistente_responde_igual(self, authed_client: TestClient) -> None:
+        assert self.mia(authed_client, str(uuid4())).status_code == 403
+
+    def test_el_docente_tiene_su_propia_vista(
+        self, authed_client: TestClient, authed_app: Any
+    ) -> None:
+        sesion, _ = caso(authed_app)
+
+        respuesta = authed_client.get(
+            f"/api/v1/me/exams/{sesion}/decision", headers=bearer(TEACHER_TOKEN)
+        )
+
+        assert respuesta.status_code == 403
+
+    def test_cada_estudiante_ve_solo_la_suya(
+        self, authed_client: TestClient, authed_app: Any
+    ) -> None:
+        # Lo decisivo: se busca por la matricula de quien pregunta, no por un
+        # identificador que venga del cliente.
+        sesion, estudiante = caso(authed_app)
+        self.decidir(authed_client, sesion, estudiante, "confirmed")
+
+        assert self.mia(authed_client, sesion).json()["student_id"] == estudiante

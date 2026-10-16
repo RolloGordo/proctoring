@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import {
   api,
   type Answer,
+  type Decision,
   type ExamQuestion,
   type MyExam,
   type ProctoringEvent
@@ -15,6 +16,23 @@ interface Detalle {
   questions: ExamQuestion[]
   answers: Answer[]
   events: ProctoringEvent[]
+  decision: Decision | null
+}
+
+/** Cómo se le cuenta al estudiante lo que su docente decidió. */
+const TEXTO_DECISION: Record<Decision['decision'], { titulo: string; detalle: string }> = {
+  dismissed: {
+    titulo: 'Tu docente revisó las señales y no encontró infracción',
+    detalle: 'El examen queda como está.'
+  },
+  confirmed: {
+    titulo: 'Tu docente revisó las señales y confirmó una infracción',
+    detalle: 'Si no estás de acuerdo, habla con tu docente: esta es su justificación.'
+  },
+  retake: {
+    titulo: 'Tu docente decidió que repitas el examen',
+    detalle: 'No es una sanción: se te da otra oportunidad.'
+  }
 }
 
 export function DetalleExamenEstudiante() {
@@ -26,13 +44,18 @@ export function DetalleExamenEstudiante() {
   useEffect(() => {
     let cancelado = false
 
+    // `submittedExamQuestions`, no `examQuestions`: el segundo se cierra cuando
+    // pasa la hora del examen, así que entrar aquí a un examen terminado —que es
+    // justo cuando se quiere repasar— respondía «El examen no está abierto en
+    // este momento» y tumbaba la pantalla entera.
     Promise.all([
       api.myExams(token),
-      api.examQuestions(id, token),
+      api.submittedExamQuestions(id, token),
       api.myAnswers(id, token),
-      api.listEvents(id, token)
+      api.listEvents(id, token),
+      api.myDecision(id, token)
     ])
-      .then(([exams, questions, answers, events]) => {
+      .then(([exams, questions, answers, events, decision]) => {
         if (cancelado) return
         const exam = exams.find((item) => item.session_id === id)
         if (!exam) {
@@ -43,7 +66,7 @@ export function DetalleExamenEstudiante() {
           setError('El detalle estará disponible cuando entregues el examen.')
           return
         }
-        setDetalle({ exam, questions, answers, events })
+        setDetalle({ exam, questions, answers, events, decision })
       })
       .catch((fallo: Error) => !cancelado && setError(fallo.message))
 
@@ -124,6 +147,26 @@ export function DetalleExamenEstudiante() {
         </p>
       </section>
 
+      {detalle.decision && (
+        <section className="bloque">
+          <h2>Lo que decidió tu docente</h2>
+          <div className="tarjeta">
+            <div className="tarjeta-cuerpo">
+              <h3>{TEXTO_DECISION[detalle.decision.decision].titulo}</h3>
+              <p>{TEXTO_DECISION[detalle.decision.decision].detalle}</p>
+              <blockquote className="justificacion">
+                {detalle.decision.justification}
+              </blockquote>
+              <p className="ayuda">
+                Decidido el {fechaLarga(detalle.decision.decided_at)}. El sistema no decide por
+                su cuenta: reúne evidencia y la revisa una persona, que tiene que justificar por
+                escrito lo que resuelve.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="bloque">
         <h2>Señales registradas durante el examen</h2>
         {detalle.events.length === 0 ? (
@@ -157,6 +200,14 @@ export function DetalleExamenEstudiante() {
 
 function respuestaTexto(question: ExamQuestion, answer: Answer | undefined): string {
   if (!answer) return ''
+  if (answer.selected_option_ids?.length) {
+    // En el orden de la pregunta, no en el que se marcaron: el estudiante la
+    // vuelve a leer como la vio.
+    return question.options
+      .filter((option) => answer.selected_option_ids.includes(option.id))
+      .map((option) => option.option_text)
+      .join(' · ')
+  }
   if (answer.selected_option_id) {
     return (
       question.options.find((option) => option.id === answer.selected_option_id)?.option_text ??

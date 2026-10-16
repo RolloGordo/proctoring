@@ -79,8 +79,6 @@ export function Sesiones() {
               <tr>
                 <th>Examen</th>
                 <th>Inicio</th>
-                <th>Duración</th>
-                <th>Supervisión</th>
                 <th>Código</th>
                 <th>Estado</th>
                 <th aria-label="Accesos directos" />
@@ -89,12 +87,18 @@ export function Sesiones() {
             <tbody>
               {sesiones.map((sesion) => (
                 <tr key={sesion.id}>
-                  <td>
+                  {/* Duración y supervisión bajan a una segunda línea bajo el
+                      título: siete columnas en una tarjeta estrecha le robaban
+                      el ancho al nombre del examen, que acababa partido en una
+                      palabra por renglón. */}
+                  <td className="celda-titulo">
                     <Link to={`/sesiones/${sesion.id}`}>{sesion.title}</Link>
+                    <span className="celda-detalle">
+                      {sesion.duration_minutes} min · supervisión{' '}
+                      {nombrePreset(sesion.preset).toLowerCase()}
+                    </span>
                   </td>
                   <td className="hora">{fechaLarga(sesion.starts_at)}</td>
-                  <td>{sesion.duration_minutes} min</td>
-                  <td>{nombrePreset(sesion.preset)}</td>
                   <td>
                     <CodigoAcceso codigo={sesion.access_code} etiqueta={null} />
                   </td>

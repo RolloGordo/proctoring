@@ -17,6 +17,7 @@ import { NuevaSesion } from './pages/NuevaSesion'
 import { PanelDocente } from './pages/PanelDocente'
 import { PanelEstudiante } from './pages/PanelEstudiante'
 import { DetalleExamenEstudiante } from './pages/DetalleExamenEstudiante'
+import { CursoEstudiante } from './pages/CursoEstudiante'
 import { Participantes } from './pages/Participantes'
 import { Portada } from './pages/Portada'
 import { RevisionCaso } from './pages/RevisionCaso'
@@ -239,6 +240,14 @@ function Aplicacion() {
           element={
             <Estudiante>
               <PanelEstudiante />
+            </Estudiante>
+          }
+        />
+        <Route
+          path="/estudiante/cursos/:id"
+          element={
+            <Estudiante>
+              <CursoEstudiante />
             </Estudiante>
           }
         />

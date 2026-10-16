@@ -37,6 +37,8 @@ class AnswerInput:
 
     question_id: UUID
     selected_option_id: UUID | None = None
+    #: Para las preguntas de varias respuestas correctas.
+    selected_option_ids: tuple[UUID, ...] = ()
     text_answer: str | None = None
     numeric_answer: Decimal | None = None
 
@@ -129,6 +131,7 @@ class SaveAnswers:
                     participant_id=participante.id,
                     answered_at=ahora,
                     selected_option_id=entrada.selected_option_id,
+                    selected_option_ids=entrada.selected_option_ids,
                     text_answer=entrada.text_answer,
                     numeric_answer=entrada.numeric_answer,
                 )

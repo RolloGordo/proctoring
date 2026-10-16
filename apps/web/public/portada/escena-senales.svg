@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 400" fill="none" role="img" aria-label="Las señales que el sistema observa: rostro, mirada, voz y pantalla">
+  <g stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <circle cx="260" cy="200" r="58"/>
+    <circle cx="242" cy="188" r="4"/><circle cx="278" cy="188" r="4"/>
+    <path d="M242 222c10 8 26 8 36 0"/>
+    <circle cx="260" cy="200" r="104" opacity="0.35"/>
+    <circle cx="260" cy="200" r="150" opacity="0.18"/>
+    <!-- rostro -->
+    <g transform="translate(130 96)"><circle cx="0" cy="0" r="18"/><circle cx="0" cy="-5" r="6"/><path d="M-9 9c2-5 5-7 9-7s7 2 9 7"/></g>
+    <!-- pantalla -->
+    <g transform="translate(390 96)"><rect x="-19" y="-14" width="38" height="28" rx="3"/><path d="M-8 18h16"/></g>
+    <!-- monitor extra -->
+    <g transform="translate(130 304)"><rect x="-22" y="-14" width="26" height="20" rx="2"/><rect x="2" y="-8" width="22" height="16" rx="2"/></g>
+  </g>
+  <!-- la voz: el diferencial, en amarillo -->
+  <g transform="translate(390 304)" stroke="#e8a700" stroke-width="2.5" stroke-linecap="round">
+    <rect x="-7" y="-20" width="14" height="24" rx="7"/>
+    <path d="M-14 -4a14 14 0 0 0 28 0M0 10v10"/>
+  </g>
+  <path d="M352 290 300 236M168 290l56-54M168 110l54 52M352 110l-54 52" stroke="#ffffff" stroke-width="1.5" opacity="0.2" stroke-dasharray="4 6"/>
+</svg>

@@ -1,4 +1,4 @@
-import { describe, expect, it, afterEach } from 'vitest'
+import { describe, expect, it, afterEach, vi } from 'vitest'
 import { examUrl, webBaseUrl } from './web'
 import { setExamSession } from './context'
 
@@ -13,6 +13,37 @@ afterEach(() => {
 })
 
 describe('webBaseUrl', () => {
+  it('usa la horneada al construir cuando no hay variable de entorno', () => {
+    // Es el caso de un instalador en el equipo de un estudiante: ahi no hay
+    // ninguna variable que leer, y antes se caia a localhost.
+    delete process.env['PROCTORING_WEB_URL']
+    vi.stubGlobal('__PROCTORING_WEB_URL__', 'https://proctoring.vercel.app')
+
+    expect(webBaseUrl()).toBe('https://proctoring.vercel.app')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('la variable de entorno manda sobre la horneada', () => {
+    // Permite apuntar una compilacion a otro sitio sin reconstruirla, que es
+    // como probamos el despliegue sin publicar un instalador.
+    vi.stubGlobal('__PROCTORING_WEB_URL__', 'https://proctoring.vercel.app')
+    process.env['PROCTORING_WEB_URL'] = 'http://localhost:5173'
+
+    expect(webBaseUrl()).toBe('http://localhost:5173')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('una horneada vacia no cuenta como configurada', () => {
+    delete process.env['PROCTORING_WEB_URL']
+    vi.stubGlobal('__PROCTORING_WEB_URL__', '   ')
+
+    expect(webBaseUrl()).toBe('http://localhost:5173')
+
+    vi.unstubAllGlobals()
+  })
+
   it('usa el servidor de desarrollo por defecto', () => {
     delete process.env['PROCTORING_WEB_URL']
     expect(webBaseUrl()).toBe('http://localhost:5173')

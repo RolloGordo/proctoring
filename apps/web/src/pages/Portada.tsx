@@ -149,6 +149,14 @@ export function Portada() {
   return (
     <CapaPublica>
       <section className="portada-inicio">
+        {/* Decorativo: `aria-hidden` y `alt` vacío porque no añaden información
+            que no esté ya en el texto de al lado. Un lector de pantalla que
+            leyera «estudiante rindiendo un examen» solo estorbaría. */}
+        <div className="portada-escenas" aria-hidden="true">
+          <img src="/portada/escena-estudiante.svg" alt="" />
+          <img src="/portada/escena-senales.svg" alt="" />
+          <img src="/portada/escena-docente.svg" alt="" />
+        </div>
         <div className="contenedor">
           <p className="portada-lema">Exámenes remotos con supervisión transparente</p>
           <h1>
@@ -220,17 +228,19 @@ export function Portada() {
             La app permite el modo de examen protegido y el acceso a las funciones de supervisión.
             Antes de iniciar, revisa los permisos de cámara y micrófono que solicite tu equipo.
           </p>
-          <a
-            href="https://github.com/RolloGordo/proctoring/releases"
-            className="boton"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Revisar versiones de la app
-          </a>
-          <p className="ayuda">
-            Si todavía no hay una versión publicada, solicita el instalador a tu docente.
-          </p>
+          <div className="portada-accion">
+            <a
+              href="https://github.com/RolloGordo/proctoring/releases"
+              className="boton boton-grande"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Revisar versiones de la app
+            </a>
+            <p className="ayuda">
+              Si todavía no hay una versión publicada, solicita el instalador a tu docente.
+            </p>
+          </div>
         </div>
       </section>
 

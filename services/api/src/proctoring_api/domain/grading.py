@@ -138,6 +138,17 @@ def _is_correct(question: Question, answer: Answer) -> bool:
         chosen = next((o for o in question.options if o.id == answer.selected_option_id), None)
         return chosen is not None and chosen.is_correct
 
+    if kind is QuestionType.MULTIPLE_SELECT:
+        # Todo o nada: acierta quien marca **exactamente** las correctas.
+        #
+        # Nota parcial seria mas amable, pero tambien premia marcarlo todo, y
+        # entonces la pregunta deja de medir si alguien sabe cuales son. Si el
+        # docente quiere credito parcial, puede partirla en varias preguntas.
+        # Dejar esto explicito importa: es la regla con la que se califica a
+        # una persona, y tiene que poder explicarse.
+        correctas = {o.id for o in question.options if o.is_correct}
+        return bool(correctas) and set(answer.selected_option_ids) == correctas
+
     if kind is QuestionType.NUMERIC:
         if answer.numeric_answer is None or question.correct_numeric_answer is None:
             return False

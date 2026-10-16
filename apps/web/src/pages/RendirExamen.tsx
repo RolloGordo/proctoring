@@ -12,6 +12,7 @@ import { useAuth } from '../lib/auth-context'
 import { formatRemainingTime, unansweredCount } from '../lib/exam-progress'
 import { soloHora } from '../lib/formato'
 import { detectoresDe, necesitaAudio } from '../supervision/detectores'
+import { loadCalibration } from '../supervision/calibration'
 import type { AjustesMonitoreo } from '../supervision/monitoreo'
 import { useSupervision } from '../supervision/useSupervision'
 import { AvisoSupervision } from '../components/AvisoSupervision'
@@ -135,10 +136,27 @@ export function RendirExamen() {
   // La supervisión se enciende aquí y no antes: el consentimiento se da en la
   // sala, y observar a alguien que todavía no aceptó sería justo lo que el
   // proyecto promete no hacer.
-  const detectores = useMemo(
-    () => detectoresDe(matricula ? modulosActivos : {}),
-    [matricula, modulosActivos]
-  )
+  const detectores = useMemo(() => {
+    if (!matricula) return detectoresDe({})
+    const config = { ...modulosActivos }
+    // El umbral calibrado de este estudiante manda sobre el del examen, pero
+    // solo hacia arriba: calibrar puede hacer la supervisión más tolerante con
+    // su pantalla, nunca más estricta de lo que el docente configuró.
+    if (config.gaze && userId) {
+      const calibracion = loadCalibration(id, userId)
+      config.gaze = {
+        ...config.gaze,
+        yaw_degrees: calibracion
+          ? Math.max(Number(config.gaze.yaw_degrees) || 25, calibracion.thresholdDeg)
+          : config.gaze.yaw_degrees,
+        yaw_baseline_deg: calibracion?.baselineYawDeg ?? 0,
+        // Queda registrado si se calibró o no: una señal de mirada sin calibrar
+        // vale menos, y el docente tiene que poder saberlo al revisar.
+        calibration_status: calibracion ? 'calibrated' : 'default'
+      }
+    }
+    return detectoresDe(config)
+  }, [matricula, modulosActivos, id, userId])
   // El módulo de monitoreo en vivo no es un detector: no emite eventos, solo
   // deja que el docente mire. Va aparte por eso.
   const monitoreo = useMemo<AjustesMonitoreo | null>(
@@ -157,7 +175,7 @@ export function RendirExamen() {
     conAudio: necesitaAudio(detectores),
     monitoreo,
     onObservado: setObservado,
-    onAviso: (a) => gestorAvisos.current?.registrar(a.tipo),
+    onAviso: (a) => gestorAvisos.current?.registrar(a),
     onCamara: mostrarCamara,
     reintento: reintentoCamara,
     activa: matricula?.submitted_at == null
@@ -397,6 +415,43 @@ function CampoRespuesta({
     )
   }
 
+  if (pregunta.question_type === 'multiple_select') {
+    const marcadas = respuesta?.selected_option_ids ?? []
+    return (
+      <>
+        <p className="ayuda">Marca todas las que correspondan.</p>
+        <ul className="opciones-examen">
+          {pregunta.options.map((opcion) => (
+            <li key={opcion.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  disabled={bloqueada}
+                  value={opcion.id}
+                  checked={marcadas.includes(opcion.id)}
+                  onChange={() =>
+                    onResponder({
+                      question_id: pregunta.id,
+                      // Se manda el conjunto entero, no el cambio: así el
+                      // guardado es idempotente y reintentarlo no deja una
+                      // respuesta a medias.
+                      selected_option_ids: marcadas.includes(opcion.id)
+                        ? marcadas.filter((id) => id !== opcion.id)
+                        : pregunta.options
+                            .filter((o) => o.id === opcion.id || marcadas.includes(o.id))
+                            .map((o) => o.id)
+                    })
+                  }
+                />
+                <span>{opcion.option_text}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
+
   if (pregunta.question_type === 'numeric') {
     return (
       <label className="campo" style={{ maxWidth: '220px', marginBottom: 0 }}>
@@ -582,6 +637,7 @@ function indexar(respuestas: Answer[]): Record<string, NewAnswer> {
       {
         question_id: r.question_id,
         selected_option_id: r.selected_option_id,
+        selected_option_ids: r.selected_option_ids,
         text_answer: r.text_answer,
         numeric_answer: r.numeric_answer
       }

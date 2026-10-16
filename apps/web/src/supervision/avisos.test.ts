@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  avisoCamara,
   avisoParaEvento,
   DURACION_AVISO_MS,
   GestorDeAvisos,
@@ -97,6 +98,39 @@ describe('cuándo se le dice', () => {
     gestor.descartar()
 
     expect(visto).toBeNull()
+  })
+
+  it('un problema de cámara también llega al estudiante', () => {
+    // No es un `EventType`, asi que pasarlo por su tipo lo dejaba caer en
+    // `avisoParaEvento` y el estudiante no veia nada: compilaba y no hacia
+    // nada. El gestor acepta el aviso ya construido.
+    gestor.registrar(avisoCamara('interrupted'), 0)
+
+    expect(visto?.titulo).toBe('Se perdió la conexión con la cámara')
+  })
+
+  it('el aviso de cámara no acusa de nada', () => {
+    // Quedarse sin camara por un cable suelto no es una infraccion, y el texto
+    // que lee el estudiante tiene que decirlo.
+    expect(avisoCamara('no_image').detalle).toContain('No implica una infracción')
+    expect(avisoCamara('interrupted').detalle).toContain('El examen continúa')
+  })
+
+  it('un problema de cámara se combina con una señal sin perder su título', () => {
+    // La combinación resolvía los títulos otra vez a partir del tipo, y los de
+    // cámara no tienen `EventType`: al juntarse con otra señal desaparecían.
+    gestor.registrar('gaze_away', 0)
+    gestor.registrar(avisoCamara('interrupted'), 1_000)
+
+    expect(visto?.titulo).toBe('Se detectaron varias señales')
+    expect(visto?.detalle).toContain('Orientación de cabeza fuera de pantalla')
+    expect(visto?.detalle).toContain('Se perdió la conexión con la cámara')
+  })
+
+  it('el mismo problema de cámara no repite el aviso en seguida', () => {
+    gestor.registrar(avisoCamara('interrupted'), 0)
+
+    expect(gestor.registrar(avisoCamara('interrupted'), 1_000)).toBe(false)
   })
 
   it('al destruirlo no quedan temporizadores sueltos', () => {

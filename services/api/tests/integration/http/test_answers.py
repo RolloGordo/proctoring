@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import timedelta
 from typing import Any
 from uuid import UUID, uuid4
@@ -239,3 +240,114 @@ class TestAutorizacion:
             ).status_code
             == 401
         )
+
+
+class TestVariasRespuestasCorrectas:
+    """`multiple_select` de punta a punta por HTTP.
+
+    El dominio ya prueba como se califica; lo que falta cubrir es que el campo
+    sobreviva el viaje entero —esquema, caso de uso, repositorio y respuesta—,
+    que es donde un campo nuevo se pierde sin que nada se ponga rojo.
+    """
+
+    def examen(self, app: Any) -> tuple[str, dict[str, Any]]:
+        from decimal import Decimal
+
+        from proctoring_api.application.use_cases.manage_questions import NewQuestion
+        from proctoring_api.domain.question import QuestionType
+
+        sesion = ExamSession.create(
+            teacher_id=TEACHER_ID,
+            title="Parcial",
+            starts_at=NOW - timedelta(minutes=10),
+            duration_minutes=90,
+        )
+        app.state.session_repository.save(sesion)
+        app.state.participant_repository.save(
+            SessionParticipant.enroll(
+                session_id=sesion.id,
+                student_id=DEFAULT_DEV_STUDENT_ID,
+                consented_at=NOW,
+            ).verified(NOW)
+        )
+        pregunta = app.state.add_questions.execute(
+            sesion.id,
+            [
+                NewQuestion(
+                    question_type=QuestionType.MULTIPLE_SELECT,
+                    statement="¿Cuales de estas las garantiza RLS?",
+                    points=Decimal(2),
+                    options=[
+                        ("Filtrar filas por usuario", True),
+                        ("Aplicarse tambien a la API", True),
+                        ("Cifrar el disco", False),
+                    ],
+                )
+            ],
+        )[0]
+        return str(sesion.id), {
+            "id": str(pregunta.id),
+            "options": [str(o.id) for o in pregunta.options],
+        }
+
+    def test_se_guardan_y_se_devuelven_varias_opciones(self, client: TestClient, app: Any) -> None:
+        sid, pregunta = self.examen(app)
+
+        respuesta = client.put(
+            f"/api/v1/exam/{sid}/answers",
+            json={
+                "answers": [
+                    {
+                        "question_id": pregunta["id"],
+                        "selected_option_ids": pregunta["options"][:2],
+                    }
+                ]
+            },
+        )
+
+        assert respuesta.status_code == 200, respuesta.text
+        guardada = respuesta.json()[0]
+        assert guardada["selected_option_ids"] == pregunta["options"][:2]
+        assert guardada["selected_option_id"] is None
+
+    def test_no_se_cuela_la_opcion_de_otra_pregunta(self, client: TestClient, app: Any) -> None:
+        # La columna es un `uuid[]`, que no puede tener clave ajena: esta
+        # comprobacion es lo unico que lo impide.
+        sid, pregunta = self.examen(app)
+
+        respuesta = client.put(
+            f"/api/v1/exam/{sid}/answers",
+            json={
+                "answers": [{"question_id": pregunta["id"], "selected_option_ids": [str(uuid4())]}]
+            },
+        )
+
+        assert respuesta.status_code == 400
+
+    def test_no_admite_las_dos_formas_a_la_vez(self, client: TestClient, app: Any) -> None:
+        # Con las dos puestas no se sabria cual califica.
+        sid, pregunta = self.examen(app)
+
+        respuesta = client.put(
+            f"/api/v1/exam/{sid}/answers",
+            json={
+                "answers": [
+                    {
+                        "question_id": pregunta["id"],
+                        "selected_option_id": pregunta["options"][0],
+                        "selected_option_ids": [pregunta["options"][1]],
+                    }
+                ]
+            },
+        )
+
+        assert respuesta.status_code == 400
+
+    def test_el_examen_no_revela_cuales_son_las_correctas(
+        self, client: TestClient, app: Any
+    ) -> None:
+        sid, _ = self.examen(app)
+
+        crudo = json.dumps(client.get(f"/api/v1/exam/{sid}/questions").json())
+
+        assert "is_correct" not in crudo

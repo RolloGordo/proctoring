@@ -14,14 +14,26 @@ export const TIPOS: Array<{ valor: QuestionType; nombre: string; ayuda: string }
     nombre: 'Opción múltiple',
     ayuda: 'Varias alternativas, una correcta.'
   },
+  {
+    valor: 'multiple_select',
+    nombre: 'Opción múltiple (varias correctas)',
+    ayuda: 'El estudiante marca todas las que correspondan. Acierta si marca exactamente esas.'
+  },
   { valor: 'true_false', nombre: 'Verdadero o falso', ayuda: 'Exactamente dos opciones.' },
   { valor: 'numeric', nombre: 'Respuesta numérica', ayuda: 'Se compara con el valor exacto.' },
   { valor: 'fill_blank', nombre: 'Completar', ayuda: 'Se compara con el texto esperado.' },
   { valor: 'essay', nombre: 'Desarrollo', ayuda: 'La califica el docente a mano.' }
 ]
 
-/** Los tipos que se responden eligiendo una alternativa. */
-export const LLEVA_OPCIONES = new Set<QuestionType>(['multiple_choice', 'true_false'])
+/** Los tipos que se responden eligiendo entre alternativas. */
+export const LLEVA_OPCIONES = new Set<QuestionType>([
+  'multiple_choice',
+  'multiple_select',
+  'true_false'
+])
+
+/** De este se marcan **varias**; de los demás con opciones, una sola. */
+export const VARIAS_CORRECTAS: QuestionType = 'multiple_select'
 
 export function nombreDeTipo(tipo: QuestionType): string {
   return TIPOS.find((t) => t.valor === tipo)?.nombre ?? tipo

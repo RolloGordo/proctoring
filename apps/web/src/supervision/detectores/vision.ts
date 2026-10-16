@@ -5,6 +5,8 @@ import { angulosDesdeMatriz, capacidadParaUmbralRostros, reglasVision } from './
 
 export interface AjustesMirada {
   yaw_degrees?: number
+  yaw_baseline_deg?: number
+  calibration_status?: 'calibrated' | 'default'
   min_duration_ms?: number
 }
 export interface AjustesRostro { min_duration_ms?: number }
@@ -80,10 +82,14 @@ export class DetectorMirada implements Detector {
   readonly evento = 'gaze_away' as const
   readonly minimoMs: number
   private readonly yawLimite: number
+  private readonly yawCentro: number
+  private readonly calibrationStatus: 'calibrated' | 'default'
 
   constructor(ajustes: AjustesMirada = {}) {
     this.minimoMs = ajustes.min_duration_ms ?? 3000
     this.yawLimite = ajustes.yaw_degrees ?? 25
+    this.yawCentro = ajustes.yaw_baseline_deg ?? 0
+    this.calibrationStatus = ajustes.calibration_status ?? 'default'
   }
 
   async preparar(): Promise<void> { await motor() }
@@ -92,10 +98,10 @@ export class DetectorMirada implements Detector {
     const m = medicionDe(observacion)
     if (!m) return { activa: false, metadata: { source: 'mediapipe', available: false } }
     return {
-      activa: reglasVision(m.caras, m.yaw, this.yawLimite, 2).gaze_away,
+      activa: reglasVision(m.caras, m.yaw === null ? null : m.yaw - this.yawCentro, this.yawLimite, 2).gaze_away,
       metadata: {
         source: 'mediapipe', faces_detected: m.caras, yaw_deg: m.yaw,
-        pitch_deg: m.pitch, threshold_deg: this.yawLimite,
+        pitch_deg: m.pitch, yaw_baseline_deg: this.yawCentro, calibration_status: this.calibrationStatus, threshold_deg: this.yawLimite,
         min_duration_ms: this.minimoMs
       }
     }
@@ -155,4 +161,12 @@ export async function contarRostrosEnCamara(video: HTMLVideoElement): Promise<nu
   const result = medicionDe({ video, ahoraMs: Date.now() })
   if (!result) throw new Error('MediaPipe no pudo evaluar la imagen de la cámara.')
   return result.caras
+}
+
+/** A head-pose measurement for a consented calibration step (not identity verification). */
+export async function measureHeadPose(video: HTMLVideoElement): Promise<{ faceCount: number; yaw: number | null; pitch: number | null }> {
+  await motor(2)
+  const result = medicionDe({ video, ahoraMs: Date.now() })
+  if (!result) throw new Error('La cámara todavía no entrega una imagen válida.')
+  return { faceCount: result.caras, yaw: result.yaw, pitch: result.pitch }
 }

@@ -133,12 +133,15 @@ export function Curso() {
                   autoComplete="off"
                   required
                 />
-                <p className="ayuda">Tiene que haberse registrado antes en el sistema.</p>
               </label>
               <button type="submit" className="boton" disabled={matriculando || !correo.trim()}>
                 {matriculando ? 'Matriculando…' : 'Matricular'}
               </button>
             </form>
+            {/* Fuera de la etiqueta: dentro, el `align-items: flex-end` del
+                formulario alineaba el botón con el final de esta ayuda en vez
+                de con el campo, y quedaba un escalón. */}
+            <p className="ayuda">Tiene que haberse registrado antes en el sistema.</p>
             {errorAccion && <p className="aviso">{errorAccion}</p>}
             {aviso && <p className="aviso aviso-neutro">{aviso}</p>}
           </div>

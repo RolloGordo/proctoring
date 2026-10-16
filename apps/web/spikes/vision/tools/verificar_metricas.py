@@ -25,7 +25,7 @@ def comprobar(path: Path) -> tuple[bool, list[str]]:
             msgs.append(f"{name}: no hay datos.")
             valid = False
             continue
-        acc, fpr, n = (metrics.get(k) for k in ("accuracy", "fpr", "samples"))
+        acc, fpr, fnr, n = (metrics.get(k) for k in ("accuracy", "fpr", "fnr", "samples"))
         cm = metrics.get("confusion_matrix")
         if not isinstance(cm, dict) or not all(isinstance(cm.get(k), int) for k in ("tp", "tn", "fp", "fn")):
             msgs.append(f"{name}: matriz de confusión inválida.")
@@ -35,12 +35,12 @@ def comprobar(path: Path) -> tuple[bool, list[str]]:
             msgs.append(f"{name}: faltan muestras o los conteos no coinciden.")
             valid = False
             continue
-        if not isinstance(acc, (float, int)) or not isinstance(fpr, (float, int)):
-            msgs.append(f"{name}: accuracy o FPR no medido.")
+        if not isinstance(acc, (float, int)) or not isinstance(fpr, (float, int)) or not isinstance(fnr, (float, int)):
+            msgs.append(f"{name}: accuracy, FPR o FNR no medido.")
             valid = False
             continue
         passed = acc >= .8 and fpr < .2
-        msgs.append(f"{name}: accuracy={acc:.3f}, FPR={fpr:.3f}, muestras={n}: {'CUMPLE' if passed else 'NO CUMPLE'}")
+        msgs.append(f"{name}: accuracy={acc:.3f}, FPR={fpr:.3f}, FNR={fnr:.3f}, muestras={n}: {'CUMPLE' if passed else 'NO CUMPLE'}")
         valid &= passed
     return valid, msgs
 

@@ -73,11 +73,13 @@ from proctoring_api.application.use_cases.manage_enrollment import (
 from proctoring_api.application.use_cases.manage_questions import (
     AddQuestions,
     GetExamQuestions,
+    GetSubmittedExamQuestions,
     ListSessionQuestions,
 )
 from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.application.use_cases.review_case import (
+    GetMyDecision,
     ListSessionDecisions,
     RecordDecision,
     ReviewStudentCase,
@@ -148,6 +150,11 @@ def get_add_questions(request: Request) -> AddQuestions:
 
 def get_list_session_questions(request: Request) -> ListSessionQuestions:
     use_case: ListSessionQuestions = request.app.state.list_session_questions
+    return use_case
+
+
+def get_submitted_exam_questions(request: Request) -> GetSubmittedExamQuestions:
+    use_case: GetSubmittedExamQuestions = request.app.state.get_submitted_exam_questions
     return use_case
 
 
@@ -228,6 +235,11 @@ def get_review_case(request: Request) -> ReviewStudentCase:
 
 def get_record_decision(request: Request) -> RecordDecision:
     use_case: RecordDecision = request.app.state.record_decision
+    return use_case
+
+
+def get_my_decision(request: Request) -> GetMyDecision:
+    use_case: GetMyDecision = request.app.state.get_my_decision
     return use_case
 
 
@@ -381,6 +393,9 @@ JoinExamSessionDep = Annotated[JoinExamSession, Depends(get_join_exam_session)]
 AddQuestionsDep = Annotated[AddQuestions, Depends(get_add_questions)]
 ListSessionQuestionsDep = Annotated[ListSessionQuestions, Depends(get_list_session_questions)]
 GetExamQuestionsDep = Annotated[GetExamQuestions, Depends(get_exam_questions)]
+GetSubmittedExamQuestionsDep = Annotated[
+    GetSubmittedExamQuestions, Depends(get_submitted_exam_questions)
+]
 EnrollInExamDep = Annotated[EnrollInExam, Depends(get_enroll_in_exam)]
 ListParticipantsDep = Annotated[ListSessionParticipantsWithNames, Depends(get_list_participants)]
 ReviewIdentityDep = Annotated[ReviewParticipantIdentity, Depends(get_review_identity)]
@@ -400,6 +415,7 @@ ListMyCoursesDep = Annotated[ListMyCourses, Depends(get_list_my_courses)]
 ReviewCaseDep = Annotated[ReviewStudentCase, Depends(get_review_case)]
 RecordDecisionDep = Annotated[RecordDecision, Depends(get_record_decision)]
 ListDecisionsDep = Annotated[ListSessionDecisions, Depends(get_list_decisions)]
+MyDecisionDep = Annotated[GetMyDecision, Depends(get_my_decision)]
 GetAudioJobDep = Annotated[GetAudioJob, Depends(get_audio_job)]
 RecordAudioAnalysisDep = Annotated[RecordAudioAnalysis, Depends(get_record_audio_analysis)]
 GetFaceJobDep = Annotated[GetFaceJob, Depends(get_face_job)]

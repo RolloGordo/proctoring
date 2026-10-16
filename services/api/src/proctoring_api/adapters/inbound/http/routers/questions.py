@@ -22,6 +22,7 @@ from proctoring_api.adapters.inbound.http.dependencies import (
     CurrentUserDep,
     DeleteQuestionDep,
     GetExamQuestionsDep,
+    GetSubmittedExamQuestionsDep,
     ListSessionQuestionsDep,
     UpdateQuestionDep,
 )
@@ -109,6 +110,30 @@ def get_exam_questions(
 
     Sin respuestas correctas y solo mientras el examen esta abierto: sin esa
     comprobacion, un estudiante podria descargar las preguntas la noche anterior.
+    """
+    return [
+        ExamQuestionResponse.from_entity(pregunta)
+        for pregunta in use_case.execute(session_id, actor=current_user)
+    ]
+
+
+@router.get(
+    "/exam/{session_id}/submitted-questions",
+    response_model=list[ExamQuestionResponse],
+    summary="Preguntas de un examen ya entregado, para repasarlo",
+    responses=AUTH_RESPONSES,
+)
+def get_submitted_exam_questions(
+    session_id: UUID,
+    use_case: GetSubmittedExamQuestionsDep,
+    current_user: CurrentUserDep,
+) -> list[ExamQuestionResponse]:
+    """Lo que el estudiante respondio, para que pueda volver a mirarlo.
+
+    Separado del endpoint de rendir a proposito: aquel se cierra cuando pasa la
+    hora, que es lo correcto mientras se rinde pero dejaba un examen terminado
+    imposible de consultar. Este solo se abre **despues de entregar**, y sigue
+    sin revelar las respuestas correctas.
     """
     return [
         ExamQuestionResponse.from_entity(pregunta)

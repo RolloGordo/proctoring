@@ -1,9 +1,10 @@
-import { app, shell, BrowserWindow, ipcMain, screen, session } from 'electron'
+import { app, shell, dialog, BrowserWindow, ipcMain, screen, session } from 'electron'
 import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { examContext, liveExamSessionId, setExamSession, setStudentFromToken } from './context'
 import { captureEvidenceForEvent } from './capturas'
+import { hayActualizacion, PAGINA_DESCARGAS } from './actualizaciones'
 import { buildExtraDisplayEvent, buildFocusLostEvent } from './events'
 import { applyPermissionPolicy } from './permisos'
 import { applyWindowProtection } from './protection'
@@ -243,6 +244,8 @@ if (!hasSingleInstanceLock) {
     mainWindow = createWindow(protocolSessionId ?? undefined)
     processMonitor = startProcessMonitor(recordEvent)
 
+    void avisarSiHayVersionNueva()
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow()
     })
@@ -253,4 +256,36 @@ if (!hasSingleInstanceLock) {
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
   })
+}
+
+/**
+ * Avisa una sola vez, al abrir, de que hay una version mas nueva publicada.
+ *
+ * Solo en la aplicacion empaquetada: en desarrollo la version del `package.json`
+ * no dice nada util y el aviso seria ruido en cada arranque.
+ *
+ * No instala nada. Ofrece abrir la pagina de descargas y seguir, porque un
+ * instalador sin firmar no se puede reemplazar solo de forma fiable, y porque
+ * en una aplicacion de supervision conviene que el estudiante vea lo que
+ * instala. Y nunca interrumpe un examen: esto corre al arrancar y nada mas.
+ */
+async function avisarSiHayVersionNueva(): Promise<void> {
+  if (!app.isPackaged) return
+
+  const nueva = await hayActualizacion(app.getVersion())
+  if (!nueva) return
+
+  const { response } = await dialog.showMessageBox({
+    type: 'info',
+    title: 'Hay una version nueva',
+    message: `Proctoring ${nueva.version} ya esta disponible.`,
+    detail:
+      `Tienes la ${app.getVersion()}. Puedes seguir usando esta, pero conviene ` +
+      'actualizar antes de rendir un examen.',
+    buttons: ['Ver la descarga', 'Mas tarde'],
+    defaultId: 0,
+    cancelId: 1
+  })
+
+  if (response === 0) void shell.openExternal(nueva.url || PAGINA_DESCARGAS)
 }

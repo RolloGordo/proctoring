@@ -156,6 +156,7 @@ class TestNumeros:
 def test_los_tipos_coinciden_con_el_enum_de_postgresql() -> None:
     assert {t.value for t in QuestionType} == {
         "multiple_choice",
+        "multiple_select",
         "true_false",
         "numeric",
         "fill_blank",

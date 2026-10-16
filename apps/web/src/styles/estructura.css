@@ -16,7 +16,9 @@
    Botones nuevos
    =========================================================================== */
 .boton-compacto {
-  padding: var(--e2) var(--e4);
+  /* Holgado a proposito: en la cabecera la pildora queda sobre fondo oscuro y
+   * con el padding minimo el texto se lee apretado contra el borde. */
+  padding: var(--e3) var(--e5);
 }
 
 .boton-grande {
@@ -25,15 +27,17 @@
 }
 
 /* Para fondos oscuros: borde claro y sin relleno. */
-/* La accion principal sobre fondo oscuro se invierte: papel con tinta.
+/* La accion principal sobre fondo oscuro va en amarillo.
  *
- * Desde que el boton principal es tinta en vez de amarillo, en la cabecera y en
- * las secciones oscuras de la portada quedaba tinta sobre tinta y no se leia
- * nada. Un boton negro sobre negro es invisible, no discreto. */
+ * Dentro de la aplicacion el boton principal es tinta, porque ahi el amarillo
+ * compite con los estados y el foco. Pero sobre los fondos oscuros —cabecera y
+ * portada— tinta sobre tinta no se lee, y el blanco que se puso para arreglarlo
+ * dejaba la marca sin ninguna personalidad. El amarillo resuelve las dos cosas:
+ * contrasta con el fondo oscuro y es el color de la marca. */
 .cabecera .boton:not(.boton-claro):not(.boton-texto),
 .portada-inicio .boton:not(.boton-claro):not(.boton-texto),
 .portada-oscura .boton:not(.boton-claro):not(.boton-texto) {
-  background: var(--papel);
+  background: var(--amarillo);
   color: var(--tinta);
   border-color: transparent;
 }
@@ -41,7 +45,7 @@
 .cabecera .boton:not(.boton-claro):not(.boton-texto):hover:not(:disabled),
 .portada-inicio .boton:not(.boton-claro):not(.boton-texto):hover:not(:disabled),
 .portada-oscura .boton:not(.boton-claro):not(.boton-texto):hover:not(:disabled) {
-  background: var(--papel-gris);
+  background: var(--amarillo-oscuro);
 }
 
 .boton-claro {
@@ -55,11 +59,16 @@
 }
 
 /* El enlace de la navegación pinta todo `a` de gris claro; un botón dentro
-   tiene que conservar su propio color. */
+   tiene que conservar su propio color.
+   
+   Y su propio relleno: `.navegacion a` fija `padding: var(--e2) 0`, que gana
+   por especificidad a `.boton-compacto` y dejaba el texto pegado a los bordes
+   de la pildora. */
 .navegacion a.boton,
 .navegacion a.boton:hover {
   color: var(--tinta);
   border-bottom-color: transparent;
+  padding: var(--e3) var(--e5);
 }
 
 .oculta-movil {
@@ -592,9 +601,79 @@
    Portada
    =========================================================================== */
 .portada-inicio {
+  position: relative;
+  overflow: hidden;
   padding: 7rem 0 8rem;
   background: var(--tinta);
   color: var(--papel);
+}
+
+/* El panel de escenas: ilustraciones propias que se van relevando.
+ *
+ * Van a la derecha y por debajo del texto, nunca detras del titular, y con una
+ * mascara que las apaga hacia la izquierda: una portada donde el lema compite
+ * con un dibujo se lee peor, por bonito que sea el dibujo.
+ *
+ * Son SVG del repositorio, no fotos de banco ni nada de un CDN: el proyecto no
+ * carga recursos de fuera, y menos durante un examen. */
+.portada-escenas {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(48%, 34rem);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 38%);
+  mask-image: linear-gradient(to right, transparent, #000 38%);
+}
+
+.portada-escenas img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  animation: portada-releva 27s infinite;
+}
+
+.portada-escenas img:nth-child(2) {
+  animation-delay: 9s;
+}
+
+.portada-escenas img:nth-child(3) {
+  animation-delay: 18s;
+}
+
+/* Tres escenas, 27 s de vuelta: cada una entra, se queda y se va.
+   El desvanecido es largo a proposito; un cambio brusco al lado de un titular
+   distrae en vez de acompanar. */
+@keyframes portada-releva {
+  0% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+
+  7%,
+  26% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  33%,
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+/* Quien pidio menos movimiento ve una sola escena, quieta. */
+@media (prefers-reduced-motion: reduce) {
+  .portada-escenas img {
+    animation: none;
+  }
+
+  .portada-escenas img:first-child {
+    opacity: 1;
+  }
 }
 
 .portada-lema {
@@ -647,6 +726,17 @@
   margin: var(--e2) 0 var(--e8);
   text-align: center;
   font-size: 1.125rem;
+}
+
+/* La accion de una seccion de portada, centrada bajo su titulo.
+   Sin esto el boton se quedaba pegado a la izquierda debajo de un titular
+   centrado, que es justo lo que se nota como descuidado. */
+.portada-accion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e3);
+  text-align: center;
 }
 
 .rejilla-capacidades {
@@ -819,6 +909,11 @@
 
   .portada-inicio {
     padding: 4rem 0 5rem;
+  }
+
+  /* En movil el texto ocupa el ancho entero: la escena detras lo haria ilegible. */
+  .portada-escenas {
+    display: none;
   }
 
   .portada-seccion {

@@ -24,9 +24,40 @@ export const DURACION_AVISO_MS = 6_000
 export const VENTANA_SIMULTANEIDAD_MS = 2_500
 
 export interface AvisoSupervision {
-  tipo: EventType
+  /** Los problemas de cámara no son un `EventType`: no se registran como
+   *  señal del estudiante, solo se le avisan a él. */
+  tipo: EventType | ProblemaCamara
   titulo: string
   detalle: string
+}
+
+/** Un fallo técnico de la cámara, que no es una señal de supervisión. */
+export type ProblemaCamara = 'camera_interrupted' | 'camera_no_image'
+
+/** Cómo lo nombra el monitor de cámara y el canal en vivo, sin el prefijo. */
+export type EstadoCamaraFallida = 'interrupted' | 'no_image'
+
+/**
+ * Qué se le dice al estudiante cuando su cámara falla.
+ *
+ * Un problema técnico **no es una acusación y no termina el examen**. El texto
+ * lo dice con todas las letras, igual que el de hablar en voz alta: quien se
+ * queda sin cámara por un cable suelto no debe leer que ha infringido nada.
+ */
+export function avisoCamara(estado: EstadoCamaraFallida): AvisoSupervision {
+  return estado === 'interrupted'
+    ? {
+        tipo: 'camera_interrupted',
+        titulo: 'Se perdió la conexión con la cámara',
+        detalle:
+          'Comprueba el permiso o la conexión de tu cámara y vuelve a intentarlo. El examen continúa; el docente podrá revisar esta interrupción.'
+      }
+    : {
+        tipo: 'camera_no_image',
+        titulo: 'No llega una imagen útil de la cámara',
+        detalle:
+          'Puede haber poca luz, una lente tapada o una imagen congelada. Ajusta la cámara y vuelve a intentarlo. No implica una infracción.'
+      }
 }
 
 export function avisoParaEvento(evento: EventType): AvisoSupervision | null {
@@ -70,7 +101,7 @@ export interface AvisoVisible {
   titulo: string
   detalle: string
   /** Las señales que lo componen. La primera es la que lo abrió. */
-  eventos: EventType[]
+  eventos: Array<EventType | ProblemaCamara>
 }
 
 type Oyente = (aviso: AvisoVisible | null) => void
@@ -88,7 +119,7 @@ type Oyente = (aviso: AvisoVisible | null) => void
  *    para seguir respondiendo.
  */
 export class GestorDeAvisos {
-  private ultimaVezPorTipo = new Map<EventType, number>()
+  private ultimaVezPorTipo = new Map<EventType | ProblemaCamara, number>()
   private visible: AvisoVisible | null = null
   private oyentes = new Set<Oyente>()
   private temporizador?: ReturnType<typeof setTimeout>
@@ -107,10 +138,16 @@ export class GestorDeAvisos {
     }
   }
 
-  /** Devuelve `true` si la señal llegó a mostrarse. */
-  registrar(evento: EventType, ahoraMs: number = Date.now()): boolean {
-    const aviso = avisoParaEvento(evento)
+  /** Devuelve `true` si la señal llegó a mostrarse.
+   *
+   *  Admite un `EventType` —y resuelve su texto— o un aviso ya construido.
+   *  Lo segundo hace falta para los problemas de cámara: no son señales de
+   *  supervisión, no tienen `EventType`, y pasarlos como tal los dejaba caer
+   *  en silencio aquí mismo, sin que nada fallara. */
+  registrar(entrada: EventType | AvisoSupervision, ahoraMs: number = Date.now()): boolean {
+    const aviso = typeof entrada === 'string' ? avisoParaEvento(entrada) : entrada
     if (!aviso) return false
+    const evento = aviso.tipo
 
     const ultima = this.ultimaVezPorTipo.get(evento)
     if (ultima !== undefined && ahoraMs - ultima < this.silencioMs) return false
@@ -122,16 +159,17 @@ export class GestorDeAvisos {
       ahoraMs - this.abiertoEn <= this.ventanaMs
 
     if (junto && this.visible) {
-      const eventos = [...this.visible.eventos, evento]
+      // Se encadenan los títulos ya resueltos en vez de volver a buscarlos por
+      // su tipo: los problemas de cámara no tienen `EventType`, así que
+      // re-resolverlos los perdía justo al combinarse con otra señal.
+      const anteriores =
+        this.visible.eventos.length > 1 ? this.visible.detalle : this.visible.titulo
       this.mostrar(
         {
           id: `${this.visible.id}+${evento}`,
           titulo: 'Se detectaron varias señales',
-          detalle: eventos
-            .map((e) => avisoParaEvento(e)?.titulo)
-            .filter((t): t is string => Boolean(t))
-            .join(' · '),
-          eventos
+          detalle: `${anteriores} · ${aviso.titulo}`,
+          eventos: [...this.visible.eventos, evento]
         },
         this.abiertoEn ?? ahoraMs
       )

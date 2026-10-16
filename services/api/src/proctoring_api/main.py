@@ -130,11 +130,13 @@ from proctoring_api.application.use_cases.manage_enrollment import (
 from proctoring_api.application.use_cases.manage_questions import (
     AddQuestions,
     GetExamQuestions,
+    GetSubmittedExamQuestions,
     ListSessionQuestions,
 )
 from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
 from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.application.use_cases.review_case import (
+    GetMyDecision,
     ListSessionDecisions,
     RecordDecision,
     ReviewStudentCase,
@@ -374,7 +376,7 @@ def _build_job_queue(settings: Settings) -> JobQueue:
     if settings.job_queue == "redis":
         from proctoring_api.adapters.outbound.redis_queue.job_queue import RedisJobQueue
 
-        return RedisJobQueue(settings.redis_url)
+        return RedisJobQueue(settings.redis_url, settings.ai_service_url)
 
     # En memoria por defecto: la API levanta sin Redis y las pruebas corren sin
     # servicios externos.
@@ -570,6 +572,9 @@ def create_app(
         settings.dev_teacher_id,
     )
     app.state.list_decisions = ListSessionDecisions(decision_repository, session_repository)
+    app.state.get_my_decision = GetMyDecision(
+        decision_repository, participant_repository, settings.dev_student_id
+    )
     app.state.create_course = CreateCourse(course_repository, clock, settings.dev_teacher_id)
     app.state.list_teacher_courses = ListTeacherCourses(course_repository, settings.dev_teacher_id)
     app.state.get_course = GetCourse(course_repository)
@@ -589,6 +594,13 @@ def create_app(
         question_repository,
         session_repository,
         clock,
+        participant_repository,
+        settings.dev_student_id,
+        bank_repository,
+    )
+    app.state.get_submitted_exam_questions = GetSubmittedExamQuestions(
+        question_repository,
+        session_repository,
         participant_repository,
         settings.dev_student_id,
         bank_repository,

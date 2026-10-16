@@ -7,6 +7,7 @@ import { recordarExamen, recuperarExamen } from '../lib/examen-guardado'
 import { cuandoEmpieza, fechaLarga } from '../lib/formato'
 import { VerificacionFacialEspera } from './VerificacionFacialEspera'
 import { PruebaMicrofono } from '../supervision/PruebaMicrofono'
+import { CalibracionMirada } from '../components/CalibracionMirada'
 
 /** Nombre legible de cada módulo de supervisión, para que el estudiante sepa
  *  qué se va a observar. Decírselo no es un trámite: es la base del
@@ -265,6 +266,17 @@ export function SalaDeEspera() {
         )}
 
       {error && <p className="aviso">{error}</p>}
+
+      {/* Calibrar antes de entrar: sin esto el umbral de «mirada fuera de
+          pantalla» es el mismo para un portátil de 13 pulgadas que para dos
+          monitores, que es de donde salen los falsos positivos. */}
+      {matricula?.can_take_exam && !yaEntrego && 'gaze' in examen.modules && (
+        <CalibracionMirada
+          sessionId={id}
+          studentId={matricula.student_id}
+          defaultDeg={Number(examen.modules.gaze?.yaw_degrees) || 25}
+        />
+      )}
 
       {yaConsintio && !yaEntrego && requiereMicrofono && <PruebaMicrofono />}
 

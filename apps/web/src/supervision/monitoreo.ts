@@ -34,6 +34,8 @@ export const PREFIJO_CANAL = 'monitoreo'
 
 /** El evento de broadcast que lleva el fotograma. */
 export const EVENTO_FOTOGRAMA = 'fotograma'
+export const EVENTO_ESTADO_CAMARA = 'estado_camara'
+export type EstadoCamara = 'active' | 'interrupted' | 'no_image'
 
 /** `monitoreo:<session_id>:<student_id>` */
 export function nombreCanal(sessionId: string, studentId: string): string {
@@ -96,6 +98,7 @@ function hayOtros(canal: RealtimeChannel, propia: string): boolean {
 }
 
 export interface Publicacion {
+  reportarCamara?: (estado: EstadoCamara) => void
   detener: () => Promise<void>
 }
 
@@ -135,6 +138,8 @@ export function publicarFotogramas({
   const calidad = ajustes.quality ?? AJUSTES_POR_DEFECTO.quality
 
   let observado = false
+  let estadoCamara: EstadoCamara = 'active'
+  let suscrito = false
   let temporizador: ReturnType<typeof setInterval> | undefined
 
   function revisarPresencia(): void {
@@ -160,6 +165,15 @@ export function publicarFotogramas({
     })
   }
 
+  function reportarCamara(estado: EstadoCamara): void {
+    if (estado === estadoCamara && suscrito) return
+    estadoCamara = estado
+    if (!suscrito) return
+    // Presence lets a teacher joining later see an already-interrupted camera.
+    void canal.track({ rol: 'estudiante' satisfies Rol, camera_status: estado })
+    void canal.send({ type: 'broadcast', event: EVENTO_ESTADO_CAMARA, payload: { status: estado, at: Date.now() } })
+  }
+
   canal
     .on('presence', { event: 'sync' }, revisarPresencia)
     .on('presence', { event: 'join' }, revisarPresencia)
@@ -168,13 +182,16 @@ export function publicarFotogramas({
       if (estado !== 'SUBSCRIBED') return
       // Anunciarse es lo que le permite al docente distinguir «no está
       // conectado» de «está conectado pero la cámara falló».
-      void canal.track({ rol: 'estudiante' satisfies Rol })
+      suscrito = true
+      void canal.track({ rol: 'estudiante' satisfies Rol, camera_status: estadoCamara })
       revisarPresencia()
       temporizador ??= setInterval(enviar, periodoMs(ajustes.fps))
     })
 
   return {
+    reportarCamara,
     detener: async () => {
+      suscrito = false
       clearInterval(temporizador)
       temporizador = undefined
       await cliente.removeChannel(canal)
@@ -193,6 +210,7 @@ export interface OpcionesVer {
   onFotograma: (fotograma: Fotograma) => void
   /** Si el estudiante está en el canal. Distinto de que llegue imagen. */
   onConectado?: (conectado: boolean) => void
+  onCamaraEstado?: (estado: EstadoCamara) => void
   onEstado?: (estado: EstadoVista) => void
 }
 
@@ -210,6 +228,7 @@ export function verFotogramas({
   teacherId,
   onFotograma,
   onConectado,
+  onCamaraEstado,
   onEstado
 }: OpcionesVer): Publicacion {
   const canal = canalPrivado(cliente, sessionId, studentId, teacherId)
@@ -220,11 +239,20 @@ export function verFotogramas({
     if (ahora === conectado) return
     conectado = ahora
     onConectado?.(ahora)
+    if (!ahora) return
+    // For a late joining teacher, read the latest authenticated presence state.
+    const student = canal.presenceState()[studentId] as Array<{ camera_status?: EstadoCamara }> | undefined
+    const camera = student?.[0]?.camera_status
+    if (camera === 'active' || camera === 'interrupted' || camera === 'no_image') onCamaraEstado?.(camera)
   }
 
   onEstado?.('conectando')
 
   canal
+    .on('broadcast', { event: EVENTO_ESTADO_CAMARA }, (message) => {
+      const data = message.payload as { status?: EstadoCamara } | undefined
+      if (data?.status === 'active' || data?.status === 'interrupted' || data?.status === 'no_image') onCamaraEstado?.(data.status)
+    })
     .on('broadcast', { event: EVENTO_FOTOGRAMA }, (mensaje) => {
       const datos = mensaje.payload as Partial<Fotograma> | undefined
       // Llega de otro cliente: se comprueba antes de ponerlo en un `src`.
