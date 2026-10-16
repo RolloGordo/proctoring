@@ -102,3 +102,65 @@ describe('bancos de preguntas', () => {
     )
   })
 })
+
+describe('cuando la API está despertando', () => {
+  // El plan gratuito la apaga sin uso y tarda cerca de un minuto en volver, así
+  // que la primera pantalla que se abra tras un rato se come un fallo de
+  // conexión. Reintentar una vez convierte un error alarmante en una carga
+  // lenta; reintentar un envío, en cambio, podría guardarlo dos veces.
+
+  it('reintenta una lectura que no conectó, y la segunda vez funciona', async () => {
+    const llamadas = vi.fn()
+    let intento = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        llamadas()
+        intento += 1
+        if (intento === 1) throw new TypeError('Failed to fetch')
+        return new Response(JSON.stringify([{ id: 'c1' }]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      })
+    )
+
+    const cursos = await api.listCourses('token')
+
+    expect(llamadas).toHaveBeenCalledTimes(2)
+    expect(cursos).toEqual([{ id: 'c1' }])
+  })
+
+  it('la ayuda del mensaje depende de donde esté la API', async () => {
+    // En las pruebas `BASE` es localhost, así que aquí lo correcto es la ayuda
+    // local. En la web desplegada la condición cambia y se habla de que la API
+    // puede estar despertando, porque a un estudiante "docker compose up" le
+    // dice algo que no puede hacer.
+    const llamadas = vi.fn()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        llamadas()
+        throw new TypeError('Failed to fetch')
+      })
+    )
+
+    await expect(api.listCourses('token')).rejects.toThrow(/docker compose/)
+    expect(llamadas).toHaveBeenCalledTimes(2)
+  })
+
+  it('un envío no se reintenta', async () => {
+    // Crear un examen dos veces por un reintento sería peor que el error.
+    const llamadas = vi.fn()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        llamadas()
+        throw new TypeError('Failed to fetch')
+      })
+    )
+
+    await expect(api.createCourse('Taller', null, 'token')).rejects.toThrow()
+    expect(llamadas).toHaveBeenCalledTimes(1)
+  })
+})

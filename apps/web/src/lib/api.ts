@@ -442,6 +442,18 @@ export class ApiError extends Error {
   }
 }
 
+/** Lo que se espera antes de reintentar una lectura que no conectó. */
+const ESPERA_REINTENTO_MS = 2_000
+
+/** El aviso de que no se pudo conectar, con la ayuda que corresponda al sitio. */
+function mensajeSinConexion(): string {
+  const enLocal = /^https?:\/\/(localhost|127\.0\.0\.1)/.test(BASE)
+  return enLocal
+    ? `No se pudo conectar con la API en ${BASE}. Iníciala con "docker compose up -d api".`
+    : `No se pudo conectar con la API en ${BASE}. Puede estar despertando: espera unos ` +
+        'segundos y vuelve a intentarlo. Si sigue igual, avisa a quien la administra.'
+}
+
 async function request<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
   const headers = new Headers(init?.headers)
   // JSON salvo que quien llama diga otra cosa: la importación QTI manda el
@@ -455,13 +467,28 @@ async function request<T>(path: string, init?: RequestInit, token?: string): Pro
   try {
     response = await fetch(`${BASE}${path}`, { ...init, headers })
   } catch (fallo) {
-    if (fallo instanceof TypeError) {
-      throw new Error(
-        `No se pudo conectar con la API en ${BASE}. Comprueba que esté activa y accesible. ` +
-          'En local, puedes iniciarla con "docker compose up -d api". Si ya está activa, revisa CORS.'
-      )
+    if (!(fallo instanceof TypeError)) throw fallo
+
+    // Un `TypeError` aquí es un fallo de conexión, no una respuesta de error.
+    //
+    // En producción la causa habitual es que la API estaba dormida: el plan
+    // gratuito la apaga sin uso y tarda cerca de un minuto en volver. La
+    // primera pantalla que se abra tras un rato se come ese fallo. Reintentar
+    // una vez convierte un error alarmante en una carga lenta.
+    //
+    // Solo las lecturas. Reintentar un envío puede guardarlo dos veces, y
+    // aquí se crean exámenes y se entregan respuestas.
+    const esLectura = !init?.method || init.method.toUpperCase() === 'GET'
+    if (esLectura) {
+      await new Promise((seguir) => setTimeout(seguir, ESPERA_REINTENTO_MS))
+      try {
+        response = await fetch(`${BASE}${path}`, { ...init, headers })
+      } catch {
+        throw new Error(mensajeSinConexion())
+      }
+    } else {
+      throw new Error(mensajeSinConexion())
     }
-    throw fallo
   }
 
   if (!response.ok) {
