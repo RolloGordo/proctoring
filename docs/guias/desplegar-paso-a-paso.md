@@ -21,13 +21,31 @@ abre toda la base: no la pegues en ningún chat ni en ningún archivo del repo.
 ## 0. Un secreto que vas a necesitar
 
 La API y el worker se hablan con un secreto compartido. Invéntalo ahora, una
-sola vez, y úsalo igual en los dos sitios:
+sola vez, y úsalo igual en los dos sitios.
+
+**Hazlo en PowerShell, no en `cmd`.** En la ventana negra de `cmd` el PATH es
+distinto y `python` no se reconoce. Abre PowerShell (botón de inicio, escribe
+«PowerShell») y pega:
 
 ```bash
-python -c "import secrets; print(secrets.token_urlsafe(32))"
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
 
-Guárdalo. Lo llamaremos **INTERNAL_API_TOKEN**.
+Si prefieres no depender de nada instalado, esto usa solo Windows:
+
+```bash
+$b=[byte[]]::new(32); $r=[System.Security.Cryptography.RNGCryptoServiceProvider]::new(); $r.GetBytes($b); $r.Dispose(); [Convert]::ToBase64String($b).TrimEnd('=').Replace('+','-').Replace('/','_')
+```
+
+Cualquiera de las dos da 43 caracteres sin símbolos raros, que es lo que hace
+falta para que viaje bien en una variable de entorno.
+
+> No copies un ejemplo de internet ni uses algo como `secreto123`. Ese token es
+> lo único que impide que alguien de fuera escriba análisis y alertas en la API.
+
+Guárdalo donde guardes tus contraseñas. Lo llamaremos **INTERNAL_API_TOKEN**, y
+va igual en Render (paso 2) y en el Space (paso 3): si no coinciden, el worker
+no puede entregar lo que mide y los trabajos fallan en silencio.
 
 ---
 
