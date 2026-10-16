@@ -237,7 +237,9 @@ function TarjetaClase({ clase, ahora }: { clase: MyCourse; ahora: number }) {
 
   return (
     <div className="tarjeta tarjeta-clase">
-      <h3>{clase.name}</h3>
+      <h3>
+        <Link to={`/estudiante/cursos/${clase.id}`}>{clase.name}</Link>
+      </h3>
       {clase.section && <p className="subtitulo">Sección {clase.section}</p>}
       {proximos.length === 0 ? (
         <p className="ayuda">No hay exámenes próximos.</p>
@@ -251,6 +253,11 @@ function TarjetaClase({ clase, ahora }: { clase: MyCourse; ahora: number }) {
           ))}
         </ul>
       )}
+      {/* Las tarjetas solo muestran lo que viene; el curso entero, con lo ya
+          rendido y su nota, esta detras de este enlace. */}
+      <Link to={`/estudiante/cursos/${clase.id}`} className="boton boton-texto">
+        Ver el curso
+      </Link>
     </div>
   )
 }

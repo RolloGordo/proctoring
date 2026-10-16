@@ -48,6 +48,7 @@ def metrics(counts):
         'confusion_matrix': counts,
         'accuracy': (tp + tn) / n if n else None,
         'fpr': fp / (fp + tn) if fp + tn else None,
+        'fnr': fn / (fn + tp) if fn + tp else None,
         'samples': n,
         'target_accuracy_at_least_0_8': (tp + tn) / n >= .8 if n else None,
         'target_fpr_less_than_0_2': fp / (fp + tn) < .2 if fp + tn else None,

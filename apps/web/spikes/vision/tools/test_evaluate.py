@@ -24,6 +24,13 @@ class MetricsTest(unittest.TestCase):
         rows = [{'time_ms': str(t), 'extra_person': '1'} for t in range(0, 1000, 100)]
         self.assertFalse(episodes(rows, 'extra_person', 2000))
 
+    def test_fnr_from_false_negatives(self):
+        result = metrics({'tp': 8, 'tn': 9, 'fp': 1, 'fn': 2})
+        self.assertAlmostEqual(result['fnr'], .2)
+        self.assertAlmostEqual(result['accuracy'], .85)
+        result_without_positives = metrics({'tp': 0, 'tn': 4, 'fp': 0, 'fn': 0})
+        self.assertIsNone(result_without_positives['fnr'])
+
 
 if __name__ == '__main__':
     unittest.main()

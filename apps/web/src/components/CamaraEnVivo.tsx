@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { verFotogramas, type EstadoVista, type Fotograma } from '../supervision/monitoreo'
+import { verFotogramas, type EstadoCamara, type EstadoVista, type Fotograma } from '../supervision/monitoreo'
 
 /** Si no llega un fotograma en este tiempo, se dice «sin señal». */
 const SIN_SENAL_MS = 5000
@@ -33,6 +33,7 @@ export function CamaraEnVivo({
   const [conectado, setConectado] = useState(false)
   const [estado, setEstado] = useState<EstadoVista>('conectando')
   const [fresco, setFresco] = useState(false)
+  const [camaraEstado, setCamaraEstado] = useState<EstadoCamara | null>(null)
 
   useEffect(() => {
     if (!supabase || !sessionId || !studentId || !teacherId) return
@@ -50,7 +51,11 @@ export function CamaraEnVivo({
         setUltimo(fotograma)
         setFresco(true)
       },
-      onConectado: setConectado,
+      onConectado: (value) => {
+        setConectado(value)
+        if (!value) setCamaraEstado(null)
+      },
+      onCamaraEstado: setCamaraEstado,
       onEstado: setEstado
     })
 
@@ -83,7 +88,11 @@ export function CamaraEnVivo({
 
   const estadoSenal = !conectado
     ? 'Desconectado'
-    : fresco
+    : camaraEstado === 'interrupted'
+      ? 'Cámara desconectada'
+      : camaraEstado === 'no_image'
+        ? 'Imagen no disponible'
+        : fresco
       ? 'En vivo'
       : ultimo
         ? 'Sin señal'
@@ -96,7 +105,7 @@ export function CamaraEnVivo({
           <img
             src={`data:image/jpeg;base64,${ultimo.jpeg}`}
             alt={`Cámara de ${etiqueta}`}
-            className={fresco ? undefined : 'camara-vivo-congelada'}
+            className={fresco && (camaraEstado === null || camaraEstado === 'active') ? undefined : 'camara-vivo-congelada'}
           />
         ) : (
           <div className="camara-vivo-vacia">
@@ -113,7 +122,7 @@ export function CamaraEnVivo({
 
       <figcaption className="camara-vivo-pie">
         <span>{etiqueta}</span>
-        <span className="en-vivo">
+        <span className="en-vivo" role="status" aria-live="polite">
           <span className={estadoSenal === 'En vivo' ? 'punto punto-activo' : 'punto'} />
           {estadoSenal}
         </span>
