@@ -165,8 +165,26 @@ no puede entregar lo que mide y los trabajos fallan en silencio.
    | `VITE_SUPABASE_URL` | la Project URL de Supabase |
    | `VITE_SUPABASE_PUBLISHABLE_KEY` | la clave **publicable** (la `anon`), nunca la de servicio |
 
-5. **Deploy**. Al terminar te da la dirección: `https://proctoring-xxx.vercel.app`.
-   **Apúntala**: es tu **URL de la web**.
+5. **Deploy**. Al terminar te da varias direcciones, y **elegir mal cuesta una
+   tarde**. Ve a **Overview** y mira el apartado **Domains**: la que lleva el
+   icono de mundo es la de produccion, con un nombre tipo
+   `https://proctoring-brown.vercel.app`. **Esa es tu URL de la web.**
+
+   Las otras no sirven para esto:
+
+   - `...-git-develop-....vercel.app` es la de la rama.
+   - `...-<hash>-....vercel.app` es la de ese despliegue concreto.
+
+   Y lo importante: **las que no son la de produccion suelen estar protegidas**.
+   A ti te funcionan porque tienes sesion en Vercel, pero a cualquier otra
+   persona —un estudiante, el profesor— le sale la pantalla de Vercel en vez de
+   tu web.
+
+   > Para comprobar cual es publica de verdad, abrela en una **ventana de
+   > incognito**. Si te pide iniciar sesion en Vercel, esa no es.
+
+6. **Usa esa misma direccion en todas partes**: en `CORS_ORIGINS` de la API y en
+   Supabase. Mezclar dominios da errores que parecen de codigo y no lo son.
 
 > Estas tres se **hornean al construir**. Si las cambias después, hay que
 > **volver a desplegar** (Deployments → ⋯ → Redeploy); reiniciar no basta.
@@ -268,6 +286,8 @@ comprometerte con ningún instalador.
 | La API tarda 50 s la primera vez | Normal: el plan gratuito duerme |
 | Render dice «no Dockerfile found» | El **Root Directory** no es `services/api` |
 | Vercel compila pero sale en blanco | El **Root Directory** no es `apps/web` |
+| El login falla con un error raro de Supabase | Estás en un dominio que no es el de producción. Compruébalo en incógnito |
+| A tus compañeros les sale una pantalla de Vercel | Les pasaste un dominio protegido, no el de producción |
 | Recargar una página da 404 | Falta el `vercel.json`; ya está en el repositorio, comprueba que desplegaste después de que entrara |
 | El worker no coge trabajos | `REDIS_URL` distinta en la API y en el worker, o falta `AI_SERVICE_URL` en la API |
 | `{"detail":"Not Found"}` al abrir la API | Normal: no hay nada en la raíz. Usa `/health` |
