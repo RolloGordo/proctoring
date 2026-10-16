@@ -8,11 +8,15 @@ tocar una linea de logica.
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 RepositoryBackend = Literal["memory", "supabase"]
 JobQueueBackend = Literal["memory", "redis"]
@@ -90,6 +94,10 @@ class Settings(BaseSettings):
     evidence_storage: EvidenceStorageBackend = "memory"
 
     # --- Supabase ---
+    #: La direccion del proyecto, **solo el origen**: `https://xxxx.supabase.co`.
+    #:
+    #: De aqui cuelgan el JWKS que verifica los tokens, Storage y PostgREST, y
+    #: cada uno anade su propia ruta. Ver el validador de abajo.
     supabase_url: str = ""
     supabase_publishable_key: str = ""
     #: Omite RLS. Solo en el servidor, nunca en el cliente ni en el repositorio.
@@ -111,6 +119,35 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["http://localhost:5173"]
     )
+
+    @field_validator("supabase_url", mode="after")
+    @classmethod
+    def _solo_el_origen(cls, valor: str) -> str:
+        """Se queda con el origen aunque la variable traiga una ruta.
+
+        El panel de Supabase ensena la direccion con `/rest/v1` en los ejemplos
+        de la API, y es facil copiar esa. Con la ruta puesta, el JWKS que
+        verifica los tokens se pide a `/rest/v1/auth/v1/.well-known/jwks.json`,
+        que responde 401, y **todo el que inicie sesion** recibe "No se pudo
+        verificar el token en este momento". El emisor tampoco cuadraria.
+
+        Se corrige en vez de fallar al arrancar: una API que no levanta deja a
+        todo el mundo fuera, y aqui el valor correcto se deduce sin ambiguedad.
+        El aviso queda en el registro, que es donde mira quien despliega.
+        """
+        if not valor.strip():
+            return ""
+        partes = urlsplit(valor.strip())
+        if not partes.scheme or not partes.netloc:
+            return valor.strip()
+        origen = f"{partes.scheme}://{partes.netloc}"
+        if partes.path.strip("/"):
+            logger.warning(
+                "SUPABASE_URL lleva una ruta (%s) y no deberia; se usara %s",
+                partes.path,
+                origen,
+            )
+        return origen
 
     @field_validator("cors_origins", mode="before")
     @classmethod

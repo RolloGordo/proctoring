@@ -83,7 +83,7 @@ no puede entregar lo que mide y los trabajos fallan en silencio.
    | `EVIDENCE_STORAGE` | `supabase` |
    | `JOB_QUEUE` | `redis` |
    | `REDIS_URL` | la del paso 1 |
-   | `SUPABASE_URL` | la Project URL de Supabase |
+   | `SUPABASE_URL` | **solo el dominio**: `https://xxxx.supabase.co`, sin `/rest/v1` |
    | `SUPABASE_SERVICE_ROLE_KEY` | la service_role key |
    | `CORS_ORIGINS` | `http://localhost:5173` *(lo corriges en el paso 5)* |
 
@@ -291,6 +291,8 @@ comprometerte con ningún instalador.
 |---|---|
 | La web carga pero nada responde | `CORS_ORIGINS` sin la URL de Vercel (paso 5a) |
 | El login da vueltas y vuelve al inicio | Redirect URLs de Supabase (paso 5b) |
+| «Invalid path specified in request URL» al entrar | `VITE_SUPABASE_URL` en Vercel lleva `/rest/v1`. Déjala en el dominio y **redespliega** |
+| «No se pudo verificar el token en este momento» | Lo mismo pero en `SUPABASE_URL` de Render. Con ruta, el JWKS responde 401 |
 | La API tarda 50 s la primera vez | Normal: el plan gratuito duerme |
 | Render dice «no Dockerfile found» | El **Root Directory** no es `services/api` |
 | Vercel compila pero sale en blanco | El **Root Directory** no es `apps/web` |
