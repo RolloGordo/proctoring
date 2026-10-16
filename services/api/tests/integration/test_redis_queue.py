@@ -7,8 +7,12 @@ Redis esta y la prueba corre.
 
 from __future__ import annotations
 
+import threading
+import time
+from typing import Any
 from uuid import uuid4
 
+import httpx
 import pytest
 from redis import Redis
 from rq import Queue
@@ -92,19 +96,23 @@ class TestDespertarAlWorker:
 
     def espera_al_hilo(self) -> None:
         """Da su turno al hilo que toca al worker, que es `daemon`."""
-        import threading
-        import time
-
         for _ in range(100):
             if not any(h.name == "despertar-worker" for h in threading.enumerate()):
                 return
             time.sleep(0.02)
 
-    def test_toca_el_worker_al_encolar_audio(self, monkeypatch) -> None:
+    def anota_tocados(self, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+        """Sustituye `httpx.get` y devuelve la lista de lo que se toco."""
         tocados: list[str] = []
-        import proctoring_api.adapters.outbound.redis_queue.job_queue as modulo
 
-        monkeypatch.setattr(modulo.httpx, "get", lambda url, **_: tocados.append(url))
+        def falso_get(url: str, **_kwargs: Any) -> None:
+            tocados.append(url)
+
+        monkeypatch.setattr(httpx, "get", falso_get)
+        return tocados
+
+    def test_toca_el_worker_al_encolar_audio(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        tocados = self.anota_tocados(monkeypatch)
         cola = RedisJobQueue(REDIS_URL, "https://worker.onrender.com")
 
         cola.enqueue_audio_analysis(uuid4())
@@ -112,13 +120,10 @@ class TestDespertarAlWorker:
 
         assert tocados == ["https://worker.onrender.com/health"]
 
-    def test_tambien_al_encolar_verificacion_facial(self, monkeypatch) -> None:
+    def test_tambien_al_encolar_verificacion_facial(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # La cola `high` tiene a alguien esperando en pantalla: si el worker
         # duerme, esa espera no termina nunca.
-        tocados: list[str] = []
-        import proctoring_api.adapters.outbound.redis_queue.job_queue as modulo
-
-        monkeypatch.setattr(modulo.httpx, "get", lambda url, **_: tocados.append(url))
+        tocados = self.anota_tocados(monkeypatch)
         cola = RedisJobQueue(REDIS_URL, "https://worker.onrender.com/")
 
         cola.enqueue_face_verification(uuid4(), "capturas/una.jpg")
@@ -127,29 +132,26 @@ class TestDespertarAlWorker:
         # La barra final no se duplica.
         assert tocados == ["https://worker.onrender.com/health"]
 
-    def test_si_el_worker_no_responde_el_trabajo_igual_se_encola(self, monkeypatch) -> None:
+    def test_si_el_worker_no_responde_el_trabajo_igual_se_encola(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # Lo decisivo: el trabajo ya esta en Redis y se procesara cuando el
         # worker despierte. Que el aviso falle no puede tumbar la peticion del
         # estudiante.
-        import proctoring_api.adapters.outbound.redis_queue.job_queue as modulo
-
-        def revienta(*_args, **_kwargs):
+        def revienta(url: str, **_kwargs: Any) -> None:
             raise OSError("sin red")
 
-        monkeypatch.setattr(modulo.httpx, "get", revienta)
+        monkeypatch.setattr(httpx, "get", revienta)
         cola = RedisJobQueue(REDIS_URL, "https://worker.onrender.com")
 
         cola.enqueue_audio_analysis(uuid4())
         self.espera_al_hilo()
 
-        assert cola._audio.count >= 1
+        assert audio_queue().count >= 1
 
-    def test_sin_url_configurada_no_toca_nada(self, monkeypatch) -> None:
+    def test_sin_url_configurada_no_toca_nada(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # En local el worker esta siempre despierto; tocarlo seria ruido.
-        tocados: list[str] = []
-        import proctoring_api.adapters.outbound.redis_queue.job_queue as modulo
-
-        monkeypatch.setattr(modulo.httpx, "get", lambda url, **_: tocados.append(url))
+        tocados = self.anota_tocados(monkeypatch)
         cola = RedisJobQueue(REDIS_URL, "")
 
         cola.enqueue_audio_analysis(uuid4())
