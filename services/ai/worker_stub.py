@@ -23,6 +23,8 @@ import sys
 from redis import Redis
 from rq import Queue, SimpleWorker, Worker
 
+from salud import servir_salud
+
 WorkerClass = SimpleWorker if sys.platform == "win32" else Worker
 
 #: Las mismas colas que usa la API (ver el adaptador `redis_queue/job_queue.py`).
@@ -50,12 +52,31 @@ def main() -> int:
     logger.info("Conectado a Redis. Escuchando las colas: %s", ", ".join(QUEUES))
     logger.info("Esperando trabajos. Manda un evento speech_detected a la API.")
 
+    # Prueba de vida para la plataforma. El worker no sirve peticiones, y tanto
+    # los Spaces de Hugging Face como los Web Services de Render dan por caido
+    # un contenedor sin puerto abierto y lo reinician en bucle.
+    servir_salud(lambda: _estado(connection))
+
     worker = WorkerClass(
         [Queue(name, connection=connection) for name in QUEUES],
         connection=connection,
     )
     worker.work(with_scheduler=False)
     return 0
+
+
+def _estado(connection: Redis) -> dict[str, object]:
+    """Lo que responde el endpoint de salud.
+
+    Pregunta por la cola de verdad en vez de contestar 200 a secas: un worker
+    que perdio Redis esta inservible aunque el proceso siga vivo, y eso tiene
+    que poder notarse desde fuera.
+    """
+    try:
+        viva = bool(connection.ping())
+    except Exception:  # noqa: BLE001 - cualquier fallo aqui significa lo mismo
+        viva = False
+    return {"queue": viva, "queues": QUEUES}
 
 
 if __name__ == "__main__":

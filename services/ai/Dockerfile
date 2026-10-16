@@ -56,6 +56,7 @@ COPY --from=builder --chown=proctoring:proctoring /app/.venv /app/.venv
 # experimentos, no codigo de produccion.
 #   tasks.py              los trabajos que consume la cola
 #   worker_stub.py        el proceso que escucha
+#   salud.py              prueba de vida HTTP, que la plataforma exige
 #   audio_runtime.py      descarga, decodifica y mide el audio
 #   deepgram_transcriber  el proveedor de transcripcion
 #   face_pipeline.py      verificacion facial
@@ -65,7 +66,7 @@ COPY --from=builder --chown=proctoring:proctoring /app/.venv /app/.venv
 #   spikes/synthetic_voice.py  de aqui sale `decode_audio`
 #   spikes/transcribe.py  save_json, y el ASR local si se pide
 COPY --chown=proctoring:proctoring \
-    tasks.py worker_stub.py audio_runtime.py deepgram_transcriber.py face_pipeline.py ./
+    tasks.py worker_stub.py salud.py audio_runtime.py deepgram_transcriber.py face_pipeline.py ./
 COPY --chown=proctoring:proctoring spikes/__init__.py spikes/metrics.py spikes/network.py \
     spikes/similarity.py spikes/synthetic_voice.py spikes/transcribe.py ./spikes/
 
@@ -73,6 +74,11 @@ USER proctoring
 
 # Comprueba que el proceso sigue vivo y que la cola responde. Un worker que
 # perdio Redis esta inservible aunque el contenedor siga en pie.
+# El worker no sirve peticiones, pero abre un puerto de salud: Hugging Face
+# Spaces y los Web Services de Render dan por caido un contenedor sin puerto
+# abierto, y el plan gratuito de Render no incluye Background Workers.
+EXPOSE 7860
+
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c "import os,redis,sys; sys.exit(0 if redis.Redis.from_url(os.environ.get('REDIS_URL','redis://localhost:6379/0')).ping() else 1)"
 
