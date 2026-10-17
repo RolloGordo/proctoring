@@ -264,12 +264,28 @@ aplicación.
 ## Mientras pruebas
 
 **No hace falta publicar el instalador para probar.** Deja la aplicación de
-escritorio en local y apúntala a donde quieras. En PowerShell, desde
-`apps/desktop`:
+escritorio en local y apúntala a donde quieras.
+
+Dos detalles de Windows que cuestan un rato si no se saben:
+
+- **Hay que estar en `apps/desktop`**, no en la raíz del repositorio. No hay
+  `package.json` en la raíz, así que `npm run dev` ahí no encuentra nada.
+- **Windows bloquea `npm` en PowerShell** con «la ejecución de scripts está
+  deshabilitada en este sistema». Es la política por defecto y afecta al
+  envoltorio `npm.ps1`. La salida limpia es llamar a `npm.cmd`, que no pasa
+  por esa política y **no obliga a bajar ninguna protección del equipo**.
 
 ```bash
-$env:PROCTORING_WEB_URL="https://proctoring-xxx.vercel.app"; npm run dev
+cd C:\Users\Usuario\Desktop\proctoring\apps\desktop
 ```
+
+```bash
+$env:PROCTORING_WEB_URL="https://proctoring-xxx.vercel.app"; & "C:\Program Files\nodejs\npm.cmd" run dev
+```
+
+> Si prefieres escribir `npm` a secas de aquí en adelante, se puede permitir
+> con `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, que solo afecta
+> a tu usuario. Pero no hace falta para esto.
 
 Así pruebas la web desplegada con la app de escritorio de tu máquina, sin
 comprometerte con ningún instalador.
