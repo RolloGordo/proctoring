@@ -140,6 +140,26 @@ export function SesionEnVivo() {
       ),
     [participantes]
   )
+  /**
+   * Cómo llamar a cada estudiante en las alertas.
+   *
+   * Las alertas decían «Estudiante e989cb23» mientras la lista de participantes
+   * de esta misma pantalla tenía el nombre a mano. Un docente que revisa un
+   * caso tiene que saber de quién habla: con un identificador recortado hay que
+   * ir a otra pestaña a traducirlo, y eso con treinta estudiantes no se hace.
+   *
+   * Si no hay nombre se usa el correo, y solo si tampoco lo hay el
+   * identificador. Un perfil incompleto no puede dejar la alerta sin dueno.
+   */
+  const comoSeLlama = useMemo(() => {
+    const porId = new Map<string, string>()
+    for (const participante of participantes) {
+      const nombre = participante.student_name?.trim() || participante.student_email?.trim()
+      if (nombre) porId.set(participante.student_id, nombre)
+    }
+    return porId
+  }, [participantes])
+
   const totalPaginasCamaras = Math.ceil(participantesActivos.length / CAMARAS_POR_PAGINA)
   const indicePagina = paginaCamaras.sessionId === id ? paginaCamaras.indice : 0
   const paginaVisible = Math.min(indicePagina, Math.max(0, totalPaginasCamaras - 1))
@@ -301,7 +321,10 @@ export function SesionEnVivo() {
                     </span>
                     <div>
                       <p className="motivo">{alerta.reason}</p>
-                      <p className="ayuda">Estudiante {alerta.student_id.slice(0, 8)}</p>
+                      <p className="ayuda">
+                        {comoSeLlama.get(alerta.student_id) ??
+                          `Estudiante ${alerta.student_id.slice(0, 8)}`}
+                      </p>
                     </div>
                     <span className="hora">{soloHora(alerta.created_at)}</span>
                   </li>

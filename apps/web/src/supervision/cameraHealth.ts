@@ -42,3 +42,22 @@ export function meanVideoBrightness(video: HTMLVideoElement): number | null {
     return sum / (pixels.length / 4)
   } catch { return null }
 }
+
+/**
+ * Si se debe seguir mirando fotogramas con la cámara en este estado.
+ *
+ * Está en una función con nombre porque la decisión equivocada costó cinco
+ * exámenes reales sin una sola señal: se dejaba de observar con cualquier
+ * estado distinto de `active`, y `no_image` lo devuelve el monitor con solo
+ * cuatro segundos de imagen oscura o de `currentTime` parado. Rindiendo de
+ * noche, o cada vez que el navegador deja de pintar un `<video>` suelto porque
+ * el estudiante se fue a otra ventana, la supervisión se apagaba sola.
+ *
+ * **Una imagen mala no es ausencia de imagen.** MediaPipe puede seguir viendo
+ * una cara con poca luz, y «se fue del encuadre» importa más, no menos, cuando
+ * la imagen es dudosa. Solo cuando la pista se terminó de verdad no hay nada
+ * que mirar.
+ */
+export function debeSeguirObservando(salud: CameraHealth | null): boolean {
+  return salud !== 'interrupted'
+}

@@ -112,3 +112,78 @@ cd services/ai && uv run ruff check . && uv run ruff format --check . && uv run 
 > por saltármelo.
 
 Las evidencias (capturas, vídeos, informes) van **al Notion**, no al repositorio.
+
+---
+
+# Añadido el 17/10 · integré tu entrega y mido lo que faltaba
+
+Buen trabajo en dos cosas concretas:
+
+- **Mediste TA-064 de verdad**, sin mocks: **54,3 s en frío y 5,11 s en
+  caliente**. El segundo cumple el presupuesto de 10 s con margen, y dijiste sin
+  maquillar que el frío no lo cumple por el plan gratuito. Eso cierra la tarea.
+- Diagnosticaste el COOP/COEP por tu cuenta y llegaste a la misma causa.
+
+**Entró tu `avisos.ts` completo** (`ProblemaAudio`, `avisoAudio`,
+`avisoDetectorFallido`), que era aditivo y limpio — al contrario que el de
+Jesús, que partía de una base vieja. Le añadí `avisoDetectoresNoDisponibles`
+para cuando caen varios módulos a la vez: cuatro cuadros de aviso encima de
+alguien que está rindiendo son peor que uno.
+
+Tu mecanismo del `useSupervision` quedó, pero escrito sobre la versión actual:
+un módulo que no arranca entra en `fallidos`, el estudiante lo ve, el docente lo
+ve en vivo y queda registrado. `avisoDetectorFallido` sigue siendo quien decide,
+así que `habla` sigue dando el mensaje de micrófono y no el de cámara.
+
+## Lo que ya está descartado con pruebas
+
+Comprobado contra la web desplegada, no supuesto:
+
+- `self.crossOriginIsolated === true` — tu corrección está viva en producción
+- `/vad/silero_vad_v5.onnx`, `/vad/ort-wasm-simd-threaded.wasm` y
+  `/vad/vad.worklet.bundle.min.js` responden **HTTP 200** con el tamaño correcto
+- La cola de eventos **nunca se atascó**: en las cinco sesiones los eventos
+  llegan hasta el segundo de la entrega
+- `ai_voice` y `external_voices` están activos en la base, con
+  `similarity_threshold: 0.6` y `synthetic_threshold: 0.5`
+
+Así que el VAD **puede** arrancar en producción. Lo que no sabemos es si
+arranca.
+
+## Un fallo que arreglé y que te afectaba a ti
+
+En `emisor.ts`, si `uploadAudio` lanzaba, **la señal entera desaparecía**: ni
+fragmento de audio ni rastro de que se hubiera detectado voz. Y lo segundo es lo
+que de verdad importa. Jesús lo había visto para las imágenes; el audio tenía el
+mismo problema. Ahora el evento se manda igual, con
+`metadata.capture_error = 'upload_failed'`.
+
+Además, el reintento era **mudo**: con la cola atascada no llegaba nada a la API
+y no quedaba ni una línea en consola. Ahora lo dice.
+
+## Lo que te va a contestar la pregunta, sin adivinar
+
+Hay una tabla `supervision_diagnostics` (de Jesús) y le añadí el código
+`vision_module_summary`: al terminar cada examen se escribe una fila por
+detector. **El de habla tiene fila propia**, aunque no cuente fotogramas,
+porque es la mitad del problema.
+
+```sql
+select module, details from supervision_diagnostics
+where code = 'vision_module_summary' and module = 'habla'
+order by created_at desc;
+```
+
+- No hay fila, pero sí una `vision_module_failed` con `module: 'habla'` →
+  **el VAD no arrancó**, y `details.reason` dice por qué
+- `self_emitting: true, episodes: 0` → arrancó y nunca oyó habla: mira el umbral
+  del VAD y si la pista de audio llega de verdad al detector
+
+Empieza por ahí antes de tocar nada.
+
+## Sigue pendiente (del documento de arriba)
+
+- **TA-062**: el FNR del 33,3 % sigue sin estar en el informe. El accuracy del
+  92,2 % con `tp:22 fp:0 fn:11 tn:108` significa que se escapa **una de cada
+  tres** voces sintéticas, y decir «todo es real» saca 76,6 %. Hay que decirlo:
+  es coherente con ser auditor y no juez, pero hay que decirlo.

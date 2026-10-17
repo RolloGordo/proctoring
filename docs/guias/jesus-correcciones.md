@@ -114,3 +114,76 @@ cd apps/web && npm run lint && npx tsc --noEmit && npm test && npm run build
 
 Si tocas la base, **crea una migración nueva** en `supabase/migrations`. No
 toques el esquema desde el panel de Supabase.
+
+---
+
+# Añadido el 17/10 · lo que ya está descartado con pruebas
+
+Integré tu entrega. **No busques la causa donde yo ya busqué**, que me costó
+medio día. Todo esto está comprobado contra la web desplegada, no supuesto:
+
+| Hipótesis | Resultado |
+|---|---|
+| Los modelos no están desplegados | **Falsa.** `/mediapipe/face_landmarker.task`, `/mediapipe/wasm/*` y `/vad/*` responden HTTP 200 con el tamaño y el `content-type` correctos |
+| MediaPipe no arranca en producción | **Falsa.** `FaceLandmarker.createFromOptions` crea el landmarker en 1 491 ms, con `detectForVideo` disponible |
+| Falta `SharedArrayBuffer` (COOP/COEP) | **Falsa ya.** `self.crossOriginIsolated === true` en la web desplegada |
+| El `<video>` suelto no da fotogramas | **Falsa.** `readyState 4`, `videoWidth 640`, `currentTime` avanzando |
+| La cola de eventos se atascó | **Falsa.** En las cinco sesiones los eventos llegan hasta el segundo de la entrega |
+| Los nombres de módulo no coinciden | **Falsa.** El enum `supervision_module` trae `gaze`, `extra_person`, `ai_voice`, `external_voices`, todos activos |
+
+Conclusión: **el detector de visión se prepara bien y observa, pero nunca
+dictamina.** Queda por descartar el umbral y la medición: `yaw_degrees: 25` con
+`min_duration_ms: 3000`, y los ángulos que salen de `angulosDesdeMatriz`.
+
+## Lo que ahora te lo va a decir, sin adivinar
+
+Tu `supervision_diagnostics` está integrada, **y le añadí un código más**:
+`vision_module_summary`. Al terminar cada examen se escribe una fila por
+detector con `frames`, `verdicts`, `episodes` y `failed`.
+
+Así, tras el próximo examen:
+
+```sql
+select module, details from supervision_diagnostics
+where code = 'vision_module_summary' order by created_at desc;
+```
+
+- `frames: 0` → el fotograma no llega al detector
+- `frames: 4800, verdicts: 0` → **mira y nunca le parece que pase nada**: es el umbral o el cálculo del ángulo
+- `verdicts: 300, episodes: 0` → la histéresis se come los episodios
+
+Es la medición que faltaba. Empieza por ahí.
+
+## De tu entrega: qué entró y qué no
+
+**Entró:** `diagnostics.ts` y su prueba, la migración (ver abajo), el canal
+`reportarVision` de `monitoreo.ts` con tu prueba, tu corrección del emisor
+(importante: una subida fallida se llevaba la señal entera), la resolución de
+cámara y los tres fallos seguidos antes de retirar un detector.
+
+**No entró, y conviene que sepas por qué:**
+
+- **`avisos.ts`** — tu versión parte de una base anterior y borra el
+  `GestorDeAvisos` entero, que es HU-025 (silenciar repeticiones, agrupar
+  simultáneas, retirar solo). Me quedé con la base actual más lo de Pierre.
+- **`camara.ts`** — tu versión borra `abrirMicrofono()` y
+  `traducirMicrofono()`, que son de Pierre y los usa `PruebaMicrofono.tsx`.
+  Habría roto la compilación. Tomé solo los cambios de resolución.
+
+No es culpa tuya: es que trabajaste sobre un `develop` de antes. **Haz `git
+pull` antes de empezar**, siempre.
+
+## Tu migración
+
+Sigue **sin aplicar**: la decide Héctor. `recordDiagnostic` se come sus propios
+errores, así que el código funciona sin la tabla (solo no registra nada).
+Cuando se aplique, lleva ya el código `vision_module_summary` en el CHECK.
+
+## El `live_monitoring` no se arreglaba donde lo arreglaste
+
+Subiste `AJUSTES_POR_DEFECTO` en el cliente, pero esos ajustes se escriben en
+`session_modules.settings` al crear la sesión, desde
+`services/api/.../domain/exam_session.py`. El cliente solo los usa si no hay
+nada en la base, y siempre hay algo. Lo cambié en el origen (2 fps, 480 px,
+0,62). **Las sesiones ya creadas conservan los suyos**: para ver la mejora hay
+que crear una sesión nueva.

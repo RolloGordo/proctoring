@@ -33,3 +33,46 @@ it('never emits a speech event without an audio file', async () => {
   await emitter.cerrar()
   expect(register).not.toHaveBeenCalled()
 })
+
+it('does not report speech when its fragment never reached Storage', async () => {
+  // Para la voz el fragmento **es** la evidencia: las dos condiciones que
+  // exige el proyecto las calcula el worker a partir del audio. Un
+  // `speech_detected` sin fragmento seria una «voz detectada» que nadie puede
+  // comprobar nunca, y leer en voz alta no es una infraccion.
+  vi.mocked(uploadAudio).mockRejectedValueOnce(new Error('storage caido'))
+  const err = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  const register = vi.spyOn(api, 'registerEvent').mockResolvedValue({ id: 'e', severity: 'low' })
+  const perdidos: string[] = []
+  const emitter = new EmisorDeSenales({ sessionId: 's', studentId: 'u', questionId: 'q' }, (m) =>
+    perdidos.push(m)
+  )
+  emitter.emitir({
+    evento: 'speech_detected',
+    inicioMs: 0,
+    duracionMs: 2000,
+    metadata: {},
+    audio: new Blob(['x'])
+  })
+  await emitter.cerrar()
+
+  expect(register).not.toHaveBeenCalled()
+  // Pero no desaparece sin dejar rastro: queda como fallo de disponibilidad.
+  expect(perdidos).toEqual(['storage caido'])
+  err.mockRestore()
+})
+
+it('a lost fragment does not jam the queue behind it', async () => {
+  vi.mocked(uploadAudio)
+    .mockRejectedValueOnce(new Error('storage caido'))
+    .mockResolvedValueOnce('s/u/segundo.webm')
+  const err = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  const register = vi.spyOn(api, 'registerEvent').mockResolvedValue({ id: 'e', severity: 'low' })
+  const emitter = new EmisorDeSenales({ sessionId: 's', studentId: 'u', questionId: 'q' })
+  emitter.emitir({ evento: 'speech_detected', inicioMs: 0, duracionMs: 2000, metadata: {}, audio: new Blob(['a']) })
+  emitter.emitir({ evento: 'speech_detected', inicioMs: 3000, duracionMs: 2000, metadata: {}, audio: new Blob(['b']) })
+  await emitter.cerrar()
+
+  expect(register).toHaveBeenCalledTimes(1)
+  expect(register.mock.calls[0][0]).toMatchObject({ evidence_path: 's/u/segundo.webm' })
+  err.mockRestore()
+})

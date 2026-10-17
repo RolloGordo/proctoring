@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { CameraHealthMonitor } from './cameraHealth'
+import { CameraHealthMonitor, debeSeguirObservando } from './cameraHealth'
 
 describe('TA-083 camera-health safeguards', () => {
   it('reports a disconnected track immediately', () => {
@@ -22,5 +22,25 @@ describe('TA-083 camera-health safeguards', () => {
     m.check(1000, 11, 'live', 120)
     expect(m.check(5100, 11, 'live', 120)).toBe('no_image')
     expect(m.check(5200, 12, 'live', 120)).toBe('active')
+  })
+})
+
+describe('si se sigue observando segun el estado de la camara', () => {
+  it('con la camara bien, se observa', () => {
+    expect(debeSeguirObservando(null)).toBe(true)
+    expect(debeSeguirObservando('active')).toBe(true)
+  })
+
+  it('con imagen pobre se SIGUE observando', () => {
+    // **El fallo que dejo cinco examenes sin una sola senal.** `no_image` lo
+    // devuelve el monitor con cuatro segundos de imagen oscura o de
+    // `currentTime` parado; rindiendo de noche eso es todo el examen. Y que la
+    // imagen sea dudosa es justo cuando mas importa saber si alguien se fue
+    // del encuadre.
+    expect(debeSeguirObservando('no_image')).toBe(true)
+  })
+
+  it('con la pista terminada no hay nada que mirar', () => {
+    expect(debeSeguirObservando('interrupted')).toBe(false)
   })
 })

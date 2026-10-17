@@ -9,6 +9,7 @@ import {
   type ProctoringEvent
 } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
+import { supabase } from '../lib/supabase'
 import {
   DECISIONES,
   detalleEvento,
@@ -22,6 +23,42 @@ import {
 
 /** Mismo mínimo que la API y la base: una justificación de tres letras no justifica nada. */
 const MINIMO = 10
+const DIAGNOSTIC_LABELS: Record<string, string> = {
+  camera_interrupted: 'Cámara interrumpida',
+  camera_no_image: 'Imagen de cámara no disponible',
+  camera_recovered: 'Cámara recuperada',
+  vision_module_failed: 'Detector de visión no disponible',
+  vision_module_recovered: 'Detector recuperado',
+  vision_module_summary: 'Resumen de lo observado',
+  audio_segment_lost: 'Fragmento de audio perdido'
+}
+
+/**
+ * El detalle de un diagnóstico, en una línea legible.
+ *
+ * El resumen es el único que trae números, y son los que importan: un detector
+ * que miró miles de fotogramas sin encontrar nada no es lo mismo que uno que no
+ * arrancó, y al docente le cambia lo que puede concluir de la ausencia de
+ * señales.
+ */
+function detalleDiagnostico(d: {
+  code: string
+  details?: Record<string, unknown> | null
+}): string | null {
+  const det = d.details
+  if (!det) return null
+  if (d.code === 'vision_module_summary') {
+    const fotogramas = Number(det.frames ?? 0)
+    const veredictos = Number(det.verdicts ?? 0)
+    const episodios = Number(det.episodes ?? 0)
+    if (det.failed === true) return 'No estuvo activo durante el examen.'
+    if (det.self_emitting === true) return `${episodios} episodios emitidos.`
+    if (fotogramas === 0) return 'No le llegó ningún fotograma.'
+    return `${fotogramas} fotogramas observados, ${veredictos} con la condición presente, ${episodios} episodios.`
+  }
+  const motivo = det.reason
+  return typeof motivo === 'string' && motivo ? motivo : null
+}
 
 /**
  * La revisión de un caso: **mirar antes de decidir**.
@@ -40,6 +77,30 @@ export function RevisionCaso() {
   const [decision, setDecision] = useState<DecisionType>()
   const [justificacion, setJustificacion] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [diagnostics, setDiagnostics] = useState<Array<{
+    id: string
+    code: string
+    module: string | null
+    created_at: string
+    details?: Record<string, unknown> | null
+  }>>([])
+  const [diagnosticError, setDiagnosticError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!supabase || !id || !estudianteId) return
+    let cancelled = false
+    // Technical failures are separate from suspicious events and never add risk.
+    void supabase.from('supervision_diagnostics')
+      .select('id, code, module, created_at, details')
+      .eq('session_id', id).eq('student_id', estudianteId)
+      .order('created_at', { ascending: false }).limit(50)
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) setDiagnosticError('Registro técnico no disponible; comprueba que la migración de diagnósticos esté aplicada.')
+        else setDiagnostics(data ?? [])
+      })
+    return () => { cancelled = true }
+  }, [id, estudianteId])
 
   useEffect(() => {
     let cancelado = false
@@ -161,6 +222,39 @@ export function RevisionCaso() {
             )}
           </div>
         </div>
+      </section>
+
+      <section className="bloque">
+        <div className="encabezado-seccion">
+          <h2>Disponibilidad técnica de cámara y visión</h2>
+        </div>
+        <div className="tarjeta"><div className="tarjeta-cuerpo">
+          <p className="ayuda">Estas incidencias son fallos o recuperaciones técnicas, no acusaciones ni puntos de riesgo.</p>
+          {diagnosticError && <p role="status" className="aviso aviso-neutro">{diagnosticError}</p>}
+          {!diagnosticError && diagnostics.length === 0 && <p className="tenue">No constan diagnósticos técnicos de esta sesión.</p>}
+          {diagnostics.length > 0 && (
+            <table className="tabla">
+              <thead>
+                <tr>
+                  <th>Hora</th>
+                  <th>Diagnóstico</th>
+                  <th>Módulo</th>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {diagnostics.map((d) => (
+                  <tr key={d.id}>
+                    <td>{soloHora(d.created_at)}</td>
+                    <td>{DIAGNOSTIC_LABELS[d.code] ?? 'Diagnóstico técnico'}</td>
+                    <td>{d.module ?? 'Cámara'}</td>
+                    <td>{detalleDiagnostico(d) ?? <span className="tenue">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div></div>
       </section>
 
       <section className="bloque">
