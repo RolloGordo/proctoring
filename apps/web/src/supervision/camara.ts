@@ -62,8 +62,10 @@ function traducir(error: unknown): CamaraNoDisponibleError {
  */
 export async function abrirCamara({
   audio = false,
-  ancho = 640,
-  alto = 480
+  // 960x540 y no 640x480: con la resolución anterior la vista del docente era
+  // inservible para reconocer a nadie, que es justo para lo que está.
+  ancho = 960,
+  alto = 540
 }: OpcionesCamara = {}): Promise<{ video: HTMLVideoElement; cerrar: () => void }> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new CamaraNoDisponibleError(
@@ -189,7 +191,7 @@ export async function capturarFotograma(
  */
 export function capturarFotogramaBase64(
   video: HTMLVideoElement,
-  { ancho = 320, calidad = 0.5 }: { ancho?: number; calidad?: number } = {}
+  { ancho = 480, calidad = 0.62 }: { ancho?: number; calidad?: number } = {}
 ): string | null {
   if (!video.videoWidth || !video.videoHeight) return null
 

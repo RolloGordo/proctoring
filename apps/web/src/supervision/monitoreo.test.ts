@@ -9,6 +9,7 @@ vi.mock('./camara', () => ({
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 import {
   EVENTO_FOTOGRAMA,
+  EVENTO_ESTADO_VISION,
   nombreCanal,
   periodoMs,
   publicarFotogramas,
@@ -152,7 +153,7 @@ describe('si nadie mira, no se envía', () => {
     canal.presentes([ESTUDIANTE, DOCENTE])
     vi.advanceTimersByTime(3000)
 
-    expect(canal.enviados).toHaveLength(3)
+    expect(canal.enviados).toHaveLength(6)
     expect(canal.enviados[0]).toMatchObject({
       type: 'broadcast',
       event: EVENTO_FOTOGRAMA,
@@ -313,15 +314,15 @@ describe('mirar', () => {
 })
 
 describe('el ritmo', () => {
-  it('un fotograma por segundo por defecto', () => {
-    expect(periodoMs(undefined)).toBe(1000)
+  it('dos fotogramas por segundo por defecto', () => {
+    expect(periodoMs(undefined)).toBe(500)
   })
 
   it.each([0, -1, 60, Number.NaN])('un fps de %s cae al valor por defecto', (fps) => {
     // Los ajustes vienen de `session_modules.settings`, que es jsonb: nada
     // impide que ahí haya un cero. Con `1000 / 0` el intervalo sería infinito y
     // el monitoreo quedaría apagado sin decir nada.
-    expect(periodoMs(fps)).toBe(1000)
+    expect(periodoMs(fps)).toBe(500)
   })
 
   it('respeta un fps razonable', () => {
@@ -332,3 +333,30 @@ describe('el ritmo', () => {
 function video(): HTMLVideoElement {
   return {} as HTMLVideoElement
 }
+
+describe('vision availability diagnostics', () => {
+  it('reports failed modules once, without video or private data', () => {
+    const { cliente, canal } = clienteFalso()
+    const broadcast = publicarFotogramas({ cliente, sessionId: SESION, studentId: ESTUDIANTE, video: video() })
+    canal.conectar()
+    broadcast.reportarVision?.('degraded', ['mirada'])
+    broadcast.reportarVision?.('degraded', ['mirada'])
+    const messages = canal.enviados.filter(m => m.event === EVENTO_ESTADO_VISION)
+    expect(messages).toHaveLength(1)
+    expect(messages[0]).toMatchObject({ payload: { status: 'degraded', modules: ['mirada'] } })
+    expect(JSON.stringify(messages[0])).not.toContain('jpeg')
+  })
+
+  it('lets teacher learn which detector failed', () => {
+    const { cliente, canal } = clienteFalso()
+    const records: unknown[] = []
+    verFotogramas({
+      cliente, sessionId: SESION, studentId: ESTUDIANTE, teacherId: DOCENTE,
+      onFotograma: () => undefined,
+      onVisionEstado: (status, modules) => records.push({status, modules})
+    })
+    canal.conectar()
+    canal.recibir(EVENTO_ESTADO_VISION, { status: 'unavailable', modules: ['mirada', 'rostro-ausente'] })
+    expect(records).toEqual([{ status: 'unavailable', modules: ['mirada', 'rostro-ausente'] }])
+  })
+})

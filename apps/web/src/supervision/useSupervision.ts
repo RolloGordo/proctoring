@@ -15,15 +15,28 @@ import { supabase } from '../lib/supabase'
 import { abrirCamara, CamaraNoDisponibleError, capturarFotograma } from './camara'
 import { CapturasPorCondicion } from './capturasVision'
 import { CameraHealthMonitor, meanVideoBrightness, type CameraHealth } from './cameraHealth'
-import { avisoCamara, avisoParaEvento, type AvisoSupervision } from './avisos'
+import {
+  avisoCamara,
+  avisoDetectoresNoDisponibles,
+  avisoParaEvento,
+  type AvisoSupervision
+} from './avisos'
+import { recordDiagnostic, type DiagnosticCode } from './diagnostics'
 import type { SenalDetectada } from './tipos'
 import { EmisorDeSenales } from './emisor'
 import { publicarFotogramas, type AjustesMonitoreo, type Publicacion } from './monitoreo'
 import { SeguimientoCondicion } from './seguimiento'
 import type { Detector } from './tipos'
 
-/** Cada cuánto se mira un fotograma. 15 por segundo basta y no calienta el equipo. */
-const INTERVALO_MS = 66
+/**
+ * Cada cuánto se mira un fotograma.
+ *
+ * Ocho por segundo. Eran quince, y con la cámara subida a 960x540 para que el
+ * docente vea algo útil (punto 12) quince inferencias por segundo calientan el
+ * equipo sin aportar nada: ninguna de las condiciones que se vigilan dura menos
+ * de tres segundos.
+ */
+const INTERVALO_MS = 125
 
 export interface OpcionesSupervision {
   sessionId: string
@@ -53,16 +66,6 @@ export interface OpcionesSupervision {
   onAviso?: (aviso: AvisoSupervision) => void
   /** Muestra una previsualización sin abrir otra cámara. */
   onCamara?: (stream: MediaStream | null) => void
-  /**
-   * Qué módulos no se pudieron activar.
-   *
-   * Un detector que no arranca se descartaba y el examen seguía como si nada:
-   * en una ventana en kiosco nadie abre la consola, así que una supervisión
-   * que no supervisó pasaba inadvertida para el estudiante **y** para el
-   * docente que después revisa el caso. Eso es peor que no tenerla, porque
-   * la ausencia de señales se lee como ausencia de incidencias.
-   */
-  onModulosCaidos?: (nombres: string[]) => void
   /** Botón de reintento si el navegador pierde la cámara. */
   reintento?: number
   /** Permite apagarlo todo (por ejemplo, si el examen ya se entregó). */
@@ -73,6 +76,14 @@ export type EstadoSupervision =
   | { tipo: 'apagada' }
   | { tipo: 'iniciando' }
   | { tipo: 'activa' }
+  /**
+   * La camara va, pero algun detector no.
+   *
+   * Es un estado propio y no un 'fallo' porque el examen sigue y el estudiante
+   * no ha hecho nada: lo que hay que decirle es que esa parte no se esta
+   * supervisando, no que algo va mal por su culpa.
+   */
+  | { tipo: 'degradada'; mensaje: string; fallidos: string[] }
   | { tipo: 'fallo'; mensaje: string }
 
 export function useSupervision({
@@ -86,7 +97,6 @@ export function useSupervision({
   onObservado,
   onAviso,
   onCamara,
-  onModulosCaidos,
   reintento = 0,
   activa = true
 }: OpcionesSupervision): EstadoSupervision {
@@ -100,10 +110,10 @@ export function useSupervision({
     observadoRef.current = onObservado
   }, [onObservado])
 
-  const callbacksRef = useRef({ onAviso, onCamara, onModulosCaidos })
+  const callbacksRef = useRef({ onAviso, onCamara })
   useEffect(() => {
-    callbacksRef.current = { onAviso, onCamara, onModulosCaidos }
-  }, [onAviso, onCamara, onModulosCaidos])
+    callbacksRef.current = { onAviso, onCamara }
+  }, [onAviso, onCamara])
 
   // Sin estudiante no se puede reportar nada: la API exige que el `student_id`
   // coincida con el del token. Se calcula aqui, no dentro del efecto: poner el
@@ -132,6 +142,62 @@ export function useSupervision({
     let quitarEscuchaCamara: (() => void) | null = null
     let ultimoFallo: CameraHealth | null = null
     const saludCamara = new CameraHealthMonitor()
+
+    /** Los módulos que ahora mismo no están supervisando. */
+    const fallidos = new Set<string>()
+    /** Fallos seguidos al observar, por detector. Uno aislado no tumba nada. */
+    const erroresSeguidos = new Map<string, number>()
+
+    /**
+     * Cuánto trabajó de verdad cada detector.
+     *
+     * Está aquí por una razón concreta: tras varios exámenes reales sin una sola
+     * señal de cámara ni de voz, no se podía distinguir «el detector no arrancó»
+     * de «arrancó, miró miles de fotogramas y nunca le pareció que pasara algo».
+     * Son dos fallos distintos y se arreglan en sitios distintos. Sin este
+     * recuento hay que adivinar, y adivinar ya costó bastante.
+     */
+    const trabajo = new Map<string, { fotogramas: number; veredictos: number; episodios: number }>(
+      detectores.map((d) => [d.nombre, { fotogramas: 0, veredictos: 0, episodios: 0 }])
+    )
+
+    const informar = (
+      code: DiagnosticCode,
+      module?: string,
+      details?: Record<string, string | number | boolean>
+    ) => {
+      void recordDiagnostic(supabase, {
+        session_id: sessionId,
+        student_id: alumnoId,
+        code,
+        ...(module ? { module } : {}),
+        ...(details ? { details } : {})
+      })
+    }
+
+    /** Pone al día el estado, el canal del docente y el aviso en pantalla. */
+    const reportarFallidos = () => {
+      const nombres = [...fallidos].sort()
+      envioEnVivo?.reportarVision?.(
+        nombres.length === 0
+          ? 'active'
+          : nombres.length >= detectores.length
+            ? 'unavailable'
+            : 'degraded',
+        nombres
+      )
+      if (nombres.length > 0) {
+        const aviso = avisoDetectoresNoDisponibles(nombres)
+        setEstado({
+          tipo: 'degradada',
+          mensaje: aviso?.detalle ?? `No están activos: ${nombres.join(', ')}.`,
+          fallidos: nombres
+        })
+        if (aviso) callbacksRef.current.onAviso?.(aviso)
+      } else if (ultimoFallo === null) {
+        setEstado({ tipo: 'activa' })
+      }
+    }
 
     const emisor = new EmisorDeSenales({ sessionId, studentId, questionId, token })
     emisorRef.current = emisor
@@ -169,6 +235,7 @@ export function useSupervision({
           setEstado({ tipo: 'fallo', mensaje })
           callbacksRef.current.onAviso?.(avisoCamara(tipo))
           envioEnVivo?.reportarCamara?.(tipo)
+          informar(tipo === 'interrupted' ? 'camera_interrupted' : 'camera_no_image')
         }
         const perdidaCamara = () => falloCamara('interrupted')
         pista?.addEventListener('ended', perdidaCamara)
@@ -198,14 +265,15 @@ export function useSupervision({
           else if (ultimoFallo !== null) {
             ultimoFallo = null
             envioEnVivo?.reportarCamara?.('active')
-            setEstado({ tipo: 'activa' })
+            informar('camera_recovered')
+            reportarFallidos()
           }
         }, 1000)
 
         // Un detector que no carga se descarta y los demás siguen, pero **se
-        // dice**: ver `onModulosCaidos`.
+        // dice**: queda en `fallidos`, se lo ve el estudiante, se lo ve el
+        // docente en vivo y queda registrado en `supervision_diagnostics`.
         const listos: Detector[] = []
-        const caidos: string[] = []
         for (const detector of detectores) {
           try {
             await detector.preparar?.({
@@ -225,27 +293,49 @@ export function useSupervision({
             listos.push(detector)
           } catch (fallo) {
             detector.detener?.()
-            caidos.push(detector.nombre)
+            fallidos.add(detector.nombre)
             console.error(`[supervisión] no se pudo preparar ${detector.nombre}`, fallo)
+            informar('vision_module_failed', detector.nombre, {
+              reason: fallo instanceof Error ? fallo.message.slice(0, 200) : 'desconocido'
+            })
           }
         }
         if (cancelado) return
-        if (caidos.length > 0) callbacksRef.current.onModulosCaidos?.(caidos)
+        reportarFallidos()
 
         temporizador = setInterval(() => {
           // Never run vision inference on a known stopped or unusable stream.
           if (ultimoFallo !== null) return
           const ahoraMs = Date.now()
           for (const detector of listos) {
-            if (detector.ownsSegments) continue
+            if (detector.ownsSegments || fallidos.has(detector.nombre)) continue
             const seguimiento = seguimientos.get(detector.nombre)
             if (!seguimiento) continue
             let veredicto
             try {
               veredicto = detector.observar({ video: camara.video, ahoraMs })
+              erroresSeguidos.delete(detector.nombre)
             } catch (fallo) {
-              console.error(`[supervisión] ${detector.nombre} falló al observar`, fallo)
+              // Un fallo aislado no lo tumba: un fotograma a medio decodificar
+              // lanza y al siguiente ya va. Tres seguidos sí son un detector
+              // roto, y entonces se deja de fingir que supervisa.
+              const seguidos = (erroresSeguidos.get(detector.nombre) ?? 0) + 1
+              erroresSeguidos.set(detector.nombre, seguidos)
+              if (seguidos >= 3 && !fallidos.has(detector.nombre)) {
+                console.error(`[supervisión] ${detector.nombre} falla al observar`, fallo)
+                fallidos.add(detector.nombre)
+                informar('vision_module_failed', detector.nombre, {
+                  reason: fallo instanceof Error ? fallo.message.slice(0, 200) : 'desconocido',
+                  consecutive: seguidos
+                })
+                reportarFallidos()
+              }
               continue
+            }
+            const cuenta = trabajo.get(detector.nombre)
+            if (cuenta) {
+              cuenta.fotogramas += 1
+              if (veredicto.activa) cuenta.veredictos += 1
             }
             if (veredicto.metadata) ultimaMetadata.set(detector.nombre, veredicto.metadata)
 
@@ -257,6 +347,7 @@ export function useSupervision({
             )) notificar(detector.evento)
             const episodio = seguimiento.actualizar(veredicto.activa, ahoraMs)
             if (episodio) {
+              if (cuenta) cuenta.episodios += 1
               emisor.emitir({
                 evento: detector.evento,
                 inicioMs: episodio.inicioMs,
@@ -271,7 +362,7 @@ export function useSupervision({
           }
         }, INTERVALO_MS)
 
-        if (ultimoFallo === null) setEstado({ tipo: 'activa' })
+        if (ultimoFallo === null) reportarFallidos()
       } catch (fallo) {
         if (cancelado) return
         const mensaje =
@@ -282,6 +373,9 @@ export function useSupervision({
         console.error('[supervisión]', fallo)
         setEstado({ tipo: 'fallo', mensaje })
         callbacksRef.current.onAviso?.(avisoCamara('interrupted'))
+        informar('camera_interrupted', undefined, {
+          reason: fallo instanceof Error ? fallo.message.slice(0, 200) : 'desconocido'
+        })
       }
     }
 
@@ -306,6 +400,18 @@ export function useSupervision({
           })
         }
         detector?.detener?.()
+      }
+      // Cuánto trabajó cada detector durante el examen. Una fila por módulo,
+      // sin imágenes: es lo que permite leer después «miró 4 800 fotogramas y
+      // no le pareció que pasara nada» en vez de suponerlo.
+      for (const [nombre, cuenta] of trabajo) {
+        if (cuenta.fotogramas === 0 && !fallidos.has(nombre)) continue
+        informar('vision_module_summary', nombre, {
+          frames: cuenta.fotogramas,
+          verdicts: cuenta.veredictos,
+          episodes: cuenta.episodios,
+          failed: fallidos.has(nombre)
+        })
       }
       void emisor.cerrar()
       emisorRef.current = null

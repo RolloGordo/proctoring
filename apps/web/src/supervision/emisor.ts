@@ -29,6 +29,8 @@ export class EmisorDeSenales {
   private enviando = false
   private temporizador: ReturnType<typeof setTimeout> | undefined
   private detenido = false
+  /** Intentos seguidos sin conseguir vaciar la cola. Solo para avisar. */
+  private fallosSeguidos = 0
 
   constructor(private contexto: ContextoEmision) {}
 
@@ -82,13 +84,35 @@ export class EmisorDeSenales {
         const { signal: senal, context } = this.cola[0]
         try {
           if (senal.audio && !senal.evidencePath) {
-            senal.evidencePath = await uploadAudio(senal.audio, context)
+            try {
+              senal.evidencePath = await uploadAudio(senal.audio, context)
+            } catch (falloSubida) {
+              // Lo mismo que con la imagen: un fallo de Storage no puede hacer
+              // desaparecer el hecho de que se detectó voz.
+              console.error(
+                '[supervisión] no se pudo subir el audio; se manda el evento sin fragmento',
+                falloSubida
+              )
+              senal.metadata = { ...senal.metadata, capture_error: 'upload_failed' }
+            }
             senal.audio = undefined
           }
           if (senal.image && !senal.evidencePath) {
             const image = await senal.image
             if (image) {
-              senal.evidencePath = await uploadImage(image, context)
+              try {
+                senal.evidencePath = await uploadImage(image, context)
+              } catch (falloSubida) {
+                // **Que falle la evidencia no puede borrar la señal.** Si la
+                // subida lanzaba, se perdía el evento entero: el docente no veía
+                // la captura *ni* se enteraba de que había pasado algo. Y lo
+                // segundo es lo que de verdad importa.
+                console.error(
+                  '[supervisión] no se pudo subir la captura; se manda el evento sin foto',
+                  falloSubida
+                )
+                senal.metadata = { ...senal.metadata, capture_error: 'upload_failed' }
+              }
               senal.image = undefined
             } else {
               senal.metadata = { ...senal.metadata, capture_error: 'no_jpeg' }
@@ -109,6 +133,7 @@ export class EmisorDeSenales {
             context.token
           )
           this.cola.shift()
+          this.fallosSeguidos = 0
         } catch (fallo) {
           // 4xx: la señal es inválida y reintentarla fallaría igual para siempre.
           // Se descarta y se sigue, o la cola se atasca con una sola señal mala.
@@ -118,6 +143,18 @@ export class EmisorDeSenales {
             continue
           }
           // Red caída o error del servidor: se reintenta sin perder nada.
+          //
+          // Pero se dice. Esto reintentaba en silencio para siempre: con la
+          // cola atascada en la primera señal, ninguna de las siguientes llegaba
+          // nunca y no quedaba ni una línea en consola. Buscando por qué no se
+          // registraba nada, descartar esto costó horas.
+          this.fallosSeguidos += 1
+          if (this.fallosSeguidos === 1 || this.fallosSeguidos % 5 === 0) {
+            console.error(
+              `[supervisión] la cola no avanza (${this.fallosSeguidos} intentos, ${this.cola.length} señales esperando):`,
+              fallo
+            )
+          }
           this.programarReintento()
           return
         }

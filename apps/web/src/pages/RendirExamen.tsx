@@ -42,7 +42,6 @@ export function RendirExamen() {
   const [error, setError] = useState<string>()
   const [guardado, setGuardado] = useState<EstadoGuardado>('limpio')
   /** Módulos de supervisión que no arrancaron. Se le dice al estudiante. */
-  const [modulosCaidos, setModulosCaidos] = useState<string[]>([])
   const [entregando, setEntregando] = useState(false)
   const [observado, setObservado] = useState(false)
   const [conectado, setConectado] = useState(() => navigator.onLine)
@@ -185,7 +184,6 @@ export function RendirExamen() {
     onObservado: setObservado,
     onAviso: (a) => gestorAvisos.current?.registrar(a),
     onCamara: mostrarCamara,
-    onModulosCaidos: setModulosCaidos,
     reintento: reintentoCamara,
     activa: matricula?.submitted_at == null
   })
@@ -287,14 +285,14 @@ export function RendirExamen() {
         </button>
       </div>
 
-      {modulosCaidos.length > 0 && (
+      {supervision.tipo === 'degradada' && (
         <div className="aviso aviso-neutro" role="status">
           <p>
             <strong>
-              {modulosCaidos.length === 1
-                ? 'Un módulo de supervisión no se pudo activar'
-                : 'Hay módulos de supervisión que no se pudieron activar'}
-              : {modulosCaidos.join(', ')}.
+              {supervision.fallidos.length === 1
+                ? 'Un módulo de supervisión no está activo'
+                : 'Hay módulos de supervisión que no están activos'}
+              : {supervision.fallidos.join(', ')}.
             </strong>
           </p>
           <p className="ayuda">

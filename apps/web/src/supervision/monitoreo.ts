@@ -36,6 +36,8 @@ export const PREFIJO_CANAL = 'monitoreo'
 export const EVENTO_FOTOGRAMA = 'fotograma'
 export const EVENTO_ESTADO_CAMARA = 'estado_camara'
 export type EstadoCamara = 'active' | 'interrupted' | 'no_image'
+export type EstadoVision = 'active' | 'degraded' | 'unavailable'
+export const EVENTO_ESTADO_VISION = 'estado_vision'
 
 /** `monitoreo:<session_id>:<student_id>` */
 export function nombreCanal(sessionId: string, studentId: string): string {
@@ -61,9 +63,9 @@ export interface AjustesMonitoreo {
 }
 
 export const AJUSTES_POR_DEFECTO: Required<AjustesMonitoreo> = {
-  fps: 1,
-  width: 320,
-  quality: 0.5
+  fps: 2,
+  width: 480,
+  quality: 0.62
 }
 
 /** Un fotograma cada tanto. Un `fps` fuera de rango cae al valor por defecto. */
@@ -99,6 +101,7 @@ function hayOtros(canal: RealtimeChannel, propia: string): boolean {
 
 export interface Publicacion {
   reportarCamara?: (estado: EstadoCamara) => void
+  reportarVision?: (estado: EstadoVision, modulos: string[]) => void
   detener: () => Promise<void>
 }
 
@@ -139,6 +142,8 @@ export function publicarFotogramas({
 
   let observado = false
   let estadoCamara: EstadoCamara = 'active'
+  let estadoVision: EstadoVision = 'active'
+  let modulosFallidos: string[] = []
   let suscrito = false
   let temporizador: ReturnType<typeof setInterval> | undefined
 
@@ -170,8 +175,17 @@ export function publicarFotogramas({
     estadoCamara = estado
     if (!suscrito) return
     // Presence lets a teacher joining later see an already-interrupted camera.
-    void canal.track({ rol: 'estudiante' satisfies Rol, camera_status: estado })
+    void canal.track({ rol: 'estudiante' satisfies Rol, camera_status: estado, vision_status: estadoVision, failed_modules: modulosFallidos })
     void canal.send({ type: 'broadcast', event: EVENTO_ESTADO_CAMARA, payload: { status: estado, at: Date.now() } })
+  }
+
+  function reportarVision(estado: EstadoVision, modulos: string[]): void {
+    if (estado === estadoVision && modulos.join(',') === modulosFallidos.join(',')) return
+    estadoVision = estado
+    modulosFallidos = [...modulos]
+    if (!suscrito) return
+    void canal.track({ rol: 'estudiante' satisfies Rol, camera_status: estadoCamara, vision_status: estado, failed_modules: modulosFallidos })
+    void canal.send({ type: 'broadcast', event: EVENTO_ESTADO_VISION, payload: { status: estado, modules: modulosFallidos, at: Date.now() } })
   }
 
   canal
@@ -183,13 +197,14 @@ export function publicarFotogramas({
       // Anunciarse es lo que le permite al docente distinguir «no está
       // conectado» de «está conectado pero la cámara falló».
       suscrito = true
-      void canal.track({ rol: 'estudiante' satisfies Rol, camera_status: estadoCamara })
+      void canal.track({ rol: 'estudiante' satisfies Rol, camera_status: estadoCamara, vision_status: estadoVision, failed_modules: modulosFallidos })
       revisarPresencia()
       temporizador ??= setInterval(enviar, periodoMs(ajustes.fps))
     })
 
   return {
     reportarCamara,
+    reportarVision,
     detener: async () => {
       suscrito = false
       clearInterval(temporizador)
@@ -211,6 +226,7 @@ export interface OpcionesVer {
   /** Si el estudiante está en el canal. Distinto de que llegue imagen. */
   onConectado?: (conectado: boolean) => void
   onCamaraEstado?: (estado: EstadoCamara) => void
+  onVisionEstado?: (estado: EstadoVision, modulos: string[]) => void
   onEstado?: (estado: EstadoVista) => void
 }
 
@@ -229,6 +245,7 @@ export function verFotogramas({
   onFotograma,
   onConectado,
   onCamaraEstado,
+  onVisionEstado,
   onEstado
 }: OpcionesVer): Publicacion {
   const canal = canalPrivado(cliente, sessionId, studentId, teacherId)
@@ -243,12 +260,22 @@ export function verFotogramas({
     // For a late joining teacher, read the latest authenticated presence state.
     const student = canal.presenceState()[studentId] as Array<{ camera_status?: EstadoCamara }> | undefined
     const camera = student?.[0]?.camera_status
+    const vision = student?.[0] as { vision_status?: EstadoVision; failed_modules?: string[] } | undefined
+    if (vision?.vision_status === 'active' || vision?.vision_status === 'degraded' || vision?.vision_status === 'unavailable') {
+      onVisionEstado?.(vision.vision_status, Array.isArray(vision.failed_modules) ? vision.failed_modules : [])
+    }
     if (camera === 'active' || camera === 'interrupted' || camera === 'no_image') onCamaraEstado?.(camera)
   }
 
   onEstado?.('conectando')
 
   canal
+    .on('broadcast', { event: EVENTO_ESTADO_VISION }, (message) => {
+      const data = message.payload as { status?: EstadoVision; modules?: string[] } | undefined
+      if (data?.status === 'active' || data?.status === 'degraded' || data?.status === 'unavailable') {
+        onVisionEstado?.(data.status, Array.isArray(data.modules) ? data.modules : [])
+      }
+    })
     .on('broadcast', { event: EVENTO_ESTADO_CAMARA }, (message) => {
       const data = message.payload as { status?: EstadoCamara } | undefined
       if (data?.status === 'active' || data?.status === 'interrupted' || data?.status === 'no_image') onCamaraEstado?.(data.status)

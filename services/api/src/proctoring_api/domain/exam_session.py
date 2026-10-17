@@ -146,11 +146,19 @@ DEFAULT_MODULE_SETTINGS: dict[SupervisionModule, dict[str, Any]] = {
     SupervisionModule.SCREEN_CAPTURE: {"scan_interval_ms": 10000},
     SupervisionModule.OBJECTS: {},
     SupervisionModule.COPY_PASTE_BLOCK: {},
-    # Un fotograma por segundo a 320 px: basta para ver quien esta y que
-    # hace, y no es video. Subirlo cuesta en tres sitios a la vez (la CPU
-    # del estudiante, la cuota de Realtime y la pantalla del docente), asi
-    # que el valor por defecto es el minimo util, no el maximo posible.
-    SupervisionModule.LIVE_MONITORING: {"fps": 1, "width": 320, "quality": 0.5},
+    # Dos fotogramas por segundo a 480 px. Subirlo cuesta en tres sitios a la
+    # vez (la CPU del estudiante, la cuota de Realtime y la pantalla del
+    # docente), asi que el valor por defecto es el minimo util.
+    #
+    # Eran 320 px a 1 fps, y el minimo util estaba mal calculado: en el primer
+    # examen real la vista del docente no servia para reconocer a nadie, que es
+    # para lo unico que esta. Un valor por debajo de lo que hace falta no es
+    # prudente, es inservible.
+    #
+    # El cliente tiene estos mismos numeros por defecto, pero manda este: los
+    # ajustes se escriben en `session_modules.settings` al crear la sesion, asi
+    # que una sesion ya creada conserva los suyos.
+    SupervisionModule.LIVE_MONITORING: {"fps": 2, "width": 480, "quality": 0.62},
 }
 
 

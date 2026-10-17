@@ -24,15 +24,30 @@ export const DURACION_AVISO_MS = 6_000
 export const VENTANA_SIMULTANEIDAD_MS = 2_500
 
 export interface AvisoSupervision {
-  /** Los problemas de cámara no son un `EventType`: no se registran como
+  /** Los problemas técnicos no son un `EventType`: no se registran como
    *  señal del estudiante, solo se le avisan a él. */
-  tipo: EventType | ProblemaCamara
+  tipo: TipoDeAviso
   titulo: string
   detalle: string
 }
 
 /** Un fallo técnico de la cámara, que no es una señal de supervisión. */
 export type ProblemaCamara = 'camera_interrupted' | 'camera_no_image'
+
+/** Un fallo técnico del micrófono o del VAD, que no es una señal de supervisión. */
+export type ProblemaAudio = 'audio_vad_failed' | 'audio_interrupted'
+
+/** Varios modulos de supervision caidos a la vez. Tampoco es una senal. */
+export type ProblemaSupervision = 'vision_unavailable'
+
+/**
+ * Todo lo de lo que se puede avisar: senales de supervision y fallos tecnicos.
+ *
+ * En un alias porque el gestor silencia y agrupa por este tipo, y tenerlo
+ * escrito a mano en tres sitios ya hizo que anadir los fallos de audio
+ * compilara en uno y no en los otros dos.
+ */
+export type TipoDeAviso = EventType | ProblemaCamara | ProblemaAudio | ProblemaSupervision
 
 /** Cómo lo nombra el monitor de cámara y el canal en vivo, sin el prefijo. */
 export type EstadoCamaraFallida = 'interrupted' | 'no_image'
@@ -58,6 +73,58 @@ export function avisoCamara(estado: EstadoCamaraFallida): AvisoSupervision {
         detalle:
           'Puede haber poca luz, una lente tapada o una imagen congelada. Ajusta la cámara y vuelve a intentarlo. No implica una infracción.'
       }
+}
+
+/**
+ * Qué se le dice al estudiante cuando la detección de audio/VAD falla técnicamente.
+ */
+export function avisoAudio(problema: ProblemaAudio): AvisoSupervision {
+  return problema === 'audio_vad_failed'
+    ? {
+        tipo: 'audio_vad_failed',
+        titulo: 'Detección de voz no disponible',
+        detalle:
+          'El reconocimiento de voz no pudo iniciarse en este equipo. El examen continúa; el docente podrá ver que el módulo no estuvo activo.'
+      }
+    : {
+        tipo: 'audio_interrupted',
+        titulo: 'Se perdió la conexión con el micrófono',
+        detalle:
+          'Comprueba la conexión de tu micrófono. El examen continúa; el docente podrá revisar esta interrupción.'
+      }
+}
+
+/**
+ * Resuelve el aviso adecuado cuando un detector no consigue prepararse al iniciar la supervisión.
+ */
+export function avisoDetectorFallido(nombre: string): AvisoSupervision {
+  if (nombre === 'habla') return avisoAudio('audio_vad_failed')
+  return {
+    tipo: 'camera_interrupted',
+    titulo: `Módulo no disponible: ${nombre}`,
+    detalle:
+      `El detector (${nombre}) no pudo iniciarse en este equipo. El examen continúa; el docente podrá ver que el módulo no estuvo activo.`
+  }
+}
+
+/**
+ * Lo mismo, pero cuando caen varios módulos a la vez.
+ *
+ * Un aviso por detector sería una pila de cuatro cuadros encima de alguien que
+ * está rindiendo, y la causa de que cuatro fallen juntos casi siempre es una
+ * sola. Con uno, el estudiante se entera igual y el docente ve la lista.
+ *
+ * Con un solo módulo caído delega en `avisoDetectorFallido`, que sabe
+ * distinguir el micrófono de la cámara.
+ */
+export function avisoDetectoresNoDisponibles(nombres: readonly string[]): AvisoSupervision | null {
+  if (nombres.length === 0) return null
+  if (nombres.length === 1) return avisoDetectorFallido(nombres[0])
+  return {
+    tipo: 'vision_unavailable',
+    titulo: 'Parte de la supervisión no está activa',
+    detalle: `No se pudieron iniciar estos módulos en tu equipo: ${nombres.join(', ')}. El examen continúa y no implica ninguna infracción; el docente verá que no estuvieron activos.`
+  }
 }
 
 export function avisoParaEvento(evento: EventType): AvisoSupervision | null {
@@ -101,7 +168,7 @@ export interface AvisoVisible {
   titulo: string
   detalle: string
   /** Las señales que lo componen. La primera es la que lo abrió. */
-  eventos: Array<EventType | ProblemaCamara>
+  eventos: TipoDeAviso[]
 }
 
 type Oyente = (aviso: AvisoVisible | null) => void
@@ -119,7 +186,7 @@ type Oyente = (aviso: AvisoVisible | null) => void
  *    para seguir respondiendo.
  */
 export class GestorDeAvisos {
-  private ultimaVezPorTipo = new Map<EventType | ProblemaCamara, number>()
+  private ultimaVezPorTipo = new Map<TipoDeAviso, number>()
   private visible: AvisoVisible | null = null
   private oyentes = new Set<Oyente>()
   private temporizador?: ReturnType<typeof setTimeout>
