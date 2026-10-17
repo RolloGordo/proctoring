@@ -266,31 +266,37 @@ aplicación.
 **No hace falta publicar el instalador para probar.** Deja la aplicación de
 escritorio en local y apúntala a donde quieras.
 
-Dos detalles de Windows que cuestan un rato si no se saben:
+**Ponlo una vez en un archivo y olvidate de la consola.** Crea
+`apps/desktop/.env` con una linea:
 
-- **Hay que estar en `apps/desktop`**, no en la raíz del repositorio. No hay
-  `package.json` en la raíz, así que `npm run dev` ahí no encuentra nada.
-- **Windows bloquea `npm` en PowerShell** con «la ejecución de scripts está
-  deshabilitada en este sistema». Es la política por defecto y afecta al
-  envoltorio `npm.ps1`. La salida limpia es llamar a `npm.cmd`, que no pasa
-  por esa política y **no obliga a bajar ninguna protección del equipo**.
+```
+PROCTORING_WEB_URL=https://proctoring-xxx.vercel.app
+```
+
+Ese archivo esta en `.gitignore` y no viaja en el instalador.
+
+Existe por un motivo concreto: **cada consola de Windows escribe las
+variables distinto**, y equivocarse no da ningun error. En PowerShell es
+`$env:X="..."` y en cmd es `set X=...`; usar la de una en la otra
+simplemente no define nada, la aplicacion cae a `localhost:5173` y lo unico
+que ves es `ERR_CONNECTION_REFUSED`, que no dice nada de la causa.
+
+Luego, **desde `apps/desktop`** (no desde la raiz: ahi no hay `package.json`):
 
 ```bash
 cd C:\Users\Usuario\Desktop\proctoring\apps\desktop
 ```
 
 ```bash
-$env:PROCTORING_WEB_URL="https://proctoring-xxx.vercel.app"; & "C:\Program Files\nodejs\npm.cmd" run dev
+& "C:\Program Files\nodejs\npm.cmd" run dev
 ```
 
-> Si prefieres escribir `npm` a secas de aquí en adelante, se puede permitir
-> con `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, que solo afecta
-> a tu usuario. Pero no hace falta para esto.
+> Lo de `npm.cmd` es porque PowerShell bloquea `npm` por su politica de
+> scripts. Llamar al `.cmd` la esquiva y **no obliga a bajar ninguna
+> proteccion del equipo**. En `cmd` basta con `npm run dev`.
 
-Así pruebas la web desplegada con la app de escritorio de tu máquina, sin
-comprometerte con ningún instalador.
-
----
+La variable de entorno, si la pones, manda sobre el archivo. Y el
+empaquetado acepta cualquiera de las dos.
 
 ## Qué se actualiza solo y qué no
 
