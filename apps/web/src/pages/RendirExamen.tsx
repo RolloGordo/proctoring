@@ -10,6 +10,7 @@ import {
 } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { formatRemainingTime, unansweredCount } from '../lib/exam-progress'
+import { ColaDeGuardado } from '../lib/cola-de-guardado'
 import { soloHora } from '../lib/formato'
 import { detectoresDe, necesitaAudio } from '../supervision/detectores'
 import { loadCalibration } from '../supervision/calibration'
@@ -618,74 +619,52 @@ function useGuardadoDiferido(
 ): {
   guardar: (respuesta: NewAnswer) => void
   reintentarGuardado: () => void
-  /** Manda lo pendiente y dice si quedo algo sin guardar. */
+  /** Manda lo pendiente y dice si quedó algo sin guardar. */
   vaciarPendientes: () => Promise<boolean>
 } {
-  const pendientes = useRef(new Map<string, NewAnswer>())
-  const temporizador = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const guardando = useRef(false)
+  // La lógica vive en `ColaDeGuardado`, fuera de React. Es el camino por el que
+  // se pierden o no se pierden las respuestas de alguien en un examen, y dentro
+  // del componente no se podía probar sin montar una pantalla: por eso un fallo
+  // aquí llegó a producción.
+  const cola = useRef<ColaDeGuardado>(undefined)
+  const ajustes = useRef({ sessionId, token, setGuardado, setError })
+  useEffect(() => {
+    ajustes.current = { sessionId, token, setGuardado, setError }
+  }, [sessionId, token, setGuardado, setError])
 
-  const enviar = useCallback(async () => {
-    if (guardando.current) return
-    const lote = [...pendientes.current.values()]
-    pendientes.current.clear()
-    if (lote.length === 0) return
-
-    guardando.current = true
-    setGuardado('guardando')
-    setError(undefined)
-    try {
-      await api.saveAnswers(sessionId, lote, token)
-      setGuardado(pendientes.current.size > 0 ? 'guardando' : 'guardado')
-      setError(undefined)
-    } catch (fallo: unknown) {
-      for (const respuesta of lote) {
-        if (!pendientes.current.has(respuesta.question_id)) {
-          pendientes.current.set(respuesta.question_id, respuesta)
-        }
-      }
-      setGuardado('error')
+  cola.current ??= new ColaDeGuardado(
+    async (lote) => {
+      // Se descarta lo que devuelve: la cola solo necesita saber si llegó.
+      await api.saveAnswers(ajustes.current.sessionId, lote, ajustes.current.token)
+    },
+    (estado) => {
+      ajustes.current.setGuardado(estado)
+      if (estado !== 'error') ajustes.current.setError(undefined)
+    },
+    (fallo) => {
       // Un 403 aquí no es un fallo de red: el examen cerró o ya se entregó, y
       // el estudiante necesita saberlo con esas palabras.
-      setError(
+      ajustes.current.setError(
         fallo instanceof ApiError
           ? fallo.message
           : 'Se perdió la conexión. Tu última respuesta no se guardó.'
       )
-    } finally {
-      guardando.current = false
     }
-  }, [sessionId, token, setGuardado, setError])
+  )
 
   // Al desmontar se manda lo que quede: cerrar la pestaña no debería perder la
   // respuesta que estaba en el aire.
-  useEffect(
-    () => () => {
-      void enviar()
-    },
-    [enviar]
-  )
+  useEffect(() => {
+    const actual = cola.current
+    return () => {
+      void actual?.enviar()
+      actual?.destruir()
+    }
+  }, [])
 
-  const guardar = useCallback(
-    (respuesta: NewAnswer) => {
-      pendientes.current.set(respuesta.question_id, respuesta)
-      clearTimeout(temporizador.current)
-      temporizador.current = setTimeout(enviar, 500)
-    },
-    [enviar]
-  )
-
-  const reintentarGuardado = useCallback(() => {
-    clearTimeout(temporizador.current)
-    void enviar()
-  }, [enviar])
-
-  /** Para entregar: manda lo que quede y responde si se consiguio. */
-  const vaciarPendientes = useCallback(async () => {
-    clearTimeout(temporizador.current)
-    await enviar()
-    return pendientes.current.size === 0
-  }, [enviar])
+  const guardar = useCallback((respuesta: NewAnswer) => cola.current?.encolar(respuesta), [])
+  const reintentarGuardado = useCallback(() => void cola.current?.enviar(), [])
+  const vaciarPendientes = useCallback(async () => (await cola.current?.vaciar()) ?? true, [])
 
   return { guardar, reintentarGuardado, vaciarPendientes }
 }
