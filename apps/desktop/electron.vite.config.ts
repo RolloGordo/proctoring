@@ -1,6 +1,25 @@
-import { defineConfig } from 'electron-vite'
+import { defineConfig, loadEnv } from 'electron-vite'
 
-export default defineConfig({
+/**
+ * De donde sale la direccion de la web, al construir.
+ *
+ * Dos sitios, y el `.env` existe por una razon concreta: la variable de entorno
+ * se escribe distinto en cada consola de Windows —`$env:X="..."` en PowerShell,
+ * `set X=...` en cmd— y usar la sintaxis de una en la otra no da ningun error:
+ * simplemente no se define nada, la aplicacion cae a localhost y lo unico que
+ * se ve es un ERR_CONNECTION_REFUSED que no explica la causa.
+ *
+ * Con `apps/desktop/.env` se pone una vez y deja de depender de la consola.
+ * El archivo esta en `.gitignore` y `electron-builder.yml` lo excluye del
+ * paquete, asi que no viaja a ninguna parte.
+ */
+function urlDeLaWeb(mode: string): string {
+  // Sin prefijo: `loadEnv` filtra por `VITE_` si no se le dice otra cosa.
+  const delArchivo = loadEnv(mode, __dirname, '')['PROCTORING_WEB_URL']
+  return (process.env.PROCTORING_WEB_URL ?? delArchivo ?? '').trim()
+}
+
+export default defineConfig(({ mode }) => ({
   main: {
     // La direccion de la web viaja **dentro** del binario.
     //
@@ -13,7 +32,7 @@ export default defineConfig({
     // Cadena vacia cuando no se define: `web.ts` decide que hacer con eso, y
     // `scripts/comprobar-url-web.mjs` impide empaquetar sin ella.
     define: {
-      __PROCTORING_WEB_URL__: JSON.stringify(process.env.PROCTORING_WEB_URL ?? '')
+      __PROCTORING_WEB_URL__: JSON.stringify(urlDeLaWeb(mode))
     }
   },
   preload: {},
@@ -27,4 +46,4 @@ export default defineConfig({
     // instancia anterior viva, que se mude es mejor que no poder arrancar.
     server: { port: 5180 }
   }
-})
+}))

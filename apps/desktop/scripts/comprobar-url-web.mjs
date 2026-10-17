@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 /**
  * Se niega a empaquetar un instalador sin saber a dónde apunta.
  *
@@ -10,20 +13,47 @@
  * lo hace imposible — el empaquetado falla y dice qué poner.
  */
 
-const url = process.env.PROCTORING_WEB_URL
+/**
+ * Lee `PROCTORING_WEB_URL` del `.env`, si existe.
+ *
+ * Mismo sitio del que la lee `electron.vite.config.ts`. Si este guardián solo
+ * mirara el entorno, rechazaría un `.env` perfectamente válido y mandaría a
+ * quien empaqueta a pelearse con la sintaxis de su consola para nada.
+ */
+function delArchivoEnv() {
+  const archivo = resolve(import.meta.dirname, '..', '.env')
+  if (!existsSync(archivo)) return undefined
+
+  for (const linea of readFileSync(archivo, 'utf8').split(/\r?\n/u)) {
+    const limpia = linea.trim()
+    if (!limpia || limpia.startsWith('#')) continue
+    const corte = limpia.indexOf('=')
+    if (corte === -1) continue
+    if (limpia.slice(0, corte).trim() !== 'PROCTORING_WEB_URL') continue
+    return limpia
+      .slice(corte + 1)
+      .trim()
+      .replace(/^["']|["']$/gu, '')
+  }
+  return undefined
+}
 
 function rechazar(motivo) {
   console.error(`\n  No se puede empaquetar: ${motivo}\n`)
   console.error('  El instalador lleva dentro la dirección de la web del examen, y se')
   console.error('  congela al construirlo: un .exe ya publicado no la puede cambiar.\n')
-  console.error('  Construye así, con la web ya desplegada:\n')
-  console.error('    PROCTORING_WEB_URL=https://tu-web.vercel.app npm run build:win\n')
-  console.error('  En PowerShell:\n')
-  console.error('    $env:PROCTORING_WEB_URL="https://tu-web.vercel.app"; npm run build:win\n')
+  console.error('  Ponla en apps/desktop/.env:\n')
+  console.error('    PROCTORING_WEB_URL=https://tu-web.vercel.app\n')
+  console.error('  O en la consola, antes de construir. En PowerShell:\n')
+  console.error('    $env:PROCTORING_WEB_URL="https://tu-web.vercel.app"\n')
+  console.error('  En cmd:\n')
+  console.error('    set PROCTORING_WEB_URL=https://tu-web.vercel.app\n')
   process.exit(1)
 }
 
-if (!url || !url.trim()) rechazar('falta PROCTORING_WEB_URL')
+const url = process.env.PROCTORING_WEB_URL || delArchivoEnv()
+
+if (!url || !url.trim()) rechazar('falta PROCTORING_WEB_URL (ni en el entorno ni en .env)')
 
 let destino
 try {
