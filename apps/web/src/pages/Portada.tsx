@@ -149,13 +149,27 @@ export function Portada() {
   return (
     <CapaPublica>
       <section className="portada-inicio">
-        {/* Decorativo: `aria-hidden` y `alt` vacío porque no añaden información
-            que no esté ya en el texto de al lado. Un lector de pantalla que
-            leyera «estudiante rindiendo un examen» solo estorbaría. */}
+        {/* El fondo que se releva.
+         *
+         * Las fotos van en `apps/web/public/portada/` con estos nombres. No se
+         * incluye ninguna en el repositorio a propósito: una foto de banco
+         * tiene licencia, y este proyecto no carga nada de un CDN, menos
+         * durante un examen. Mientras no estén, cada `img` falla y se oculta
+         * sola, y la portada se ve como un fondo oscuro limpio.
+         *
+         * Decorativo: `aria-hidden` y `alt` vacío, porque no añaden nada que no
+         * diga ya el texto de al lado. */}
         <div className="portada-escenas" aria-hidden="true">
-          <img src="/portada/escena-estudiante.svg" alt="" />
-          <img src="/portada/escena-senales.svg" alt="" />
-          <img src="/portada/escena-docente.svg" alt="" />
+          {['foto-1.jpg', 'foto-2.jpg', 'foto-3.jpg'].map((archivo) => (
+            <img
+              key={archivo}
+              src={`/portada/${archivo}`}
+              alt=""
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          ))}
         </div>
         <div className="contenedor">
           <p className="portada-lema">Exámenes remotos con supervisión transparente</p>

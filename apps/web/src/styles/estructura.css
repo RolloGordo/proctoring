@@ -608,21 +608,20 @@
   color: var(--papel);
 }
 
-/* El panel de escenas: ilustraciones propias que se van relevando.
+/* El fondo de la portada: escenas que se relevan **detras de todo**.
  *
- * Van a la derecha y por debajo del texto, nunca detras del titular, y con una
- * mascara que las apaga hacia la izquierda: una portada donde el lema compite
- * con un dibujo se lee peor, por bonito que sea el dibujo.
+ * A sangre y en todo el ancho, no en un panel a un lado: lo que se pidio es un
+ * fondo que respire, no una ilustracion junto al texto.
  *
- * Son SVG del repositorio, no fotos de banco ni nada de un CDN: el proyecto no
- * carga recursos de fuera, y menos durante un examen. */
+ * La legibilidad manda sobre la decoracion, asi que van a poca opacidad y con
+ * un velo oscuro encima. El titular de la portada es lo primero que lee un
+ * docente evaluador; un fondo que compita con el lo empeora, por bonito que
+ * sea. */
 .portada-escenas {
   position: absolute;
-  inset: 0 0 0 auto;
-  width: min(48%, 34rem);
+  inset: 0;
+  overflow: hidden;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 38%);
-  mask-image: linear-gradient(to right, transparent, #000 38%);
 }
 
 .portada-escenas img {
@@ -630,38 +629,57 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   opacity: 0;
-  animation: portada-releva 27s infinite;
+  animation: portada-releva 30s infinite;
 }
 
 .portada-escenas img:nth-child(2) {
-  animation-delay: 9s;
+  animation-delay: 10s;
 }
 
 .portada-escenas img:nth-child(3) {
-  animation-delay: 18s;
+  animation-delay: 20s;
 }
 
-/* Tres escenas, 27 s de vuelta: cada una entra, se queda y se va.
-   El desvanecido es largo a proposito; un cambio brusco al lado de un titular
-   distrae en vez de acompanar. */
+/* El velo: sin el, el texto blanco cae encima de los trazos claros del dibujo.
+   Mas denso a la izquierda, que es donde vive el titular. */
+.portada-escenas::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    var(--tinta) 18%,
+    rgb(33 37 41 / 82%) 52%,
+    rgb(33 37 41 / 62%) 100%
+  );
+}
+
+/* El contenido va por encima del fondo. */
+.portada-inicio > .contenedor {
+  position: relative;
+  z-index: 1;
+}
+
+/* Tres escenas, 30 s de vuelta: cada una entra, se queda y se va con un
+   desvanecido largo. Un corte brusco detras de un titular distrae. */
 @keyframes portada-releva {
   0% {
     opacity: 0;
-    transform: scale(1.04);
+    transform: scale(1.06);
   }
 
-  7%,
+  8%,
   26% {
-    opacity: 1;
-    transform: scale(1);
+    opacity: 0.4;
+    transform: scale(1.02);
   }
 
-  33%,
+  34%,
   100% {
     opacity: 0;
-    transform: scale(0.98);
+    transform: scale(1);
   }
 }
 
@@ -672,7 +690,7 @@
   }
 
   .portada-escenas img:first-child {
-    opacity: 1;
+    opacity: 0.4;
   }
 }
 
@@ -911,10 +929,6 @@
     padding: 4rem 0 5rem;
   }
 
-  /* En movil el texto ocupa el ancho entero: la escena detras lo haria ilegible. */
-  .portada-escenas {
-    display: none;
-  }
 
   .portada-seccion {
     padding: 4rem 0;

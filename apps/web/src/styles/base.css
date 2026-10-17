@@ -638,7 +638,8 @@ input[type='file']::file-selector-button:hover {
 .acceso-marca {
   font-family: var(--titulo);
   font-weight: 700;
-  font-size: 0.875rem;
+  /* Es la marca y preside la caja: a 0.875rem se leia como un pie de pagina. */
+  font-size: 1.375rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: var(--tinta-suave);
