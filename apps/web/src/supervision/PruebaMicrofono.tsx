@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { abrirMicrofono, CamaraNoDisponibleError } from './camara'
 import { DetectorHabla } from './detectores/voz'
+import { conLimite, LIMITE_ARRANQUE_MS } from './arranque'
 
 type Estado = 'pendiente' | 'preparando' | 'escuchando' | 'detectado' | 'fallo'
 
@@ -116,15 +117,24 @@ export function PruebaMicrofono() {
       // mientras carga el modelo.
       try {
         const detector = new DetectorHabla()
-        await detector.preparar({
-          stream: micro.stream,
-          captureSender: () => (senal) => {
-            if (senal.evento === 'speech_detected') {
-              setEstado('detectado')
-              setMensaje('Voz reconocida. El micrófono está listo para el examen.')
+        // **Con límite de tiempo.** `MicVAD.new()` no resuelve ni rechaza si la
+        // carga del worker de ONNX se atasca, y entonces esto no marcaba el
+        // detector como listo *ni* entraba en el `catch`: la pantalla se
+        // quedaba en «escuchando» para siempre, sin confirmar y sin avisar de
+        // que había fallado. Quien lo probaba veía que se capta sonido y que
+        // nunca se confirma, sin ninguna explicación.
+        await conLimite(
+          detector.preparar({
+            stream: micro.stream,
+            captureSender: () => (senal) => {
+              if (senal.evento === 'speech_detected') {
+                setEstado('detectado')
+                setMensaje('Voz reconocida. El micrófono está listo para el examen.')
+              }
             }
-          }
-        })
+          }),
+          LIMITE_ARRANQUE_MS
+        )
         if (recursos.current) recursos.current.detector = detector
         else detector.detener()
       } catch (fallo) {

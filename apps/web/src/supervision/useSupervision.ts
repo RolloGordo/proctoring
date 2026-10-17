@@ -27,6 +27,7 @@ import {
   type AvisoSupervision
 } from './avisos'
 import { recordDiagnostic, type DiagnosticCode } from './diagnostics'
+import { prepararDetectores } from './arranque'
 import type { SenalDetectada } from './tipos'
 import { EmisorDeSenales } from './emisor'
 import { publicarFotogramas, type AjustesMonitoreo, type Publicacion } from './monitoreo'
@@ -288,34 +289,34 @@ export function useSupervision({
         // Un detector que no carga se descarta y los demás siguen, pero **se
         // dice**: queda en `fallidos`, se lo ve el estudiante, se lo ve el
         // docente en vivo y queda registrado en `supervision_diagnostics`.
-        const listos: Detector[] = []
-        for (const detector of detectores) {
-          try {
-            await detector.preparar?.({
-              stream: camara.video.srcObject as MediaStream,
-              captureSender: () => {
-                const enviar = emisor.captureSender()
-                return (senal) => {
-                  enviar(senal)
-                  notificar(senal.evento)
-                }
-              }
-            })
-            if (cancelado) {
-              detector.detener?.()
-              return
+        // A la vez y con límite de tiempo: ver `arranque.ts`. En serie, un
+        // detector que no respondía nunca dejaba sin arrancar a los que vinieran
+        // detrás **y** al bucle que mira fotogramas, que se crea más abajo.
+        const arranques = await prepararDetectores(detectores, {
+          stream: camara.video.srcObject as MediaStream,
+          captureSender: () => {
+            const enviar = emisor.captureSender()
+            return (senal) => {
+              enviar(senal)
+              notificar(senal.evento)
             }
-            listos.push(detector)
-          } catch (fallo) {
-            detector.detener?.()
-            fallidos.add(detector.nombre)
-            console.error(`[supervisión] no se pudo preparar ${detector.nombre}`, fallo)
-            informar('vision_module_failed', detector.nombre, {
-              reason: fallo instanceof Error ? fallo.message.slice(0, 200) : 'desconocido'
-            })
           }
+        })
+        if (cancelado) {
+          for (const { detector } of arranques) detector.detener?.()
+          return
         }
-        if (cancelado) return
+
+        const listos: Detector[] = []
+        for (const { detector, listo, motivo } of arranques) {
+          if (listo) {
+            listos.push(detector)
+            continue
+          }
+          fallidos.add(detector.nombre)
+          console.error(`[supervisión] no se pudo preparar ${detector.nombre}: ${motivo}`)
+          informar('vision_module_failed', detector.nombre, { reason: motivo ?? 'desconocido' })
+        }
         reportarFallidos()
 
         temporizador = setInterval(() => {
@@ -448,7 +449,10 @@ export function useSupervision({
         // problema: sin ella no se sabe si el microfono se abrio y no oyo nada
         // o si nunca llego a abrirse.
         const propio = detector?.ownsSegments === true
-        if (cuenta.fotogramas === 0 && !fallidos.has(nombre) && !propio) continue
+        // **Siempre una fila, también con cero fotogramas.** Saltarla escondía
+        // justo el caso que hacía falta ver: un detector que arrancó bien y al
+        // que nunca se le llegó a preguntar nada no dejaba rastro, y en el
+        // expediente se lee igual que si no hubiera pasado nada.
         informar('vision_module_summary', nombre, {
           frames: cuenta.fotogramas,
           verdicts: cuenta.veredictos,

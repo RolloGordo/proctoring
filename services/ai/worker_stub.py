@@ -65,18 +65,54 @@ def main() -> int:
     return 0
 
 
+#: Lo que el worker necesita del entorno para hacer su trabajo.
+#:
+#: Sin estas no puede bajar de Storage ni devolverle el resultado a la API, asi
+#: que un trabajo falla en cuanto lo coge. Antes eso solo se sabia provocando el
+#: fallo y leyendo los registros, y «creo que las puse bien» no es una respuesta
+#: que se pueda comprobar.
+REQUERIDAS = (
+    "REDIS_URL",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "PROCTORING_API_URL",
+    "INTERNAL_API_TOKEN",
+)
+
+
+def _configuracion() -> dict[str, bool]:
+    """Que variables estan puestas. **Solo si estan, nunca su valor.**
+
+    El endpoint de salud es publico: lo sondea la plataforma. Devolver aqui el
+    valor de una clave de servicio seria regalarla, asi que esto es un si o un
+    no por nombre y nada mas.
+    """
+    return {nombre: bool(os.environ.get(nombre, "").strip()) for nombre in REQUERIDAS}
+
+
 def _estado(connection: Redis) -> dict[str, object]:
     """Lo que responde el endpoint de salud.
 
     Pregunta por la cola de verdad en vez de contestar 200 a secas: un worker
     que perdio Redis esta inservible aunque el proceso siga vivo, y eso tiene
     que poder notarse desde fuera.
+
+    Y dice que variables de entorno le faltan. La verificacion facial estuvo
+    rota por una de ellas y no habia forma de comprobarlo desde fuera: la foto
+    de referencia se subia, su embedding nunca se calculaba, y la unica senal
+    era un RuntimeError enterrado en los registros.
     """
     try:
         viva = bool(connection.ping())
     except Exception:  # noqa: BLE001 - cualquier fallo aqui significa lo mismo
         viva = False
-    return {"queue": viva, "queues": QUEUES}
+    configuracion = _configuracion()
+    return {
+        "queue": viva,
+        "queues": QUEUES,
+        "config": configuracion,
+        "missing": sorted(nombre for nombre, puesta in configuracion.items() if not puesta),
+    }
 
 
 if __name__ == "__main__":
