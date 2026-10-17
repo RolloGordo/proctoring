@@ -405,12 +405,20 @@ export function useSupervision({
       // sin imágenes: es lo que permite leer después «miró 4 800 fotogramas y
       // no le pareció que pasara nada» en vez de suponerlo.
       for (const [nombre, cuenta] of trabajo) {
-        if (cuenta.fotogramas === 0 && !fallidos.has(nombre)) continue
+        const detector = detectores.find((d) => d.nombre === nombre)
+        // El detector de habla no pasa por el bucle de observacion: se emite a
+        // si mismo desde el VAD (`ownsSegments`), asi que no cuenta fotogramas.
+        // Pero su fila es la que mas falta hacia, porque es la mitad del
+        // problema: sin ella no se sabe si el microfono se abrio y no oyo nada
+        // o si nunca llego a abrirse.
+        const propio = detector?.ownsSegments === true
+        if (cuenta.fotogramas === 0 && !fallidos.has(nombre) && !propio) continue
         informar('vision_module_summary', nombre, {
           frames: cuenta.fotogramas,
           verdicts: cuenta.veredictos,
           episodes: cuenta.episodios,
-          failed: fallidos.has(nombre)
+          failed: fallidos.has(nombre),
+          self_emitting: propio
         })
       }
       void emisor.cerrar()
