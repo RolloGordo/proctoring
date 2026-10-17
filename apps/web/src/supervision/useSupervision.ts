@@ -14,7 +14,12 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { abrirCamara, CamaraNoDisponibleError, capturarFotograma } from './camara'
 import { CapturasPorCondicion } from './capturasVision'
-import { CameraHealthMonitor, meanVideoBrightness, type CameraHealth } from './cameraHealth'
+import {
+  CameraHealthMonitor,
+  debeSeguirObservando,
+  meanVideoBrightness,
+  type CameraHealth
+} from './cameraHealth'
 import {
   avisoCamara,
   avisoDetectoresNoDisponibles,
@@ -199,7 +204,10 @@ export function useSupervision({
       }
     }
 
-    const emisor = new EmisorDeSenales({ sessionId, studentId, questionId, token })
+    const emisor = new EmisorDeSenales(
+      { sessionId, studentId, questionId, token },
+      (motivo) => informar('audio_segment_lost', 'habla', { reason: motivo })
+    )
     emisorRef.current = emisor
     const seguimientos = new Map(
       detectores.map((d) => [d.nombre, new SeguimientoCondicion({ minimoMs: d.minimoMs })])
@@ -229,10 +237,17 @@ export function useSupervision({
         const falloCamara = (tipo: Exclude<CameraHealth, 'active'>) => {
           if (cancelado || ultimoFallo === tipo) return
           ultimoFallo = tipo
-          const mensaje = tipo === 'interrupted'
-            ? 'La cámara se desconectó. Reconéctala y selecciona Reintentar cámara.'
-            : 'La cámara no está entregando imagen útil. Comprueba la luz o si otra aplicación está usando la cámara y pulsa Reintentar.'
-          setEstado({ tipo: 'fallo', mensaje })
+          // **Solo 'interrupted' es un fallo.** Con 'no_image' la cámara sigue
+          // abierta y los detectores siguen trabajando: decirle al estudiante
+          // que la supervisión falló seria falso, y poner el estado en 'fallo'
+          // le quitaba de la pantalla la vista de su propia camara, que es
+          // justo lo que necesita para arreglar la luz o el encuadre.
+          if (tipo === 'interrupted') {
+            setEstado({
+              tipo: 'fallo',
+              mensaje: 'La cámara se desconectó. Reconéctala y selecciona Reintentar cámara.'
+            })
+          }
           callbacksRef.current.onAviso?.(avisoCamara(tipo))
           envioEnVivo?.reportarCamara?.(tipo)
           informar(tipo === 'interrupted' ? 'camera_interrupted' : 'camera_no_image')
@@ -304,8 +319,22 @@ export function useSupervision({
         reportarFallidos()
 
         temporizador = setInterval(() => {
-          // Never run vision inference on a known stopped or unusable stream.
-          if (ultimoFallo !== null) return
+          // **Solo se deja de observar si la pista se terminó de verdad.**
+          //
+          // Antes se paraba también con 'no_image', y eso era la causa de que un
+          // examen entero no registrara nada: 'no_image' lo decide el monitor de
+          // salud cuando la imagen sale muy oscura cuatro segundos seguidos, o
+          // cuando `currentTime` no avanza. Rindiendo de noche, o cada vez que
+          // el estudiante se va a otra ventana y el navegador deja de pintar un
+          // <video> suelto, la supervisión se apagaba sola y en silencio.
+          //
+          // Una imagen mala no es ausencia de imagen: MediaPipe puede seguir
+          // viendo una cara con poca luz, y «se fue del encuadre» importa más,
+          // no menos, cuando la imagen es dudosa. Se sigue observando y se
+          // apunta el estado de la cámara en la metadata, para que el docente
+          // lea «esto se midió con imagen pobre» en lugar de no leer nada.
+          if (!debeSeguirObservando(ultimoFallo)) return
+          const saludActual = ultimoFallo
           const ahoraMs = Date.now()
           for (const detector of listos) {
             if (detector.ownsSegments || fallidos.has(detector.nombre)) continue
@@ -337,7 +366,14 @@ export function useSupervision({
               cuenta.fotogramas += 1
               if (veredicto.activa) cuenta.veredictos += 1
             }
-            if (veredicto.metadata) ultimaMetadata.set(detector.nombre, veredicto.metadata)
+            if (veredicto.metadata) {
+              ultimaMetadata.set(
+                detector.nombre,
+                saludActual === null
+                  ? veredicto.metadata
+                  : { ...veredicto.metadata, camera_health: saludActual }
+              )
+            }
 
             const capturador = capturas.get(detector.nombre)
             if (capturador?.actualizar(

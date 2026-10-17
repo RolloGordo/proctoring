@@ -6,6 +6,8 @@ export type DiagnosticCode =
   | 'vision_module_failed' | 'vision_module_recovered'
   /** Cuanto observo un detector durante el examen. No es una incidencia. */
   | 'vision_module_summary'
+  /** Se oyo habla pero el fragmento no llego a Storage: no hay senal que emitir. */
+  | 'audio_segment_lost'
 
 export interface DiagnosticEntry {
   session_id: string

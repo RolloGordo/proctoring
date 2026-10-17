@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { verFotogramas, type EstadoCamara, type EstadoVista, type Fotograma } from '../supervision/monitoreo'
+import { verFotogramas, type EstadoCamara, type EstadoVista, type EstadoVision, type Fotograma } from '../supervision/monitoreo'
 
 /** Si no llega un fotograma en este tiempo, se dice «sin señal». */
 const SIN_SENAL_MS = 5000
@@ -34,6 +34,10 @@ export function CamaraEnVivo({
   const [estado, setEstado] = useState<EstadoVista>('conectando')
   const [fresco, setFresco] = useState(false)
   const [camaraEstado, setCamaraEstado] = useState<EstadoCamara | null>(null)
+  const [visionEstado, setVisionEstado] = useState<EstadoVision | null>(null)
+  const [modulosFallidos, setModulosFallidos] = useState<string[]>([])
+  const [receivedFps, setReceivedFps] = useState(0)
+  const lastFrameAt = useRef<number | null>(null)
 
   useEffect(() => {
     if (!supabase || !sessionId || !studentId || !teacherId) return
@@ -50,18 +54,26 @@ export function CamaraEnVivo({
       onFotograma: (fotograma) => {
         setUltimo(fotograma)
         setFresco(true)
+        const now = performance.now()
+        if (lastFrameAt.current !== null) {
+          const delta = now - lastFrameAt.current
+          if (delta > 0) setReceivedFps(Math.round((1000 / delta) * 10) / 10)
+        }
+        lastFrameAt.current = now
       },
       onConectado: (value) => {
         setConectado(value)
         if (!value) setCamaraEstado(null)
       },
       onCamaraEstado: setCamaraEstado,
+      onVisionEstado: (status, modules) => { setVisionEstado(status); setModulosFallidos(modules) },
       onEstado: setEstado
     })
 
     return () => {
       void vista.detener()
       setConectado(false)
+      lastFrameAt.current = null
     }
   }, [sessionId, studentId, teacherId])
 
@@ -124,8 +136,14 @@ export function CamaraEnVivo({
         <span>{etiqueta}</span>
         <span className="en-vivo" role="status" aria-live="polite">
           <span className={estadoSenal === 'En vivo' ? 'punto punto-activo' : 'punto'} />
-          {estadoSenal}
+          {estadoSenal}{fresco && receivedFps > 0 ? ` · ${receivedFps} FPS recibidos` : ''}
         </span>
+        {visionEstado && visionEstado !== 'active' && (
+          <span role="alert" className="aviso">
+            Visión {visionEstado === 'unavailable' ? 'no disponible' : 'parcial'}
+            {modulosFallidos.length > 0 ? `: ${modulosFallidos.join(', ')}` : ''}
+          </span>
+        )}
       </figcaption>
     </figure>
   )

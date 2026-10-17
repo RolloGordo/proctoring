@@ -323,10 +323,22 @@ export function RendirExamen() {
         </p>
       )}
 
-      {supervision.tipo === 'activa' && (
-        <div className="indicador-camara-examen" aria-label="Cámara activa durante el examen">
-          <video ref={asociarVistaPrevia} muted playsInline autoPlay aria-label="Mi cámara activa" />
-          <span>● Cámara activa</span>
+      {/*
+        Se ensena mientras la supervision este encendida, aunque algo vaya mal.
+        Estaba condicionado a `=== 'activa'`, asi que en cuanto el monitor de
+        salud decidia que la imagen era pobre, al estudiante le desaparecia la
+        vista de su propia camara: justo la unica forma que tiene de comprobar
+        que sigue encuadrado y de arreglar la luz.
+      */}
+      {supervision.tipo !== 'apagada' && supervision.tipo !== 'iniciando' && (
+        <div className="indicador-camara-examen" aria-label="Mi cámara durante el examen">
+          <video ref={asociarVistaPrevia} muted playsInline autoPlay aria-label="Mi cámara" />
+          {/* La etiqueta dice lo que pasa, no siempre «activa»: afirmar que la
+              camara esta activa cuando se ha desconectado es la clase de
+              mentira pequena que hace desconfiar de todo lo demas. */}
+          <span>
+            {supervision.tipo === 'fallo' ? '○ Cámara sin señal' : '● Cámara activa'}
+          </span>
         </div>
       )}
 
