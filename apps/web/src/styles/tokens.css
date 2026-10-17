@@ -1,0 +1,108 @@
+/*
+ * Sistema de diseño de la web del docente.
+ *
+ * **Esto NO es una landing page.** Es una herramienta que un docente mira
+ * durante una hora seguida mientras vigila un examen, y que un estudiante ve
+ * mientras lo rinde. Manda la legibilidad, no el impacto.
+ *
+ * Venía del tema Agency de Start Bootstrap: Montserrat en mayúsculas, Roboto
+ * Slab para el texto y un amarillo saturado. Eso se lee como plantilla, no como
+ * producto. Tres decisiones lo cambian:
+ *
+ * 1. **Una sola tipografía, la del sistema.** San Francisco en Mac, Segoe UI
+ *    Variable en Windows. Carga instantánea, cero peticiones externas durante
+ *    un examen, y se ve como una aplicación nativa. Además era incoherente
+ *    auto-alojar MediaPipe y el VAD para no tocar un CDN al rendir, y luego
+ *    bajar dos tipografías de Google en esa misma pantalla.
+ *
+ * 2. **Sin mayúsculas forzadas.** Las jerarquías se hacen con tamaño y peso.
+ *    Las mayúsculas se leen más despacio y gritan; quedan solo en etiquetas
+ *    diminutas, donde funcionan como rótulo y no como texto.
+ *
+ * 3. **El acento se usa poco.** La acción principal es tinta, no amarilla. El
+ *    amarillo queda para lo seleccionado y para el foco. Un acento que aparece
+ *    en todas partes deja de ser acento.
+ *
+ * Nada de degradados, de sombras grandes ni de animaciones decorativas.
+ */
+
+:root {
+  /* ---------- Paleta ---------- */
+  /* Menos saturado que el #ffc800 de la plantilla: el puro vibra sobre blanco
+   * y cansa en una pantalla que se mira una hora seguida. */
+  --amarillo: #e8a700;
+  --amarillo-oscuro: #c58e00;
+  --amarillo-tenue: #fdf6e3;
+
+  /* La acción principal. Tinta, no amarillo: es lo que distingue una
+   * herramienta de una plantilla de agencia. */
+  --accion: #1a1d20;
+  --accion-hover: #343a40;
+
+  --tinta: #212529;
+  --tinta-media: #495057;
+  /* Medido: #6c757d daba 4.45 sobre --papel-gris y 4.10 sobre --papel-hundido,
+   * por debajo del 4.5 que exige WCAG AA para texto normal. Este pasa en las
+   * tres superficies (5.27 / 5.00 / 4.61) y es el minimo que hace falta. */
+  --tinta-suave: #646d75;
+
+  --papel: #ffffff;
+  --papel-gris: #f8f9fa;
+  --papel-hundido: #eef0f2;
+
+  --linea: #dee2e6;
+  --linea-fuerte: #ced4da;
+
+  /* ---------- Severidad ----------
+   * Son los tres valores del enum alert_severity. El rojo se reserva para
+   * `high`: si todo grita, el docente deja de mirar. */
+  --alta: #b42318;
+  --alta-fondo: #fef3f2;
+  --alta-linea: #fecdc9;
+
+  --media: #b54708;
+  --media-fondo: #fffaeb;
+  --media-linea: #fedf89;
+
+  --baja: #475467;
+  --baja-fondo: var(--papel-gris);
+  --baja-linea: var(--linea);
+
+  --exito: #067647;
+  --exito-fondo: #ecfdf3;
+
+  /* ---------- Tipografía ---------- */
+  /* Una sola familia, la del sistema. `--titulo` y `--texto` se conservan
+   * como nombres porque los usan ~40 reglas: apuntan a lo mismo. */
+  --sistema:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --titulo: var(--sistema);
+  --texto: var(--sistema);
+  --mono: 'SFMono-Regular', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  /* ---------- Espaciado ---------- */
+  --e1: 0.25rem;
+  --e2: 0.5rem;
+  --e3: 0.75rem;
+  --e4: 1rem;
+  --e5: 1.5rem;
+  --e6: 2rem;
+  --e7: 3rem;
+  --e8: 4rem;
+
+  /* ---------- Formas ----------
+   * Radios pequeños a propósito. Las esquinas muy redondeadas son lo que hace
+   * que una interfaz parezca una plantilla genérica. */
+  --radio: 3px;
+  --radio-grande: 6px;
+
+  --sombra: 0 1px 2px rgb(16 24 40 / 6%);
+  --sombra-alta: 0 4px 12px rgb(16 24 40 / 10%);
+
+  --transicion: 120ms ease-out;
+
+  /* ---------- Disposición ---------- */
+  --ancho-maximo: 1180px;
+  --alto-cabecera: 64px;
+}

@@ -1,0 +1,244 @@
+{
+  "manifest_sha256": "3f8fecbca94a974fd4a9a63b8955db4d46ec91b0575d2b19c62f76e192ac333b",
+  "selection": "exploratory_not_final_test",
+  "models": {
+    "base": {
+      "summary": {
+        "sample_count": 2,
+        "reference_words": 79,
+        "word_edits": 14,
+        "micro_wer": 0.17721518987341772,
+        "audio_seconds": 34.344,
+        "inference_seconds": 2.8637869999947725,
+        "aggregate_real_time_factor": 0.08338536571147136,
+        "empty_reference_samples": 0,
+        "empty_reference_inserted_words": 0
+      },
+      "samples": [
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-04T02:06:14.282065+00:00",
+          "audio_file": "P01_01.mp4",
+          "audio_sha256": "c79dc5e72be434492c7b4dd89f10315c4ce977b436dbfec241777d72775bb42d",
+          "model": "base",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 2.7271983999962686,
+          "inference_seconds": 1.643350999991526,
+          "audio_seconds": 16.66,
+          "real_time_factor": 0.09864051620597394,
+          "transcript": "Durante un examen virtual, el estudiante puede leer una pregunta en voz alta para comprenderla mejor. El sistema de vez distinguir esa lectura de una consulta a un existente y conservarla evidencia para aquí, docente, reviselo, ocurrir.",
+          "segments": [
+            {
+              "start": 1.39,
+              "end": 6.03,
+              "text": "Durante un examen virtual, el estudiante puede leer una pregunta en voz alta para"
+            },
+            {
+              "start": 6.03,
+              "end": 8.35,
+              "text": "comprenderla mejor."
+            },
+            {
+              "start": 8.35,
+              "end": 12.55,
+              "text": "El sistema de vez distinguir esa lectura de una consulta a un existente y conservarla"
+            },
+            {
+              "start": 12.55,
+              "end": 15.43,
+              "text": "evidencia para aquí, docente, reviselo, ocurrir."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "Durante un examen virtual, el estudiante puede leer una pregunta en voz alta para comprenderla mejor. El sistema debe distinguir esa lectura de una consulta a un asistente y conservar la evidencia para que el docente revise lo ocurrido.",
+          "metrics": {
+            "reference_words": 39,
+            "hypothesis_words": 37,
+            "word_edits": 10,
+            "wer": 0.2564102564102564
+          },
+          "sample_id": "P01_01"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-04T02:06:15.566850+00:00",
+          "audio_file": "P01_02.mp4",
+          "audio_sha256": "988bf7d0c02b14f2c586780e725a41ca7232b9ee0f8a398bf537790f92f6caee",
+          "model": "base",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 2.7271983999962686,
+          "inference_seconds": 1.2204360000032466,
+          "audio_seconds": 17.684,
+          "real_time_factor": 0.06901357159032157,
+          "transcript": "¿Cuál es la diferencia entre una clave primaria y una clave forana en una base de datos? Explica cómo se relacionan dos talgas y mencionan un ejemplo sencillo. Luego señala por qué una contracenión no debe guardarse como texto visible.",
+          "segments": [
+            {
+              "start": 1.36,
+              "end": 6.76,
+              "text": "¿Cuál es la diferencia entre una clave primaria y una clave forana en una base de datos?"
+            },
+            {
+              "start": 6.76,
+              "end": 11.36,
+              "text": "Explica cómo se relacionan dos talgas y mencionan un ejemplo sencillo."
+            },
+            {
+              "start": 11.36,
+              "end": 16.36,
+              "text": "Luego señala por qué una contracenión no debe guardarse como texto visible."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "¿Cuál es la diferencia entre una clave primaria y una clave foránea en una base de datos? Explica cómo se relacionan dos tablas y menciona un ejemplo sencillo. Luego, señala por qué una contraseña no debe guardarse como texto visible.",
+          "metrics": {
+            "reference_words": 40,
+            "hypothesis_words": 40,
+            "word_edits": 4,
+            "wer": 0.1
+          },
+          "sample_id": "P01_02"
+        }
+      ]
+    },
+    "small": {
+      "summary": {
+        "sample_count": 2,
+        "reference_words": 79,
+        "word_edits": 6,
+        "micro_wer": 0.0759493670886076,
+        "audio_seconds": 34.344,
+        "inference_seconds": 6.120608900004299,
+        "aggregate_real_time_factor": 0.17821479443292276,
+        "empty_reference_samples": 0,
+        "empty_reference_inserted_words": 0
+      },
+      "samples": [
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-04T02:06:20.357199+00:00",
+          "audio_file": "P01_01.mp4",
+          "audio_sha256": "c79dc5e72be434492c7b4dd89f10315c4ce977b436dbfec241777d72775bb42d",
+          "model": "small",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 1.7454718999942997,
+          "inference_seconds": 3.013305300002685,
+          "audio_seconds": 16.66,
+          "real_time_factor": 0.18087066626666776,
+          "transcript": "Durante un examen virtual, el estudiante puede leer una pregunta en voz alta para comprenderla mejor. El sistema debe distinguir esa lectura de una consulta a un existente y conservar la evidencia para que docente revise el ocurrido.",
+          "segments": [
+            {
+              "start": 1.39,
+              "end": 8.11,
+              "text": "Durante un examen virtual, el estudiante puede leer una pregunta en voz alta para comprenderla mejor."
+            },
+            {
+              "start": 8.11,
+              "end": 16.11,
+              "text": "El sistema debe distinguir esa lectura de una consulta a un existente y conservar la evidencia para que docente revise el ocurrido."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "Durante un examen virtual, el estudiante puede leer una pregunta en voz alta para comprenderla mejor. El sistema debe distinguir esa lectura de una consulta a un asistente y conservar la evidencia para que el docente revise lo ocurrido.",
+          "metrics": {
+            "reference_words": 39,
+            "hypothesis_words": 38,
+            "word_edits": 3,
+            "wer": 0.07692307692307693
+          },
+          "sample_id": "P01_01"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-04T02:06:23.470846+00:00",
+          "audio_file": "P01_02.mp4",
+          "audio_sha256": "988bf7d0c02b14f2c586780e725a41ca7232b9ee0f8a398bf537790f92f6caee",
+          "model": "small",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 1.7454718999942997,
+          "inference_seconds": 3.1073036000016145,
+          "audio_seconds": 17.684,
+          "real_time_factor": 0.1757127120561872,
+          "transcript": "¿Cuál es la diferencia entre una clave primaria y una clave forana y una base de datos? Explica cómo se relacionan dos talgas y menciona un ejemplo sencillo. Luego señala por qué una contraseña no debe guardarse como texto visible.",
+          "segments": [
+            {
+              "start": 1.36,
+              "end": 6.36,
+              "text": "¿Cuál es la diferencia entre una clave primaria y una clave forana y una base de datos?"
+            },
+            {
+              "start": 6.36,
+              "end": 11.36,
+              "text": "Explica cómo se relacionan dos talgas y menciona un ejemplo sencillo."
+            },
+            {
+              "start": 11.36,
+              "end": 16.36,
+              "text": "Luego señala por qué una contraseña no debe guardarse como texto visible."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "¿Cuál es la diferencia entre una clave primaria y una clave foránea en una base de datos? Explica cómo se relacionan dos tablas y menciona un ejemplo sencillo. Luego, señala por qué una contraseña no debe guardarse como texto visible.",
+          "metrics": {
+            "reference_words": 40,
+            "hypothesis_words": 40,
+            "word_edits": 3,
+            "wer": 0.075
+          },
+          "sample_id": "P01_02"
+        }
+      ]
+    }
+  }
+}

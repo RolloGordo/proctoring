@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Proctoring — Panel del estudiante</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
+  </head>
+  <body>
+    <header class="barra">
+      <span class="marca">Proc<span>toring</span></span>
+      <span class="estado"><span class="punto"></span>Supervisión activa</span>
+    </header>
+
+    <main class="contenido">
+      <h1>Registro de eventos</h1>
+      <p class="sub">
+        Lo que el sistema observa durante tu examen. Esta información también la ve tu docente.
+      </p>
+
+      <p class="aviso" id="aviso-contexto" hidden>
+        Sin <code>PROCTORING_SESSION_ID</code> ni <code>PROCTORING_STUDENT_ID</code> los eventos
+        solo se muestran aquí y no se envían a la API.
+      </p>
+
+      <div class="resumen">
+        <div class="dato"><b id="n-salidas">0</b><span>Salidas de la ventana</span></div>
+        <div class="dato"><b id="t-fuera">0.0 s</b><span>Tiempo total fuera</span></div>
+        <div class="dato"><b id="n-monitores">-</b><span>Monitores conectados</span></div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Hora</th>
+            <th>Señal</th>
+            <th>Detalle</th>
+            <th>Duración</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+      <p class="vacio" id="vacio">Todavía no hay eventos.</p>
+    </main>
+
+    <script type="module" src="./src/renderer.ts"></script>
+  </body>
+</html>

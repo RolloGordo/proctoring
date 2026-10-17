@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proctoring</title>
+    <meta
+      name="description"
+      content="Plataforma de exámenes remotos con supervisión transparente."
+    />
+    <!--
+      Sin tipografias de Google a proposito.
+
+      El proyecto se toma el trabajo de auto-alojar MediaPipe y el VAD para no
+      tocar un CDN mientras alguien rinde; descargar dos tipografias de Google
+      en esa misma pantalla contradecia esa decision. Ahora se usa la del
+      sistema: carga instantanea, cero peticiones externas durante un examen, y
+      se ve como una aplicacion nativa en vez de como una plantilla.
+    -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

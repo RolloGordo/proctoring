@@ -1,0 +1,1158 @@
+/*
+ * Estructura de la aplicación: la portada, la barra lateral de los paneles, y la
+ * capa de quien está rindiendo.
+ *
+ * Mismo sistema de diseño que el resto (ver tokens.css): Montserrat en
+ * mayúsculas, Roboto Slab, un amarillo que se usa poco. La portada es lo único
+ * que se permite ser "grande"; todo lo demás es una herramienta que se mira
+ * durante una hora seguida.
+ */
+
+:root {
+  --ancho-lateral: 248px;
+}
+
+/* ===========================================================================
+   Botones nuevos
+   =========================================================================== */
+.boton-compacto {
+  /* Holgado a proposito: en la cabecera la pildora queda sobre fondo oscuro y
+   * con el padding minimo el texto se lee apretado contra el borde. */
+  padding: var(--e3) var(--e5);
+}
+
+.boton-grande {
+  font-size: 0.875rem;
+  padding: var(--e4) var(--e6);
+}
+
+/* Para fondos oscuros: borde claro y sin relleno. */
+/* La accion principal sobre fondo oscuro va en amarillo.
+ *
+ * Dentro de la aplicacion el boton principal es tinta, porque ahi el amarillo
+ * compite con los estados y el foco. Pero sobre los fondos oscuros —cabecera y
+ * portada— tinta sobre tinta no se lee, y el blanco que se puso para arreglarlo
+ * dejaba la marca sin ninguna personalidad. El amarillo resuelve las dos cosas:
+ * contrasta con el fondo oscuro y es el color de la marca. */
+.cabecera .boton:not(.boton-claro):not(.boton-texto),
+.portada-inicio .boton:not(.boton-claro):not(.boton-texto),
+.portada-oscura .boton:not(.boton-claro):not(.boton-texto) {
+  background: var(--amarillo);
+  color: var(--tinta);
+  border-color: transparent;
+}
+
+.cabecera .boton:not(.boton-claro):not(.boton-texto):hover:not(:disabled),
+.portada-inicio .boton:not(.boton-claro):not(.boton-texto):hover:not(:disabled),
+.portada-oscura .boton:not(.boton-claro):not(.boton-texto):hover:not(:disabled) {
+  background: var(--amarillo-oscuro);
+}
+
+.boton-claro {
+  background: transparent;
+  border-color: rgb(255 255 255 / 45%);
+  color: var(--papel);
+}
+
+.boton-claro:hover:not(:disabled) {
+  background: rgb(255 255 255 / 10%);
+}
+
+/* El enlace de la navegación pinta todo `a` de gris claro; un botón dentro
+   tiene que conservar su propio color.
+   
+   Y su propio relleno: `.navegacion a` fija `padding: var(--e2) 0`, que gana
+   por especificidad a `.boton-compacto` y dejaba el texto pegado a los bordes
+   de la pildora. */
+.navegacion a.boton,
+.navegacion a.boton:hover {
+  color: var(--tinta);
+  border-bottom-color: transparent;
+  padding: var(--e3) var(--e5);
+}
+
+.oculta-movil {
+  display: inline;
+}
+
+/* ===========================================================================
+   Chips de estado de un examen
+   =========================================================================== */
+.chip {
+  display: inline-block;
+  font-family: var(--titulo);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px var(--e2);
+  border: 1px solid;
+  border-radius: var(--radio);
+  white-space: nowrap;
+}
+
+.chip-programado {
+  color: var(--baja);
+  background: var(--baja-fondo);
+  border-color: var(--baja-linea);
+}
+
+.chip-en_curso {
+  color: var(--tinta);
+  background: var(--amarillo-tenue);
+  border-color: var(--media-linea);
+}
+
+.chip-terminado {
+  color: var(--tinta-suave);
+  background: var(--papel-hundido);
+  border-color: var(--linea);
+}
+
+/* Cancelado se distingue de terminado a propósito: uno ocurrió y el otro no. */
+.chip-cancelado {
+  color: var(--alta);
+  background: var(--alta-fondo);
+  border-color: var(--alta-linea);
+  text-decoration: line-through;
+}
+
+/* El aviso de nota parcial va junto a la nota, no debajo: son una sola idea. */
+.nota-aviso {
+  margin-left: var(--e2);
+}
+
+.cifra-en-curso {
+  color: var(--exito);
+}
+
+/* ===========================================================================
+   Panel con barra lateral
+   =========================================================================== */
+.app {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--ancho-lateral) minmax(0, 1fr);
+}
+
+.lateral {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+  padding: var(--e5);
+  background: var(--tinta);
+  color: var(--papel);
+  overflow-y: auto;
+}
+
+.lateral-rol {
+  margin: 0;
+  font-family: var(--titulo);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgb(255 255 255 / 50%);
+}
+
+.lateral-nav {
+  display: flex;
+  flex-direction: column;
+  margin: var(--e5) calc(var(--e5) * -1) 0;
+}
+
+.lateral-nav a {
+  padding: var(--e3) var(--e5);
+  border-left: 3px solid transparent;
+  font-family: var(--titulo);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgb(255 255 255 / 70%);
+  text-decoration: none;
+  transition:
+    color var(--transicion),
+    background var(--transicion);
+}
+
+.lateral-nav a:hover {
+  color: var(--papel);
+  background: rgb(255 255 255 / 6%);
+}
+
+/* El amarillo marca dónde estás, y solo eso. */
+.lateral-nav a.activo {
+  color: var(--papel);
+  border-left-color: var(--amarillo);
+  background: rgb(255 255 255 / 9%);
+}
+
+.lateral-pie {
+  margin-top: auto;
+  padding-top: var(--e4);
+  border-top: 1px solid rgb(255 255 255 / 14%);
+}
+
+.lateral-correo {
+  margin: 0 0 var(--e2);
+  font-size: 0.8125rem;
+  color: rgb(255 255 255 / 70%);
+  overflow-wrap: anywhere;
+}
+
+.lateral .boton-texto {
+  padding-left: 0;
+  color: rgb(255 255 255 / 85%);
+}
+
+.lateral .boton-texto:hover:not(:disabled) {
+  background: transparent;
+  color: var(--papel);
+}
+
+.lateral-cambio {
+  font-family: var(--titulo);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--amarillo);
+  text-decoration: none;
+}
+
+.app-contenido {
+  min-width: 0;
+}
+
+.app-pagina {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--e7) var(--e6) var(--e8);
+}
+
+.app-movil,
+.lateral-velo {
+  display: none;
+}
+
+.bloque {
+  margin-bottom: var(--e7);
+}
+
+.bloque > h2,
+.bloque > .encabezado-seccion {
+  margin-bottom: var(--e4);
+}
+
+.bloque > .encabezado-seccion h2 {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-movil {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--alto-cabecera);
+    padding: 0 var(--e4);
+    background: var(--tinta);
+  }
+
+  .app-movil .boton-texto {
+    color: var(--papel);
+  }
+
+  /* En móvil la barra es un cajón: fuera de pantalla, y fuera también del
+     orden de tabulación mientras está cerrada. */
+  .lateral {
+    position: fixed;
+    z-index: 30;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(280px, 86vw);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform var(--transicion);
+  }
+
+  .lateral.abierto {
+    transform: none;
+    visibility: visible;
+  }
+
+  .lateral-velo {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    background: rgb(0 0 0 / 45%);
+  }
+
+  .app-pagina {
+    padding: var(--e5) var(--e4) var(--e7);
+  }
+}
+
+/* ===========================================================================
+   Paneles: tarjetas de examen
+   =========================================================================== */
+.tarjeta-examen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e5);
+  padding: var(--e5);
+}
+
+.tarjeta-examen-info {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.tarjeta-examen-acciones {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--e3);
+}
+
+.codigo-bloque {
+  text-align: right;
+}
+
+.codigo-bloque .ayuda {
+  margin-top: 2px;
+}
+
+.alertas-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e2);
+  margin: var(--e3) 0 0;
+}
+
+/* Lista "por rendir" del estudiante, y la de bancos del docente: las dos son
+   una columna de tarjetas, así que comparten la regla. */
+.lista-examenes,
+.lista-bancos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+}
+
+.lista-bancos > li,
+.lista-bancos .tarjeta-cuerpo,
+.lista-bancos h4 {
+  min-width: 0;
+}
+
+.lista-bancos h4 {
+  overflow-wrap: anywhere;
+}
+
+.lista-bancos p {
+  overflow-wrap: anywhere;
+}
+
+.lista-bancos .tarjeta-cuerpo > .fila:first-child {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.fila-banco-acciones {
+  flex-wrap: wrap;
+}
+
+/* Elegir de qué bancos sale un examen, al crearlo. */
+.selector-bancos {
+  list-style: none;
+  margin: var(--e2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e1);
+}
+
+.selector-bancos > li {
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+}
+
+.selector-bancos label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--e3);
+  padding: var(--e3);
+  cursor: pointer;
+  margin: 0;
+}
+
+.selector-bancos input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  accent-color: var(--tinta);
+}
+
+.selector-bancos .cuenta {
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--tinta-suave);
+}
+
+.ayuda-formatos {
+  margin: var(--e3) 0;
+  padding: var(--e3);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--papel-gris);
+}
+
+.ayuda-formatos summary {
+  color: var(--tinta-media);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ayuda-formatos p {
+  margin: var(--e3) 0;
+}
+
+.ayuda-formatos pre {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: var(--e3);
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.importacion-vista-previa {
+  width: 100%;
+  min-width: 0;
+  margin-top: var(--e3);
+  overflow-wrap: anywhere;
+}
+
+.importacion-vista-previa .tarjeta-cuerpo {
+  min-width: 0;
+}
+
+.importacion-vista-previa h4,
+.importacion-vista-previa p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.importacion-preguntas {
+  display: grid;
+  min-width: 0;
+  gap: var(--e2);
+  margin: var(--e3) 0;
+  padding-left: 1.5rem;
+}
+
+.importacion-preguntas li > * {
+  display: block;
+}
+
+.importacion-preguntas li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.importacion-preguntas li > strong,
+.importacion-preguntas li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.importacion-preguntas li > span {
+  color: var(--tinta-suave);
+  font-size: 0.875rem;
+}
+
+.importacion-acciones {
+  flex-wrap: wrap;
+  margin-top: var(--e3);
+}
+
+.fila-examen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e4);
+  padding: var(--e4) var(--e5);
+}
+
+.fila-examen + .fila-examen {
+  margin-top: 0;
+}
+
+.detalle-examen {
+  margin: var(--e2) 0 0;
+  font-size: 0.875rem;
+  color: var(--tinta-suave);
+}
+
+.detalle-examen.activo {
+  color: var(--exito);
+  font-weight: 700;
+}
+
+/* Código de acceso dentro del panel del estudiante: título a la izquierda,
+   campo y botón en una línea a la derecha. */
+.tarjeta-codigo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e5);
+}
+
+.codigo-linea {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--e3);
+  flex: 1 1 320px;
+  max-width: 460px;
+}
+
+.codigo-linea .campo {
+  flex: 1;
+  margin: 0;
+}
+
+.codigo-linea .boton {
+  white-space: nowrap;
+}
+
+/* El error ocupa su propia fila encima del campo, no flota sobre él. */
+.codigo-linea {
+  flex-wrap: wrap;
+}
+
+.codigo-linea .aviso {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+.acceso-volver {
+  margin: var(--e5) 0 0;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+/* ===========================================================================
+   Quien está rindiendo: sin navegación
+   =========================================================================== */
+.examen-marco {
+  --alto-cabecera: 56px;
+
+  min-height: 100vh;
+  background: var(--papel-gris);
+}
+
+.examen-cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--alto-cabecera);
+  padding: 0 var(--e5);
+  background: var(--tinta);
+}
+
+.examen-aviso {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  font-family: var(--titulo);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgb(255 255 255 / 70%);
+}
+
+.examen-cuerpo {
+  padding: var(--e6) var(--e4) var(--e8);
+}
+
+/* ===========================================================================
+   Portada
+   =========================================================================== */
+.portada-inicio {
+  position: relative;
+  overflow: hidden;
+  padding: 7rem 0 8rem;
+  background: var(--tinta);
+  color: var(--papel);
+}
+
+/* El fondo de la portada: escenas que se relevan **detras de todo**.
+ *
+ * A sangre y en todo el ancho, no en un panel a un lado: lo que se pidio es un
+ * fondo que respire, no una ilustracion junto al texto.
+ *
+ * La legibilidad manda sobre la decoracion, asi que van a poca opacidad y con
+ * un velo oscuro encima. El titular de la portada es lo primero que lee un
+ * docente evaluador; un fondo que compita con el lo empeora, por bonito que
+ * sea. */
+.portada-escenas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.portada-escenas img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  animation: portada-releva 30s infinite;
+}
+
+.portada-escenas img:nth-child(2) {
+  animation-delay: 10s;
+}
+
+.portada-escenas img:nth-child(3) {
+  animation-delay: 20s;
+}
+
+/* El velo: sin el, el texto blanco cae encima de los trazos claros del dibujo.
+   Mas denso a la izquierda, que es donde vive el titular. */
+.portada-escenas::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    var(--tinta) 18%,
+    rgb(33 37 41 / 82%) 52%,
+    rgb(33 37 41 / 62%) 100%
+  );
+}
+
+/* El contenido va por encima del fondo. */
+.portada-inicio > .contenedor {
+  position: relative;
+  z-index: 1;
+}
+
+/* Tres escenas, 30 s de vuelta: cada una entra, se queda y se va con un
+   desvanecido largo. Un corte brusco detras de un titular distrae. */
+@keyframes portada-releva {
+  0% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+
+  8%,
+  26% {
+    opacity: 0.4;
+    transform: scale(1.02);
+  }
+
+  34%,
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+/* Quien pidio menos movimiento ve una sola escena, quieta. */
+@media (prefers-reduced-motion: reduce) {
+  .portada-escenas img {
+    animation: none;
+  }
+
+  .portada-escenas img:first-child {
+    opacity: 0.4;
+  }
+}
+
+.portada-lema {
+  display: flex;
+  align-items: center;
+  gap: var(--e3);
+  margin: 0 0 var(--e5);
+  font-size: 1.25rem;
+  color: rgb(255 255 255 / 80%);
+}
+
+.portada-lema::before {
+  content: '';
+  width: 2.5rem;
+  height: 3px;
+  background: var(--amarillo);
+}
+
+.portada-inicio h1 {
+  max-width: 14ch;
+  font-size: clamp(2.5rem, 7vw, 4.75rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+  color: var(--papel);
+}
+
+.portada-resumen {
+  max-width: 38rem;
+  margin: var(--e5) 0 var(--e6);
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: rgb(255 255 255 / 75%);
+}
+
+.portada-seccion {
+  padding: 6rem 0;
+}
+
+.portada-gris {
+  background: var(--papel);
+  border-block: 1px solid var(--linea);
+}
+
+.portada-seccion h2 {
+  text-align: center;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+}
+
+.portada-sub {
+  margin: var(--e2) 0 var(--e8);
+  text-align: center;
+  font-size: 1.125rem;
+}
+
+/* La accion de una seccion de portada, centrada bajo su titulo.
+   Sin esto el boton se quedaba pegado a la izquierda debajo de un titular
+   centrado, que es justo lo que se nota como descuidado. */
+.portada-accion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e3);
+  text-align: center;
+}
+
+.rejilla-capacidades {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--e6);
+}
+
+.capacidad {
+  text-align: center;
+}
+
+.capacidad-icono {
+  display: inline-grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--e4);
+  border-radius: 50%;
+  background: var(--amarillo);
+  color: var(--tinta);
+}
+
+.capacidad h3 {
+  margin-bottom: var(--e2);
+}
+
+.capacidad p {
+  font-size: 0.9375rem;
+  color: var(--tinta-suave);
+}
+
+.etiqueta-estado {
+  display: inline-block;
+  font-family: var(--titulo);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px var(--e2);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--radio);
+  color: var(--tinta-suave);
+}
+
+.etiqueta-estado.listo {
+  color: var(--exito);
+  background: var(--exito-fondo);
+  border-color: rgb(6 118 71 / 30%);
+}
+
+.pasos {
+  list-style: none;
+  counter-reset: paso;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--e6);
+}
+
+.pasos li {
+  counter-increment: paso;
+  text-align: center;
+}
+
+.pasos li::before {
+  content: counter(paso);
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--e4);
+  border-radius: 50%;
+  background: var(--tinta);
+  color: var(--amarillo);
+  font-family: var(--titulo);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.pasos h3 {
+  margin-bottom: var(--e2);
+}
+
+.pasos p {
+  font-size: 0.9375rem;
+  color: var(--tinta-suave);
+}
+
+.rejilla-principios {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--e6);
+}
+
+.rejilla-principios article {
+  padding-top: var(--e4);
+  border-top: 3px solid var(--amarillo);
+}
+
+.rejilla-principios h3 {
+  margin-bottom: var(--e2);
+}
+
+.rejilla-principios p {
+  color: var(--tinta-suave);
+}
+
+.portada-oscura {
+  background: var(--tinta);
+  color: var(--papel);
+}
+
+.portada-oscura h2 {
+  margin-bottom: var(--e5);
+  text-align: left;
+  color: var(--papel);
+}
+
+.rejilla-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--e8);
+}
+
+.rejilla-roles ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rejilla-roles li {
+  position: relative;
+  padding: var(--e2) 0 var(--e2) var(--e5);
+  color: rgb(255 255 255 / 80%);
+}
+
+.rejilla-roles li::before {
+  content: '—';
+  position: absolute;
+  left: 0;
+  color: var(--amarillo);
+}
+
+.portada-cierre {
+  margin: var(--e8) 0 0;
+  text-align: center;
+}
+
+.pie-publico {
+  padding: var(--e6) 0;
+  background: #1a1d20;
+  font-size: 0.875rem;
+  color: rgb(255 255 255 / 75%);
+}
+
+.pie-publico p {
+  margin: 0 0 var(--e1);
+}
+
+.pie-publico .tenue {
+  color: rgb(255 255 255 / 50%);
+}
+
+@media (max-width: 720px) {
+  .oculta-movil {
+    display: none;
+  }
+
+  .portada-inicio {
+    padding: 4rem 0 5rem;
+  }
+
+
+  .portada-seccion {
+    padding: 4rem 0;
+  }
+
+  .codigo-linea {
+    flex-direction: column;
+    align-items: stretch;
+    max-width: none;
+  }
+
+  .tarjeta-examen-acciones {
+    align-items: flex-start;
+  }
+
+  .codigo-bloque {
+    text-align: left;
+  }
+}
+
+/* ===========================================================================
+   Cursos
+   =========================================================================== */
+.formulario-curso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--e4);
+  margin-top: var(--e4);
+}
+
+.formulario-curso .campo {
+  flex: 1 1 260px;
+  margin-bottom: 0;
+}
+
+.formulario-curso .campo-corto {
+  flex: 0 1 140px;
+}
+
+.rejilla-clases {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--e4);
+}
+
+.tarjeta-clase {
+  padding: var(--e5);
+}
+
+.tarjeta-clase + .tarjeta-clase {
+  margin-top: 0;
+}
+
+.lista-clase {
+  list-style: none;
+  margin: var(--e3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+  font-size: 0.9375rem;
+}
+
+.lista-clase li {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===========================================================================
+   Revisión de caso
+   =========================================================================== */
+.riesgo-cabecera {
+  display: flex;
+  align-items: center;
+  gap: var(--e5);
+}
+
+.riesgo-cabecera .ayuda {
+  margin: 0;
+  max-width: 34rem;
+}
+
+.riesgo-cifra {
+  margin: 0;
+  min-width: 4.5rem;
+  font-family: var(--titulo);
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+/* El color acompaña al texto "Nivel ...", no lo sustituye. */
+.riesgo-low {
+  color: var(--exito);
+}
+
+.riesgo-medium {
+  color: var(--media);
+}
+
+.riesgo-high {
+  color: var(--alta);
+}
+
+.riesgo-nivel {
+  margin: 0 0 var(--e1);
+  font-family: var(--titulo);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.decision-vigente {
+  margin-bottom: var(--e4);
+  border-left: 3px solid var(--amarillo);
+}
+
+.justificacion {
+  margin: var(--e2) 0;
+  white-space: pre-wrap;
+}
+
+.opciones-decision {
+  margin: 0 0 var(--e5);
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+}
+
+.opciones-decision legend {
+  margin-bottom: var(--e2);
+  padding: 0;
+}
+
+.opciones-decision label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e3);
+  padding: var(--e3) var(--e4);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--radio);
+  cursor: pointer;
+  transition:
+    border-color var(--transicion),
+    background var(--transicion);
+}
+
+.opciones-decision label:hover {
+  border-color: var(--amarillo);
+}
+
+.opciones-decision label.elegida {
+  border-color: var(--amarillo-oscuro);
+  background: var(--amarillo-tenue);
+}
+
+.opciones-decision input {
+  margin-top: 0.25rem;
+  accent-color: var(--amarillo-oscuro);
+}
+
+.opciones-decision .ayuda {
+  display: block;
+  margin: 0;
+}
+
+.ayuda-falta {
+  color: var(--media);
+}
+
+.historial-decisiones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+}
+
+.historial-decisiones .tarjeta + .tarjeta {
+  margin-top: 0;
+}
+
+/* Aviso de algo que salió bien. El verde se reserva para esto: que aparezca
+   poco es lo que hace que se note cuando aparece. */
+.aviso-exito {
+  color: var(--exito);
+  background: var(--exito-fondo);
+  border-color: rgb(6 118 71 / 30%);
+  border-left-color: var(--exito);
+}
+
+/* Cancelar y borrar: separados del formulario y marcados, porque una pulsación
+   distraída aquí se lleva un examen. */
+.zona-peligro {
+  margin-top: var(--e5);
+  border-color: var(--alta-linea);
+}
+
+.zona-peligro h3 {
+  margin-top: 0;
+}
+
+.boton-peligro {
+  background: transparent;
+  color: var(--alta);
+  border: 1px solid var(--alta-linea);
+}
+
+.boton-peligro:hover {
+  background: var(--alta-fondo);
+}
+
+/* Los puntos de una pregunta, editables en la propia lista. */
+.puntos-editables {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--e1);
+}
+
+.puntos-editables input {
+  width: 5rem;
+  text-align: right;
+}

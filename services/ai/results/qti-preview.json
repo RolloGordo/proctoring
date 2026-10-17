@@ -1,0 +1,15 @@
+{
+  "questions": [
+    {
+      "question_type": "numeric",
+      "statement": "Escribe pi con tolerancia absoluta de 0.01: ____ .",
+      "points": "2",
+      "options": [],
+      "correct_numeric_answer": "3.14",
+      "numeric_tolerance": "0.01",
+      "correct_text_answer": null,
+      "source_format": "qti"
+    }
+  ],
+  "issues": []
+}

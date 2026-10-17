@@ -1,0 +1,10 @@
+{
+  "url": "https://openslr.trmal.net/resources/108/ES.tgz",
+  "dataset_page": "https://openslr.org/108/",
+  "authors": "Kolobov et al. (2021)",
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "selection": "First 8 FLAC entries in archive order; not random",
+  "changes": "Subset only; no audio edits. Reference text stripped at edges.",
+  "limitations": "Media speech, not student exams; speaker independence unknown."
+}

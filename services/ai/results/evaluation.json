@@ -1,0 +1,863 @@
+{
+  "manifest_sha256": "b0fc9d7b4cac1c2bdc2859671d742e5c49ff9c96c8863d49b37b42cda23f2526",
+  "selection": "exploratory_not_final_test",
+  "models": {
+    "base": {
+      "summary": {
+        "sample_count": 8,
+        "reference_words": 318,
+        "word_edits": 69,
+        "micro_wer": 0.2169811320754717,
+        "audio_seconds": 116.0,
+        "inference_seconds": 9.011490999982925,
+        "aggregate_real_time_factor": 0.07768526724123212,
+        "empty_reference_samples": 0,
+        "empty_reference_inserted_words": 0
+      },
+      "samples": [
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T15:59:54.839656+00:00",
+          "audio_file": "dce9e72f-77f7-48ae-bc86-39ea510a3968.flac",
+          "audio_sha256": "2ff20b3952f079f0010010505c86ff0955b7ae2f2d94e2246030677204983bec",
+          "model": "base",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 0.9880951000086498,
+          "inference_seconds": 1.444287099991925,
+          "audio_seconds": 14.8,
+          "real_time_factor": 0.0975869662156706,
+          "transcript": "tienen estrés hasta los niños que no hablan todavía, por ejemplo, un niño que todavía no habla se puede llorar más, puede tener más problemas en irse a la cama, dormir, la tu rutina puede",
+          "segments": [
+            {
+              "start": 0.27,
+              "end": 6.59,
+              "text": "tienen estrés hasta los niños que no hablan todavía, por ejemplo, un niño que todavía no habla"
+            },
+            {
+              "start": 6.59,
+              "end": 12.83,
+              "text": "se puede llorar más, puede tener más problemas en irse a la cama, dormir, la tu rutina puede"
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "tienes estrés hasta los niños que no hablan todavía por ejemplo un niño que todavía no habla se puede llorar más puede tener más problemas en irse a la cama a dormir no puede la tu rutina puede estar un poquito menos él",
+          "metrics": {
+            "reference_words": 43,
+            "hypothesis_words": 35,
+            "word_edits": 9,
+            "wer": 0.20930232558139536
+          },
+          "sample_id": "dce9e72f-77f7-48ae-bc86-39ea510a3968"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T15:59:55.837587+00:00",
+          "audio_file": "7cb30906-a831-4349-b72f-89f1cdeb4ae6.flac",
+          "audio_sha256": "5a4a8581cfba27638a92e6dec67f255d1dce8b77615ab9ca6c3dcfd9c76548fd",
+          "model": "base",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 0.9880951000086498,
+          "inference_seconds": 0.9510225999983959,
+          "audio_seconds": 14.9,
+          "real_time_factor": 0.06382702013412053,
+          "transcript": "Estado a Catalunya, mi familia tanto materna como paterna es fruto de esas oleas migratorias y con los años se va fruto de la lucha vecinal, se va construyendo cada vez de edificios",
+          "segments": [
+            {
+              "start": 0.18,
+              "end": 7.18,
+              "text": "Estado a Catalunya, mi familia tanto materna como paterna es fruto de esas oleas migratorias"
+            },
+            {
+              "start": 7.18,
+              "end": 14.18,
+              "text": "y con los años se va fruto de la lucha vecinal, se va construyendo cada vez de edificios"
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "a cataluña en mi familia tanto materna como paterna es fruto de estas oleadas migratorias y con los años pues se se va fruto de la lucha avecinal se va construyendo cada vez pues edificios mejo",
+          "metrics": {
+            "reference_words": 36,
+            "hypothesis_words": 33,
+            "word_edits": 10,
+            "wer": 0.2777777777777778
+          },
+          "sample_id": "7cb30906-a831-4349-b72f-89f1cdeb4ae6"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T15:59:56.962957+00:00",
+          "audio_file": "16d02f33-67f3-4cac-b055-4c6479643d8e.flac",
+          "audio_sha256": "c9c0edb2758609a51bd197b390a42ecafdd6d1c890e1e98ab054a570847170f1",
+          "model": "base",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 0.9880951000086498,
+          "inference_seconds": 1.1211724000022514,
+          "audio_seconds": 14.6,
+          "real_time_factor": 0.07679263013714051,
+          "transcript": "la red donde hace que la democracia misma ya venía arrastrando, por ejemplo con rimurales dice cómo afrontar el problema cuando la población valora más a los populistas, el discurso populista y lo que les promete, que las instituciones que no le han sabido arrastrar.",
+          "segments": [
+            {
+              "start": 0.21,
+              "end": 4.41,
+              "text": "la red donde hace que la democracia misma ya venía arrastrando, por ejemplo con"
+            },
+            {
+              "start": 4.41,
+              "end": 9.07,
+              "text": "rimurales dice cómo afrontar el problema cuando la población valora más a los"
+            },
+            {
+              "start": 9.07,
+              "end": 13.13,
+              "text": "populistas, el discurso populista y lo que les promete, que las instituciones que"
+            },
+            {
+              "start": 13.13,
+              "end": 16.13,
+              "text": "no le han sabido arrastrar."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "sobre la redundancia que la democracia misma ya venía arrastrando no por ejemplo henry morales dice cómo afrontar el problema cuando la población valora más a los populistas discurso populista y lo que les promete que las instituciones que no le han sabido dar",
+          "metrics": {
+            "reference_words": 44,
+            "hypothesis_words": 45,
+            "word_edits": 9,
+            "wer": 0.20454545454545456
+          },
+          "sample_id": "16d02f33-67f3-4cac-b055-4c6479643d8e"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T15:59:58.019116+00:00",
+          "audio_file": "3cedc890-6886-4344-bfdb-c54700697f2f.flac",
+          "audio_sha256": "58a8d4f38d4abb0e3e7eb03ea72d30d66e46f85f964990d860b90ecc1fcaf30b",
+          "model": "base",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 0.9880951000086498,
+          "inference_seconds": 1.0534430999978213,
+          "audio_seconds": 14.8,
+          "real_time_factor": 0.07117858783769063,
+          "transcript": "Quiero confirmar, Mari si estamos en vivo en la web, a ver si nos podemos fijar, porque no lo estoy viendo, estamos en vivo, me dicen, yo no lo veo en mí, señal, pero si lo estamos. Entonces, primero el principal, quiero promocionar...",
+          "segments": [
+            {
+              "start": 0.37,
+              "end": 5.49,
+              "text": "Quiero confirmar, Mari si estamos en vivo en la web, a ver si nos podemos fijar,"
+            },
+            {
+              "start": 5.49,
+              "end": 11.37,
+              "text": "porque no lo estoy viendo, estamos en vivo, me dicen, yo no lo veo en mí, señal, pero si lo estamos."
+            },
+            {
+              "start": 11.37,
+              "end": 14.37,
+              "text": "Entonces, primero el principal, quiero promocionar..."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "confirmar mari si estamos en vivo en la web  a ver si nos podemos fijar pues no lo estoy viendo en esto estamos en vivo me dicen yo no lo veo en mi señal pero si lo estamos entonces primero y principal quiero",
+          "metrics": {
+            "reference_words": 43,
+            "hypothesis_words": 43,
+            "word_edits": 7,
+            "wer": 0.16279069767441862
+          },
+          "sample_id": "3cedc890-6886-4344-bfdb-c54700697f2f"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T15:59:59.170338+00:00",
+          "audio_file": "fe2b5ae1-7672-4ce5-b641-86a50ed1ab7f.flac",
+          "audio_sha256": "4c586f62e02fa110a94ae89462159bc3f7c89834eb590e665cf0c6ddd2fab79e",
+          "model": "base",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 0.9880951000086498,
+          "inference_seconds": 1.1460857999918517,
+          "audio_seconds": 14.9,
+          "real_time_factor": 0.07691851006656722,
+          "transcript": "La operación es de oro en la mina o limpiada en la región de Krasnoyar, que en Siberia continúa normalmente. El brote ha empeorado en las últimas dos semanas hasta el punto de que el ejército ruso ha sido desplegado en la ciudad de Krasnoyar, para ayudar a combatir.",
+          "segments": [
+            {
+              "start": 0.11,
+              "end": 5.55,
+              "text": "La operación es de oro en la mina o limpiada en la región de Krasnoyar, que en Siberia"
+            },
+            {
+              "start": 5.55,
+              "end": 10.31,
+              "text": "continúa normalmente. El brote ha empeorado en las últimas dos semanas hasta el punto"
+            },
+            {
+              "start": 10.31,
+              "end": 14.39,
+              "text": "de que el ejército ruso ha sido desplegado en la ciudad de Krasnoyar, para ayudar a combatir."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "neo las operaciones de oro en la mina olimpiada en la región de krasnoyarsk en siberia continúan normalmente el brote ha empeorado en las últimas dos semanas hasta el punto de que el ejército ruso ha sido desplegado en la ciudad de krasnoyarsk para ayudar a combatir",
+          "metrics": {
+            "reference_words": 47,
+            "hypothesis_words": 49,
+            "word_edits": 9,
+            "wer": 0.19148936170212766
+          },
+          "sample_id": "fe2b5ae1-7672-4ce5-b641-86a50ed1ab7f"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T16:00:00.294083+00:00",
+          "audio_file": "e17fb1c3-0351-4ec8-bd3a-4a9aaab969f6.flac",
+          "audio_sha256": "498389bfcc27ebb5567cc3ad6d00feeb517a0e8aa57d3dd686b57dbb0c372e93",
+          "model": "base",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 0.9880951000086498,
+          "inference_seconds": 1.120146500004921,
+          "audio_seconds": 13.9,
+          "real_time_factor": 0.08058607913704469,
+          "transcript": "pero los que confían el señor renovarán su fuerza. Esa es, respetamos el comentario de Lucil. La alta autoestima de llevar al IP de dutya de Resluna es un problema también, sin duda. Sin duda, porque no.",
+          "segments": [
+            {
+              "start": 0.18,
+              "end": 4.14,
+              "text": "pero los que confían el señor renovarán su fuerza."
+            },
+            {
+              "start": 4.14,
+              "end": 7.24,
+              "text": "Esa es, respetamos el comentario de Lucil."
+            },
+            {
+              "start": 7.24,
+              "end": 12.38,
+              "text": "La alta autoestima de llevar al IP de dutya de Resluna es un problema también, sin duda."
+            },
+            {
+              "start": 12.38,
+              "end": 13.62,
+              "text": "Sin duda, porque no."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "se pero los que confían en el señor renovarán sus fuerzas respetamos el comentario de lucy  la ulta la alta autoestima dice guadalupe gutiérrez luna es un problema también sin duda sin duda porque no",
+          "metrics": {
+            "reference_words": 35,
+            "hypothesis_words": 37,
+            "word_edits": 17,
+            "wer": 0.4857142857142857
+          },
+          "sample_id": "e17fb1c3-0351-4ec8-bd3a-4a9aaab969f6"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T16:00:01.501144+00:00",
+          "audio_file": "f5332df9-9074-4047-a6d2-09d2b21c720c.flac",
+          "audio_sha256": "cc818db8683e3955a2519883a1aaa95a178cecb385210cbb9e2f99756fd56024",
+          "model": "base",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 0.9880951000086498,
+          "inference_seconds": 1.2075381000031484,
+          "audio_seconds": 14.5,
+          "real_time_factor": 0.08327848965538955,
+          "transcript": "de contagiarse, etcétera. Pero la situación, la vida debe seguir y hay mucha gente que se debe acercar al consultorio médico a los hospital por otras razonas. Por ejemplo, una mujer embarazada para ver al genecólogo o a la obstetra y con su...",
+          "segments": [
+            {
+              "start": 0.72,
+              "end": 6.12,
+              "text": "de contagiarse, etcétera. Pero la situación, la vida debe seguir y hay mucha gente que se debe"
+            },
+            {
+              "start": 6.12,
+              "end": 11.12,
+              "text": "acercar al consultorio médico a los hospital por otras razonas. Por ejemplo, una mujer embarazada"
+            },
+            {
+              "start": 11.12,
+              "end": 14.12,
+              "text": "para ver al genecólogo o a la obstetra y con su..."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "de contagiarse etcétera pero la situación la vida debe seguir y hay mucha gente que se debe acercar al consultorio médico al hospital por otras razones por ejemplo una mujer embarazada para ver al ginecólogo o a la obstetra y",
+          "metrics": {
+            "reference_words": 40,
+            "hypothesis_words": 43,
+            "word_edits": 6,
+            "wer": 0.15
+          },
+          "sample_id": "f5332df9-9074-4047-a6d2-09d2b21c720c"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T16:00:02.478391+00:00",
+          "audio_file": "d4ec9549-0143-4047-be07-0a7992f2aca2.flac",
+          "audio_sha256": "34e57f0dd54df796863c51f7b2b824af2050b13f5157a965ebcf7666547ba5aa",
+          "model": "base",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 0.9880951000086498,
+          "inference_seconds": 0.9677953999926103,
+          "audio_seconds": 13.6,
+          "real_time_factor": 0.07116142647004488,
+          "transcript": "Mediante un proceso de citas telefónicas, que es estableció en el Centro Nacional de la Transfusión Sanguínea y también en prácticamente todos los bancos de sangre del Sistema Nacional de Sangre.",
+          "segments": [
+            {
+              "start": 0.18,
+              "end": 6.14,
+              "text": "Mediante un proceso de citas telefónicas, que es estableció en el Centro Nacional de"
+            },
+            {
+              "start": 6.14,
+              "end": 12.02,
+              "text": "la Transfusión Sanguínea y también en prácticamente todos los bancos de sangre del Sistema"
+            },
+            {
+              "start": 12.02,
+              "end": 12.82,
+              "text": "Nacional de Sangre."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "mediante un proceso de citas telefónicas que se estableció en centro nacional de la transfusión sanguínea y también en prácticamente todos los bancos de sangre del sistema nacional de sangre",
+          "metrics": {
+            "reference_words": 30,
+            "hypothesis_words": 31,
+            "word_edits": 2,
+            "wer": 0.06666666666666667
+          },
+          "sample_id": "d4ec9549-0143-4047-be07-0a7992f2aca2"
+        }
+      ]
+    },
+    "small": {
+      "summary": {
+        "sample_count": 8,
+        "reference_words": 318,
+        "word_edits": 51,
+        "micro_wer": 0.16037735849056603,
+        "audio_seconds": 116.0,
+        "inference_seconds": 27.16204289998859,
+        "aggregate_real_time_factor": 0.23415554224128096,
+        "empty_reference_samples": 0,
+        "empty_reference_inserted_words": 0
+      },
+      "samples": [
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T16:01:26.572174+00:00",
+          "audio_file": "dce9e72f-77f7-48ae-bc86-39ea510a3968.flac",
+          "audio_sha256": "2ff20b3952f079f0010010505c86ff0955b7ae2f2d94e2246030677204983bec",
+          "model": "small",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 80.63348189998942,
+          "inference_seconds": 3.4327728999924148,
+          "audio_seconds": 14.8,
+          "real_time_factor": 0.23194411486435235,
+          "transcript": "tienen estrés hasta los niños que no hablan todavía por ejemplo un niño que todavía no habla se puede llorar más puede tener más problemas en irse a la cama a dormir no puede la turrutina puede estar un poquito menos el",
+          "segments": [
+            {
+              "start": 0.27,
+              "end": 5.85,
+              "text": "tienen estrés hasta los niños que no hablan todavía por ejemplo un niño que"
+            },
+            {
+              "start": 5.85,
+              "end": 9.67,
+              "text": "todavía no habla se puede llorar más puede tener más problemas en irse a la"
+            },
+            {
+              "start": 9.67,
+              "end": 14.29,
+              "text": "cama a dormir no puede la turrutina puede estar un poquito menos el"
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "tienes estrés hasta los niños que no hablan todavía por ejemplo un niño que todavía no habla se puede llorar más puede tener más problemas en irse a la cama a dormir no puede la tu rutina puede estar un poquito menos él",
+          "metrics": {
+            "reference_words": 43,
+            "hypothesis_words": 42,
+            "word_edits": 4,
+            "wer": 0.09302325581395349
+          },
+          "sample_id": "dce9e72f-77f7-48ae-bc86-39ea510a3968"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T16:01:29.771339+00:00",
+          "audio_file": "7cb30906-a831-4349-b72f-89f1cdeb4ae6.flac",
+          "audio_sha256": "5a4a8581cfba27638a92e6dec67f255d1dce8b77615ab9ca6c3dcfd9c76548fd",
+          "model": "small",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 80.63348189998942,
+          "inference_seconds": 3.194527100000414,
+          "audio_seconds": 14.9,
+          "real_time_factor": 0.2143977919463365,
+          "transcript": "He estado a Cataluña. Mi familia, tanto materna como paterna, es fruto de esas oleadas migratorias y con los años se va fruto de la lucha vecinal, se va construyendo cada vez edificios mejores.",
+          "segments": [
+            {
+              "start": 0.18,
+              "end": 7.18,
+              "text": "He estado a Cataluña. Mi familia, tanto materna como paterna, es fruto de esas oleadas migratorias"
+            },
+            {
+              "start": 7.18,
+              "end": 15.18,
+              "text": "y con los años se va fruto de la lucha vecinal, se va construyendo cada vez edificios mejores."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "a cataluña en mi familia tanto materna como paterna es fruto de estas oleadas migratorias y con los años pues se se va fruto de la lucha avecinal se va construyendo cada vez pues edificios mejo",
+          "metrics": {
+            "reference_words": 36,
+            "hypothesis_words": 34,
+            "word_edits": 9,
+            "wer": 0.25
+          },
+          "sample_id": "7cb30906-a831-4349-b72f-89f1cdeb4ae6"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T16:01:33.406723+00:00",
+          "audio_file": "16d02f33-67f3-4cac-b055-4c6479643d8e.flac",
+          "audio_sha256": "c9c0edb2758609a51bd197b390a42ecafdd6d1c890e1e98ab054a570847170f1",
+          "model": "small",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 80.63348189998942,
+          "inference_seconds": 3.6294781000033254,
+          "audio_seconds": 14.6,
+          "real_time_factor": 0.24859439041118667,
+          "transcript": "O haga la ronda y hace que la democracia misma ya venía arrastrando. Por ejemplo, Henry Morales dice cómo afrontar el problema cuando la población valora más a los populistas, el discurso populístico que les promete que las instituciones que no le han sabido arreglar.",
+          "segments": [
+            {
+              "start": 0.21,
+              "end": 5.61,
+              "text": "O haga la ronda y hace que la democracia misma ya venía arrastrando. Por ejemplo, Henry Morales dice"
+            },
+            {
+              "start": 5.61,
+              "end": 9.61,
+              "text": "cómo afrontar el problema cuando la población valora más a los populistas,"
+            },
+            {
+              "start": 9.61,
+              "end": 14.05,
+              "text": "el discurso populístico que les promete que las instituciones que no le han sabido arreglar."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "sobre la redundancia que la democracia misma ya venía arrastrando no por ejemplo henry morales dice cómo afrontar el problema cuando la población valora más a los populistas discurso populista y lo que les promete que las instituciones que no le han sabido dar",
+          "metrics": {
+            "reference_words": 44,
+            "hypothesis_words": 45,
+            "word_edits": 11,
+            "wer": 0.25
+          },
+          "sample_id": "16d02f33-67f3-4cac-b055-4c6479643d8e"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T16:01:36.814147+00:00",
+          "audio_file": "3cedc890-6886-4344-bfdb-c54700697f2f.flac",
+          "audio_sha256": "58a8d4f38d4abb0e3e7eb03ea72d30d66e46f85f964990d860b90ecc1fcaf30b",
+          "model": "small",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 80.63348189998942,
+          "inference_seconds": 3.400650299998233,
+          "audio_seconds": 14.8,
+          "real_time_factor": 0.22977366891879952,
+          "transcript": "Quiero confirmar, Mari, si estamos en vivo en la web, a ver si nos podemos fijar. Porque no lo estoy viendo, estamos en vivo, me dicen, yo no lo veo en mi señal, pero sí lo estamos. Entonces, primero y principal, quiero preguntar...",
+          "segments": [
+            {
+              "start": 0.37,
+              "end": 5.37,
+              "text": "Quiero confirmar, Mari, si estamos en vivo en la web, a ver si nos podemos fijar."
+            },
+            {
+              "start": 5.37,
+              "end": 11.37,
+              "text": "Porque no lo estoy viendo, estamos en vivo, me dicen, yo no lo veo en mi señal, pero sí lo estamos."
+            },
+            {
+              "start": 11.37,
+              "end": 14.37,
+              "text": "Entonces, primero y principal, quiero preguntar..."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "confirmar mari si estamos en vivo en la web  a ver si nos podemos fijar pues no lo estoy viendo en esto estamos en vivo me dicen yo no lo veo en mi señal pero si lo estamos entonces primero y principal quiero",
+          "metrics": {
+            "reference_words": 43,
+            "hypothesis_words": 43,
+            "word_edits": 6,
+            "wer": 0.13953488372093023
+          },
+          "sample_id": "3cedc890-6886-4344-bfdb-c54700697f2f"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T16:01:40.403550+00:00",
+          "audio_file": "fe2b5ae1-7672-4ce5-b641-86a50ed1ab7f.flac",
+          "audio_sha256": "4c586f62e02fa110a94ae89462159bc3f7c89834eb590e665cf0c6ddd2fab79e",
+          "model": "small",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 80.63348189998942,
+          "inference_seconds": 3.586033600004157,
+          "audio_seconds": 14.9,
+          "real_time_factor": 0.24067339597343335,
+          "transcript": "Las operaciones de oro en la mina olimpiada en la región de Krasnoyark en Siberia continúan normalmente. El brote ha empeorado en las últimas dos semanas hasta el punto de que el ejército ruso ha sido desplegado en la ciudad de Krasnoyark para ayudar a combatir",
+          "segments": [
+            {
+              "start": 0.11,
+              "end": 5.19,
+              "text": "Las operaciones de oro en la mina olimpiada en la región de Krasnoyark en"
+            },
+            {
+              "start": 5.19,
+              "end": 9.27,
+              "text": "Siberia continúan normalmente. El brote ha empeorado en las últimas dos"
+            },
+            {
+              "start": 9.27,
+              "end": 12.35,
+              "text": "semanas hasta el punto de que el ejército ruso ha sido desplegado en la"
+            },
+            {
+              "start": 12.35,
+              "end": 16.43,
+              "text": "ciudad de Krasnoyark para ayudar a combatir"
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "neo las operaciones de oro en la mina olimpiada en la región de krasnoyarsk en siberia continúan normalmente el brote ha empeorado en las últimas dos semanas hasta el punto de que el ejército ruso ha sido desplegado en la ciudad de krasnoyarsk para ayudar a combatir",
+          "metrics": {
+            "reference_words": 47,
+            "hypothesis_words": 46,
+            "word_edits": 3,
+            "wer": 0.06382978723404255
+          },
+          "sample_id": "fe2b5ae1-7672-4ce5-b641-86a50ed1ab7f"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T16:01:43.700609+00:00",
+          "audio_file": "e17fb1c3-0351-4ec8-bd3a-4a9aaab969f6.flac",
+          "audio_sha256": "498389bfcc27ebb5567cc3ad6d00feeb517a0e8aa57d3dd686b57dbb0c372e93",
+          "model": "small",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 80.63348189998942,
+          "inference_seconds": 3.2905051999987336,
+          "audio_seconds": 13.9,
+          "real_time_factor": 0.23672699280566428,
+          "transcript": "pero los que confían en el señor renovarán su fuerza, o sea respetamos el comentario de Lucille, la alta autoestima de Lleguadalepo de Gutiérrez Luna es un problema también, sin duda, porque no.",
+          "segments": [
+            {
+              "start": 0.18,
+              "end": 6.86,
+              "text": "pero los que confían en el señor renovarán su fuerza, o sea respetamos el comentario de Lucille,"
+            },
+            {
+              "start": 6.86,
+              "end": 13.3,
+              "text": "la alta autoestima de Lleguadalepo de Gutiérrez Luna es un problema también, sin duda, porque no."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "se pero los que confían en el señor renovarán sus fuerzas respetamos el comentario de lucy  la ulta la alta autoestima dice guadalupe gutiérrez luna es un problema también sin duda sin duda porque no",
+          "metrics": {
+            "reference_words": 35,
+            "hypothesis_words": 33,
+            "word_edits": 13,
+            "wer": 0.37142857142857144
+          },
+          "sample_id": "e17fb1c3-0351-4ec8-bd3a-4a9aaab969f6"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T16:01:47.297348+00:00",
+          "audio_file": "f5332df9-9074-4047-a6d2-09d2b21c720c.flac",
+          "audio_sha256": "cc818db8683e3955a2519883a1aaa95a178cecb385210cbb9e2f99756fd56024",
+          "model": "small",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 80.63348189998942,
+          "inference_seconds": 3.5934344999986934,
+          "audio_seconds": 14.5,
+          "real_time_factor": 0.24782306896542713,
+          "transcript": "de contagiarse, etcétera, pero la situación, la vida debe seguir y hay mucha gente que se debe acercar al consultorio médico al hospital por otras razonas. Por ejemplo, una mujer embarazada para ver al ginecólogo o a la obstetra y con...",
+          "segments": [
+            {
+              "start": 0.72,
+              "end": 6.08,
+              "text": "de contagiarse, etcétera, pero la situación, la vida debe seguir y hay mucha gente que se debe"
+            },
+            {
+              "start": 6.08,
+              "end": 10.98,
+              "text": "acercar al consultorio médico al hospital por otras razonas. Por ejemplo, una mujer embarazada"
+            },
+            {
+              "start": 10.98,
+              "end": 13.98,
+              "text": "para ver al ginecólogo o a la obstetra y con..."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "de contagiarse etcétera pero la situación la vida debe seguir y hay mucha gente que se debe acercar al consultorio médico al hospital por otras razones por ejemplo una mujer embarazada para ver al ginecólogo o a la obstetra y",
+          "metrics": {
+            "reference_words": 40,
+            "hypothesis_words": 41,
+            "word_edits": 2,
+            "wer": 0.05
+          },
+          "sample_id": "f5332df9-9074-4047-a6d2-09d2b21c720c"
+        },
+        {
+          "schema_version": 1,
+          "created_at": "2026-10-03T16:01:50.335365+00:00",
+          "audio_file": "d4ec9549-0143-4047-be07-0a7992f2aca2.flac",
+          "audio_sha256": "34e57f0dd54df796863c51f7b2b824af2050b13f5157a965ebcf7666547ba5aa",
+          "model": "small",
+          "device": "cpu",
+          "compute_type": "int8",
+          "cpu_threads": 4,
+          "beam_size": 5,
+          "language": "es",
+          "vad_filter": true,
+          "condition_on_previous_text": false,
+          "model_load_seconds": 80.63348189998942,
+          "inference_seconds": 3.0346411999926204,
+          "audio_seconds": 13.6,
+          "real_time_factor": 0.22313538235239858,
+          "transcript": "de sangre mediante un proceso de citas telefónicas, que se estableció en el Centro Nacional de la Transfusión Sanguínea y también en prácticamente todos los bancos de sangre del Sistema Nacional de Sangre.",
+          "segments": [
+            {
+              "start": 0.18,
+              "end": 6.02,
+              "text": "de sangre mediante un proceso de citas telefónicas, que se estableció en el Centro Nacional"
+            },
+            {
+              "start": 6.02,
+              "end": 11.46,
+              "text": "de la Transfusión Sanguínea y también en prácticamente todos los bancos de sangre"
+            },
+            {
+              "start": 11.46,
+              "end": 12.82,
+              "text": "del Sistema Nacional de Sangre."
+            }
+          ],
+          "environment": {
+            "python": "3.12.15",
+            "os": "Windows-11-10.0.26200-SP0",
+            "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "faster_whisper": "1.2.1",
+            "ctranslate2": "4.8.2"
+          },
+          "scope": "transcription_only_no_fraud_detection",
+          "reference": "mediante un proceso de citas telefónicas que se estableció en centro nacional de la transfusión sanguínea y también en prácticamente todos los bancos de sangre del sistema nacional de sangre",
+          "metrics": {
+            "reference_words": 30,
+            "hypothesis_words": 33,
+            "word_edits": 3,
+            "wer": 0.1
+          },
+          "sample_id": "d4ec9549-0143-4047-be07-0a7992f2aca2"
+        }
+      ]
+    }
+  }
+}

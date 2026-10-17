@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" identifier="numeric" title="numeric" adaptive="false" timeDependent="false">
+  <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="float"><correctResponse><value>3.14</value></correctResponse></responseDeclaration>
+  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float" normalMaximum="1"/>
+  <itemBody><p>Escribe pi con dos decimales: <textEntryInteraction responseIdentifier="RESPONSE"/>.</p></itemBody>
+  <responseProcessing template="http://www.imsglobal.org/question/qti_v2p1/rptemplates/match_correct"/>
+</assessmentItem>

@@ -1,0 +1,207 @@
+/**
+ * Cámara y micrófono del estudiante.
+ *
+ * Reglas del proyecto que esto respeta:
+ *
+ * - **No se graba ni se envía vídeo continuo.** El `MediaStream` se queda en el
+ *   navegador; de él solo salen eventos y, cuando corresponde, capturas sueltas.
+ * - Se pide **después** del consentimiento. Esta clase no pide permiso por su
+ *   cuenta: la llama la pantalla del examen, que es donde el estudiante ya
+ *   aceptó.
+ */
+
+export interface OpcionesCamara {
+  /** Si hace falta el micrófono (detección de habla). */
+  audio?: boolean
+  /** Resolución pedida. Pequeña a propósito: los modelos no necesitan más y
+   *  una cámara a 1080p calienta el equipo durante una hora de examen. */
+  ancho?: number
+  alto?: number
+}
+
+export type MotivoFallo = 'denegado' | 'sin-camara' | 'en-uso' | 'desconocido'
+
+export class CamaraNoDisponibleError extends Error {
+  constructor(
+    readonly motivo: MotivoFallo,
+    mensaje: string
+  ) {
+    super(mensaje)
+    this.name = 'CamaraNoDisponibleError'
+  }
+}
+
+/** Traduce el error del navegador a algo que el estudiante pueda accionar. */
+function traducir(error: unknown): CamaraNoDisponibleError {
+  const nombre = error instanceof DOMException ? error.name : ''
+  switch (nombre) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return new CamaraNoDisponibleError(
+        'denegado',
+        'No diste permiso para usar la cámara. Búscalo en la barra de direcciones y vuelve a intentarlo.'
+      )
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return new CamaraNoDisponibleError('sin-camara', 'No se encontró una cámara conectada.')
+    case 'NotReadableError':
+      return new CamaraNoDisponibleError(
+        'en-uso',
+        'Otra aplicación está usando la cámara. Ciérrala y vuelve a intentarlo.'
+      )
+    default:
+      return new CamaraNoDisponibleError('desconocido', 'No se pudo abrir la cámara.')
+  }
+}
+
+/**
+ * Abre la cámara y entrega un `<video>` listo para que los detectores lo miren.
+ *
+ * Devuelve el elemento y una función para apagarlo. **Hay que llamarla siempre**
+ * al terminar: si no, la luz de la cámara se queda encendida.
+ */
+export async function abrirCamara({
+  audio = false,
+  ancho = 640,
+  alto = 480
+}: OpcionesCamara = {}): Promise<{ video: HTMLVideoElement; cerrar: () => void }> {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new CamaraNoDisponibleError(
+      'desconocido',
+      'Este navegador no permite usar la cámara. Usa la aplicación de escritorio.'
+    )
+  }
+
+  let stream: MediaStream
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: ancho }, height: { ideal: alto }, facingMode: 'user' },
+      audio
+    })
+  } catch (error) {
+    throw traducir(error)
+  }
+
+  const video = document.createElement('video')
+  video.srcObject = stream
+  video.muted = true
+  video.playsInline = true
+  await video.play()
+
+  return {
+    video,
+    cerrar: () => {
+      for (const pista of stream.getTracks()) pista.stop()
+      video.srcObject = null
+    }
+  }
+}
+
+/**
+ * Abre **solo** el micrófono, sin encender la cámara.
+ *
+ * La comprobación previa al examen pregunta por el micrófono y nada más: pedir
+ * también la cámara haría que se encendiera su luz para una prueba de audio, y
+ * convertiría una cámara ocupada por otra aplicación en un fallo de micrófono.
+ *
+ * Devuelve el `MediaStream` y la función para apagarlo. **Hay que llamarla
+ * siempre** al terminar, o el indicador de micrófono se queda encendido.
+ */
+export async function abrirMicrofono(): Promise<{ stream: MediaStream; cerrar: () => void }> {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new CamaraNoDisponibleError(
+      'desconocido',
+      'Este navegador no permite usar el micrófono. Usa la aplicación de escritorio.'
+    )
+  }
+
+  let stream: MediaStream
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  } catch (error) {
+    throw traducirMicrofono(error)
+  }
+
+  return {
+    stream,
+    cerrar: () => {
+      for (const pista of stream.getTracks()) pista.stop()
+    }
+  }
+}
+
+/** Lo mismo que `traducir`, pero hablando de micrófono: decirle a alguien que
+ *  revise la cámara cuando lo que falla es el micrófono lo manda al sitio
+ *  equivocado. */
+function traducirMicrofono(error: unknown): CamaraNoDisponibleError {
+  const nombre = error instanceof DOMException ? error.name : ''
+  switch (nombre) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return new CamaraNoDisponibleError(
+        'denegado',
+        'No diste permiso para usar el micrófono. Búscalo en la barra de direcciones y vuelve a intentarlo.'
+      )
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return new CamaraNoDisponibleError('sin-camara', 'No se encontró un micrófono conectado.')
+    case 'NotReadableError':
+      return new CamaraNoDisponibleError(
+        'en-uso',
+        'Otra aplicación está usando el micrófono. Ciérrala y vuelve a intentarlo.'
+      )
+    default:
+      return new CamaraNoDisponibleError('desconocido', 'No se pudo abrir el micrófono.')
+  }
+}
+
+/**
+ * Captura el fotograma actual como JPEG.
+ *
+ * **Solo se llama cuando ya hay un evento que justifica la captura**, nunca de
+ * forma periódica: es la diferencia entre guardar evidencia y grabar a alguien.
+ */
+export async function capturarFotograma(
+  video: HTMLVideoElement,
+  calidad = 0.8
+): Promise<Blob | null> {
+  const lienzo = document.createElement('canvas')
+  lienzo.width = video.videoWidth
+  lienzo.height = video.videoHeight
+  const contexto = lienzo.getContext('2d')
+  if (!contexto) return null
+  contexto.drawImage(video, 0, 0, lienzo.width, lienzo.height)
+  return new Promise((resolver) => lienzo.toBlob(resolver, 'image/jpeg', calidad))
+}
+
+/**
+ * Captura el fotograma actual reescalado, como JPEG en base64 sin el prefijo
+ * `data:`.
+ *
+ * Es lo que viaja por el canal de monitoreo en vivo, y por eso es distinto de
+ * `capturarFotograma`: ahí interesa la evidencia a resolución completa, aquí
+ * interesa que quepa en un mensaje y que no cueste ancho de banda. 320 px
+ * bastan para que el docente vea quién está y qué hace.
+ *
+ * Síncrono (`toDataURL`) en lugar de `toBlob`: a 320 px tarda menos de un
+ * milisegundo, y así el envío periódico no acumula promesas pendientes si la
+ * red va lenta.
+ */
+export function capturarFotogramaBase64(
+  video: HTMLVideoElement,
+  { ancho = 320, calidad = 0.5 }: { ancho?: number; calidad?: number } = {}
+): string | null {
+  if (!video.videoWidth || !video.videoHeight) return null
+
+  const lienzo = document.createElement('canvas')
+  // Nunca se amplía: si la cámara da menos, se manda lo que hay.
+  lienzo.width = Math.min(ancho, video.videoWidth)
+  lienzo.height = Math.round((lienzo.width * video.videoHeight) / video.videoWidth)
+  const contexto = lienzo.getContext('2d')
+  if (!contexto) return null
+  contexto.drawImage(video, 0, 0, lienzo.width, lienzo.height)
+
+  const url = lienzo.toDataURL('image/jpeg', calidad)
+  const coma = url.indexOf(',')
+  return coma === -1 ? null : url.slice(coma + 1)
+}

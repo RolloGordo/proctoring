@@ -1,10 +1,23 @@
 # `services/ai` — Servicio de IA de audio (FastAPI + workers RQ)
 
 **Responsable:** Zevallos Bocanegra, Pierreluiggi
-**Backlog:** EN-007 / TA-00x (detección de asistente de IA por voz, importación QTI)
+**Backlog:** SP-007 / TA-008 / TA-009 (previos); TA-012 y TA-013 (worker y similitud).
 
-Esta carpeta está preparada pero **sin implementar**: es tuya. Lee [`CLAUDE.md`](../../CLAUDE.md)
-§1 y §3 antes de empezar.
+**Actualización local 09/10/2026:** hay evaluadores P1/P2, worker P3, integración
+de audio web P4 y parser QTI P5. No se han completado las evaluaciones de datasets
+ni la aceptación con infraestructura real. Los apartados de planificación que
+siguen proceden del andamiaje inicial; consultar primero estas guías vigentes:
+
+- [P1: similitud](docs/P1-similitud.md).
+- [P2: voz sintética](docs/P2-voz-sintetica.md).
+- [P3: worker](docs/P3-worker-audio.md).
+- [P4: VAD web](docs/P4-vad-web.md).
+- [P5: QTI y manifiestos](docs/P5-qti-actualizacion.md).
+
+El Dockerfile heredado sigue siendo provisional y **no instala ni copia todo lo
+necesario para este worker**. La ejecución comprobada es local con uv. La imagen
+y composición Docker deben integrarse con Héctor; no se declaran verificadas.
+Lee [`CLAUDE.md`](../../CLAUDE.md) §1 y §3 antes de integrar.
 
 ## Objetivo
 
@@ -45,9 +58,9 @@ punta; reemplázalo por el worker real.
 ```
 services/ai/
 ├── spikes/                      # EMPIEZA AQUI: scripts suetos, sin arquitectura
-│   ├── transcribir.py
-│   ├── similitud.py
-│   ├── pipeline_vad.py
+│   ├── transcribe.py
+│   ├── similarity.py
+│   ├── vad_pipeline.py
 │   └── qti_import.py
 ├── src/proctoring_ai/
 │   ├── domain/                  # reglas puras: umbrales, decisión de alerta
@@ -65,12 +78,13 @@ services/ai/
 El profesor fue claro en la reunión del 03/10: no quiere solo investigación, quiere un script que
 corra y demuestre el resultado. Cada spike es un archivo que se ejecuta solo y escribe su salida.
 
-### `spikes/transcribir.py`
+### `spikes/transcribe.py`
 
 [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper), modelo `small`, idioma español.
 
 ```python
 from faster_whisper import WhisperModel
+
 model = WhisperModel("small", device="cpu", compute_type="int8")
 segments, info = model.transcribe("muestra.wav", language="es", vad_filter=True)
 ```
@@ -78,22 +92,23 @@ segments, info = model.transcribe("muestra.wav", language="es", vad_filter=True)
 Mide y reporta el tiempo: con `small` en CPU debe transcribir 10 s de audio en pocos segundos.
 Si no alcanza para el presupuesto de 10 s, prueba `base` y anótalo.
 
-### `spikes/similitud.py`
+### `spikes/similarity.py`
 
 [`sentence-transformers`](https://www.sbert.net/) con `paraphrase-multilingual-MiniLM-L12-v2`.
 
 ```python
 from sentence_transformers import SentenceTransformer, util
+
 model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 emb = model.encode([enunciado, transcripcion])
-score = util.cos_sim(emb[0], emb[1]).item()   # alerta si > 0.6
+score = util.cos_sim(emb[0], emb[1]).item()  # alerta si > 0.6
 ```
 
 Prueba el umbral **0.6** con casos a favor y en contra: la pregunta leída literal, la pregunta
 parafraseada, y conversación no relacionada. Escribe los números que obtengas; el umbral final sale
 de esos datos, no de la intuición.
 
-### `spikes/pipeline_vad.py`
+### `spikes/vad_pipeline.py`
 
 [Silero VAD](https://github.com/snakers4/silero-vad) en continuo, con marcas de tiempo de inicio y
 fin de cada tramo de habla. Esto es lo que corre en el cliente, así que mide el consumo de CPU: no
@@ -116,6 +131,27 @@ Lo más difícil del módulo. Explora, en este orden:
 3. Si nada funciona a tiempo, deja el `synthetic_score` en el evento y haz que la decisión final
    dependa solo de la similitud + presencia de segundo locutor, y **documenta esa limitación**.
 
+## Qué se versiona y qué no
+
+Los modelos y el audio **no entran al repositorio**: pesan y el `.gitignore` los bloquea. Pero el
+**manifiesto, la procedencia y los resultados sí**, porque son texto de unos pocos kilobytes y son
+lo único que permite que otra persona compruebe tus números:
+
+```gitignore
+# en services/ai/.gitignore
+models/
+datasets/**
+!datasets/**/
+!datasets/**/manifest.csv
+!datasets/**/provenance.json
+results/*
+!results/*.json
+```
+
+El `.gitignore` de la raíz ya deja pasar `manifest.csv` y `provenance.json`. Si añades uno propio en
+`services/ai/`, no vuelvas a excluirlos: un spike cuyos resultados no están en el repo es, para
+quien lo revisa, un spike que no ocurrió.
+
 ## Reglas que no se negocian
 
 - **Nada de modelos ni datasets en el repo** (`.gitignore` ya bloquea `models/`, `*.pt`, `*.onnx`,
@@ -126,9 +162,9 @@ Lo más difícil del módulo. Explora, en este orden:
 
 ## Criterios de aceptación
 
-- [ ] `python spikes/transcribir.py muestra.wav` imprime la transcripción en español y el tiempo.
-- [ ] `python spikes/similitud.py` imprime la similitud de al menos 6 pares y marca cuáles pasan 0.6.
-- [ ] `python spikes/pipeline_vad.py` imprime los tramos de habla con tiempos de un audio de prueba.
+- [ ] `python spikes/transcribe.py muestra.wav` imprime la transcripción en español y el tiempo.
+- [ ] `python spikes/similarity.py` imprime la similitud de al menos 6 pares y marca cuáles pasan 0.6.
+- [ ] `python spikes/vad_pipeline.py` imprime los tramos de habla con tiempos de un audio de prueba.
 - [ ] `python spikes/qti_import.py examen.zip` escribe un JSON con preguntas y opciones.
 - [ ] Caso negativo demostrado: leer la pregunta en voz alta **sin** respuesta sintética NO alerta.
 - [ ] `docker compose up` y un POST de `speech_detected` aparece en los logs del worker.
@@ -137,3 +173,67 @@ Lo más difícil del módulo. Explora, en este orden:
 
 Captura de la terminal con cada spike corriendo y sus números, más la tabla de umbrales probados.
 Guárdala en `docs/evidencias/semana-05/pierreluiggi/`.
+
+---
+
+## Probar el spike de transcripción (ya funciona)
+
+Tras un `git pull`, **primero recupera los audios**: el repositorio guarda el manifiesto, las
+referencias y los hashes, pero no el audio (pesa y está en `.gitignore`).
+
+```bash
+cd services/ai && uv run python -m spikes.download_sample --restore
+```
+
+```bash
+uv run python -m spikes.demo --offline
+```
+
+`--restore` descarga las ocho muestras registradas y **verifica su SHA-256** contra el manifiesto;
+si encuentra un audio local modificado, se detiene y lo conserva. `--offline` evita descargar el
+modelo, así que la primera vez quítalo o usa `--model base`, que es más ligero.
+
+Si lo ejecutas sin recuperar los audios, verás `Audio inexistente o fuera de la carpeta del
+manifiesto`. No es un error del código: es el manifiesto haciendo su trabajo.
+
+Detalle completo en [`docs/SP-007-guide.md`](docs/SP-007-guide.md). Los resultados medidos y lo que
+significan para el presupuesto de 10 s están en
+[`docs/development-report.md`](docs/development-report.md).
+
+## Lo que ya está hecho (Héctor)
+
+Dos archivos de andamiaje para que no empieces desde cero:
+
+| Archivo | Qué es |
+|---|---|
+| `worker_stub.py` | worker de RQ que escucha las colas `high` y `audio`. Funciona. |
+| `tasks.py` | la función `analyze_audio(event_id)` que el worker ejecuta. **Es un esqueleto**: registra el id y no analiza nada. |
+
+El flujo de punta a punta **ya funciona**:
+
+```bash
+docker compose up --build
+```
+
+```bash
+curl -X POST http://localhost:8000/api/v1/events -H "Content-Type: application/json" --data-binary @packages/contracts/examples/speech_detected.json
+```
+
+```bash
+docker compose logs ai-worker
+```
+
+Verás el `event_id` que devolvió la API aparecer en los logs del worker. Lo único que falta es que
+`analyze_audio` haga el trabajo de verdad.
+
+### Dos cosas que no debes cambiar
+
+- **Por la cola solo viaja el `event_id`.** El audio se lee desde Storage con el `evidence_path` del
+  evento. Meter el audio en Redis llenaría la memoria del plan gratuito en una sola sesión de examen.
+- **Las colas son `high` y `audio`.** `high` es para la verificación facial, que tiene a un
+  estudiante esperando en pantalla (P90 < 500 ms); `audio` es la tuya. Si metes el análisis de audio
+  en `high`, bloqueas la sala de espera.
+
+La API encola por **nombre** (`tasks.analyze_audio`), no importando la función, para no tener que
+instalar tus modelos en su imagen. Si mueves la función, avísame: la constante está en
+`services/api/src/proctoring_api/adapters/outbound/redis_queue/job_queue.py`.

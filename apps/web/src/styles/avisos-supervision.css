@@ -1,0 +1,49 @@
+/* HU-025: no cubre el enunciado, escala en pantallas pequeñas. */
+.aviso-supervision-flotante {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1000;
+  width: min(380px, calc(100vw - 2rem));
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--superficie, #fff);
+  color: #182034;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .24);
+  border: 1px solid #d8dee9;
+}
+.aviso-supervision-icono {
+  flex: 0 0 2rem;
+  border-radius: 50%;
+  background: #fff0d5;
+  color: #935500;
+  text-align: center;
+  line-height: 2rem;
+  font-weight: 800;
+}
+.aviso-supervision-contenido { flex: 1; min-width: 0; }
+.aviso-supervision-contenido p { margin: .55rem 0 .85rem; line-height: 1.4; }
+.aviso-supervision-contenido button { font-size: .9rem; }
+@media (max-width: 600px) {
+  .aviso-supervision-flotante { bottom: .5rem; right: .5rem; width: calc(100vw - 1rem); }
+}
+
+.indicador-camara-examen {
+  position: fixed;
+  right: 1rem;
+  top: 5rem;
+  width: 142px;
+  background: #162235;
+  color: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: .75rem;
+  z-index: 50;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, .25);
+}
+.indicador-camara-examen video { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transform: scaleX(-1); }
+.indicador-camara-examen span { display: block; padding: .35rem .45rem; }
+@media (max-width: 600px) { .indicador-camara-examen { position: static; width: 115px; margin: .5rem 0; } }

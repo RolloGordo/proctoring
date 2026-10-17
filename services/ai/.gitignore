@@ -1,0 +1,11 @@
+.tools/
+models/
+
+# Keep measured JSON and dataset metadata; ignore audio and other generated files.
+results/*
+!results/*.json
+datasets/**
+!datasets/**/
+!datasets/**/manifest.csv
+!datasets/**/provenance.json
+!datasets/**/README.md

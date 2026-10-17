@@ -1,0 +1,82 @@
+import { describe, expect, it, afterEach, vi } from 'vitest'
+import { examUrl, webBaseUrl } from './web'
+import { setExamSession } from './context'
+
+// `examContext` se arma al importar el modulo a partir del entorno, asi que
+// estas pruebas cubren lo que no depende de el.
+const ORIGINAL = process.env['PROCTORING_WEB_URL']
+
+afterEach(() => {
+  setExamSession(null)
+  if (ORIGINAL === undefined) delete process.env['PROCTORING_WEB_URL']
+  else process.env['PROCTORING_WEB_URL'] = ORIGINAL
+})
+
+describe('webBaseUrl', () => {
+  it('usa la horneada al construir cuando no hay variable de entorno', () => {
+    // Es el caso de un instalador en el equipo de un estudiante: ahi no hay
+    // ninguna variable que leer, y antes se caia a localhost.
+    delete process.env['PROCTORING_WEB_URL']
+    vi.stubGlobal('__PROCTORING_WEB_URL__', 'https://proctoring.vercel.app')
+
+    expect(webBaseUrl()).toBe('https://proctoring.vercel.app')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('la variable de entorno manda sobre la horneada', () => {
+    // Permite apuntar una compilacion a otro sitio sin reconstruirla, que es
+    // como probamos el despliegue sin publicar un instalador.
+    vi.stubGlobal('__PROCTORING_WEB_URL__', 'https://proctoring.vercel.app')
+    process.env['PROCTORING_WEB_URL'] = 'http://localhost:5173'
+
+    expect(webBaseUrl()).toBe('http://localhost:5173')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('una horneada vacia no cuenta como configurada', () => {
+    delete process.env['PROCTORING_WEB_URL']
+    vi.stubGlobal('__PROCTORING_WEB_URL__', '   ')
+
+    expect(webBaseUrl()).toBe('http://localhost:5173')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('usa el servidor de desarrollo por defecto', () => {
+    delete process.env['PROCTORING_WEB_URL']
+    expect(webBaseUrl()).toBe('http://localhost:5173')
+  })
+
+  it('quita la barra final para no construir rutas con doble barra', () => {
+    process.env['PROCTORING_WEB_URL'] = 'https://proctoring.vercel.app/'
+    expect(webBaseUrl()).toBe('https://proctoring.vercel.app')
+  })
+})
+
+describe('examUrl', () => {
+  it('sin examen configurado abre la pantalla del codigo de acceso', () => {
+    // Con login, la web pide primero iniciar sesion y despues el codigo: no hay
+    // que configurar nada a mano.
+    delete process.env['PROCTORING_WEB_URL']
+    setExamSession(null)
+    expect(examUrl()).toBe('http://localhost:5173/examen')
+  })
+
+  it('con un examen configurado abre su sala, no el examen en curso', () => {
+    // La sala es donde se da el consentimiento. Saltarsela seria saltarse la
+    // aceptacion.
+    delete process.env['PROCTORING_WEB_URL']
+    setExamSession('3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60')
+    expect(examUrl()).toBe('http://localhost:5173/examen/3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60/sala')
+  })
+
+  it('un enlace de protocolo abre la sala del examen indicado', () => {
+    delete process.env['PROCTORING_WEB_URL']
+    setExamSession(null)
+    expect(examUrl('3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60')).toBe(
+      'http://localhost:5173/examen/3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60/sala'
+    )
+  })
+})

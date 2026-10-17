@@ -1,0 +1,149 @@
+"""Endpoints de revisión de un caso y decisión del docente."""
+
+from __future__ import annotations
+
+from uuid import UUID
+
+from fastapi import APIRouter, status
+
+from proctoring_api.adapters.inbound.http.dependencies import (
+    CurrentUserDep,
+    EvidenceReadUrlDep,
+    ListDecisionsDep,
+    MyDecisionDep,
+    RecordDecisionDep,
+    ReviewCaseDep,
+)
+from proctoring_api.adapters.inbound.http.schemas import (
+    CaseResponse,
+    DecisionRequest,
+    DecisionResponse,
+    ErrorResponse,
+    EvidenceReadUrlRequest,
+    EvidenceReadUrlResponse,
+)
+from proctoring_api.application.use_cases.read_evidence import READ_EXPIRY_SECONDS
+
+router = APIRouter(prefix="/api/v1", tags=["review"])
+
+AUTH_RESPONSES: dict[int | str, dict[str, object]] = {
+    401: {"model": ErrorResponse, "description": "Token ausente o invalido"},
+    403: {"model": ErrorResponse, "description": "No puedes hacer esto"},
+}
+
+
+@router.get(
+    "/sessions/{session_id}/students/{student_id}/case",
+    response_model=CaseResponse,
+    summary="Revisar el caso de un estudiante (solo docente dueño)",
+    responses=AUTH_RESPONSES,
+)
+def review_case(
+    session_id: UUID,
+    student_id: UUID,
+    use_case: ReviewCaseDep,
+    current_user: CurrentUserDep,
+) -> CaseResponse:
+    """La evidencia reunida: senales, alertas, riesgo con su desglose y decisiones.
+
+    Una sesion ajena, una inexistente y un estudiante que no participo responden
+    lo mismo: distinguirlos permitiria averiguar que existe.
+    """
+    return CaseResponse.from_entity(use_case.execute(session_id, student_id, actor=current_user))
+
+
+@router.post(
+    "/sessions/{session_id}/students/{student_id}/decision",
+    status_code=status.HTTP_201_CREATED,
+    response_model=DecisionResponse,
+    summary="Decidir sobre un caso, con justificación (solo docente dueño)",
+    responses={
+        **AUTH_RESPONSES,
+        400: {"model": ErrorResponse, "description": "La justificacion es demasiado corta"},
+    },
+)
+def record_decision(
+    session_id: UUID,
+    student_id: UUID,
+    payload: DecisionRequest,
+    use_case: RecordDecisionDep,
+    current_user: CurrentUserDep,
+) -> DecisionResponse:
+    """Registra lo que el docente decide y por que.
+
+    **No anula nada**: el sistema es un auditor, no un juez. La decision queda como
+    evidencia y no se edita; si el docente cambia de parecer, registra otra.
+    """
+    return DecisionResponse.from_entity(
+        use_case.execute(
+            session_id,
+            student_id,
+            payload.decision,
+            payload.justification,
+            actor=current_user,
+        )
+    )
+
+
+@router.get(
+    "/me/exams/{session_id}/decision",
+    response_model=DecisionResponse | None,
+    summary="La decisión del docente sobre mi caso, con su justificación",
+    responses=AUTH_RESPONSES,
+)
+def my_decision(
+    session_id: UUID, use_case: MyDecisionDep, current_user: CurrentUserDep
+) -> DecisionResponse | None:
+    """Lo que el docente decidio sobre este estudiante, y por que.
+
+    El sistema le exige al docente justificar por escrito, y esa justificacion
+    solo la veia el. Decirle al estudiante que se le observa y callarle la razon
+    de lo que se decidio es transparencia a medias.
+
+    Devuelve `null` mientras no haya decision: que un caso este bajo revision no
+    es informacion que ayude a nadie, y presiona.
+    """
+    decision = use_case.execute(session_id, actor=current_user)
+    return DecisionResponse.from_entity(decision) if decision is not None else None
+
+
+@router.get(
+    "/sessions/{session_id}/decisions",
+    response_model=list[DecisionResponse],
+    summary="Decisiones de una sesión (solo docente dueño)",
+    responses=AUTH_RESPONSES,
+)
+def list_decisions(
+    session_id: UUID, use_case: ListDecisionsDep, current_user: CurrentUserDep
+) -> list[DecisionResponse]:
+    return [
+        DecisionResponse.from_entity(d) for d in use_case.execute(session_id, actor=current_user)
+    ]
+
+
+@router.post(
+    "/sessions/{session_id}/students/{student_id}/evidence-url",
+    response_model=EvidenceReadUrlResponse,
+    summary="URL temporal para ver una evidencia (solo el docente dueño)",
+    responses=AUTH_RESPONSES,
+)
+def create_evidence_read_url(
+    session_id: UUID,
+    student_id: UUID,
+    payload: EvidenceReadUrlRequest,
+    use_case: EvidenceReadUrlDep,
+    current_user: CurrentUserDep,
+) -> EvidenceReadUrlResponse:
+    """Devuelve un enlace firmado para abrir una captura o un fragmento de audio.
+
+    Los tres buckets son privados, asi que sin esto una captura se guarda y
+    nadie puede mirarla.
+
+    El enlace **caduca**: uno copiado de la pantalla de revision no puede
+    convertirse en acceso permanente a la cara de un estudiante. Y la ruta tiene
+    que empezar por `{session_id}/{student_id}/`, que es como la escribe el
+    servidor al firmar la subida: sin esa comprobacion, un docente podria pedir
+    la URL de cualquier archivo del bucket cambiando el cuerpo de la peticion.
+    """
+    url = use_case.execute(session_id, student_id, payload.path, payload.kind, actor=current_user)
+    return EvidenceReadUrlResponse(url=url, expires_in_seconds=READ_EXPIRY_SECONDS)

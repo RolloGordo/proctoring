@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" identifier="multiple_choice" title="multiple_choice" adaptive="false" timeDependent="false">
+  <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="identifier"><correctResponse><value>A</value></correctResponse></responseDeclaration>
+  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float" normalMaximum="1"/>
+  <itemBody><choiceInteraction responseIdentifier="RESPONSE" maxChoices="1"><prompt>¿Qué clave identifica una fila?</prompt><simpleChoice identifier="A">Primaria</simpleChoice><simpleChoice identifier="B">Foránea</simpleChoice></choiceInteraction></itemBody>
+  <responseProcessing template="http://www.imsglobal.org/question/qti_v2p1/rptemplates/match_correct"/>
+</assessmentItem>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" identifier="numeric_tolerance" title="Tolerancia" adaptive="false" timeDependent="false">
+  <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="float"><correctResponse><value>3.14</value></correctResponse></responseDeclaration>
+  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float" normalMaximum="2"/>
+  <itemBody><p>Escribe pi con tolerancia absoluta de 0.01: <textEntryInteraction responseIdentifier="RESPONSE"/>.</p></itemBody>
+  <responseProcessing>
+    <responseCondition>
+      <responseIf>
+        <equal toleranceMode="absolute" tolerance="0.01"><variable identifier="RESPONSE"/><correct identifier="RESPONSE"/></equal>
+        <setOutcomeValue identifier="SCORE"><baseValue baseType="float">2</baseValue></setOutcomeValue>
+      </responseIf>
+      <responseElse><setOutcomeValue identifier="SCORE"><baseValue baseType="float">0</baseValue></setOutcomeValue></responseElse>
+    </responseCondition>
+  </responseProcessing>
+</assessmentItem>

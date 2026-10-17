@@ -1,0 +1,7 @@
+# SPEC-005 — Verificación facial J4
+
+La función `tasks.verify_face()` obtiene el trabajo de la API, descarga las fotos por Storage privado y compara embeddings de InsightFace, con CPU ONNX. Usa el embedding de referencia si ya existe; si no, obtiene uno nuevo y lo envía al endpoint `identity-result`. Imágenes sin cara o con múltiples caras producen `inconclusive=true`. El worker mide; la API decide el resultado según la sesión.
+
+Dependencias **opcionales**: desde `services/ai`, instalar `uv pip install -r requirements-face.txt` en el entorno virtual del servicio para activar la función. El modelo `buffalo_sc` se obtiene aparte; revisar licencia, procedencia y permiso de uso antes de instalarlo. `FACE_MODEL_NAME` cambia el modelo, `FACE_MODEL_ROOT` indica el directorio local ignorado por Git. **No se adjuntan pesos, imágenes biométricas ni credenciales**.
+
+El análisis offline requiere `pairs.csv` con `reference,capture,same_person`, rutas relativas a ese CSV e imágenes privadas consentidas de al menos dos personas. Ejecutar desde `services/ai`: `python spikes/face_verify.py datasets/face_own/pairs.csv --output results/face_verify.json`. Incluir pares genuinos y de impostores, curva FAR/FRR, umbral exploratorio y P90 CPU. Separar calibración y conjunto final antes de anunciar el cumplimiento de `P90 < 500ms`. El score es coseno recortado a [0,1], no una probabilidad; el umbral 0.45 es provisional y requiere medición.

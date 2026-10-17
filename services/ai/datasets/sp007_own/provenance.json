@@ -1,0 +1,87 @@
+{
+  "task": "SP-007",
+  "collection_status": "current_delivery_scope_evaluated",
+  "source": "Original Spanish recordings provided by participant P01 for SP-007",
+  "planned_sample_count": 2,
+  "planned_speaker_count": 1,
+  "sample_count_requirement": "Backlog specifies own Spanish audio evaluation but no minimum sample count; current delivery uses two recordings.",
+  "permission_status": "P01 supplied own recordings and requested project evaluation.",
+  "reference_status": "Full reading scripts confirmed by participant after listening, before model evaluation",
+  "selection": "exploratory_not_final_test",
+  "results_status": "evaluated_with_base_and_small",
+  "limitations": "Exploratory evaluation of two short read-aloud recordings from one participant; one run per model. Other participant recordings are an optional future extension outside the current delivery scope. References confirmed by the participant after listening, without independent listener verification. Recording device and exact recording time not supplied.",
+  "received_sample_count": 2,
+  "received_speaker_count": 1,
+  "recordings": [
+    {
+      "sample_id": "P01_01",
+      "speaker_id": "P01",
+      "audio_path": "audio/P01_01.mp4",
+      "sha256": "c79dc5e72be434492c7b4dd89f10315c4ce977b436dbfec241777d72775bb42d",
+      "user_observations": "hizo un pare cuando dice la palabra comprenderla.",
+      "reference_status": "confirmed_exact_script_by_participant",
+      "reference_review_method": "Participant listened to both recordings and confirmed in chat that all words match the reading scripts exactly, before model evaluation.",
+      "reference_review_date_local": "2026-10-03",
+      "recorded_at": null,
+      "device": null,
+      "evaluation_status": "included_in_evaluation_own"
+    },
+    {
+      "sample_id": "P01_02",
+      "speaker_id": "P01",
+      "audio_path": "audio/P01_02.mp4",
+      "sha256": "988bf7d0c02b14f2c586780e725a41ca7232b9ee0f8a398bf537790f92f6caee",
+      "user_observations": "se escucha sonido en el audio como un ventilador.",
+      "reference_status": "confirmed_exact_script_by_participant",
+      "reference_review_method": "Participant listened to both recordings and confirmed in chat that all words match the reading scripts exactly, before model evaluation.",
+      "reference_review_date_local": "2026-10-03",
+      "recorded_at": null,
+      "device": null,
+      "evaluation_status": "included_in_evaluation_own"
+    }
+  ],
+  "reference_review_method": "Participant listened to both recordings and confirmed in chat that all words match the reading scripts exactly, before model evaluation.",
+  "results_file": "services/ai/results/evaluation-own.json",
+  "evaluated_at_local": "2026-10-03T21:06:23.470846-05:00",
+  "evaluated_sample_ids": [
+    "P01_01",
+    "P01_02"
+  ],
+  "evaluated_audio_seconds": 34.344,
+  "evaluated_reference_words": 79,
+  "model_summaries": {
+    "base": {
+      "sample_count": 2,
+      "reference_words": 79,
+      "word_edits": 14,
+      "micro_wer": 0.17721518987341772,
+      "audio_seconds": 34.344,
+      "inference_seconds": 2.8637869999947725,
+      "aggregate_real_time_factor": 0.08338536571147136,
+      "empty_reference_samples": 0,
+      "empty_reference_inserted_words": 0
+    },
+    "small": {
+      "sample_count": 2,
+      "reference_words": 79,
+      "word_edits": 6,
+      "micro_wer": 0.0759493670886076,
+      "audio_seconds": 34.344,
+      "inference_seconds": 6.120608900004299,
+      "aggregate_real_time_factor": 0.17821479443292276,
+      "empty_reference_samples": 0,
+      "empty_reference_inserted_words": 0
+    }
+  },
+  "initial_collection_proposal": {
+    "sample_count": 8,
+    "speaker_count": 4,
+    "status": "deferred_optional_extension"
+  },
+  "current_delivery_scope": "User chose to use only the two own recordings from P01 for this delivery.",
+  "optional_future_speaker_ids": [
+    "P02",
+    "P03",
+    "P04"
+  ]
+}

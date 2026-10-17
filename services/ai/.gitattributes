@@ -1,0 +1,3 @@
+# evaluation.json hashes the original CSV bytes (including CRLF).
+# Preserve them across checkouts so the recorded evidence remains verifiable.
+datasets/**/manifest.csv -text
