@@ -20,6 +20,28 @@ llegando tal cual.
 Puede que Vercel aplique esta reescritura sola al detectar Vite. Dejarlo escrito
 no cuesta nada y no depende de que siga haciéndolo.
 
+# Las cabeceras COOP/COEP
+
+Sin ellas el navegador no da `SharedArrayBuffer`, y el runtime de ONNX que usa
+la detección de habla es el **multihilo**: lo necesita.
+
+Estaban solo en el servidor de desarrollo, así que el VAD funcionaba en local y
+en producción no, sin que nada fallara a la vista — `useSupervision` descarta en
+silencio los detectores que no consiguen prepararse. Comprobado en la web
+desplegada antes de añadirlas: `crossOriginIsolated: false`.
+
+Se usa `credentialless` y no `require-corp` a propósito. Con `require-corp`, un
+recurso de otro origen que no declare `Cross-Origin-Resource-Policy` deja de
+cargar, y las capturas de evidencia vienen de Supabase Storage. `credentialless`
+los deja pasar sin credenciales, que es justo lo que necesita una URL firmada.
+
+**Al cambiar esto hay que volver a desplegar**, y conviene comprobarlo en la
+consola del navegador:
+
+```js
+self.crossOriginIsolated   // tiene que ser true
+```
+
 ## Lo que hay que poner en Vercel al desplegar
 
 | Variable | Qué es |

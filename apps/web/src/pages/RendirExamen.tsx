@@ -112,7 +112,12 @@ export function RendirExamen() {
     }
   }, [id, token])
 
-  const { guardar, reintentarGuardado } = useGuardadoDiferido(id, token, setGuardado, setError)
+  const { guardar, reintentarGuardado, vaciarPendientes } = useGuardadoDiferido(
+    id,
+    token,
+    setGuardado,
+    setError
+  )
 
   useEffect(() => {
     const alConectar = (): void => {
@@ -192,11 +197,30 @@ export function RendirExamen() {
 
   async function entregar(): Promise<void> {
     setError(undefined)
+    setEntregando(true)
+
+    // Antes de entregar se intenta salvar lo que quede en el aire. Si no se
+    // consigue, **se entrega igual**: perder un examen porque un guardado
+    // falló hace un minuto es mucho peor que entregarlo con una respuesta
+    // menos, y el estudiante decide sabiendo lo que pasa.
+    let todoGuardado = true
+    try {
+      todoGuardado = await vaciarPendientes()
+    } catch {
+      todoGuardado = false
+    } finally {
+      setEntregando(false)
+    }
+
     const faltantes = unansweredCount(total, respondidas)
-    const confirmacion =
+    const sobreFaltantes =
       faltantes === 0
         ? '¿Quieres entregar el examen? Ya respondiste todas las preguntas.'
         : `Te quedan ${faltantes} pregunta${faltantes === 1 ? '' : 's'} sin responder. ¿Quieres entregar el examen de todas formas?`
+    const confirmacion = todoGuardado
+      ? sobreFaltantes
+      : 'No se pudo guardar tu última respuesta y puede perderse. ' +
+        '¿Quieres entregar el examen de todas formas?'
     if (!window.confirm(confirmacion)) return
     setEntregando(true)
     try {
@@ -249,7 +273,11 @@ export function RendirExamen() {
           type="button"
           className="boton"
           onClick={() => void entregar()}
-          disabled={entregando || guardado === 'guardando' || guardado === 'error' || !conectado}
+          // Solo mientras se entrega. Bloquearlo por un guardado fallido o por
+          // `navigator.onLine` dejaba al estudiante sin poder entregar por un
+          // corte de red de hace un minuto, que es la peor forma de fallar que
+          // tiene esta pantalla.
+          disabled={entregando}
         >
           {entregando ? 'Entregando…' : 'Entregar examen'}
         </button>
@@ -367,7 +395,7 @@ export function RendirExamen() {
                 type="button"
                 className="boton"
                 onClick={() => void entregar()}
-                disabled={entregando || guardado === 'guardando'}
+                disabled={entregando}
               >
                 {entregando ? 'Entregando…' : 'Entregar examen'}
               </button>
@@ -567,7 +595,12 @@ function useGuardadoDiferido(
   token: string | undefined,
   setGuardado: (estado: EstadoGuardado) => void,
   setError: (mensaje: string | undefined) => void
-): { guardar: (respuesta: NewAnswer) => void; reintentarGuardado: () => void } {
+): {
+  guardar: (respuesta: NewAnswer) => void
+  reintentarGuardado: () => void
+  /** Manda lo pendiente y dice si quedo algo sin guardar. */
+  vaciarPendientes: () => Promise<boolean>
+} {
   const pendientes = useRef(new Map<string, NewAnswer>())
   const temporizador = useRef<ReturnType<typeof setTimeout>>(undefined)
   const guardando = useRef(false)
@@ -627,7 +660,14 @@ function useGuardadoDiferido(
     void enviar()
   }, [enviar])
 
-  return { guardar, reintentarGuardado }
+  /** Para entregar: manda lo que quede y responde si se consiguio. */
+  const vaciarPendientes = useCallback(async () => {
+    clearTimeout(temporizador.current)
+    await enviar()
+    return pendientes.current.size === 0
+  }, [enviar])
+
+  return { guardar, reintentarGuardado, vaciarPendientes }
 }
 
 function indexar(respuestas: Answer[]): Record<string, NewAnswer> {
