@@ -53,6 +53,16 @@ export interface OpcionesSupervision {
   onAviso?: (aviso: AvisoSupervision) => void
   /** Muestra una previsualización sin abrir otra cámara. */
   onCamara?: (stream: MediaStream | null) => void
+  /**
+   * Qué módulos no se pudieron activar.
+   *
+   * Un detector que no arranca se descartaba y el examen seguía como si nada:
+   * en una ventana en kiosco nadie abre la consola, así que una supervisión
+   * que no supervisó pasaba inadvertida para el estudiante **y** para el
+   * docente que después revisa el caso. Eso es peor que no tenerla, porque
+   * la ausencia de señales se lee como ausencia de incidencias.
+   */
+  onModulosCaidos?: (nombres: string[]) => void
   /** Botón de reintento si el navegador pierde la cámara. */
   reintento?: number
   /** Permite apagarlo todo (por ejemplo, si el examen ya se entregó). */
@@ -76,6 +86,7 @@ export function useSupervision({
   onObservado,
   onAviso,
   onCamara,
+  onModulosCaidos,
   reintento = 0,
   activa = true
 }: OpcionesSupervision): EstadoSupervision {
@@ -89,10 +100,10 @@ export function useSupervision({
     observadoRef.current = onObservado
   }, [onObservado])
 
-  const callbacksRef = useRef({ onAviso, onCamara })
+  const callbacksRef = useRef({ onAviso, onCamara, onModulosCaidos })
   useEffect(() => {
-    callbacksRef.current = { onAviso, onCamara }
-  }, [onAviso, onCamara])
+    callbacksRef.current = { onAviso, onCamara, onModulosCaidos }
+  }, [onAviso, onCamara, onModulosCaidos])
 
   // Sin estudiante no se puede reportar nada: la API exige que el `student_id`
   // coincida con el del token. Se calcula aqui, no dentro del efecto: poner el
@@ -191,8 +202,10 @@ export function useSupervision({
           }
         }, 1000)
 
-        // Un detector que no carga se descarta y los demás siguen.
+        // Un detector que no carga se descarta y los demás siguen, pero **se
+        // dice**: ver `onModulosCaidos`.
         const listos: Detector[] = []
+        const caidos: string[] = []
         for (const detector of detectores) {
           try {
             await detector.preparar?.({
@@ -212,10 +225,12 @@ export function useSupervision({
             listos.push(detector)
           } catch (fallo) {
             detector.detener?.()
+            caidos.push(detector.nombre)
             console.error(`[supervisión] no se pudo preparar ${detector.nombre}`, fallo)
           }
         }
         if (cancelado) return
+        if (caidos.length > 0) callbacksRef.current.onModulosCaidos?.(caidos)
 
         temporizador = setInterval(() => {
           // Never run vision inference on a known stopped or unusable stream.

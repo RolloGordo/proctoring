@@ -40,6 +40,8 @@ export function RendirExamen() {
   const [respuestas, setRespuestas] = useState<Record<string, NewAnswer>>({})
   const [error, setError] = useState<string>()
   const [guardado, setGuardado] = useState<EstadoGuardado>('limpio')
+  /** Módulos de supervisión que no arrancaron. Se le dice al estudiante. */
+  const [modulosCaidos, setModulosCaidos] = useState<string[]>([])
   const [entregando, setEntregando] = useState(false)
   const [observado, setObservado] = useState(false)
   const [conectado, setConectado] = useState(() => navigator.onLine)
@@ -182,6 +184,7 @@ export function RendirExamen() {
     onObservado: setObservado,
     onAviso: (a) => gestorAvisos.current?.registrar(a),
     onCamara: mostrarCamara,
+    onModulosCaidos: setModulosCaidos,
     reintento: reintentoCamara,
     activa: matricula?.submitted_at == null
   })
@@ -282,6 +285,23 @@ export function RendirExamen() {
           {entregando ? 'Entregando…' : 'Entregar examen'}
         </button>
       </div>
+
+      {modulosCaidos.length > 0 && (
+        <div className="aviso aviso-neutro" role="status">
+          <p>
+            <strong>
+              {modulosCaidos.length === 1
+                ? 'Un módulo de supervisión no se pudo activar'
+                : 'Hay módulos de supervisión que no se pudieron activar'}
+              : {modulosCaidos.join(', ')}.
+            </strong>
+          </p>
+          <p className="ayuda">
+            Puedes seguir rindiendo. No es una infracción y no se te atribuye a ti, pero tu
+            docente verá que ese módulo no estuvo activo durante el examen.
+          </p>
+        </div>
+      )}
 
       {!conectado && (
         <p className="aviso">
