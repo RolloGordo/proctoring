@@ -10,10 +10,35 @@ import { ApiError, api, type EventType } from '../lib/api'
 import type { SenalDetectada } from './tipos'
 import { uploadAudio } from './audioUpload'
 import { uploadImage } from './imageUpload'
+import { conLimite } from './arranque'
 
 /** Tope de la cola. Más que esto es que la red lleva mucho rato caída. */
 const MAX_EN_COLA = 200
 const REINTENTO_MS = 5_000
+
+/**
+ * Cuánto se espera por la evidencia de una señal antes de mandarla sin ella.
+ *
+ * **Nada de esto puede esperarse para siempre.** `capturarFotograma` envuelve
+ * `canvas.toBlob`, que no rechaza nunca si no llama de vuelta, y las peticiones
+ * a la API no traían tiempo límite. Una espera que no vuelve dejaba el `while`
+ * de `vaciar()` parado con `enviando` en true, y a partir de ahí **todas** las
+ * señales siguientes se encolaban sin que nadie las sacara. Sin `catch`, así
+ * que sin una sola línea en consola.
+ *
+ * Es la explicación de que en todo el historial del proyecto no haya ni un
+ * `evidence_path`: la primera captura mataba la cola.
+ */
+const LIMITE_EVIDENCIA_MS = 20_000
+
+/**
+ * Cuánto se espera a que la API acepte el evento.
+ *
+ * Más generoso porque el plan gratuito duerme el servicio y despertarlo pasa
+ * del minuto. Pasado el plazo se reintenta, que es lo correcto: el evento no se
+ * pierde, solo tarda.
+ */
+const LIMITE_API_MS = 70_000
 
 export interface ContextoEmision {
   sessionId: string
@@ -26,7 +51,7 @@ export interface ContextoEmision {
 
 export class EmisorDeSenales {
   private readonly cola: Array<{ signal: SenalDetectada; context: ContextoEmision }> = []
-  private enviando = false
+  private enVuelo: Promise<void> | null = null
   private temporizador: ReturnType<typeof setTimeout> | undefined
   private detenido = false
   /** Intentos seguidos sin conseguir vaciar la cola. Solo para avisar. */
@@ -78,23 +103,53 @@ export class EmisorDeSenales {
     void this.vaciar()
   }
 
-  /** Manda lo que quede. Hay que llamarlo al salir del examen. */
+  /**
+   * Manda lo que quede. Hay que llamarlo al salir del examen.
+   *
+   * Dos vueltas: la primera espera al envio que ya estuviera en curso, la
+   * segunda manda lo que se haya encolado mientras tanto. `detenido` impide
+   * que entre nada nuevo, asi que con dos basta.
+   */
   async cerrar(): Promise<void> {
     this.detenido = true
     clearTimeout(this.temporizador)
-    await this.vaciar()
+    for (let vuelta = 0; vuelta < 2 && this.cola.length > 0; vuelta += 1) {
+      await this.vaciar()
+    }
   }
 
+  /**
+   * Vacia la cola, o espera al vaciado que ya estuviera en curso.
+   *
+   * **Esperar, no rendirse.** Esto devolvia nada mas ver un envio en vuelo, asi
+   * que `cerrar()` podia volver con senales todavia sin mandar y la pantalla se
+   * desmontaba encima. Es el mismo fallo que perdia la ultima respuesta del
+   * estudiante, en otro fichero.
+   */
   private async vaciar(): Promise<void> {
-    if (this.enviando) return
-    this.enviando = true
+    if (this.enVuelo) {
+      await this.enVuelo
+      return
+    }
+    this.enVuelo = this.drenar()
     try {
+      await this.enVuelo
+    } finally {
+      this.enVuelo = null
+    }
+  }
+
+  private async drenar(): Promise<void> {
+    {
       while (this.cola.length > 0) {
         const { signal: senal, context } = this.cola[0]
         try {
           if (senal.audio && !senal.evidencePath) {
             try {
-              senal.evidencePath = await uploadAudio(senal.audio, context)
+              senal.evidencePath = await conLimite(
+                uploadAudio(senal.audio, context),
+                LIMITE_EVIDENCIA_MS
+              )
             } catch (falloSubida) {
               // **Con el audio no se hace lo mismo que con la imagen.**
               //
@@ -111,7 +166,10 @@ export class EmisorDeSenales {
               // Se descarta la señal y se registra como lo que es, un fallo de
               // disponibilidad, para que el docente sepa que ese rato no se
               // estuvo oyendo.
-              console.error('[supervisión] fragmento de audio perdido; no se emite voz', falloSubida)
+              console.error(
+                '[supervisión] fragmento de audio perdido; no se emite voz',
+                falloSubida
+              )
               this.alPerderAudio?.(
                 falloSubida instanceof Error ? falloSubida.message.slice(0, 200) : 'desconocido'
               )
@@ -122,10 +180,20 @@ export class EmisorDeSenales {
             senal.audio = undefined
           }
           if (senal.image && !senal.evidencePath) {
-            const image = await senal.image
+            // También la captura en sí: `toBlob` no rechaza si no responde.
+            let image: Blob | null = null
+            try {
+              image = await conLimite(Promise.resolve(senal.image), LIMITE_EVIDENCIA_MS)
+            } catch (falloCaptura) {
+              console.error('[supervisión] la captura no llegó a tiempo', falloCaptura)
+              senal.metadata = { ...senal.metadata, capture_error: 'capture_timeout' }
+            }
             if (image) {
               try {
-                senal.evidencePath = await uploadImage(image, context)
+                senal.evidencePath = await conLimite(
+                  uploadImage(image, context),
+                  LIMITE_EVIDENCIA_MS
+                )
               } catch (falloSubida) {
                 // **Que falle la evidencia no puede borrar la señal.** Si la
                 // subida lanzaba, se perdía el evento entero: el docente no veía
@@ -139,22 +207,27 @@ export class EmisorDeSenales {
               }
               senal.image = undefined
             } else {
-              senal.metadata = { ...senal.metadata, capture_error: 'no_jpeg' }
+              if (!senal.metadata?.capture_error) {
+                senal.metadata = { ...senal.metadata, capture_error: 'no_jpeg' }
+              }
               senal.image = undefined
             }
           }
-          await api.registerEvent(
-            {
-              session_id: context.sessionId,
-              student_id: context.studentId,
-              question_id: context.questionId,
-              event_type: senal.evento,
-              started_at: new Date(senal.inicioMs).toISOString(),
-              duration_ms: Math.round(senal.duracionMs),
-              metadata: senal.metadata,
-              evidence_path: senal.evidencePath
-            },
-            context.token
+          await conLimite(
+            api.registerEvent(
+              {
+                session_id: context.sessionId,
+                student_id: context.studentId,
+                question_id: context.questionId,
+                event_type: senal.evento,
+                started_at: new Date(senal.inicioMs).toISOString(),
+                duration_ms: Math.round(senal.duracionMs),
+                metadata: senal.metadata,
+                evidence_path: senal.evidencePath
+              },
+              context.token
+            ),
+            LIMITE_API_MS
           )
           this.cola.shift()
           this.fallosSeguidos = 0
@@ -183,8 +256,6 @@ export class EmisorDeSenales {
           return
         }
       }
-    } finally {
-      this.enviando = false
     }
   }
 

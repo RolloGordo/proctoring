@@ -109,7 +109,40 @@ export async function abrirCamara({
  * Devuelve el `MediaStream` y la función para apagarlo. **Hay que llamarla
  * siempre** al terminar, o el indicador de micrófono se queda encendido.
  */
-export async function abrirMicrofono(): Promise<{ stream: MediaStream; cerrar: () => void }> {
+export interface Microfono {
+  /** El identificador que espera `getUserMedia`. */
+  deviceId: string
+  /** Cómo lo llama el sistema. Vacío hasta que se concede el permiso. */
+  etiqueta: string
+}
+
+/**
+ * Los micrófonos que el equipo ofrece.
+ *
+ * Hace falta porque el que elige el navegador por defecto no siempre es el que
+ * la persona está usando: una cámara virtual como ManyCam o OBS instala su
+ * propio micrófono, y si gana ese, la prueba capta sonido pero el detector
+ * trabaja sobre una pista que no es la del micrófono real.
+ *
+ * Devuelve una lista vacía si el navegador no deja enumerar. **Las etiquetas
+ * llegan vacías hasta que se concede el permiso**, que es por lo que esto se
+ * llama después de abrir el micrófono y no antes.
+ */
+export async function microfonosDisponibles(): Promise<Microfono[]> {
+  if (!navigator.mediaDevices?.enumerateDevices) return []
+  try {
+    const dispositivos = await navigator.mediaDevices.enumerateDevices()
+    return dispositivos
+      .filter((d) => d.kind === 'audioinput' && d.deviceId)
+      .map((d) => ({ deviceId: d.deviceId, etiqueta: d.label }))
+  } catch {
+    return []
+  }
+}
+
+export async function abrirMicrofono(
+  deviceId?: string
+): Promise<{ stream: MediaStream; cerrar: () => void }> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new CamaraNoDisponibleError(
       'desconocido',
@@ -119,7 +152,12 @@ export async function abrirMicrofono(): Promise<{ stream: MediaStream; cerrar: (
 
   let stream: MediaStream
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    // `exact` a propósito: si el elegido no está disponible hay que decirlo, no
+    // abrir otro por detrás. Elegir un micrófono y que te den otro es peor que
+    // no poder elegir.
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: deviceId ? { deviceId: { exact: deviceId } } : true
+    })
   } catch (error) {
     throw traducirMicrofono(error)
   }

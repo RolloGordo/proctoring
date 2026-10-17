@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { abrirMicrofono, CamaraNoDisponibleError } from './camara'
+import {
+  abrirMicrofono,
+  CamaraNoDisponibleError,
+  microfonosDisponibles,
+  type Microfono
+} from './camara'
 import { DetectorHabla } from './detectores/voz'
 import { conLimite, LIMITE_ARRANQUE_MS } from './arranque'
 
@@ -40,6 +45,8 @@ export function PruebaMicrofono() {
   const [nivel, setNivel] = useState(0)
   const [mensaje, setMensaje] = useState<string>()
   const [vadCaido, setVadCaido] = useState(false)
+  const [microfonos, setMicrofonos] = useState<Microfono[]>([])
+  const [elegido, setElegido] = useState('')
   const recursos = useRef<Recursos | undefined>(undefined)
 
   function detener(): void {
@@ -62,7 +69,10 @@ export function PruebaMicrofono() {
     setEstado('preparando')
 
     try {
-      const micro = await abrirMicrofono()
+      const micro = await abrirMicrofono(elegido || undefined)
+      // Despues de abrirlo, no antes: hasta que se concede el permiso los
+      // nombres llegan vacios y la lista no sirve para elegir nada.
+      void microfonosDisponibles().then(setMicrofonos)
       const contexto = new AudioContext()
       // Sin un gesto previo el contexto nace suspendido y el medidor se queda
       // plano, que parece un micrófono roto cuando no lo esta.
@@ -165,6 +175,32 @@ export function PruebaMicrofono() {
           Antes de rendir, confirma que tu voz llega al sistema. Esta prueba no guarda ni envía el
           audio.
         </p>
+
+        {microfonos.length > 1 && (
+          <p>
+            <label htmlFor="elegir-microfono">Micrófono</label>
+            <select
+              id="elegir-microfono"
+              value={elegido}
+              onChange={(evento) => {
+                setElegido(evento.target.value)
+                void comprobar()
+              }}
+              style={{ width: '100%' }}
+            >
+              <option value="">El que elija el sistema</option>
+              {microfonos.map((micro, posicion) => (
+                <option key={micro.deviceId} value={micro.deviceId}>
+                  {micro.etiqueta || `Micrófono ${posicion + 1}`}
+                </option>
+              ))}
+            </select>
+            <span className="ayuda">
+              Si tienes una cámara virtual instalada (ManyCam, OBS), suele añadir su propio
+              micrófono. Elige el real si la prueba no confirma.
+            </span>
+          </p>
+        )}
 
         {(estado === 'escuchando' || listo) && (
           <>
