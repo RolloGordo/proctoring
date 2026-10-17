@@ -243,7 +243,8 @@ export function RendirExamen() {
   // asi que el campo se deshabilita en vez de dejar que lo descubra chocandose.
   const bloqueada = !volverAtras && actual !== undefined && actual.id in respuestas
 
-  if (matricula?.submitted_at) return <Entregado cuando={matricula.submitted_at} />
+  if (matricula?.submitted_at)
+    return <Entregado cuando={matricula.submitted_at} sessionId={id} />
   if (error && !preguntas) return <NoSePuede mensaje={error} />
   if (!preguntas) return <p className="tenue">Cargando examen…</p>
 
@@ -561,7 +562,16 @@ function CampoRespuesta({
   )
 }
 
-function Entregado({ cuando }: { cuando: string }) {
+/**
+ * Lo que ve el estudiante al terminar.
+ *
+ * Lleva salidas a propósito. Antes decía «ya puedes cerrar la aplicación» y
+ * nada más: un callejón sin salida justo después del momento de más tensión
+ * del examen, y la única pantalla de la aplicación sin forma de volver. Quien
+ * acaba de entregar quiere comprobar que su entrega consta y ver su examen, no
+ * quedarse mirando un mensaje ni tener que matar la ventana.
+ */
+function Entregado({ cuando, sessionId }: { cuando: string; sessionId?: string }) {
   return (
     <div className="centrado-estrecho">
       <div className="tarjeta">
@@ -569,11 +579,28 @@ function Entregado({ cuando }: { cuando: string }) {
           <h3>Examen entregado</h3>
           <p className="subtitulo">
             {/* "p. m." ya termina en punto: encadenar otro daria "p. m..". */}
-            Se registró tu entrega a las {soloHora(cuando)} — ya puedes cerrar la aplicación.
+            Se registró tu entrega a las {soloHora(cuando)}.
           </p>
           <p className="ayuda" style={{ marginTop: 'var(--e4)' }}>
             Si durante el examen aparecieron avisos de supervisión, los revisa tu docente. El
             sistema no decide nada por su cuenta.
+          </p>
+          <p style={{ marginTop: 'var(--e5)' }}>
+            {sessionId && (
+              <Link to={`/estudiante/examenes/${sessionId}`} className="boton">
+                Ver mi examen
+              </Link>
+            )}
+            <Link
+              to="/estudiante"
+              className={sessionId ? 'boton boton-secundario' : 'boton'}
+              style={sessionId ? { marginLeft: 'var(--e3)' } : undefined}
+            >
+              Volver a mis exámenes
+            </Link>
+          </p>
+          <p className="ayuda" style={{ marginTop: 'var(--e4)' }}>
+            Ya puedes cerrar la aplicación cuando quieras.
           </p>
         </div>
       </div>
