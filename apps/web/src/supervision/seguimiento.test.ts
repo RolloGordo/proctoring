@@ -37,7 +37,7 @@ describe('duración mínima', () => {
     ).toEqual([])
   })
 
-  it('una condición sostenida emite un solo evento con su duración', () => {
+  it('una condición sostenida se registra al cumplir el mínimo', () => {
     const s = new SeguimientoCondicion({ minimoMs: 3000 })
 
     const episodios = reproducir(s, [
@@ -46,20 +46,18 @@ describe('duración mínima', () => {
     ])
 
     expect(episodios).toHaveLength(1)
-    // La duración se mide hasta la última vez que se vio activa, así que cae
-    // dentro del tramo con el margen de un fotograma.
-    expect(episodios[0].duracionMs).toBeGreaterThanOrEqual(4900)
-    expect(episodios[0].duracionMs).toBeLessThanOrEqual(5000)
+    expect(episodios[0].duracionMs).toBeGreaterThanOrEqual(3000)
+    expect(episodios[0].duracionMs).toBeLessThanOrEqual(3100)
   })
 
   it('justo en el mínimo cuenta', () => {
     const s = new SeguimientoCondicion({ minimoMs: 1000 })
 
     s.actualizar(true, 0)
-    s.actualizar(true, 1000)
-    const episodio = s.cerrar()
+    const episodio = s.actualizar(true, 1000)
 
     expect(episodio).toEqual({ inicioMs: 0, duracionMs: 1000 })
+    expect(s.cerrar()).toBeNull()
   })
 
   it('un milisegundo por debajo no', () => {
@@ -133,10 +131,9 @@ describe('tolerancia al parpadeo', () => {
     const s = new SeguimientoCondicion({ minimoMs: 100, toleranciaParpadeoMs: 400 })
 
     s.actualizar(true, 0)
-    s.actualizar(true, 1000)
+    const episodio = s.actualizar(true, 1000)
     // Desaparece y no vuelve: el final es el último instante en que se vio.
     s.actualizar(false, 1100)
-    const episodio = s.actualizar(false, 1500)
 
     expect(episodio).toEqual({ inicioMs: 0, duracionMs: 1000 })
   })
@@ -146,9 +143,10 @@ describe('cerrar', () => {
   it('una condición abierta al terminar el examen no se pierde', () => {
     const s = new SeguimientoCondicion({ minimoMs: 1000 })
     s.actualizar(true, 0)
-    s.actualizar(true, 4000)
+    const episodio = s.actualizar(true, 4000)
 
-    expect(s.cerrar()).toEqual({ inicioMs: 0, duracionMs: 4000 })
+    expect(episodio).toEqual({ inicioMs: 0, duracionMs: 4000 })
+    expect(s.cerrar()).toBeNull()
   })
 
   it('cerrar sin condición abierta no inventa un evento', () => {
@@ -162,7 +160,6 @@ describe('cerrar', () => {
     s.actualizar(true, 0)
     s.actualizar(true, 4000)
 
-    expect(s.cerrar()).not.toBeNull()
     expect(s.cerrar()).toBeNull()
   })
 

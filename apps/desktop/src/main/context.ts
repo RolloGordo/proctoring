@@ -17,7 +17,9 @@ const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 const UUID_PATTERN = new RegExp(`^${UUID}$`, 'i')
 const LIVE_EXAM_PATH = new RegExp(`^/examen/(${UUID})/rendir/?$`, 'i')
 
-const ENV_STUDENT_ID = process.env['PROCTORING_STUDENT_ID'] ?? NIL_UUID
+const ID_ESTUDIANTE_EMBEBIDO =
+  typeof __PROCTORING_STUDENT_ID__ === 'undefined' ? '' : __PROCTORING_STUDENT_ID__
+const ENV_STUDENT_ID = process.env['PROCTORING_STUDENT_ID'] ?? (ID_ESTUDIANTE_EMBEBIDO || NIL_UUID)
 
 export const examContext = {
   session_id: process.env['PROCTORING_SESSION_ID'] ?? NIL_UUID,

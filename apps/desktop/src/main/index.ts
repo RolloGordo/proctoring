@@ -5,7 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { examContext, liveExamSessionId, setExamSession, setStudentFromToken } from './context'
 import { captureEvidenceForEvent } from './capturas'
 import { hayActualizacion, PAGINA_DESCARGAS } from './actualizaciones'
-import { buildExtraDisplayEvent, buildFocusLostEvent } from './events'
+import { buildCopyAttemptEvent, buildExtraDisplayEvent, buildFocusLostEvent } from './events'
 import { applyPermissionPolicy } from './permisos'
 import { applyWindowProtection } from './protection'
 import { startProcessMonitor, type ProcessMonitor } from './processes'
@@ -15,15 +15,23 @@ import { examUrl, loadExam, recoverFromLoadFailure, restrictNavigation, webBaseU
 
 // Se conservan para mostrarlos en el panel local.
 const events: ProctoringEvent[] = []
+const NIL_UUID = '00000000-0000-0000-0000-000000000000'
 let mainWindow: BrowserWindow | null = null
 let blurStartedAt: number | null = null
 let processMonitor: ProcessMonitor | null = null
+let supervisionSessionStarted: string | null = null
 let appIsReady = false
 let pendingProtocolSessionId: string | undefined
 
 function recordEvent(event: ProctoringEvent): void {
   events.push(event)
-  console.log('[event]', event.event_type, event.duration_ms)
+  const detail =
+    event.event_type === 'suspicious_process'
+      ? String(event.metadata.process_name ?? 'proceso desconocido')
+      : event.event_type === 'extra_display'
+        ? `${String(event.metadata.display_count ?? '?')} monitores`
+        : undefined
+  console.log('[event]', event.event_type, event.duration_ms, detail ?? '')
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('events:new', event)
   }
@@ -72,6 +80,8 @@ function closeFocusLost(returned: boolean): void {
  * todo aqui, como si fuera el inicio.
  */
 function startSupervision(): void {
+  if (supervisionSessionStarted === examContext.session_id) return
+  supervisionSessionStarted = examContext.session_id
   console.log('[examen] supervision iniciada para la sesion', examContext.session_id)
   checkDisplays('exam_start')
   processMonitor?.rescan()
@@ -82,7 +92,9 @@ function trackNavigation(url: string): void {
   const sessionId = liveExamSessionId(url, new URL(webBaseUrl()).origin)
   // undefined: no es la web del examen (el panel local); no se toca nada.
   if (sessionId === undefined) return
-  if (setExamSession(sessionId) && sessionId !== null) startSupervision()
+  setExamSession(sessionId)
+  if (sessionId === null) supervisionSessionStarted = null
+  else startSupervision()
 }
 
 function isAuthSession(value: unknown): value is AuthSession {
@@ -113,7 +125,10 @@ function createWindow(protocolSessionId?: string): BrowserWindow {
     }
   })
 
-  applyWindowProtection(win)
+  applyWindowProtection(win, (shortcut) => {
+    if (examContext.session_id === NIL_UUID || examContext.student_id === NIL_UUID) return
+    recordEvent(buildCopyAttemptEvent(examContext, shortcut, Date.now()))
+  })
   restrictNavigation(win)
   recoverFromLoadFailure(win)
 

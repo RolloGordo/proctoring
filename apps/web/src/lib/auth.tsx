@@ -27,7 +27,13 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
   const [cargando, setCargando] = useState(authEnabled)
   const [token, setToken] = useState<string>()
   const [email, setEmail] = useState<string>()
-  const [userId, setUserId] = useState<string>()
+  // La API permite desarrollo sin Auth, pero la supervisión necesita un id
+  // estable para asociar los eventos. Solo se habilita en Vite dev y se toma
+  // de .env.local; nunca sustituye la identidad cuando Supabase está activo.
+  const [userId, setUserId] = useState<string | undefined>(() => {
+    if (!import.meta.env.DEV || authEnabled) return undefined
+    return import.meta.env.VITE_DEV_STUDENT_ID?.trim() || undefined
+  })
   const [rol, setRol] = useState<'teacher' | 'student'>()
   const [perfilListo, setPerfilListo] = useState(false)
 

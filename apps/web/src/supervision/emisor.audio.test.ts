@@ -34,11 +34,7 @@ it('never emits a speech event without an audio file', async () => {
   expect(register).not.toHaveBeenCalled()
 })
 
-it('does not report speech when its fragment never reached Storage', async () => {
-  // Para la voz el fragmento **es** la evidencia: las dos condiciones que
-  // exige el proyecto las calcula el worker a partir del audio. Un
-  // `speech_detected` sin fragmento seria una «voz detectada» que nadie puede
-  // comprobar nunca, y leer en voz alta no es una infraccion.
+it('keeps the detected speech signal in the timeline when Storage fails', async () => {
   vi.mocked(uploadAudio).mockRejectedValueOnce(new Error('storage caido'))
   const err = vi.spyOn(console, 'error').mockImplementation(() => undefined)
   const register = vi.spyOn(api, 'registerEvent').mockResolvedValue({ id: 'e', severity: 'low' })
@@ -55,8 +51,12 @@ it('does not report speech when its fragment never reached Storage', async () =>
   })
   await emitter.cerrar()
 
-  expect(register).not.toHaveBeenCalled()
-  // Pero no desaparece sin dejar rastro: queda como fallo de disponibilidad.
+  expect(register).toHaveBeenCalledTimes(1)
+  expect(register.mock.calls[0][0]).toMatchObject({
+    event_type: 'speech_detected',
+    evidence_path: undefined,
+    metadata: { audio_evidence_error: 'storage caido' }
+  })
   expect(perdidos).toEqual(['storage caido'])
   err.mockRestore()
 })
@@ -72,8 +72,9 @@ it('a lost fragment does not jam the queue behind it', async () => {
   emitter.emitir({ evento: 'speech_detected', inicioMs: 3000, duracionMs: 2000, metadata: {}, audio: new Blob(['b']) })
   await emitter.cerrar()
 
-  expect(register).toHaveBeenCalledTimes(1)
-  expect(register.mock.calls[0][0]).toMatchObject({ evidence_path: 's/u/segundo.webm' })
+  expect(register).toHaveBeenCalledTimes(2)
+  expect(register.mock.calls[0][0]).toMatchObject({ metadata: { audio_evidence_error: 'storage caido' } })
+  expect(register.mock.calls[1][0]).toMatchObject({ evidence_path: 's/u/segundo.webm' })
   err.mockRestore()
 })
 

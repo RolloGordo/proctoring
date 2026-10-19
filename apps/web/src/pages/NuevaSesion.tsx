@@ -16,7 +16,7 @@ const PRESETS: Array<{ valor: SupervisionPreset; nombre: string; detalle: string
   {
     valor: 'standard',
     nombre: 'Estándar',
-    detalle: 'Añade copiar/pegar, monitores adicionales, mirada y persona extra.'
+    detalle: 'Añade copiar/pegar, monitores, mirada, persona extra y detección de celulares.'
   },
   {
     valor: 'strict',

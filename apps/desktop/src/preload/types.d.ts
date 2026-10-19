@@ -2,6 +2,7 @@
 // si cambia el esquema, cambia aqui en el mismo pull request.
 type EventType =
   | 'focus_lost'
+  | 'copy_attempt'
   | 'gaze_away'
   | 'face_absent'
   | 'extra_person'
@@ -9,6 +10,7 @@ type EventType =
   | 'suspicious_process'
   | 'screen_share'
   | 'speech_detected'
+  | 'prohibited_object'
   | 'identity_check'
 
 interface ProctoringEvent {

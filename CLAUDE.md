@@ -9,7 +9,8 @@ Plataforma de proctoring para exámenes remotos. El sistema **aloja sus propios 
 - verifica su identidad por rostro al ingresar;
 - detecta pérdida de foco de la ventana, monitores adicionales, procesos sospechosos (Zoom, AnyDesk, TeamViewer, OBS, máquinas virtuales);
 - detecta mirada fuera de pantalla, rostro ausente y persona adicional;
-- **diferencial del proyecto:** detecta la consulta a un asistente de IA por voz. Compara la transcripción de lo que el estudiante dice en voz alta con el enunciado de la pregunta en curso y detecta una segunda voz sintética que responde. Solo hay alerta si se cumplen ambas condiciones (leer en voz alta para concentrarse NO debe generar alerta).
+- **diferencial del proyecto:** detecta la consulta a un asistente de IA por voz. Compara la transcripción de lo que el estudiante dice en voz alta con el enunciado de la pregunta en curso y detecta una segunda voz sintética que responde. **La alerta de consulta a IA sigue exigiendo las dos condiciones**: similitud con el enunciado y segunda voz sintética.
+- **Hablar durante el examen se reporta por sí solo** (decisión del Product Owner, 19/10/2026). `speech_detected` es de severidad media: en un examen no se habla, así que el docente tiene que verlo. Antes era baja, con el criterio de que leer en voz alta es legítimo. **Reportar no es sancionar:** la alerta viaja con el fragmento de audio y la decisión sigue siendo del docente, con justificación. Tiene un coste que hay que medir y decir en el informe: sube el FPR del módulo de voz, porque un murmullo o alguien hablando en otra habitación quedan marcados igual.
 
 El sistema es un **auditor, no un juez**: calcula un nivel de riesgo desglosado por señal y entrega evidencia; la decisión final la toma el docente, con justificación obligatoria.
 

@@ -13,7 +13,8 @@
  * Dos reglas, y las dos importan:
  *
  * 1. **Duración mínima.** Mirar de reojo medio segundo no es mirar fuera de la
- *    pantalla. Por debajo del mínimo no se emite nada.
+ *    pantalla. Al cumplirse el mínimo se registra el episodio sin esperar a
+ *    que termine.
  * 2. **Tolerancia al parpadeo.** Un detector pierde el rostro un frame suelto
  *    todo el tiempo. Sin esta tolerancia, una sola ausencia de 20 segundos se
  *    convertiría en quince eventos cortos, ninguno de los cuales llega al
@@ -50,7 +51,7 @@ const TOLERANCIA_PARPADEO_MS = 400
  *
  * Uso: llamar a `actualizar(activa, ahora)` tan a menudo como se quiera. Cuando
  * devuelve un `Episodio`, hay que emitir el evento. Al terminar el examen, hay
- * que llamar a `cerrar()`: si no, una condición que seguía activa se perdería.
+ * que llamar a `cerrar()` para reiniciar el estado de una condición abierta.
  */
 export class SeguimientoCondicion {
   private readonly minimoMs: number
@@ -60,6 +61,8 @@ export class SeguimientoCondicion {
   private inicioMs: number | null = null
   /** Última vez que se vio activa. Sirve para medir el parpadeo. */
   private ultimaActivaMs: number | null = null
+  /** Evita esperar a que la condición termine y evita emitirla dos veces. */
+  private emitido = false
 
   constructor({ minimoMs, toleranciaParpadeoMs = TOLERANCIA_PARPADEO_MS }: OpcionesSeguimiento) {
     this.minimoMs = minimoMs
@@ -81,6 +84,10 @@ export class SeguimientoCondicion {
     if (activa) {
       if (this.inicioMs === null) this.inicioMs = ahora
       this.ultimaActivaMs = ahora
+      if (!this.emitido && ahora - this.inicioMs >= this.minimoMs) {
+        this.emitido = true
+        return { inicioMs: this.inicioMs, duracionMs: ahora - this.inicioMs }
+      }
       return null
     }
 
@@ -107,8 +114,10 @@ export class SeguimientoCondicion {
     const ultima = this.ultimaActivaMs
     this.inicioMs = null
     this.ultimaActivaMs = null
+    const yaEmitido = this.emitido
+    this.emitido = false
 
-    if (inicio === null || ultima === null) return null
+    if (inicio === null || ultima === null || yaEmitido) return null
 
     // La duración llega hasta la última vez que se vio activa, no hasta ahora:
     // el tiempo de parpadeo no es parte de la condición.

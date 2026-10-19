@@ -111,8 +111,16 @@ class TestImmutability:
 
 class TestNeedsAudioAnalysis:
     def test_true_only_for_speech_detected(self) -> None:
-        speech = make(event_type=EventType.SPEECH_DETECTED, question_id=QUESTION)
+        speech = make(
+            event_type=EventType.SPEECH_DETECTED,
+            question_id=QUESTION,
+            evidence_path="session/student/audio.webm",
+        )
         assert speech.needs_audio_analysis is True
+
+    def test_speech_without_audio_evidence_is_not_enqueued(self) -> None:
+        speech = make(event_type=EventType.SPEECH_DETECTED, question_id=QUESTION)
+        assert speech.needs_audio_analysis is False
 
     @pytest.mark.parametrize(
         "event_type", [EventType.FOCUS_LOST, EventType.EXTRA_PERSON, EventType.FACE_ABSENT]
@@ -126,11 +134,12 @@ def test_generates_an_id_when_not_given() -> None:
 
 
 def test_event_type_values_match_the_shared_contract() -> None:
-    # Los mismos nueve valores que el enum de PostgreSQL y el de
+    # Los mismos valores que el enum de PostgreSQL y el de
     # packages/contracts/event.schema.json. Si alguien anade uno aqui sin tocar
     # los otros dos sitios, esta prueba lo caza.
     assert {event_type.value for event_type in EventType} == {
         "focus_lost",
+        "copy_attempt",
         "gaze_away",
         "face_absent",
         "extra_person",
@@ -139,4 +148,5 @@ def test_event_type_values_match_the_shared_contract() -> None:
         "screen_share",
         "speech_detected",
         "identity_check",
+        "prohibited_object",
     }

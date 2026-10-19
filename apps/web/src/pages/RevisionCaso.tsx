@@ -393,8 +393,9 @@ export function RevisionCaso() {
                         )}
                         {!analisis ? (
                           <p className="ayuda">
-                            No hay resultado de análisis disponible. El fragmento requiere revisión
-                            manual.
+                            {typeof evento.metadata.audio_evidence_error === 'string'
+                              ? `Se detectó habla, pero no se pudo guardar el audio: ${evento.metadata.audio_evidence_error}. No se realizó el análisis automático.`
+                              : 'No hay resultado de análisis disponible. El fragmento requiere revisión manual.'}
                           </p>
                         ) : (
                           <>

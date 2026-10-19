@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 EVENT_TYPES = [
     "focus_lost",
+    "copy_attempt",
     "gaze_away",
     "face_absent",
     "extra_person",
@@ -23,6 +24,7 @@ EVENT_TYPES = [
     "screen_share",
     "speech_detected",
     "identity_check",
+    "prohibited_object",
 ]
 
 pytestmark = pytest.mark.integration
@@ -45,8 +47,14 @@ class TestPostEvent:
         response = client.post("/api/v1/events", json=contract_example("extra_person"))
         assert response.json()["severity"] == "high"
 
-        # Y el de speech_detected no acusa a nadie hasta que la IA lo confirme.
+        # La voz es MEDIUM: durante el examen no se habla, asi que el docente
+        # tiene que verlo. Lo que decide si hubo consulta a un asistente sigue
+        # siendo el analisis posterior, no esta severidad.
         response = client.post("/api/v1/events", json=contract_example("speech_detected"))
+        assert response.json()["severity"] == "medium"
+
+        # Y `identity_check` sigue siendo informativo.
+        response = client.post("/api/v1/events", json=contract_example("identity_check"))
         assert response.json()["severity"] == "low"
 
 

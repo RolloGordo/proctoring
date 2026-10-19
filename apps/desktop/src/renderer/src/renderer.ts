@@ -2,8 +2,10 @@ import '../styles.css'
 
 const LABELS: Partial<Record<EventType, string>> = {
   focus_lost: 'Salió de la ventana',
+  copy_attempt: 'Intento de copiar',
   extra_display: 'Monitor adicional',
-  suspicious_process: 'Proceso sospechoso'
+  suspicious_process: 'Proceso sospechoso',
+  prohibited_object: 'Objeto no permitido'
 }
 
 /**
@@ -25,6 +27,10 @@ function severity(event: ProctoringEvent): Severidad {
     case 'suspicious_process':
     case 'screen_share':
       return 'alta'
+    case 'prohibited_object':
+      return 'media'
+    case 'copy_attempt':
+      return 'media'
     case 'extra_display':
       return 'media'
     case 'focus_lost':
@@ -57,6 +63,9 @@ function setText(id: string, value: string): void {
 
 function describe(event: ProctoringEvent): string {
   const meta = event.metadata
+  if (event.event_type === 'copy_attempt') {
+    return `Atajo ${String(meta['shortcut'] ?? 'de copia')} bloqueado`
+  }
   if (event.event_type === 'focus_lost') {
     return meta['returned'] === false ? 'Cerró la app fuera de la ventana' : 'Volvió a la ventana'
   }
@@ -67,6 +76,10 @@ function describe(event: ProctoringEvent): string {
   if (event.event_type === 'suspicious_process') {
     const name = typeof meta['process_name'] === 'string' ? meta['process_name'] : '?'
     return `${name} está abierto`
+  }
+  if (event.event_type === 'prohibited_object') {
+    const name = typeof meta['object_name'] === 'string' ? meta['object_name'] : 'celular'
+    return `${name} detectado en cámara`
   }
   return ''
 }

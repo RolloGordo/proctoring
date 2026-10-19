@@ -739,6 +739,7 @@ export type Database = {
       decision_type: "confirmed" | "dismissed" | "retake"
       event_type:
         | "focus_lost"
+        | "copy_attempt"
         | "gaze_away"
         | "face_absent"
         | "extra_person"
@@ -747,6 +748,7 @@ export type Database = {
         | "screen_share"
         | "speech_detected"
         | "identity_check"
+        | "prohibited_object"
       question_type:
         | "multiple_choice"
         | "true_false"
@@ -906,6 +908,7 @@ export const Constants = {
       decision_type: ["confirmed", "dismissed", "retake"],
       event_type: [
         "focus_lost",
+        "copy_attempt",
         "gaze_away",
         "face_absent",
         "extra_person",
@@ -914,6 +917,7 @@ export const Constants = {
         "screen_share",
         "speech_detected",
         "identity_check",
+        "prohibited_object",
       ],
       question_type: [
         "multiple_choice",

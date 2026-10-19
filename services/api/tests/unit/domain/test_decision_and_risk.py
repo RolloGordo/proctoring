@@ -173,9 +173,7 @@ class TestRiesgo:
             EventType.FOCUS_LOST,
         ]
 
-    def test_hablar_en_voz_alta_no_sube_el_riesgo_por_si_solo(self) -> None:
-        # speech_detected es siempre leve: solo la IA, comparando con el enunciado,
-        # puede escalarlo. Leer en voz alta para concentrarse es legitimo.
+    def test_habla_suma_riesgo_moderado_sin_hacer_alto_un_caso_unico(self) -> None:
         con_pregunta = ProctoringEvent.create(
             session_id=uuid4(),
             student_id=uuid4(),
@@ -188,3 +186,5 @@ class TestRiesgo:
         riesgo = assess_risk([con_pregunta])
 
         assert riesgo.level is RiskLevel.LOW
+        assert riesgo.signals[0].max_severity is Severity.MEDIUM
+        assert riesgo.signals[0].points == 8

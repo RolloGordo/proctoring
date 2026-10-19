@@ -25,12 +25,13 @@ MAX_EVIDENCE_PATH_LENGTH = 512
 class EventType(StrEnum):
     """Tipos de senal detectada.
 
-    Los mismos nueve valores que el enum `event_type` de PostgreSQL y que el enum
+    Los mismos valores que el enum `event_type` de PostgreSQL y que el enum
     de `packages/contracts/event.schema.json`. Si se anade uno, hay que tocar los
     tres sitios y crear una migracion.
     """
 
     FOCUS_LOST = "focus_lost"
+    COPY_ATTEMPT = "copy_attempt"
     GAZE_AWAY = "gaze_away"
     FACE_ABSENT = "face_absent"
     EXTRA_PERSON = "extra_person"
@@ -38,6 +39,7 @@ class EventType(StrEnum):
     SUSPICIOUS_PROCESS = "suspicious_process"
     SCREEN_SHARE = "screen_share"
     SPEECH_DETECTED = "speech_detected"
+    PROHIBITED_OBJECT = "prohibited_object"
     IDENTITY_CHECK = "identity_check"
 
 
@@ -132,4 +134,7 @@ class ProctoringEvent:
     @property
     def needs_audio_analysis(self) -> bool:
         """Si este evento requiere que el servicio de IA lo analice."""
-        return self.event_type is EventType.SPEECH_DETECTED
+        # El evento de habla también se conserva cuando falla la subida, para
+        # que la línea de tiempo no confunda un problema técnico con silencio.
+        # Sin fragmento no hay nada que transcribir ni analizar.
+        return self.event_type is EventType.SPEECH_DETECTED and self.evidence_path is not None

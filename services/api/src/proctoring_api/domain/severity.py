@@ -38,17 +38,37 @@ class Severity(StrEnum):
 def default_severity(event_type: EventType, duration_ms: int) -> Severity:
     """Severidad inicial de un evento recien registrado.
 
-    `speech_detected` es deliberadamente `LOW`: por si solo no significa nada.
-    Hablar en voz alta mientras se rinde un examen es legitimo, y solo el analisis
-    posterior del servicio de IA puede decidir si hubo consulta a un asistente
-    (similitud con el enunciado **y** segunda voz sintetica). Elevarlo aqui seria
-    acusar antes de tener la evidencia, y es la via mas rapida a un falso positivo.
+    `speech_detected` es `MEDIUM` por decision del Product Owner (19/10/2026):
+    durante el examen no se habla, asi que oir voz es algo que el docente tiene
+    que ver. **Reportarlo no es sancionarlo**: la alerta viene con el fragmento
+    de audio y la decision sigue siendo del docente, con justificacion.
+
+    Antes era `LOW`, con el criterio de que hablar en voz alta es legitimo y que
+    solo el analisis posterior -similitud con el enunciado **y** segunda voz
+    sintetica- podia distinguir una consulta a un asistente. Ese analisis sigue
+    existiendo y sigue siendo el diferencial del proyecto; lo que cambia es que
+    ahora tambien se reporta la voz por si sola.
+
+    **Lo que cuesta, y hay que decirlo en el informe:** sube el FPR del modulo
+    de voz, porque un estudiante que murmura, que relee el enunciado o que tiene
+    a alguien hablando en otra habitacion queda marcado igual. El objetivo SMART
+    pide FPR < 20 % por modulo: hay que medirlo con esta regla puesta, no con la
+    anterior.
     """
     match event_type:
         # Presencia de otra persona o de una herramienta de control remoto o de
         # captura: son senales inequivocas, no graduales.
         case EventType.EXTRA_PERSON | EventType.SUSPICIOUS_PROCESS | EventType.SCREEN_SHARE:
             return Severity.HIGH
+
+        # Es una deteccion visual sujeta a falsos positivos; se muestra al docente
+        # como alerta revisable, sin clasificarla como evidencia concluyente.
+        case EventType.PROHIBITED_OBJECT:
+            return Severity.MEDIUM
+
+        # El estudiante intentó usar un atajo de copia bloqueado por la app.
+        case EventType.COPY_ATTEMPT:
+            return Severity.MEDIUM
 
         # Un monitor adicional es relevante, pero puede ser el entorno habitual
         # del estudiante. Lo decide el docente al revisar.
@@ -74,7 +94,11 @@ def default_severity(event_type: EventType, duration_ms: int) -> Severity:
                 return Severity.MEDIUM
             return Severity.LOW
 
-        # speech_detected espera al servicio de IA; identity_check es informativo
-        # (el resultado concreto viaja en metadata).
-        case EventType.SPEECH_DETECTED | EventType.IDENTITY_CHECK:
+        # Durante el examen no se habla: oir voz es algo que el docente tiene
+        # que ver, y la alerta viaja con el fragmento para que pueda juzgarlo.
+        case EventType.SPEECH_DETECTED:
+            return Severity.MEDIUM
+
+        # identity_check es informativo (el resultado concreto va en metadata).
+        case EventType.IDENTITY_CHECK:
             return Severity.LOW

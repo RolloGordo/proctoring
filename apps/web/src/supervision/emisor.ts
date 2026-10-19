@@ -186,19 +186,20 @@ export class EmisorDeSenales {
               // y eso es exactamente la acusación sin respaldo que no se hace:
               // leer en voz alta no es una infracción.
               //
-              // Se descarta la señal y se registra como lo que es, un fallo de
-              // disponibilidad, para que el docente sepa que ese rato no se
-              // estuvo oyendo.
+              // Se conserva la señal en la línea de tiempo, marcada como
+              // evidencia no disponible. El backend no encolará análisis sin
+              // audio. Así el docente puede distinguir habla detectada de
+              // silencio aunque Storage haya fallado.
               console.error(
-                '[supervisión] fragmento de audio perdido; no se emite voz',
+                '[supervisión] fragmento de audio perdido; se registra la señal sin evidencia',
                 falloSubida
               )
-              this.alPerderAudio?.(
-                falloSubida instanceof Error ? falloSubida.message.slice(0, 200) : 'desconocido'
-              )
-              this.cola.shift()
-              this.fallosSeguidos = 0
-              continue
+              const motivo = falloSubida instanceof Error
+                ? falloSubida.message.slice(0, 200)
+                : 'desconocido'
+              this.alPerderAudio?.(motivo)
+              senal.metadata = { ...senal.metadata, audio_evidence_error: motivo }
+              senal.audio = undefined
             }
             senal.audio = undefined
           }

@@ -1,6 +1,8 @@
 import { examContext } from './context'
 
-const API_URL = process.env['PROCTORING_API_URL'] ?? 'http://localhost:8000/api/v1/events'
+const API_URL_EMBEBIDA = typeof __PROCTORING_API_URL__ === 'undefined' ? '' : __PROCTORING_API_URL__
+const API_URL =
+  process.env['PROCTORING_API_URL'] ?? (API_URL_EMBEBIDA || 'http://localhost:8000/api/v1/events')
 const RETRY_MS = 5_000
 const MAX_QUEUE = 500
 const MAX_EVIDENCE_RETRIES = 3

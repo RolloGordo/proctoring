@@ -6,6 +6,24 @@ export interface DisplayInfo {
   scaleFactor: number
 }
 
+/** Registra que el estudiante intentó copiar mientras rendía. */
+export function buildCopyAttemptEvent(
+  ctx: ExamContext,
+  shortcut: string,
+  nowMs: number
+): ProctoringEvent {
+  return {
+    session_id: ctx.session_id,
+    student_id: ctx.student_id,
+    question_id: null,
+    event_type: 'copy_attempt',
+    started_at: new Date(nowMs).toISOString(),
+    duration_ms: 0,
+    metadata: { source: 'electron_input', shortcut },
+    evidence_path: null
+  }
+}
+
 /**
  * focus_lost: UN solo evento al cerrarse la condicion (cuando la ventana
  * recupera el foco), con su duracion. Si la app se cierra estando fuera,

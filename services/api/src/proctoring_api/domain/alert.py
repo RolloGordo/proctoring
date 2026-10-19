@@ -60,10 +60,8 @@ def should_alert(severity: Severity) -> bool:
     de mirarlos, y entonces el sistema no sirve para nada. Es la misma razon por la
     que la meta del proyecto fija FPR < 20 %.
 
-    Caso importante: `speech_detected` nace `low`, asi que **no** alerta al
-    registrarse. La alerta por consulta a un asistente de IA la crea
-    `services/ai` cuando confirma las dos condiciones (similitud con el enunciado
-    y segunda voz sintetica). Alertar antes seria acusar a quien lee en voz alta.
+    `speech_detected` es una infraccion moderada en examenes que prohiben hablar.
+    El analisis de IA puede anadir evidencia sobre consulta a un asistente.
     """
     return severity in (Severity.MEDIUM, Severity.HIGH)
 
@@ -79,6 +77,13 @@ def alert_reason(event_type: EventType, duration_ms: int) -> str:
     match event_type:
         case EventType.FOCUS_LOST:
             return f"Salio de la ventana del examen durante {seconds:.0f} s"
+        case EventType.COPY_ATTEMPT:
+            # Describe lo observado, no la intencion. Pulsar Ctrl+C puede ser un
+            # reflejo o copiar la propia respuesta; decir "intento copiar
+            # contenido del examen" es interpretar, y de eso se encarga el
+            # docente. Ademas hacia fallar la prueba que prohibe acusar, que
+            # existe justo para esto.
+            return "Se pulso un atajo de copia, bloqueado por la aplicacion"
         case EventType.GAZE_AWAY:
             return f"Mirada fuera de la pantalla durante {seconds:.0f} s"
         case EventType.FACE_ABSENT:
@@ -92,6 +97,8 @@ def alert_reason(event_type: EventType, duration_ms: int) -> str:
         case EventType.SCREEN_SHARE:
             return "Se detecto que la pantalla se esta compartiendo"
         case EventType.SPEECH_DETECTED:
-            return "Se detecto voz; pendiente de analisis"
+            return "Se detecto voz durante el examen"
+        case EventType.PROHIBITED_OBJECT:
+            return "Se detecto un celular u objeto no permitido en camara"
         case EventType.IDENTITY_CHECK:
             return "Verificacion de identidad"

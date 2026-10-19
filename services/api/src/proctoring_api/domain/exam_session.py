@@ -105,6 +105,7 @@ PRESET_MODULES: dict[SupervisionPreset, frozenset[SupervisionModule]] = {
             SupervisionModule.MULTI_MONITOR,
             SupervisionModule.GAZE,
             SupervisionModule.EXTRA_PERSON,
+            SupervisionModule.OBJECTS,
         }
     ),
     SupervisionPreset.STRICT: frozenset(
@@ -116,6 +117,7 @@ PRESET_MODULES: dict[SupervisionPreset, frozenset[SupervisionModule]] = {
             SupervisionModule.MULTI_MONITOR,
             SupervisionModule.GAZE,
             SupervisionModule.EXTRA_PERSON,
+            SupervisionModule.OBJECTS,
             SupervisionModule.EXTERNAL_VOICES,
             SupervisionModule.AI_VOICE,
             SupervisionModule.SCREEN_CAPTURE,
@@ -144,7 +146,7 @@ DEFAULT_MODULE_SETTINGS: dict[SupervisionModule, dict[str, Any]] = {
     SupervisionModule.AI_VOICE: {"similarity_threshold": 0.6, "synthetic_threshold": 0.5},
     SupervisionModule.EXTERNAL_VOICES: {"min_speakers": 2},
     SupervisionModule.SCREEN_CAPTURE: {"scan_interval_ms": 10000},
-    SupervisionModule.OBJECTS: {},
+    SupervisionModule.OBJECTS: {"min_duration_ms": 500, "score_threshold": 0.55},
     SupervisionModule.COPY_PASTE_BLOCK: {},
     # Dos fotogramas por segundo a 480 px. Subirlo cuesta en tres sitios a la
     # vez (la CPU del estudiante, la cuota de Realtime y la pantalla del

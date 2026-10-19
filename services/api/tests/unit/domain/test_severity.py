@@ -47,7 +47,11 @@ class TestGazeAway:
 
 @pytest.mark.parametrize(
     "event_type",
-    [EventType.EXTRA_PERSON, EventType.SUSPICIOUS_PROCESS, EventType.SCREEN_SHARE],
+    [
+        EventType.EXTRA_PERSON,
+        EventType.SUSPICIOUS_PROCESS,
+        EventType.SCREEN_SHARE,
+    ],
 )
 def test_unambiguous_signals_are_high_regardless_of_duration(
     event_type: EventType,
@@ -62,16 +66,14 @@ def test_extra_display_is_medium() -> None:
     assert default_severity(EventType.EXTRA_DISPLAY, 0) is Severity.MEDIUM
 
 
-def test_speech_detected_is_always_low() -> None:
-    """Hablar en voz alta no es trampa.
+def test_prohibited_object_is_a_reviewable_medium_alert() -> None:
+    assert default_severity(EventType.PROHIBITED_OBJECT, 1000) is Severity.MEDIUM
 
-    Es el caso negativo que define el diferencial del proyecto: solo el servicio
-    de IA puede elevar esto, y solo si la transcripcion se parece al enunciado
-    **y** hay una segunda voz sintetica. Marcarlo alto aqui seria acusar a quien
-    lee en voz alta para concentrarse.
-    """
-    assert default_severity(EventType.SPEECH_DETECTED, 0) is Severity.LOW
-    assert default_severity(EventType.SPEECH_DETECTED, 120_000) is Severity.LOW
+
+def test_speech_detected_is_always_medium() -> None:
+    """El examen considera infracción cualquier voz detectada."""
+    assert default_severity(EventType.SPEECH_DETECTED, 0) is Severity.MEDIUM
+    assert default_severity(EventType.SPEECH_DETECTED, 120_000) is Severity.MEDIUM
 
 
 def test_identity_check_is_low() -> None:

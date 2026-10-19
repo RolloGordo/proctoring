@@ -10,6 +10,7 @@ const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/
 
 export type EventType =
   | 'focus_lost'
+  | 'copy_attempt'
   | 'gaze_away'
   | 'face_absent'
   | 'extra_person'
@@ -17,6 +18,7 @@ export type EventType =
   | 'suspicious_process'
   | 'screen_share'
   | 'speech_detected'
+  | 'prohibited_object'
   | 'identity_check'
 
 export type Severity = 'low' | 'medium' | 'high'
@@ -286,10 +288,9 @@ export interface AudioAnalysis {
   /**
    * Si este fragmento generó alerta.
    *
-   * Hablar en voz alta **no** alerta: hacen falta las dos condiciones
-   * (parecido al enunciado y segunda voz sintética). Esto dice si se
-   * cumplieron, y es lo que distingue «leyó la pregunta» de «preguntó a una
-   * IA» en la pantalla del docente.
+   * `alerted` indica si el análisis de IA encontró evidencia adicional de
+   * consulta a un asistente. La señal base por habla ya genera una alerta
+   * cuando el examen prohíbe hablar.
    */
   alerted: boolean
 }

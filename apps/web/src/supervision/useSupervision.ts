@@ -322,6 +322,7 @@ export function useSupervision({
           detectores,
           {
             stream: camara.video.srcObject as MediaStream,
+            onSpeechStart: () => notificar('speech_detected'),
             captureSender: () => {
               const enviar = emisor.captureSender()
               return (senal) => {

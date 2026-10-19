@@ -16,6 +16,7 @@ import {
   type AjustesRostro
 } from './vision'
 import { DetectorHabla, type AjustesVoz } from './voz'
+import { DetectorObjetoProhibido, type AjustesObjeto } from './objetos'
 
 /** Módulos de `SupervisionModule` que corren en el navegador. */
 const CONSTRUCTORES: Record<string, (ajustes: Record<string, unknown>) => Detector> = {
@@ -24,6 +25,7 @@ const CONSTRUCTORES: Record<string, (ajustes: Record<string, unknown>) => Detect
   // mirada, porque lo detecta el mismo modelo sobre el mismo fotograma.
   face_absent: (a) => new DetectorRostroAusente(a as AjustesRostro),
   extra_person: (a) => new DetectorPersonaExtra(a as AjustesPersonaExtra),
+  objects: (a) => new DetectorObjetoProhibido(a as AjustesObjeto),
   ai_voice: (a) => new DetectorHabla(a as AjustesVoz),
   external_voices: (a) => new DetectorHabla(a as AjustesVoz)
 }
@@ -56,3 +58,4 @@ export function necesitaAudio(detectores: Detector[]): boolean {
 
 export * from './vision'
 export * from './voz'
+export * from './objetos'

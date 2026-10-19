@@ -1,5 +1,6 @@
 /** Upload audio straight to Storage. The API receives only JSON. */
 import { ApiError } from '../lib/api'
+import { urlDeSubidaFirmada } from '../lib/identidad'
 import type { ContextoEmision } from './emisor'
 
 const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
@@ -20,14 +21,19 @@ export async function uploadAudio(audio: Blob, context: ContextoEmision): Promis
     })
   })
   if (!response.ok) throw new ApiError(response.status, 'No se pudo autorizar la subida de audio.')
-  const data = (await response.json()) as { path: string; url: string }
+  // **Con su token.** La API devuelve `{path, url, token}` y aqui se declaraba
+  // el tipo sin `token`, asi que se tiraba: TypeScript no se queja de lo que no
+  // le cuentas. Supabase contesta 404 a una URL firmada sin su token, y por eso
+  // ningun fragmento de voz llegaba nunca a Storage mientras las capturas de
+  // imagen -que si lo anaden, por el mismo camino- subian sin problema.
+  const data = (await response.json()) as { path: string; url: string; token: string | null }
   if (
     typeof data.path !== 'string' ||
     !data.path.startsWith(`${context.sessionId}/${context.studentId}/`)
   ) {
     throw new ApiError(400, 'Ruta de evidencia inválida.')
   }
-  const url = new URL(data.url)
+  const url = new URL(urlDeSubidaFirmada(data.url, data.token))
   if (
     url.protocol !== 'https:' &&
     !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))
