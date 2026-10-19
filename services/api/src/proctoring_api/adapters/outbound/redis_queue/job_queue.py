@@ -41,6 +41,16 @@ HIGH_PRIORITY_QUEUE = "high"
 
 #: Reintentos ante fallo. Tres es suficiente para un corte de red o un reinicio
 #: del worker; mas seria insistir con un trabajo que esta roto de verdad.
+#:
+#: **Sin intervalo a proposito, y conviene saber por que.** `Retry(interval=...)`
+#: difiere el reintento, pero mover un trabajo diferido de vuelta a la cola lo
+#: hace el planificador de RQ, y el worker arranca con `with_scheduler=False`:
+#: un reintento con espera no volveria a ejecutarse nunca. Asi que estos tres
+#: son inmediatos y solo sirven para un fallo instantaneo.
+#:
+#: Lo que de verdad hacia falta -esperar a que la API despierte, que en el plan
+#: gratuito pasa del minuto- se resuelve dentro del worker, en
+#: `services/ai/tasks.py`, donde el proceso si puede quedarse quieto.
 MAX_RETRIES = 3
 
 #: Cuanto puede tardar un trabajo antes de darlo por colgado.

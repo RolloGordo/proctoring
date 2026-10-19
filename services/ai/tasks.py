@@ -48,6 +48,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from collections.abc import Callable
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
@@ -69,20 +70,79 @@ def _headers() -> dict[str, str]:
     return {"X-Internal-Token": INTERNAL_TOKEN, "Content-Type": "application/json"}
 
 
+#: Esperas entre intentos cuando la API no esta disponible todavia.
+#:
+#: **Hace falta porque el plan gratuito duerme el servicio.** Despertarlo pasa
+#: del minuto, y un despliegue lo reinicia otros dos: durante ese rato la API
+#: devuelve 502. El reintento de RQ es `Retry(max=3)` **sin intervalo**, asi que
+#: los tres intentos se gastan en milisegundos y el trabajo muere. Y el worker
+#: arranca con `with_scheduler=False`, de modo que un reintento diferido tampoco
+#: volveria a encolarse nunca.
+#:
+#: Aqui si se puede esperar de verdad: el proceso del worker se queda quieto.
+#: Suman algo mas de minuto y medio, que cubre un arranque en frio y casi todo
+#: un redespliegue.
+ESPERAS_REINTENTO = (2.0, 5.0, 15.0, 30.0, 45.0)
+
+#: Lo que significa «todavia no, vuelve a intentarlo».
+#:
+#: 429 es la API pidiendo calma. 502/503/504 es Render contestando por un
+#: servicio que no esta en pie. Un 4xx distinto es un error de verdad y
+#: reintentarlo daria lo mismo para siempre.
+ESTADOS_TRANSITORIOS = frozenset({429, 502, 503, 504})
+
+
+def _con_reintentos(hacer: Callable[[], httpx.Response], descripcion: str) -> dict[str, Any]:
+    """Llama a la API, esperando si todavia no esta disponible.
+
+    No se traga nada: cuando se acaban los intentos, lanza. Lo que evita es que
+    un servicio dormido cuente como un trabajo roto, que es lo que dejaba a un
+    estudiante esperando una verificacion facial que no iba a llegar nunca.
+    """
+    ultimo: Exception | None = None
+    for intento, espera in enumerate((*ESPERAS_REINTENTO, None), start=1):
+        try:
+            response = hacer()
+            response.raise_for_status()
+            return dict(response.json())
+        except httpx.HTTPStatusError as fallo:
+            if fallo.response.status_code not in ESTADOS_TRANSITORIOS:
+                raise
+            ultimo = fallo
+        except (httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout) as fallo:
+            ultimo = fallo
+
+        if espera is None:
+            break
+        logger.warning(
+            "%s: la API no responde todavia (intento %d); se reintenta en %.0f s: %s",
+            descripcion,
+            intento,
+            espera,
+            ultimo,
+        )
+        time.sleep(espera)
+
+    assert ultimo is not None
+    raise ultimo
+
+
 def _get(path: str, **params: Any) -> dict[str, Any]:
-    response = httpx.get(
-        f"{API_URL}{path}", headers=_headers(), params=params, timeout=HTTP_TIMEOUT_SECONDS
+    return _con_reintentos(
+        lambda: httpx.get(
+            f"{API_URL}{path}", headers=_headers(), params=params, timeout=HTTP_TIMEOUT_SECONDS
+        ),
+        f"GET {path}",
     )
-    response.raise_for_status()
-    return dict(response.json())
 
 
 def _post(path: str, payload: dict[str, Any]) -> dict[str, Any]:
-    response = httpx.post(
-        f"{API_URL}{path}", headers=_headers(), json=payload, timeout=HTTP_TIMEOUT_SECONDS
+    return _con_reintentos(
+        lambda: httpx.post(
+            f"{API_URL}{path}", headers=_headers(), json=payload, timeout=HTTP_TIMEOUT_SECONDS
+        ),
+        f"POST {path}",
     )
-    response.raise_for_status()
-    return dict(response.json())
 
 
 def analyze_audio(event_id: str) -> dict[str, Any]:
