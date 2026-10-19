@@ -76,3 +76,52 @@ it('a lost fragment does not jam the queue behind it', async () => {
   expect(register.mock.calls[0][0]).toMatchObject({ evidence_path: 's/u/segundo.webm' })
   err.mockRestore()
 })
+
+it('a speech fragment dropped before the queue says why', async () => {
+  // **El sexto silencio de la misma familia.** Sin pregunta en curso, un
+  // fragmento que el VAD si oyo desaparecia antes de entrar en la cola, y en
+  // el expediente se leia igual que si nadie hubiera hablado.
+  const err = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  const register = vi.spyOn(api, 'registerEvent').mockResolvedValue({ id: 'e', severity: 'low' })
+  const descartes: string[] = []
+  const emitter = new EmisorDeSenales(
+    { sessionId: 's', studentId: 'u', questionId: null },
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    (motivo) => descartes.push(motivo)
+  )
+
+  emitter.emitir({
+    evento: 'speech_detected',
+    inicioMs: 0,
+    duracionMs: 2000,
+    metadata: {},
+    audio: new Blob(['x'])
+  })
+  await emitter.cerrar()
+
+  expect(register).not.toHaveBeenCalled()
+  expect(descartes).toEqual(['sin pregunta en curso'])
+  err.mockRestore()
+})
+
+it('distingue no tener audio de no tener pregunta', async () => {
+  const err = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  const descartes: string[] = []
+  const emitter = new EmisorDeSenales(
+    { sessionId: 's', studentId: 'u', questionId: 'q1' },
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    (motivo) => descartes.push(motivo)
+  )
+
+  emitter.emitir({ evento: 'speech_detected', inicioMs: 0, duracionMs: 2000, metadata: {} })
+  await emitter.cerrar()
+
+  expect(descartes).toEqual(['sin audio'])
+  err.mockRestore()
+})

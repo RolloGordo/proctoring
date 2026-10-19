@@ -211,7 +211,8 @@ export function useSupervision({
       (motivo) => informar('image_evidence_lost', 'captura', { reason: motivo }),
       (evento, motivo) => informar('signal_rejected', evento, { reason: motivo }),
       (intentos, pendientes) =>
-        informar('signal_queue_stuck', 'cola', { attempts: intentos, pending: pendientes })
+        informar('signal_queue_stuck', 'cola', { attempts: intentos, pending: pendientes }),
+      (motivo) => informar('audio_segment_lost', 'habla', { reason: `descartado: ${motivo}` })
     )
     emisorRef.current = emisor
     const seguimientos = new Map(
@@ -473,12 +474,25 @@ export function useSupervision({
         // justo el caso que hacía falta ver: un detector que arrancó bien y al
         // que nunca se le llegó a preguntar nada no dejaba rastro, y en el
         // expediente se lee igual que si no hubiera pasado nada.
+        // El que se emite a si mismo lleva sus propios numeros: `episodes`
+        // vive en el bucle de fotogramas, por el que no pasa, asi que para el
+        // era siempre cero. Decia «0 episodios» tanto si el microfono no oyo
+        // nada como si oyo y la senal se perdio, que no es lo mismo.
+        let propio_detalle: string | undefined
+        if (propio) {
+          try {
+            propio_detalle = detector?.diagnostico?.()
+          } catch {
+            // Un detector roto puede fallar tambien al describirse.
+          }
+        }
         informar('vision_module_summary', nombre, {
           frames: cuenta.fotogramas,
           verdicts: cuenta.veredictos,
           episodes: cuenta.episodios,
           failed: fallidos.has(nombre),
-          self_emitting: propio
+          self_emitting: propio,
+          ...(propio_detalle ? { detail: propio_detalle.slice(0, 300) } : {})
         })
       }
       void emisor.cerrar()
