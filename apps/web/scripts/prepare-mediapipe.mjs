@@ -25,6 +25,7 @@ const root = resolve(import.meta.dirname, '..')
 const paquete = resolve(root, 'node_modules/@mediapipe/tasks-vision')
 const salida = resolve(root, 'public/mediapipe')
 const modelo = resolve(salida, 'face_landmarker.task')
+const modeloObjetos = resolve(salida, 'efficientdet_lite0.tflite')
 
 await mkdir(resolve(salida, 'wasm'), { recursive: true })
 
@@ -71,6 +72,34 @@ try {
       'Sin el modelo no hay deteccion de rostro, mirada ni persona adicional, y\n' +
       'el examen correria sin avisar de nada. Esta versionado en el repositorio:\n' +
       'comprueba que el checkout esta completo antes de desplegar.\n'
+  )
+  process.exitCode = 1
+}
+
+// Lo mismo para el modelo de objetos. Falto en la primera entrega y el
+// detector de celulares murio en cada examen con
+// `INVALID_ARGUMENT: The model is not a valid Flatbuffer buffer`, porque el
+// servidor devolvia una pagina 404 donde se esperaba un modelo. Un 404 leido
+// como modelo es indistinguible de un modelo corrupto, asi que se comprueba
+// aqui, al construir, y no en mitad de un examen.
+try {
+  const crudo = await readFile(modeloObjetos)
+  // Los .tflite empiezan por el magico TFL3 en el byte 4. Asi se distingue un
+  // modelo de verdad de una pagina de error guardada con la extension buena.
+  if (crudo.length < 10_000 || crudo.subarray(4, 8).toString('ascii') !== 'TFL3') {
+    throw new Error('modelo truncado o no es un .tflite')
+  }
+  procedencia.push({
+    package: 'google/mediapipe-models (Apache-2.0)',
+    file: 'efficientdet_lite0.tflite',
+    sha256: createHash('sha256').update(crudo).digest('hex'),
+    uso: 'deteccion de objetos (celulares); NO identifica personas'
+  })
+} catch {
+  console.error(
+    '\nFALTA o esta corrupto public/mediapipe/efficientdet_lite0.tflite.\n' +
+      'Sin el no hay deteccion de objetos y el examen corre sin ese modulo.\n' +
+      'Esta versionado en el repositorio: comprueba que el checkout esta completo.\n'
   )
   process.exitCode = 1
 }

@@ -20,7 +20,7 @@ import { resolve } from 'node:path'
  * mirara el entorno, rechazaría un `.env` perfectamente válido y mandaría a
  * quien empaqueta a pelearse con la sintaxis de su consola para nada.
  */
-function delArchivoEnv() {
+function delArchivoEnv(clave) {
   const archivo = resolve(import.meta.dirname, '..', '.env')
   if (!existsSync(archivo)) return undefined
 
@@ -29,7 +29,7 @@ function delArchivoEnv() {
     if (!limpia || limpia.startsWith('#')) continue
     const corte = limpia.indexOf('=')
     if (corte === -1) continue
-    if (limpia.slice(0, corte).trim() !== 'PROCTORING_WEB_URL') continue
+    if (limpia.slice(0, corte).trim() !== clave) continue
     return limpia
       .slice(corte + 1)
       .trim()
@@ -51,7 +51,7 @@ function rechazar(motivo) {
   process.exit(1)
 }
 
-const url = process.env.PROCTORING_WEB_URL || delArchivoEnv()
+const url = process.env.PROCTORING_WEB_URL || delArchivoEnv('PROCTORING_WEB_URL')
 
 if (!url || !url.trim()) rechazar('falta PROCTORING_WEB_URL (ni en el entorno ni en .env)')
 
@@ -75,4 +75,32 @@ if (['localhost', '127.0.0.1', '[::1]'].includes(destino.hostname)) {
   console.warn('  levantada. No lo publiques en el Release.\n')
 }
 
+// La direccion de la API va aparte, y hace falta igual.
+//
+// `sender.ts` manda los eventos de escritorio -foco perdido, procesos, monitores
+// adicionales- directamente a esta direccion, y sin ella cae a localhost. Eso
+// no da ningun error: el instalador se construye, la aplicacion abre, el examen
+// corre, y los eventos de escritorio se van a una maquina que no existe. Paso:
+// un examen entero sin una sola senal de foco ni de aplicacion sospechosa, y
+// nada en pantalla que lo dijera.
+const api = process.env.PROCTORING_API_URL || delArchivoEnv('PROCTORING_API_URL')
+
+if (!api || !api.trim()) rechazar('falta PROCTORING_API_URL (ni en el entorno ni en .env)')
+
+let destinoApi
+try {
+  destinoApi = new URL(api)
+} catch {
+  rechazar(`PROCTORING_API_URL no es una direccion valida: ${api}`)
+}
+
+if (!destinoApi.pathname.endsWith('/api/v1/events')) {
+  rechazar(
+    `PROCTORING_API_URL tiene que terminar en /api/v1/events, y es ${api}.
+` +
+      '  Es el endpoint al que la aplicacion manda los eventos, no la raiz de la API.'
+  )
+}
+
 console.log(`  La aplicación se construirá apuntando a ${url}`)
+console.log(`  y mandando los eventos a ${api}`)
