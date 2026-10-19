@@ -165,9 +165,16 @@ puede registrar eventos sobre si mismo y solo puede leer los suyos.
 
 def _build_supabase_client(settings: Settings) -> object:
     from supabase import create_client
+    from supabase.lib.client_options import SyncClientOptions
+
+    from proctoring_api.adapters.outbound.supabase.http import cliente_resistente
 
     url, key = settings.require_supabase()
-    return create_client(url, key)
+    # Con su propio cliente HTTP: ver `http.py`. Sin el, una conexion
+    # persistente que Supabase ya habia cerrado tumbaba la peticion con
+    # `RemoteProtocolError: Server disconnected`, y el docente veia un 500 al
+    # abrir la revision del caso.
+    return create_client(url, key, options=SyncClientOptions(httpx_client=cliente_resistente()))
 
 
 def _build_event_repository(settings: Settings, client: object | None) -> EventRepository:

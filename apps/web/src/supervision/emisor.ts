@@ -77,7 +77,9 @@ export class EmisorDeSenales {
      */
     private readonly alRechazar?: (evento: EventType, motivo: string) => void,
     /** Avisa de que la cola lleva mucho rato sin avanzar. */
-    private readonly alAtascarse?: (intentos: number, pendientes: number) => void
+    private readonly alAtascarse?: (intentos: number, pendientes: number) => void,
+    /** Avisa de que un fragmento de voz no llego ni a entrar en la cola. */
+    private readonly alDescartarVoz?: (motivo: string) => void
   ) {}
 
   /** Cambia la pregunta en curso sin perder lo que esté en cola. */
@@ -105,8 +107,17 @@ export class EmisorDeSenales {
     if (
       senal.evento === 'speech_detected' &&
       (!context.questionId || (!senal.audio && !senal.evidencePath))
-    )
+    ) {
+      // **No en silencio.** Esto devolvia sin mas: un fragmento de voz que el
+      // VAD si oyo desaparecia antes de salir, y en el expediente se leia
+      // igual que si nadie hubiera hablado. El motivo importa: sin pregunta en
+      // curso el worker no tiene con que comparar, y sin audio no hay nada que
+      // analizar, pero son dos problemas distintos.
+      const motivo = !context.questionId ? 'sin pregunta en curso' : 'sin audio'
+      console.error('[supervisión] fragmento de voz descartado antes de salir:', motivo)
+      this.alDescartarVoz?.(motivo)
       return
+    }
     if (senal.audio && this.cola.filter((entry) => entry.signal.audio).length >= 3) {
       console.error('[supervisión] cola de audio llena; fragmento descartado')
       return

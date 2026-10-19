@@ -54,7 +54,19 @@ function detalleDiagnostico(d: {
     const veredictos = Number(det.verdicts ?? 0)
     const episodios = Number(det.episodes ?? 0)
     if (det.failed === true) return 'No estuvo activo durante el examen.'
-    if (det.self_emitting === true) return `${episodios} episodios emitidos.`
+    if (det.self_emitting === true) {
+      // Sus numeros vienen en `detail`: el contador de episodios vive en el
+      // bucle de fotogramas, por el que este detector no pasa, asi que decia
+      // «0 episodios» tanto si no oyo nada como si oyo y se perdio.
+      const detalle = typeof det.detail === 'string' ? det.detail : ''
+      const oidas = /oidas=(\d+)/.exec(detalle)?.[1]
+      const enviadas = /enviadas=(\d+)/.exec(detalle)?.[1]
+      const descartadas = /descartadas=(\d+)/.exec(detalle)?.[1]
+      if (oidas === undefined) return 'Activo; sin fragmentos registrados.'
+      return `Oyo voz ${oidas} ${oidas === '1' ? 'vez' : 'veces'}: ${enviadas ?? 0} ${
+        enviadas === '1' ? 'fragmento enviado' : 'fragmentos enviados'
+      }, ${descartadas ?? 0} ${descartadas === '1' ? 'descartado' : 'descartados'}.`
+    }
     if (fotogramas === 0) return 'No le llegó ningún fotograma.'
     return `${fotogramas} fotogramas observados, ${veredictos} con la condición presente, ${episodios} episodios.`
   }

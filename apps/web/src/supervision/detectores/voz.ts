@@ -30,6 +30,18 @@ export class DetectorHabla implements Detector {
   private stopping?: Promise<void>
   private sampleRate = 0
   private generation = 0
+  /**
+   * Cuantas veces oyo, cerro y descarto. **El dato que faltaba.**
+   *
+   * El resumen del docente decia «0 episodios emitidos» para este detector,
+   * pero ese contador vive en el bucle de fotogramas y este detector no pasa
+   * por ahi (`ownsSegments`): era siempre cero, oyera o no oyera. Asi no se
+   * podia distinguir «el microfono no oyo nada» de «oyo y la senal se perdio
+   * por el camino», que se arreglan en sitios distintos.
+   */
+  private oidas = 0
+  private enviadas = 0
+  private descartadas = 0
 
   constructor(settings: AjustesVoz = {}) {
     this.minimoMs = settings.min_duration_ms ?? 1500
@@ -88,7 +100,7 @@ export class DetectorHabla implements Detector {
 
   /** Lo que `prepararDetectores` pregunta cuando se agota el tiempo. */
   diagnostico(): string {
-    return this.entorno(this.context)
+    return `${this.entorno(this.context)} oidas=${this.oidas} enviadas=${this.enviadas} descartadas=${this.descartadas}`
   }
 
   async preparar(context?: DetectorContext): Promise<void> {
@@ -123,6 +135,7 @@ export class DetectorHabla implements Detector {
         submitUserSpeechOnPause: false,
         onSpeechStart: () => {
           if (this.stopped || generation !== this.generation) return
+          this.oidas += 1
           this.speaking = true
           this.startSegment()
         },
@@ -190,7 +203,14 @@ export class DetectorHabla implements Detector {
     this.stopping = new Promise<void>((resolve) => {
       recorder.onstop = () => {
         const audio = new Blob(this.chunks, { type: 'audio/webm' })
+        if (this.discard || duration < this.minimoMs || !audio.size) {
+          // Se descarta a proposito: demasiado corto, sin audio, o el propio
+          // VAD lo dio por falsa alarma. Se cuenta para poder leer despues
+          // «oyo cinco veces y descarto cinco» en vez de un cero sin explicar.
+          if (this.oidas > 0) this.descartadas += 1
+        }
         if (!this.discard && duration >= this.minimoMs && audio.size) {
+          this.enviadas += 1
           this.sender?.({
             evento: 'speech_detected',
             inicioMs: this.startedAt,
