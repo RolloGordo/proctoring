@@ -166,5 +166,13 @@ export function detalleEvento(metadatos: Record<string, unknown>): string {
   if (typeof metadatos.display_count === 'number') {
     return `${metadatos.display_count} monitores conectados`
   }
+  if (typeof metadatos.capture_error === 'string') {
+    const causas: Record<string, string> = {
+      capture_timeout: 'La captura tardó demasiado.',
+      upload_failed: 'No se pudo subir la captura.',
+      no_jpeg: 'La cámara no produjo una imagen.'
+    }
+    return causas[metadatos.capture_error] ?? 'La captura no está disponible.'
+  }
   return ''
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cuandoEmpieza, estadoExamen } from './formato'
+import { cuandoEmpieza, detalleEvento, estadoExamen } from './formato'
 import { inicioSegunRol } from './rutas'
 
 const INICIO = '2026-10-05T15:00:00.000Z'
@@ -40,6 +40,18 @@ describe('cuandoEmpieza', () => {
   it('redondea hacia arriba y nunca dice cero minutos', () => {
     expect(cuandoEmpieza(10_000)).toBe('en 1 minuto')
     expect(cuandoEmpieza(0)).toBe('en 1 minuto')
+  })
+})
+
+describe('detalleEvento', () => {
+  it('explica cuando una señal se guardo sin su captura', () => {
+    expect(detalleEvento({ capture_error: 'capture_timeout' })).toBe('La captura tardó demasiado.')
+    expect(detalleEvento({ capture_error: 'upload_failed' })).toBe('No se pudo subir la captura.')
+    expect(detalleEvento({ capture_error: 'no_jpeg' })).toBe('La cámara no produjo una imagen.')
+  })
+
+  it('no revela valores tecnicos desconocidos', () => {
+    expect(detalleEvento({ capture_error: 'unexpected' })).toBe('La captura no está disponible.')
   })
 })
 

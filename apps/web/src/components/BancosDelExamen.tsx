@@ -16,6 +16,8 @@ export function BancosDelExamen({ sessionId }: { sessionId: string }) {
   const [mios, setMios] = useState<QuestionBank[]>([])
   const [eligiendo, setEligiendo] = useState('')
   const [error, setError] = useState<string>()
+  const [errorMisBancos, setErrorMisBancos] = useState<string>()
+  const [reintento, setReintento] = useState(0)
   const [trabajando, setTrabajando] = useState(false)
 
   useEffect(() => {
@@ -26,12 +28,21 @@ export function BancosDelExamen({ sessionId }: { sessionId: string }) {
       .catch((fallo: Error) => !cancelado && setError(fallo.message))
     api
       .listBanks(token)
-      .then((datos) => !cancelado && setMios(datos))
-      .catch(() => undefined)
+      .then((datos) => {
+        if (cancelado) return
+        setMios(datos)
+        setErrorMisBancos(undefined)
+      })
+      .catch((fallo: Error) => !cancelado && setErrorMisBancos(fallo.message))
     return () => {
       cancelado = true
     }
-  }, [sessionId, token])
+  }, [sessionId, token, reintento])
+
+  function reintentarCarga(): void {
+    setErrorMisBancos(undefined)
+    setReintento((valor) => valor + 1)
+  }
 
   async function atar(): Promise<void> {
     if (!eligiendo) return
@@ -82,8 +93,8 @@ export function BancosDelExamen({ sessionId }: { sessionId: string }) {
 
         {atados?.length === 0 ? (
           <p className="ayuda">
-            Este examen usa sus propias preguntas. Si atas un banco, las preguntas saldrán de ahí
-            y cada estudiante recibirá su propio sorteo.
+            Este examen todavía no tiene bancos asociados. Si lo dejas así, tendrás que añadir las
+            preguntas por separado en «Preguntas». También puedes asociar uno de tus bancos aquí.
           </p>
         ) : (
           <ul className="lista-modulos">
@@ -101,7 +112,7 @@ export function BancosDelExamen({ sessionId }: { sessionId: string }) {
                   disabled={trabajando}
                   onClick={() => void desatar(banco.id)}
                 >
-                  Quitar
+                  Desasociar
                 </button>
               </li>
             ))}
@@ -128,15 +139,24 @@ export function BancosDelExamen({ sessionId }: { sessionId: string }) {
               disabled={!eligiendo || trabajando}
               onClick={() => void atar()}
             >
-              Atar al examen
+              Asociar al examen
             </button>
           </div>
         )}
 
-        {mios.length === 0 && (
+        {errorMisBancos && (
+          <div className="aviso" role="alert">
+            <p>No se pudieron cargar tus bancos: {errorMisBancos}</p>
+            <button type="button" className="boton boton-secundario" onClick={reintentarCarga}>
+              Reintentar carga de bancos
+            </button>
+          </div>
+        )}
+
+        {!errorMisBancos && mios.length === 0 && (
           <p className="ayuda" style={{ marginTop: 'var(--e3)' }}>
-            Todavía no tienes bancos. <Link to="/bancos">Crea uno</Link> para escribir las
-            preguntas una sola vez y reutilizarlas.
+            Todavía no tienes bancos. <Link to="/bancos">Crea uno</Link> para escribir las preguntas
+            una sola vez y reutilizarlas.
           </p>
         )}
       </div>

@@ -207,7 +207,11 @@ export function useSupervision({
 
     const emisor = new EmisorDeSenales(
       { sessionId, studentId, questionId, token },
-      (motivo) => informar('audio_segment_lost', 'habla', { reason: motivo })
+      (motivo) => informar('audio_segment_lost', 'habla', { reason: motivo }),
+      (motivo) => informar('image_evidence_lost', 'captura', { reason: motivo }),
+      (evento, motivo) => informar('signal_rejected', evento, { reason: motivo }),
+      (intentos, pendientes) =>
+        informar('signal_queue_stuck', 'cola', { attempts: intentos, pending: pendientes })
     )
     emisorRef.current = emisor
     const seguimientos = new Map(
@@ -215,7 +219,8 @@ export function useSupervision({
     )
     const ultimaMetadata = new Map<string, Record<string, unknown>>()
     const capturas = new Map(
-      detectores.filter((d) => d.evento !== 'speech_detected')
+      detectores
+        .filter((d) => d.evento !== 'speech_detected')
         .map((d) => [d.nombre, new CapturasPorCondicion(d.minimoMs)])
     )
     const notificar = (evento: SenalDetectada['evento']) => {
@@ -274,7 +279,9 @@ export function useSupervision({
         // Lightweight diagnostic once per second; never stores the sampled image.
         chequeoCamara = setInterval(() => {
           const status = saludCamara.check(
-            Date.now(), camara.video.currentTime, pista?.readyState ?? 'ended',
+            Date.now(),
+            camara.video.currentTime,
+            pista?.readyState ?? 'ended',
             meanVideoBrightness(camara.video)
           )
           if (status !== 'active') falloCamara(status)
@@ -377,11 +384,12 @@ export function useSupervision({
             }
 
             const capturador = capturas.get(detector.nombre)
-            if (capturador?.actualizar(
-              veredicto,
-              ahoraMs,
-              () => capturarFotograma(camara.video, 0.75)
-            )) notificar(detector.evento)
+            if (
+              capturador?.actualizar(veredicto, ahoraMs, () =>
+                capturarFotograma(camara.video, 0.75)
+              )
+            )
+              notificar(detector.evento)
             const episodio = seguimiento.actualizar(veredicto.activa, ahoraMs)
             if (episodio) {
               if (cuenta) cuenta.episodios += 1

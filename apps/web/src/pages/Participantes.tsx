@@ -137,12 +137,22 @@ export function Participantes() {
 
       {error && <p className="aviso">{error}</p>}
 
+      <p className="ayuda">
+        El estudiante aparecerá aquí cuando acepte la supervisión con el código. Si la identidad
+        queda pendiente o no se reconoce, puedes admitirlo manualmente. La cámara en vivo solo está
+        disponible cuando empieza el examen y el monitoreo en vivo está activado.
+      </p>
+
       {mirando && userId && (
         <div className="tarjeta">
           <div className="tarjeta-cuerpo">
             <div className="encabezado-seccion">
               <h2>Cámara en vivo</h2>
-              <button type="button" className="boton boton-texto" onClick={() => setMirando(undefined)}>
+              <button
+                type="button"
+                className="boton boton-texto"
+                onClick={() => setMirando(undefined)}
+              >
                 Dejar de mirar
               </button>
             </div>
