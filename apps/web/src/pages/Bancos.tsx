@@ -199,11 +199,15 @@ export function Bancos() {
       <div className="columnas">
         <section>
           <div className="encabezado-seccion">
-            <h2>Nuevo banco</h2>
+            <h2>Crear banco vacío</h2>
           </div>
 
           <div className="tarjeta">
             <div className="tarjeta-cuerpo">
+              <p className="ayuda">
+                Usa esta opción si vas a escribir las preguntas después. Si ya tienes un archivo, ve
+                a «Importar archivo como banco nuevo» y no crees primero un banco vacío.
+              </p>
               <form onSubmit={(e) => void crear(e)} noValidate>
                 <label className="campo">
                   <span>Nombre</span>
@@ -251,10 +255,15 @@ export function Bancos() {
                 </label>
 
                 <button type="submit" className="boton" disabled={creando || !nombre.trim()}>
-                  {creando ? 'Creando…' : 'Crear banco'}
+                  {creando ? 'Creando…' : 'Crear banco vacío'}
                 </button>
               </form>
               <hr className="separador" />
+              <h3>Importar archivo como banco nuevo</h3>
+              <p className="ayuda">
+                Escribe arriba el nombre y, si quieres, el curso. Al confirmar la importación, se
+                crea un banco con esas preguntas; no necesitas crear un banco vacío antes.
+              </p>
               <ImportarPreguntas
                 nombreBanco={nombre}
                 crearBanco={crearBancoParaImportar}

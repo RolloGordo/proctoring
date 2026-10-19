@@ -37,29 +37,50 @@ export function NuevaSesion() {
   const [preset, setPreset] = useState<SupervisionPreset>('standard')
   const [descripcion, setDescripcion] = useState('')
   const [cursos, setCursos] = useState<Course[]>([])
+  const [cargandoCursos, setCargandoCursos] = useState(true)
+  const [errorCursos, setErrorCursos] = useState<string>()
+  const [reintentoCursos, setReintentoCursos] = useState(0)
   const [cursoId, setCursoId] = useState('')
   const [bancos, setBancos] = useState<QuestionBank[]>([])
+  const [cargandoBancos, setCargandoBancos] = useState(true)
+  const [errorBancos, setErrorBancos] = useState<string>()
+  const [reintentoBancos, setReintentoBancos] = useState(0)
   const [elegidos, setElegidos] = useState<string[]>([])
   const [cuantas, setCuantas] = useState('')
   const [error, setError] = useState<string>()
   const [enviando, setEnviando] = useState(false)
 
-  // Cursos y bancos son opcionales: si no se pueden cargar, el examen se crea
-  // igual, solo que sin curso y sin bancos.
   useEffect(() => {
     let cancelado = false
     api
       .listCourses(token)
-      .then((datos) => !cancelado && setCursos(datos))
-      .catch(() => undefined)
-    api
-      .listBanks(token)
-      .then((datos) => !cancelado && setBancos(datos))
-      .catch(() => undefined)
+      .then((datos) => {
+        if (cancelado) return
+        setCursos(datos)
+        setErrorCursos(undefined)
+      })
+      .catch((fallo: Error) => !cancelado && setErrorCursos(fallo.message))
+      .finally(() => !cancelado && setCargandoCursos(false))
     return () => {
       cancelado = true
     }
-  }, [token])
+  }, [token, reintentoCursos])
+
+  useEffect(() => {
+    let cancelado = false
+    api
+      .listBanks(token)
+      .then((datos) => {
+        if (cancelado) return
+        setBancos(datos)
+        setErrorBancos(undefined)
+      })
+      .catch((fallo: Error) => !cancelado && setErrorBancos(fallo.message))
+      .finally(() => !cancelado && setCargandoBancos(false))
+    return () => {
+      cancelado = true
+    }
+  }, [token, reintentoBancos])
 
   const disponibles = bancos
     .filter((b) => elegidos.includes(b.id))
@@ -110,11 +131,13 @@ export function NuevaSesion() {
       }
 
       if (fallidos.length > 0) {
-        setError(
-          `El examen se creó, pero no se pudieron atar estos bancos: ${fallidos.join(', ')}. ` +
-            'Puedes atarlos desde la pantalla del examen.'
-        )
-        setEnviando(false)
+        navegar(`/sesiones/${sesion.id}`, {
+          state: {
+            aviso:
+              `El examen se creó, pero no se pudieron asociar estos bancos: ${fallidos.join(', ')}. ` +
+              'Asócialos desde «Bancos de preguntas» en el examen antes de compartir el código.'
+          }
+        })
         return
       }
 
@@ -125,8 +148,21 @@ export function NuevaSesion() {
     }
   }
 
+  function reintentarCursos(): void {
+    setCargandoCursos(true)
+    setErrorCursos(undefined)
+    setReintentoCursos((valor) => valor + 1)
+  }
+
+  function reintentarBancos(): void {
+    setCargandoBancos(true)
+    setErrorBancos(undefined)
+    setReintentoBancos((valor) => valor + 1)
+  }
+
   const elegido = PRESETS.find((p) => p.valor === preset)
   const demasiadas = Boolean(cuantas) && Number(cuantas) > disponibles && disponibles > 0
+  const cursoPorId = new Map(cursos.map((curso) => [curso.id, curso]))
 
   return (
     <>
@@ -134,7 +170,7 @@ export function NuevaSesion() {
         <div>
           <h1>Crear examen</h1>
           <p className="subtitulo">
-            Elige de qué bancos salen las preguntas y obtendrás el código de acceso para repartir
+            Completa los datos, elige las preguntas y al final obtendrás un código de acceso.
           </p>
         </div>
       </div>
@@ -142,8 +178,15 @@ export function NuevaSesion() {
       <div className="tarjeta" style={{ maxWidth: '760px' }}>
         <div className="tarjeta-cuerpo">
           <form onSubmit={(e) => void enviar(e)}>
-            {error && <p className="aviso">{error}</p>}
+            {error && (
+              <p className="aviso" role="alert">
+                {error}
+              </p>
+            )}
 
+            <section className="bloque">
+              <h2>1. Datos del examen</h2>
+            </section>
             <label className="campo">
               <span>Título del examen (obligatorio)</span>
               <input
@@ -152,6 +195,49 @@ export function NuevaSesion() {
                 maxLength={200}
                 required
               />
+            </label>
+
+            <label className="campo">
+              <span>Curso (opcional)</span>
+              {cursos.length > 0 ? (
+                <select value={cursoId} onChange={(e) => setCursoId(e.target.value)}>
+                  <option value="">Sin curso</option>
+                  {cursos.map((curso) => (
+                    <option key={curso.id} value={curso.id}>
+                      {curso.name}
+                      {curso.section ? ` — sección ${curso.section}` : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="ayuda">
+                  {cargandoCursos
+                    ? 'Cargando cursos…'
+                    : errorCursos
+                      ? 'No se pudieron cargar los cursos; puedes reintentar o continuar sin asociar uno.'
+                      : 'No tienes cursos todavía. Puedes crear el examen sin asociarlo a un curso.'}
+                </span>
+              )}
+              {errorCursos && (
+                <span className="fila">
+                  <span className="ayuda" role="alert">
+                    {errorCursos}
+                  </span>
+                  <button
+                    type="button"
+                    className="boton boton-secundario"
+                    onClick={reintentarCursos}
+                  >
+                    Reintentar cursos
+                  </button>
+                </span>
+              )}
+              {cursos.length > 0 && (
+                <span className="ayuda">
+                  Asociarlo ayuda a organizar los exámenes; los estudiantes aún necesitan el código
+                  para ingresar.
+                </span>
+              )}
             </label>
 
             <section className="bloque">
@@ -215,25 +301,43 @@ export function NuevaSesion() {
                 <span>Mostrar el código de acceso solo al empezar</span>
               </label>
               <p className="ayuda">
-                Hasta la hora de inicio no se muestra en ninguna pantalla, tampoco en la tuya. Un
-                código que puedes leer con dos días de antelación es un código que puede circular
-                con dos días de antelación.
+                Si marcas esta opción, el código no se mostrará antes de la hora de inicio, tampoco
+                en tu pantalla.
               </p>
             </div>
 
+            <section className="bloque">
+              <h2>2. Preguntas del examen</h2>
+            </section>
             <div className="campo">
-              <span>Preguntas</span>
-              {bancos.length === 0 ? (
+              <span>Bancos de preguntas (opcional)</span>
+              {cargandoBancos ? (
+                <p className="tenue">Cargando bancos…</p>
+              ) : errorBancos ? (
+                <div className="aviso" role="alert">
+                  <p>No se pudo cargar la lista de bancos: {errorBancos}</p>
+                  <button
+                    type="button"
+                    className="boton boton-secundario"
+                    onClick={reintentarBancos}
+                  >
+                    Reintentar bancos
+                  </button>
+                  <p className="ayuda">
+                    Si continúas sin un banco, podrás añadir preguntas después, pero primero
+                    verifica que no estés dejando fuera uno que querías usar.
+                  </p>
+                </div>
+              ) : bancos.length === 0 ? (
                 <p className="ayuda">
-                  No tienes bancos todavía. Puedes crear el examen y escribir las preguntas después,
-                  pero conviene <Link to="/bancos">crear un banco</Link> y escribirlas una sola vez:
-                  así se reutilizan y cada estudiante recibe un sorteo distinto.
+                  Aún no tienes bancos. Puedes <Link to="/bancos">crear o importar un banco</Link>,
+                  o continuar y escribir preguntas en el examen después.
                 </p>
               ) : (
                 <>
                   <p className="ayuda" style={{ marginBottom: 0 }}>
-                    Marca de qué bancos sale este examen. Si no marcas ninguno, escribirás las
-                    preguntas a mano después.
+                    Selecciona uno o más bancos. Las preguntas se tomarán de estos bancos; si no
+                    marcas ninguno, podrás añadir preguntas directamente al examen.
                   </p>
                   <ul className="selector-bancos">
                     {bancos.map((banco) => (
@@ -244,7 +348,14 @@ export function NuevaSesion() {
                             checked={elegidos.includes(banco.id)}
                             onChange={() => alternar(banco.id)}
                           />
-                          <span>{banco.name}</span>
+                          <span className="selector-banco-detalle">
+                            <strong>{banco.name}</strong>
+                            <span className="ayuda">
+                              {banco.course_id
+                                ? `Curso: ${cursoPorId.get(banco.course_id)?.name ?? 'asociado'}`
+                                : 'Sin curso'}
+                            </span>
+                          </span>
                           <span className="cuenta">
                             {banco.question_count} pregunta{banco.question_count === 1 ? '' : 's'}
                           </span>
@@ -280,6 +391,9 @@ export function NuevaSesion() {
               </label>
             )}
 
+            <section className="bloque">
+              <h2>3. Supervisión y otras indicaciones</h2>
+            </section>
             <label className="campo">
               <span>Nivel de supervisión</span>
               <select
@@ -292,27 +406,8 @@ export function NuevaSesion() {
                   </option>
                 ))}
               </select>
-              {elegido && <p className="ayuda">{elegido.detalle}</p>}
+              {elegido && <span className="ayuda">{elegido.detalle}</span>}
             </label>
-
-            {cursos.length > 0 && (
-              <label className="campo">
-                <span>Curso (opcional)</span>
-                <select value={cursoId} onChange={(e) => setCursoId(e.target.value)}>
-                  <option value="">Sin curso</option>
-                  {cursos.map((curso) => (
-                    <option key={curso.id} value={curso.id}>
-                      {curso.name}
-                      {curso.section ? ` — sección ${curso.section}` : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className="ayuda">
-                  Los estudiantes del curso verán la fecha del examen en su panel. Para rendirlo
-                  siguen necesitando el código de acceso.
-                </p>
-              </label>
-            )}
 
             <label className="campo">
               <span>Indicaciones para el estudiante (opcional)</span>

@@ -399,6 +399,13 @@
   margin: 0;
 }
 
+.selector-banco-detalle {
+  display: grid;
+  min-width: 0;
+  gap: var(--e1);
+  overflow-wrap: anywhere;
+}
+
 .selector-bancos input[type='checkbox'] {
   width: 1.1rem;
   height: 1.1rem;
@@ -928,7 +935,6 @@
   .portada-inicio {
     padding: 4rem 0 5rem;
   }
-
 
   .portada-seccion {
     padding: 4rem 0;

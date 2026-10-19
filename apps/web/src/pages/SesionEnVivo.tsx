@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { BancosDelExamen } from '../components/BancosDelExamen'
 import { CamaraEnVivo } from '../components/CamaraEnVivo'
 import {
@@ -13,6 +13,8 @@ import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
 import { duracion, fechaLarga, nombreEvento, nombrePreset, soloHora } from '../lib/formato'
 import { CodigoAcceso } from '../components/CodigoAcceso'
+import { mergeAlerts } from '../lib/live-alerts'
+import { mergeEvents } from '../lib/live-events'
 
 const CAMARAS_POR_PAGINA = 6
 
@@ -29,10 +31,17 @@ const CAMARAS_POR_PAGINA = 6
 export function SesionEnVivo() {
   const { id = '' } = useParams()
   const { token, userId } = useAuth()
+  const location = useLocation()
 
   const [sesion, setSesion] = useState<ExamSession>()
-  const [alertas, setAlertas] = useState<Alert[]>([])
-  const [eventos, setEventos] = useState<ProctoringEvent[]>([])
+  const [alertasSesion, setAlertasSesion] = useState<{
+    sessionId: string
+    datos: Alert[]
+  }>()
+  const [eventosSesion, setEventosSesion] = useState<{
+    sessionId: string
+    datos: ProctoringEvent[]
+  }>()
   const [estadoParticipantes, setEstadoParticipantes] = useState<{
     sessionId: string
     datos: Participant[]
@@ -44,15 +53,23 @@ export function SesionEnVivo() {
   const [paginaCamaras, setPaginaCamaras] = useState({ sessionId: '', indice: 0 })
   const [enVivo, setEnVivo] = useState(false)
   const [error, setError] = useState<string>()
+  const [actualizando, setActualizando] = useState(false)
 
-  // Evita duplicar una alerta que llegue por Realtime y por la carga inicial.
-  const vistas = useRef(new Set<string>())
+  // Evita duplicados y conserva lo recibido por Realtime mientras termina la carga inicial.
+  const vistas = useRef(new Map<string, Alert>())
+  const versionCarga = useRef(0)
 
-  const agregar = useCallback((alerta: Alert) => {
-    if (vistas.current.has(alerta.id)) return
-    vistas.current.add(alerta.id)
-    setAlertas((previas) => [alerta, ...previas])
-  }, [])
+  const agregar = useCallback(
+    (alerta: Alert) => {
+      if (alerta.session_id !== id || vistas.current.has(alerta.id)) return
+      vistas.current.set(alerta.id, alerta)
+      setAlertasSesion((previo) => ({
+        sessionId: id,
+        datos: mergeAlerts(previo?.sessionId === id ? previo.datos : [], [alerta])
+      }))
+    },
+    [id]
+  )
 
   const cargarParticipantes = useCallback(() => {
     api
@@ -64,24 +81,69 @@ export function SesionEnVivo() {
       .catch((fallo: Error) => setFalloParticipantes({ sessionId: id, mensaje: fallo.message }))
   }, [id, token])
 
-  useEffect(() => {
-    if (!id) return
-    let cancelado = false
-
-    Promise.all([api.getSession(id, token), api.listAlerts(id, token), api.listEvents(id, token)])
-      .then(([datosSesion, datosAlertas, datosEventos]) => {
-        if (cancelado) return
-        setSesion(datosSesion)
-        datosAlertas.forEach((a) => vistas.current.add(a.id))
-        setAlertas(datosAlertas)
-        setEventos(datosEventos)
-      })
-      .catch((fallo: Error) => !cancelado && setError(fallo.message))
-
-    return () => {
-      cancelado = true
-    }
+  const cargarEventos = useCallback(() => {
+    api
+      .listEvents(id, token)
+      .then((datos) =>
+        setEventosSesion((previo) => ({
+          sessionId: id,
+          datos: mergeEvents(previo?.sessionId === id ? previo.datos : [], datos)
+        }))
+      )
+      .catch((fallo: Error) => setError(fallo.message))
   }, [id, token])
+
+  const cargarDatos = useCallback(() => {
+    const version = ++versionCarga.current
+    return Promise.all([
+      api.getSession(id, token),
+      api.listAlerts(id, token),
+      api.listEvents(id, token)
+    ])
+      .then(([datosSesion, datosAlertas, datosEventos]) => {
+        if (version !== versionCarga.current) return
+        setError(undefined)
+        setSesion(datosSesion)
+        for (const alerta of datosAlertas) vistas.current.set(alerta.id, alerta)
+        setAlertasSesion((previo) => ({
+          sessionId: id,
+          datos: mergeAlerts(
+            datosAlertas,
+            [...vistas.current.values()].filter((alerta) => alerta.session_id === id),
+            previo?.sessionId === id ? previo.datos : []
+          )
+        }))
+        setEventosSesion((previo) => ({
+          sessionId: id,
+          datos: mergeEvents(previo?.sessionId === id ? previo.datos : [], datosEventos)
+        }))
+      })
+      .catch((fallo: unknown) => {
+        if (version !== versionCarga.current) return
+        setError(fallo instanceof Error ? fallo.message : 'No se pudieron actualizar los datos.')
+      })
+      .finally(() => {
+        if (version === versionCarga.current) setActualizando(false)
+      })
+  }, [id, token])
+
+  const eventos = useMemo(
+    () => (eventosSesion?.sessionId === id ? eventosSesion.datos : []),
+    [eventosSesion, id]
+  )
+
+  useEffect(() => {
+    vistas.current.clear()
+    void cargarDatos()
+    return () => {
+      versionCarga.current += 1
+    }
+  }, [id, cargarDatos])
+
+  const actualizarDatos = useCallback(() => {
+    setActualizando(true)
+    void cargarDatos()
+  }, [cargarDatos])
 
   useEffect(() => {
     cargarParticipantes()
@@ -110,14 +172,31 @@ export function SesionEnVivo() {
         },
         cargarParticipantes
       )
-      .subscribe((estado) => setEnVivo(estado === 'SUBSCRIBED'))
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'events',
+          filter: `session_id=eq.${id}`
+        },
+        cargarEventos
+      )
+      .subscribe((estado) => {
+        setEnVivo(estado === 'SUBSCRIBED')
+        if (estado === 'SUBSCRIBED') cargarEventos()
+      })
 
     return () => {
       void cliente.removeChannel(canal)
       setEnVivo(false)
     }
-  }, [id, agregar, cargarParticipantes])
+  }, [id, agregar, cargarParticipantes, cargarEventos])
 
+  const alertas = useMemo(
+    () => (alertasSesion?.sessionId === id ? alertasSesion.datos : []),
+    [alertasSesion, id]
+  )
   const resumen = useMemo(() => {
     const porSeveridad = { high: 0, medium: 0, low: 0 }
     for (const alerta of alertas) porSeveridad[alerta.severity] += 1
@@ -168,11 +247,34 @@ export function SesionEnVivo() {
     (paginaVisible + 1) * CAMARAS_POR_PAGINA
   )
 
-  if (error) return <p className="aviso">{error}</p>
+  if (error && !sesion) {
+    return (
+      <div>
+        <p className="aviso" role="alert">
+          {error}
+        </p>
+        <button type="button" className="boton boton-secundario" onClick={actualizarDatos}>
+          Reintentar carga
+        </button>
+      </div>
+    )
+  }
   if (!sesion) return <p className="tenue">Cargando examen…</p>
+
+  const avisoNavegacion = obtenerAvisoDeRuta(location.state)
 
   return (
     <>
+      {avisoNavegacion && (
+        <p className="aviso aviso-neutro" role="status">
+          {avisoNavegacion}
+        </p>
+      )}
+      {error && (
+        <p className="aviso" role="alert">
+          {error}
+        </p>
+      )}
       <div className="encabezado-pagina">
         <div>
           <h1>{sesion.title}</h1>
@@ -182,6 +284,14 @@ export function SesionEnVivo() {
           </p>
         </div>
         <div className="acciones-sesion">
+          <button
+            type="button"
+            className="boton boton-secundario"
+            onClick={actualizarDatos}
+            disabled={actualizando}
+          >
+            {actualizando ? 'Actualizando…' : 'Actualizar alertas y señales'}
+          </button>
           <div style={{ textAlign: 'right' }}>
             <CodigoAcceso codigo={sesion.access_code} />
           </div>
@@ -378,6 +488,11 @@ export function SesionEnVivo() {
       </div>
     </>
   )
+}
+
+function obtenerAvisoDeRuta(estado: unknown): string | undefined {
+  if (typeof estado !== 'object' || estado === null || !('aviso' in estado)) return
+  return typeof estado.aviso === 'string' ? estado.aviso : undefined
 }
 
 function Dato({

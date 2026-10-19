@@ -129,10 +129,11 @@ export function EditarSesion() {
           <h1>Editar examen</h1>
           <p className="subtitulo">
             {sesion.access_code === null ? (
-              <>El código se revela al empezar el examen</>
+              <>El código se genera automáticamente y se revela al empezar; no se puede editar.</>
             ) : (
               <>
-                Código <strong>{sesion.access_code}</strong> — no cambia aunque edites el resto
+                Código generado automáticamente <strong>{sesion.access_code}</strong> — no se puede
+                editar, aunque cambies el resto del examen
               </>
             )}
           </p>

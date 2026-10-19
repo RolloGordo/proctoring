@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   api,
-  type AudioAnalysis,
   type CaseFile,
   type DecisionType,
   type EventType,
@@ -30,7 +29,10 @@ const DIAGNOSTIC_LABELS: Record<string, string> = {
   vision_module_failed: 'Detector de visión no disponible',
   vision_module_recovered: 'Detector recuperado',
   vision_module_summary: 'Resumen de lo observado',
-  audio_segment_lost: 'Fragmento de audio perdido'
+  audio_segment_lost: 'Fragmento de audio perdido',
+  image_evidence_lost: 'Captura no disponible',
+  signal_rejected: 'Señal rechazada por el servidor',
+  signal_queue_stuck: 'Las señales no se estaban registrando'
 }
 
 /**
@@ -56,6 +58,10 @@ function detalleDiagnostico(d: {
     if (fotogramas === 0) return 'No le llegó ningún fotograma.'
     return `${fotogramas} fotogramas observados, ${veredictos} con la condición presente, ${episodios} episodios.`
   }
+  if (d.code === 'signal_queue_stuck') {
+    const pendientes = Number(det.pending ?? 0)
+    return `${pendientes} señales esperando tras ${Number(det.attempts ?? 0)} intentos.`
+  }
   const motivo = det.reason
   return typeof motivo === 'string' && motivo ? motivo : null
 }
@@ -77,29 +83,39 @@ export function RevisionCaso() {
   const [decision, setDecision] = useState<DecisionType>()
   const [justificacion, setJustificacion] = useState('')
   const [guardando, setGuardando] = useState(false)
-  const [diagnostics, setDiagnostics] = useState<Array<{
-    id: string
-    code: string
-    module: string | null
-    created_at: string
-    details?: Record<string, unknown> | null
-  }>>([])
+  const [diagnostics, setDiagnostics] = useState<
+    Array<{
+      id: string
+      code: string
+      module: string | null
+      created_at: string
+      details?: Record<string, unknown> | null
+    }>
+  >([])
   const [diagnosticError, setDiagnosticError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!supabase || !id || !estudianteId) return
     let cancelled = false
     // Technical failures are separate from suspicious events and never add risk.
-    void supabase.from('supervision_diagnostics')
+    void supabase
+      .from('supervision_diagnostics')
       .select('id, code, module, created_at, details')
-      .eq('session_id', id).eq('student_id', estudianteId)
-      .order('created_at', { ascending: false }).limit(50)
+      .eq('session_id', id)
+      .eq('student_id', estudianteId)
+      .order('created_at', { ascending: false })
+      .limit(50)
       .then(({ data, error }) => {
         if (cancelled) return
-        if (error) setDiagnosticError('Registro técnico no disponible; comprueba que la migración de diagnósticos esté aplicada.')
+        if (error)
+          setDiagnosticError(
+            'Registro técnico no disponible; comprueba que la migración de diagnósticos esté aplicada.'
+          )
         else setDiagnostics(data ?? [])
       })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [id, estudianteId])
 
   useEffect(() => {
@@ -155,8 +171,10 @@ export function RevisionCaso() {
     grupos.set(evento.event_type, grupo)
     return grupos
   }, new Map<EventType, { evento: ProctoringEvent; path: string }[]>())
-  const eventosPorId = new Map(events.map((evento) => [evento.id, evento]))
-  const analisisAlertados = caso.audio_analyses.filter((analisis) => analisis.alerted)
+  const analisisPorEvento = new Map(
+    caso.audio_analyses.map((analisis) => [analisis.event_id, analisis])
+  )
+  const eventosHabla = events.filter((evento) => evento.event_type === 'speech_detected')
 
   return (
     <>
@@ -228,33 +246,44 @@ export function RevisionCaso() {
         <div className="encabezado-seccion">
           <h2>Disponibilidad técnica de cámara y visión</h2>
         </div>
-        <div className="tarjeta"><div className="tarjeta-cuerpo">
-          <p className="ayuda">Estas incidencias son fallos o recuperaciones técnicas, no acusaciones ni puntos de riesgo.</p>
-          {diagnosticError && <p role="status" className="aviso aviso-neutro">{diagnosticError}</p>}
-          {!diagnosticError && diagnostics.length === 0 && <p className="tenue">No constan diagnósticos técnicos de esta sesión.</p>}
-          {diagnostics.length > 0 && (
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Hora</th>
-                  <th>Diagnóstico</th>
-                  <th>Módulo</th>
-                  <th>Detalle</th>
-                </tr>
-              </thead>
-              <tbody>
-                {diagnostics.map((d) => (
-                  <tr key={d.id}>
-                    <td>{soloHora(d.created_at)}</td>
-                    <td>{DIAGNOSTIC_LABELS[d.code] ?? 'Diagnóstico técnico'}</td>
-                    <td>{d.module ?? 'Cámara'}</td>
-                    <td>{detalleDiagnostico(d) ?? <span className="tenue">—</span>}</td>
+        <div className="tarjeta">
+          <div className="tarjeta-cuerpo">
+            <p className="ayuda">
+              Estas incidencias son fallos o recuperaciones técnicas, no acusaciones ni puntos de
+              riesgo.
+            </p>
+            {diagnosticError && (
+              <p role="status" className="aviso aviso-neutro">
+                {diagnosticError}
+              </p>
+            )}
+            {!diagnosticError && diagnostics.length === 0 && (
+              <p className="tenue">No constan diagnósticos técnicos de esta sesión.</p>
+            )}
+            {diagnostics.length > 0 && (
+              <table className="tabla">
+                <thead>
+                  <tr>
+                    <th>Hora</th>
+                    <th>Diagnóstico</th>
+                    <th>Módulo</th>
+                    <th>Detalle</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div></div>
+                </thead>
+                <tbody>
+                  {diagnostics.map((d) => (
+                    <tr key={d.id}>
+                      <td>{soloHora(d.created_at)}</td>
+                      <td>{DIAGNOSTIC_LABELS[d.code] ?? 'Diagnóstico técnico'}</td>
+                      <td>{d.module ?? 'Cámara'}</td>
+                      <td>{detalleDiagnostico(d) ?? <span className="tenue">—</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="bloque">
@@ -336,39 +365,60 @@ export function RevisionCaso() {
               </div>
             )}
 
-            <h3 className="evidencia-subtitulo">Fragmentos señalados como posible consulta a IA</h3>
-            {analisisAlertados.length === 0 ? (
-              <p className="tenue">No hay fragmentos de audio señalados como alerta.</p>
+            <h3 className="evidencia-subtitulo">Fragmentos de voz registrados</h3>
+            {eventosHabla.length === 0 ? (
+              <p className="tenue">No hay fragmentos de voz registrados.</p>
             ) : (
               <ul className="lista-evidencias">
-                {analisisAlertados.map((analisis) => {
-                  const evento = eventosPorId.get(analisis.event_id)
+                {eventosHabla.map((evento) => {
+                  const analisis = analisisPorEvento.get(evento.id)
                   return (
-                    <li key={analisis.event_id} className="evidencia-item evidencia-audio">
+                    <li key={evento.id} className="evidencia-item evidencia-audio">
                       <div>
-                        <strong>
-                          {evento ? soloHora(evento.started_at) : 'Fragmento de audio'}
-                        </strong>
-                        {analisis.transcript && (
+                        <strong>{soloHora(evento.started_at)}</strong>
+                        {analisis?.transcript && (
                           <p className="justificacion">“{analisis.transcript}”</p>
                         )}
-                        <p className="ayuda">
-                          Similitud: {porcentaje(analisis.similarity)} · Voz sintética:{' '}
-                          {porcentaje(analisis.synthetic_voice_score)}
-                        </p>
+                        {!analisis ? (
+                          <p className="ayuda">
+                            No hay resultado de análisis disponible. El fragmento requiere revisión
+                            manual.
+                          </p>
+                        ) : (
+                          <>
+                            <p className="ayuda">
+                              Similitud con la pregunta: {porcentaje(analisis.similarity)} · Voz
+                              sintética: {porcentaje(analisis.synthetic_voice_score)}
+                            </p>
+                            {analisis.similarity === null ||
+                            analisis.synthetic_voice_score === null ? (
+                              <p className="aviso aviso-neutro">
+                                Análisis incompleto: no se midieron ambas condiciones y el sistema
+                                no puede confirmar ni descartar una consulta a IA.
+                              </p>
+                            ) : analisis.alerted ? (
+                              <p className="aviso">
+                                Se cumplieron ambas condiciones; el docente debe revisar el
+                                fragmento antes de decidir.
+                              </p>
+                            ) : (
+                              <p className="ayuda">
+                                No se cumplieron ambas condiciones; hablar por sí solo no genera una
+                                alerta.
+                              </p>
+                            )}
+                          </>
+                        )}
                       </div>
-                      {evento?.evidence_path ? (
+                      {evento.evidence_path ? (
                         <FragmentoAudio
                           sessionId={id}
                           studentId={estudianteId}
                           path={evento.evidence_path}
                           token={token}
-                          analisis={analisis}
                         />
                       ) : (
-                        <p className="ayuda">
-                          Este análisis no tiene un fragmento de audio disponible.
-                        </p>
+                        <p className="ayuda">El fragmento no está disponible para reproducción.</p>
                       )}
                     </li>
                   )
@@ -525,14 +575,12 @@ function FragmentoAudio({
   sessionId,
   studentId,
   path,
-  token,
-  analisis
+  token
 }: {
   sessionId: string
   studentId: string
   path: string
   token?: string
-  analisis: AudioAnalysis
 }) {
   const [url, setUrl] = useState<string>()
   const [error, setError] = useState<string>()
@@ -570,7 +618,7 @@ function FragmentoAudio({
             controls
             preload="none"
             src={url}
-            aria-label={`Audio señalado como posible consulta a IA${analisis.processed_at ? `, analizado ${fechaLarga(analisis.processed_at)}` : ''}`}
+            aria-label="Fragmento de voz registrado durante el examen"
             onError={() => {
               setUrl(undefined)
               setError('El enlace venció o el audio no está disponible. Cárgalo de nuevo.')

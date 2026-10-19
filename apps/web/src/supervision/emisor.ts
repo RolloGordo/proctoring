@@ -65,7 +65,19 @@ export class EmisorDeSenales {
    */
   constructor(
     private contexto: ContextoEmision,
-    private readonly alPerderAudio?: (motivo: string) => void
+    private readonly alPerderAudio?: (motivo: string) => void,
+    private readonly alPerderImagen?: (motivo: string) => void,
+    /**
+     * Avisa de que la API rechazo una senal y se descarto.
+     *
+     * Existe porque el motivo moria en `console.error`, y en una ventana en
+     * modo kiosco nadie abre la consola. Una senal observada que desaparece
+     * sin dejar constancia es el peor fallo posible aqui: en el expediente se
+     * lee igual que si no hubiera pasado nada.
+     */
+    private readonly alRechazar?: (evento: EventType, motivo: string) => void,
+    /** Avisa de que la cola lleva mucho rato sin avanzar. */
+    private readonly alAtascarse?: (intentos: number, pendientes: number) => void
   ) {}
 
   /** Cambia la pregunta en curso sin perder lo que esté en cola. */
@@ -187,6 +199,7 @@ export class EmisorDeSenales {
             } catch (falloCaptura) {
               console.error('[supervisión] la captura no llegó a tiempo', falloCaptura)
               senal.metadata = { ...senal.metadata, capture_error: 'capture_timeout' }
+              this.alPerderImagen?.('capture_timeout')
             }
             if (image) {
               try {
@@ -204,12 +217,17 @@ export class EmisorDeSenales {
                   falloSubida
                 )
                 senal.metadata = { ...senal.metadata, capture_error: 'upload_failed' }
+                this.alPerderImagen?.(
+                  falloSubida instanceof Error ? falloSubida.message.slice(0, 200) : 'upload_failed'
+                )
               }
               senal.image = undefined
             } else {
               if (!senal.metadata?.capture_error) {
                 senal.metadata = { ...senal.metadata, capture_error: 'no_jpeg' }
               }
+              const captureError = senal.metadata?.capture_error
+              this.alPerderImagen?.(typeof captureError === 'string' ? captureError : 'no_jpeg')
               senal.image = undefined
             }
           }
@@ -236,7 +254,9 @@ export class EmisorDeSenales {
           // Se descarta y se sigue, o la cola se atasca con una sola señal mala.
           if (fallo instanceof ApiError && fallo.status < 500 && fallo.status !== 429) {
             console.error('[supervisión] señal rechazada por la API:', fallo.message, senal)
+            this.alRechazar?.(senal.evento, `${fallo.status}: ${fallo.message}`.slice(0, 200))
             this.cola.shift()
+            this.fallosSeguidos = 0
             continue
           }
           // Red caída o error del servidor: se reintenta sin perder nada.
@@ -251,6 +271,12 @@ export class EmisorDeSenales {
               `[supervisión] la cola no avanza (${this.fallosSeguidos} intentos, ${this.cola.length} señales esperando):`,
               fallo
             )
+          }
+          // A la tercera deja de ser un bache de red y pasa a ser algo que el
+          // docente tiene que saber al revisar: durante ese rato no se estuvo
+          // registrando nada.
+          if (this.fallosSeguidos === 3) {
+            this.alAtascarse?.(this.fallosSeguidos, this.cola.length)
           }
           this.programarReintento()
           return
