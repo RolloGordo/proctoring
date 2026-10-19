@@ -10,12 +10,10 @@ import {
 } from './avisos'
 
 describe('qué se le dice al estudiante', () => {
-  it('hablar en voz alta no se presenta como una infracción', () => {
-    // Es la promesa del proyecto: leer la pregunta para concentrarse es
-    // legítimo, y el texto que el estudiante lee tiene que decirlo.
+  it('hablar durante el examen se presenta como una infracción', () => {
     const aviso = avisoParaEvento('speech_detected')
 
-    expect(aviso?.detalle).toContain('no significa una infracción')
+    expect(aviso?.titulo).toContain('no se permite hablar')
   })
 
   it.each(['gaze_away', 'face_absent', 'extra_person', 'speech_detected'] as const)(

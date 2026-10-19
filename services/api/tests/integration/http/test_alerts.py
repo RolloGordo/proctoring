@@ -36,7 +36,11 @@ class TestWithoutAuth:
     def test_a_low_severity_event_produces_none(
         self, client: TestClient, contract_example: Any
     ) -> None:
-        payload = contract_example("speech_detected")
+        # `identity_check` y no `speech_detected`: la voz paso a MEDIUM por
+        # decision del Product Owner, asi que ya no sirve de ejemplo de senal
+        # baja. Lo que esta prueba cuida -que una severidad baja no genere
+        # alerta- sigue intacto.
+        payload = contract_example("identity_check")
         client.post("/api/v1/events", json=payload)
 
         response = client.get(f"/api/v1/sessions/{payload['session_id']}/alerts")

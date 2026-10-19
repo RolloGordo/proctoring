@@ -153,9 +153,13 @@ export function avisoParaEvento(evento: EventType): AvisoSupervision | null {
     case 'speech_detected':
       return {
         tipo: evento,
-        titulo: 'Se detectó voz',
+        titulo: 'Habla detectada: no se permite hablar durante el examen',
+        // Dice la norma, no dicta el resultado. El sistema registra y manda el
+        // fragmento; **la decision sigue siendo del docente, con justificacion**.
+        // Esa frontera es lo que separa a un auditor de un juez, y no se cruza
+        // ni cuando la norma es clara.
         detalle:
-          'Se registró un fragmento de voz durante el examen. Hablar no significa una infracción: el docente revisará el contexto.'
+          'El micrófono detectó voz y el fragmento queda registrado para tu docente, que decidirá al revisarlo.'
       }
     case 'prohibited_object':
       return {

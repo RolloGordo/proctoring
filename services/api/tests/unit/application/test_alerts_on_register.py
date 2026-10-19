@@ -92,18 +92,15 @@ class TestAlertIsNotCreated:
 
         assert alert_repository.list_by_session(SESSION) == []
 
-    def test_speech_detected_does_not_alert_on_its_own(
+    def test_speech_detected_alerts_on_its_own(
         self, use_case: RegisterEvent, alert_repository: InMemoryAlertRepository
     ) -> None:
-        """El caso que define el diferencial del proyecto.
-
-        Hablar en voz alta no es trampa. La alerta por consulta a un asistente de
-        IA la crea `services/ai` cuando confirma las **dos** condiciones. Alertar
-        aqui seria acusar a quien lee la pregunta en voz alta para concentrarse.
-        """
+        """La regla de este examen prohíbe hablar durante la evaluación."""
         use_case.execute(an_input(EventType.SPEECH_DETECTED, 5_600, question_id=QUESTION))
 
-        assert alert_repository.list_by_session(SESSION) == []
+        alerts = alert_repository.list_by_session(SESSION)
+        assert len(alerts) == 1
+        assert alerts[0].reason == "Se detecto voz durante el examen"
 
     def test_a_rejected_event_leaves_no_alert(
         self, use_case: RegisterEvent, alert_repository: InMemoryAlertRepository
