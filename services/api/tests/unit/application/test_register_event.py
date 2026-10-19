@@ -67,7 +67,11 @@ class TestAudioAnalysisQueue:
         self, use_case: RegisterEvent, job_queue: InMemoryJobQueue
     ) -> None:
         result = use_case.execute(
-            an_input(event_type=EventType.SPEECH_DETECTED, question_id=QUESTION)
+            an_input(
+                event_type=EventType.SPEECH_DETECTED,
+                question_id=QUESTION,
+                evidence_path="session/student/audio.webm",
+            )
         )
 
         assert list(job_queue.audio_analysis_jobs) == [result.id]

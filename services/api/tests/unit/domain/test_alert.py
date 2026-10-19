@@ -33,11 +33,23 @@ class TestAlertReason:
     def test_describes_without_accusing(self) -> None:
         # El sistema es un auditor, no un juez: describe lo observado y la
         # interpretacion la pone el docente.
+        #
+        # El veto a "copi" se escribio cuando no existia ningun evento de copia,
+        # como atajo para "no digas que copio". Con `copy_attempt` ya no se
+        # puede describir lo observado sin nombrar el atajo que se pulso, y
+        # nombrarlo no es acusar: lo que no puede decir es que intentara copiar
+        # el examen, porque pulsar Ctrl+C tambien puede ser un reflejo o copiar
+        # la propia respuesta. Por eso la prohibicion sigue para todos los demas
+        # y para este se comprueba que no interprete la intencion.
         for event_type in EventType:
             reason = alert_reason(event_type, 5_000)
             assert reason
             assert "trampa" not in reason.lower()
-            assert "copi" not in reason.lower()
+            if event_type is EventType.COPY_ATTEMPT:
+                assert "intento copiar" not in reason.lower()
+                assert "intento de copiar" not in reason.lower()
+            else:
+                assert "copi" not in reason.lower()
 
     def test_every_event_type_has_a_reason(self) -> None:
         # alerts.reason es NOT NULL en la base: si falta un caso, el match

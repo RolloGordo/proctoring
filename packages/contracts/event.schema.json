@@ -37,7 +37,9 @@
         "suspicious_process",
         "screen_share",
         "speech_detected",
-        "identity_check"
+        "identity_check",
+        "copy_attempt",
+        "prohibited_object"
       ],
       "description": "Tipo de senal detectada. El mismo conjunto que el tipo event_type de PostgreSQL."
     },

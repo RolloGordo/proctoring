@@ -11,7 +11,7 @@ import {
 } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
-import { duracion, fechaLarga, nombreEvento, nombrePreset, soloHora } from '../lib/formato'
+import { detalleEvento, duracion, fechaLarga, nombreEvento, nombrePreset, soloHora } from '../lib/formato'
 import { CodigoAcceso } from '../components/CodigoAcceso'
 import { mergeAlerts } from '../lib/live-alerts'
 import { mergeEvents } from '../lib/live-events'
@@ -197,6 +197,7 @@ export function SesionEnVivo() {
     () => (alertasSesion?.sessionId === id ? alertasSesion.datos : []),
     [alertasSesion, id]
   )
+  const eventoPorId = useMemo(() => new Map(eventos.map((evento) => [evento.id, evento])), [eventos])
   const resumen = useMemo(() => {
     const porSeveridad = { high: 0, medium: 0, low: 0 }
     for (const alerta of alertas) porSeveridad[alerta.severity] += 1
@@ -432,9 +433,16 @@ export function SesionEnVivo() {
                     <div>
                       <p className="motivo">{alerta.reason}</p>
                       <p className="ayuda">
-                        {comoSeLlama.get(alerta.student_id) ??
-                          `Estudiante ${alerta.student_id.slice(0, 8)}`}
+                        <Link to={`/sesiones/${id}/estudiantes/${alerta.student_id}`}>
+                          {comoSeLlama.get(alerta.student_id) ??
+                            `Estudiante ${alerta.student_id.slice(0, 8)}`}
+                        </Link>
                       </p>
+                      {eventoPorId.get(alerta.event_id) && (
+                        <p className="ayuda">
+                          {detalleEvento(eventoPorId.get(alerta.event_id)!.metadata)}
+                        </p>
+                      )}
                     </div>
                     <span className="hora">{soloHora(alerta.created_at)}</span>
                   </li>
@@ -460,6 +468,7 @@ export function SesionEnVivo() {
                 <thead>
                   <tr>
                     <th>Señal</th>
+                    <th>Detalle</th>
                     <th>Duración</th>
                     <th>Nivel</th>
                     <th>Hora</th>
@@ -468,7 +477,16 @@ export function SesionEnVivo() {
                 <tbody>
                   {eventos.map((evento) => (
                     <tr key={evento.id}>
-                      <td>{nombreEvento(evento.event_type)}</td>
+                      <td>
+                        {nombreEvento(evento.event_type)}
+                        <p className="ayuda">
+                          <Link to={`/sesiones/${id}/estudiantes/${evento.student_id}`}>
+                            {comoSeLlama.get(evento.student_id) ??
+                              `Estudiante ${evento.student_id.slice(0, 8)}`}
+                          </Link>
+                        </p>
+                      </td>
+                      <td className="tenue">{detalleEvento(evento.metadata) || '—'}</td>
                       <td className="tenue">
                         {evento.duration_ms > 0 ? duracion(evento.duration_ms) : '—'}
                       </td>

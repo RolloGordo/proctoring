@@ -43,12 +43,26 @@ def default_severity(event_type: EventType, duration_ms: int) -> Severity:
     posterior del servicio de IA puede decidir si hubo consulta a un asistente
     (similitud con el enunciado **y** segunda voz sintetica). Elevarlo aqui seria
     acusar antes de tener la evidencia, y es la via mas rapida a un falso positivo.
+
+    Se subio a `MEDIUM` en una entrega y se ha devuelto a `LOW`: cambiarlo
+    contradice la regla que define el proyecto y empuja al alza el FPR que el
+    objetivo SMART exige mantener por debajo del 20 %. Es una decision de
+    producto, no una correccion, y la toma el Product Owner.
     """
     match event_type:
         # Presencia de otra persona o de una herramienta de control remoto o de
         # captura: son senales inequivocas, no graduales.
         case EventType.EXTRA_PERSON | EventType.SUSPICIOUS_PROCESS | EventType.SCREEN_SHARE:
             return Severity.HIGH
+
+        # Es una deteccion visual sujeta a falsos positivos; se muestra al docente
+        # como alerta revisable, sin clasificarla como evidencia concluyente.
+        case EventType.PROHIBITED_OBJECT:
+            return Severity.MEDIUM
+
+        # El estudiante intentó usar un atajo de copia bloqueado por la app.
+        case EventType.COPY_ATTEMPT:
+            return Severity.MEDIUM
 
         # Un monitor adicional es relevante, pero puede ser el entorno habitual
         # del estudiante. Lo decide el docente al revisar.

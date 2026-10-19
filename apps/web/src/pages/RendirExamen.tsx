@@ -84,6 +84,60 @@ export function RendirExamen() {
   const [enCurso, setEnCurso] = useState(0)
   const [volverAtras, setVolverAtras] = useState(true)
 
+  // Electron captura estos atajos en el proceso principal. En navegador web
+  // normal no existe ese proceso, asi que los registramos aqui y los asociamos
+  // directamente con el alumno autenticado y la pregunta visible.
+  useEffect(() => {
+    if (
+      window.api ||
+      !modulosActivos.copy_paste_block ||
+      !userId ||
+      matricula?.submitted_at != null
+    ) return
+    const estudianteId = userId
+
+    function capturarAtajo(evento: KeyboardEvent): void {
+      if (evento.repeat) return
+      const tecla = evento.key.toLowerCase()
+      const conModificador = evento.ctrlKey || evento.metaKey
+      const copiar = (tecla === 'c' && (conModificador || evento.altKey)) ||
+        (tecla === 'insert' && evento.ctrlKey)
+      const portapapeles = (conModificador && ['c', 'v', 'x'].includes(tecla)) ||
+        (evento.ctrlKey && tecla === 'insert') ||
+        (evento.shiftKey && tecla === 'insert')
+
+      if (portapapeles) evento.preventDefault()
+      if (!copiar) return
+
+      const atajo = tecla === 'insert'
+        ? 'Ctrl+Insert'
+        : evento.metaKey
+          ? 'Cmd+C'
+          : evento.altKey && !evento.ctrlKey
+            ? 'Alt+C'
+            : 'Ctrl+C'
+
+      void api.registerEvent(
+        {
+          session_id: id,
+          student_id: estudianteId,
+          question_id: preguntas?.[enCurso]?.id ?? null,
+          event_type: 'copy_attempt',
+          started_at: new Date().toISOString(),
+          duration_ms: 0,
+          metadata: { source: 'browser_input', shortcut: atajo },
+          evidence_path: null
+        },
+        token
+      ).catch((fallo: unknown) => {
+        console.error('[supervision] no se pudo registrar el atajo de copia', fallo)
+      })
+    }
+
+    window.addEventListener('keydown', capturarAtajo, true)
+    return () => window.removeEventListener('keydown', capturarAtajo, true)
+  }, [id, userId, token, modulosActivos, matricula?.submitted_at, preguntas, enCurso])
+
   useEffect(() => {
     let cancelado = false
 

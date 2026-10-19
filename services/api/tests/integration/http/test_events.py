@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 EVENT_TYPES = [
     "focus_lost",
+    "copy_attempt",
     "gaze_away",
     "face_absent",
     "extra_person",
@@ -23,6 +24,7 @@ EVENT_TYPES = [
     "screen_share",
     "speech_detected",
     "identity_check",
+    "prohibited_object",
 ]
 
 pytestmark = pytest.mark.integration

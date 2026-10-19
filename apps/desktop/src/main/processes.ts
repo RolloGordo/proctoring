@@ -1,11 +1,14 @@
 import { examContext } from './context'
 import { buildSuspiciousProcessEvent } from './events'
 
-export const POLL_INTERVAL_MS = 10_000
+export const POLL_INTERVAL_MS = 2_000
 
 // Nombres en minuscula y sin ".exe". Coinciden con el nombre exacto del proceso.
 const WATCHLIST: Record<string, string> = {
   zoom: 'communication',
+  meet: 'communication',
+  googlemeet: 'communication',
+  'google meet': 'communication',
   teams: 'communication',
   'ms-teams': 'communication',
   msteams: 'communication',
@@ -16,6 +19,9 @@ const WATCHLIST: Record<string, string> = {
   obs32: 'screen_recorder',
   obs64: 'screen_recorder',
   discord: 'communication',
+  webex: 'communication',
+  skype: 'communication',
+  whatsapp: 'communication',
   vmware: 'virtual_machine',
   'vmware-vmx': 'virtual_machine',
   virtualbox: 'virtual_machine',
@@ -52,7 +58,7 @@ export function findSuspicious(processes: ProcessInfo[]): ProcessMatch[] {
 }
 
 /**
- * Revisa los procesos cada 10 s. Emite un evento cuando un proceso de la
+ * Revisa los procesos cada 2 s. Emite un evento cuando un proceso de la
  * lista aparece; si se cierra y vuelve a abrir, emite otro.
  */
 export interface ProcessMonitor {
@@ -74,6 +80,7 @@ export function startProcessMonitor(onEvent: (event: ProctoringEvent) => void): 
   let timer: NodeJS.Timeout | undefined
   let first = true
   let checking = false
+  let rescanPending = false
 
   async function check(): Promise<void> {
     // Una revision a la vez: `rescan` puede llamar mientras hay una en curso.
@@ -85,7 +92,7 @@ export function startProcessMonitor(onEvent: (event: ProctoringEvent) => void): 
       const matches = findSuspicious(await psList())
       const current = new Set(matches.map((m) => m.processName))
       for (const m of matches) {
-        if (!active.has(m.processName)) {
+        if (!active.has(m.processName) && !rescanPending) {
           onEvent(
             buildSuspiciousProcessEvent(examContext, m, first ? 'exam_start' : 'poll', Date.now())
           )
@@ -97,6 +104,15 @@ export function startProcessMonitor(onEvent: (event: ProctoringEvent) => void): 
       console.error('[processes] no se pudo leer la lista de procesos', error)
     } finally {
       checking = false
+    }
+    if (rescanPending) {
+      rescanPending = false
+      if (!stopped) {
+        active.clear()
+        first = true
+        void check()
+        return
+      }
     }
     first = false
     if (!stopped) timer = setTimeout(check, POLL_INTERVAL_MS)
@@ -112,6 +128,10 @@ export function startProcessMonitor(onEvent: (event: ProctoringEvent) => void): 
       active.clear()
       first = true
       if (timer) clearTimeout(timer)
+      if (checking) {
+        rescanPending = true
+        return
+      }
       void check()
     }
   }

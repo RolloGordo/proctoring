@@ -238,8 +238,8 @@ class RecordAudioAnalysis:
             session.modules.get(SupervisionModule.AI_VOICE) if session else None
         )
 
-        # Solo aquí se escala. `speech_detected` nace siempre con severidad baja
-        # precisamente para que hablar en voz alta no alerte por sí solo.
+        # La señal base ya genera una alerta moderada; el análisis puede elevar
+        # su resultado a alta si confirma una consulta a un asistente de IA.
         if not analysis.is_ai_consultation(thresholds):
             return AudioAnalysisOutcome(analysis=analysis, alerted=False)
 

@@ -157,6 +157,12 @@ export function avisoParaEvento(evento: EventType): AvisoSupervision | null {
         detalle:
           'Se registró un fragmento de voz durante el examen. Hablar no significa una infracción: el docente revisará el contexto.'
       }
+    case 'prohibited_object':
+      return {
+        tipo: evento,
+        titulo: 'Se detectó un celular u objeto no permitido',
+        detalle: 'La cámara detectó un objeto que debe permanecer fuera del área del examen. El docente podrá revisar la señal.'
+      }
     default:
       return null
   }

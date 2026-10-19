@@ -95,4 +95,6 @@ export interface SenalDetectada {
 export interface DetectorContext {
   stream: MediaStream
   captureSender: () => (signal: SenalDetectada) => void
+  /** Notifies the student as soon as the VAD recognizes voice. */
+  onSpeechStart?: () => void
 }

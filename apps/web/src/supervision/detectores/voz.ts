@@ -44,7 +44,7 @@ export class DetectorHabla implements Detector {
   private descartadas = 0
 
   constructor(settings: AjustesVoz = {}) {
-    this.minimoMs = settings.min_duration_ms ?? 1500
+    this.minimoMs = settings.min_duration_ms ?? 500
     this.threshold = settings.speech_ratio ?? 0.6
     if (
       !Number.isFinite(this.threshold) ||
@@ -137,6 +137,7 @@ export class DetectorHabla implements Detector {
           if (this.stopped || generation !== this.generation) return
           this.oidas += 1
           this.speaking = true
+          context.onSpeechStart?.()
           this.startSegment()
         },
         onSpeechEnd: () => {

@@ -19,6 +19,26 @@ function urlDeLaWeb(mode: string): string {
   return (process.env.PROCTORING_WEB_URL ?? delArchivo ?? '').trim()
 }
 
+function idEstudianteDePrueba(mode: string): string {
+  const env = loadEnv(mode, __dirname, '')
+  // Mismo alumno que usa la web y la API con AUTH_ENABLED=false.
+  // El valor predeterminado solo se incluye en el bundle de desarrollo.
+  return (
+    process.env.PROCTORING_STUDENT_ID ??
+    env['PROCTORING_STUDENT_ID'] ??
+    (mode === 'development' ? '00000000-0000-4000-8000-000000000002' : '')
+  )
+}
+
+function urlDeLaApi(mode: string): string {
+  const env = loadEnv(mode, __dirname, '')
+  return (
+    process.env.PROCTORING_API_URL ??
+    env['PROCTORING_API_URL'] ??
+    (mode === 'development' ? 'http://localhost:8000/api/v1/events' : '')
+  )
+}
+
 export default defineConfig(({ mode }) => ({
   main: {
     // La direccion de la web viaja **dentro** del binario.
@@ -32,7 +52,9 @@ export default defineConfig(({ mode }) => ({
     // Cadena vacia cuando no se define: `web.ts` decide que hacer con eso, y
     // `scripts/comprobar-url-web.mjs` impide empaquetar sin ella.
     define: {
-      __PROCTORING_WEB_URL__: JSON.stringify(urlDeLaWeb(mode))
+      __PROCTORING_WEB_URL__: JSON.stringify(urlDeLaWeb(mode)),
+      __PROCTORING_STUDENT_ID__: JSON.stringify(idEstudianteDePrueba(mode)),
+      __PROCTORING_API_URL__: JSON.stringify(urlDeLaApi(mode))
     }
   },
   preload: {},

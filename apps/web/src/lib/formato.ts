@@ -110,6 +110,7 @@ export function nombreEstado(estado: SessionStatus): string {
  */
 const EVENTOS: Record<EventType, string> = {
   focus_lost: 'Salió de la ventana',
+  copy_attempt: 'Intento de copiar',
   gaze_away: 'Mirada fuera de pantalla',
   face_absent: 'Rostro no detectado',
   extra_person: 'Otra persona en cámara',
@@ -117,6 +118,7 @@ const EVENTOS: Record<EventType, string> = {
   suspicious_process: 'Aplicación sospechosa',
   screen_share: 'Pantalla compartida',
   speech_detected: 'Voz detectada',
+  prohibited_object: 'Objeto no permitido',
   identity_check: 'Verificación de identidad'
 }
 
@@ -162,9 +164,47 @@ export function nombreNivel(nivel: RiskLevel): string {
  * documenta, y lo demás se ignora en vez de mostrarse a medias.
  */
 export function detalleEvento(metadatos: Record<string, unknown>): string {
-  if (typeof metadatos.process_name === 'string') return metadatos.process_name
+  if (typeof metadatos.shortcut === 'string') {
+    return `Atajo ${metadatos.shortcut} bloqueado`
+  }
+  if (typeof metadatos.object_name === 'string') {
+    const confianza = typeof metadatos.score === 'number'
+      ? ` (${Math.round(metadatos.score * 100)}% de confianza)` : ''
+    return `${metadatos.object_name}${confianza}`
+  }
+  if (typeof metadatos.process_name === 'string') {
+    const categoria =
+      typeof metadatos.category === 'string' ? ` · ${metadatos.category.replaceAll('_', ' ')}` : ''
+    return `${metadatos.process_name}${categoria}`
+  }
   if (typeof metadatos.display_count === 'number') {
     return `${metadatos.display_count} monitores conectados`
+  }
+  if (typeof metadatos.faces_detected === 'number') {
+    if (metadatos.faces_detected === 0) return 'No se detectó ningún rostro'
+    if (
+      typeof metadatos.min_faces === 'number' &&
+      metadatos.faces_detected >= metadatos.min_faces
+    ) {
+      return `${metadatos.faces_detected} rostros detectados`
+    }
+    if (
+      typeof metadatos.yaw_deg === 'number' &&
+      typeof metadatos.threshold_deg === 'number' &&
+      Math.abs(metadatos.yaw_deg) > metadatos.threshold_deg
+    ) {
+      return `Giro de cabeza ${Math.round(Math.abs(metadatos.yaw_deg))}° (umbral ${metadatos.threshold_deg}°)`
+    }
+    if (
+      typeof metadatos.pitch_deg === 'number' &&
+      typeof metadatos.pitch_threshold_deg === 'number' &&
+      Math.abs(metadatos.pitch_deg) > metadatos.pitch_threshold_deg
+    ) {
+      return `Inclinación de cabeza ${Math.round(Math.abs(metadatos.pitch_deg))}° (umbral ${metadatos.pitch_threshold_deg}°)`
+    }
+  }
+  if (typeof metadatos.audio_evidence_error === 'string') {
+    return 'Voz detectada; audio no disponible para revisar'
   }
   if (typeof metadatos.capture_error === 'string') {
     const causas: Record<string, string> = {

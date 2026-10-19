@@ -83,6 +83,20 @@ COPY --chown=proctoring:proctoring \
 COPY --chown=proctoring:proctoring spikes/__init__.py spikes/metrics.py spikes/network.py \
     spikes/similarity.py spikes/synthetic_voice.py spikes/transcribe.py ./spikes/
 
+# Donde insightface descarga su modelo, con dueno.
+#
+# `FaceAnalysis` hace `os.makedirs` sobre `FACE_MODEL_ROOT`, que por defecto
+# resuelve a `/app/models`. `/app` es de root y el proceso corre como
+# `proctoring`, asi que cada verificacion moria con
+# `PermissionError: [Errno 13] Permission denied: '/app/models'` **despues** de
+# haber bajado la captura: el trabajo llegaba hasta el ultimo paso y se caia.
+#
+# El disco es efimero, asi que buffalo_sc (unos 16 MB) se vuelve a descargar en
+# cada arranque en frio. Cabe en el presupuesto; montar un volumen seria mejor,
+# pero el plan gratuito no los da.
+RUN mkdir -p /app/models && chown -R proctoring:proctoring /app/models
+ENV FACE_MODEL_ROOT=/app/models
+
 USER proctoring
 
 # Comprueba que el proceso sigue vivo y que la cola responde. Un worker que
