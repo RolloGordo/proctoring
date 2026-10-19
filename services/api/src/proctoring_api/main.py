@@ -509,6 +509,10 @@ def create_app(
         alert_repository,
         # Solo se valida el question_id cuando hay un banco real detras.
         question_repository if settings.event_repository == "supabase" else None,
+        # Y hace falta el repositorio de bancos para las preguntas que vienen de
+        # uno: esas no tienen sesion propia, asi que sin esto se rechazaban
+        # todas las senales de camara de un examen armado desde un banco.
+        bank_repository if settings.event_repository == "supabase" else None,
     )
     app.state.list_session_events = ListSessionEvents(event_repository, session_repository)
     app.state.list_session_alerts = ListSessionAlerts(alert_repository, session_repository)

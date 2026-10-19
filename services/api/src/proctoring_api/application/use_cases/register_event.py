@@ -12,6 +12,7 @@ from proctoring_api.application.ports.alert_repository import AlertRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.event_repository import EventRepository
 from proctoring_api.application.ports.job_queue import JobQueue
+from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.domain.alert import Alert, should_alert
 from proctoring_api.domain.errors import AuthorizationError, InvalidEventError
@@ -64,6 +65,7 @@ class RegisterEvent:
         clock: Clock,
         alerts: AlertRepository,
         questions: QuestionRepository | None = None,
+        banks: QuestionBankRepository | None = None,
     ) -> None:
         self._events = events
         self._job_queue = job_queue
@@ -72,6 +74,10 @@ class RegisterEvent:
         # `None` significa que no hay banco de preguntas con el que comprobar
         # (modo memoria en desarrollo). La composicion lo decide en main.py.
         self._questions = questions
+        # Hace falta para las preguntas que vienen de un banco: esas no tienen
+        # sesion propia, y decidir si valen para este examen es mirar si el
+        # banco esta asociado a el.
+        self._banks = banks
 
     def execute(
         self, data: RegisterEventInput, *, actor: AuthenticatedUser | None = None
@@ -149,16 +155,38 @@ class RegisterEvent:
         estudiante con el enunciado equivocado. La similitud saldria mal y la
         deteccion de IA por voz daria un resultado sin sentido, que es justo lo
         que el proyecto mide como falso positivo.
+
+        **Una pregunta de banco no tiene sesion.** Esto se escribio antes de que
+        existieran los bancos y daba por hecho que toda pregunta trae
+        `session_id`, asi que un examen armado desde un banco rechazaba *todas*
+        sus senales de camara con "la pregunta no existe": el docente se quedaba
+        sin una sola alerta y sin una sola captura, y nada lo decia.
         """
         if data.question_id is None or self._questions is None:
             return
 
-        session_id = self._questions.find_session_id(data.question_id)
-        if session_id is None:
+        owner = self._questions.find_owner(data.question_id)
+        if owner is None:
             raise InvalidEventError(f"La pregunta {data.question_id} no existe")
-        if session_id != data.session_id:
+
+        if owner.session_id is not None:
+            if owner.session_id != data.session_id:
+                raise InvalidEventError(
+                    f"La pregunta {data.question_id} no pertenece a la sesion {data.session_id}"
+                )
+            return
+
+        if owner.bank_id is None or self._banks is None:
+            # Sin banco con el que comparar no se puede afirmar que venga de otra
+            # sesion. Ante la duda no se bloquea: perder una senal observada es
+            # peor que aceptarla con el contexto incompleto.
+            return
+
+        bancos = {banco.id for banco in self._banks.list_session_banks(data.session_id)}
+        if owner.bank_id not in bancos:
             raise InvalidEventError(
-                f"La pregunta {data.question_id} no pertenece a la sesion {data.session_id}"
+                f"La pregunta {data.question_id} viene de un banco que no esta "
+                f"asociado a la sesion {data.session_id}"
             )
 
     def _reject_if_from_the_future(self, started_at: datetime) -> None:

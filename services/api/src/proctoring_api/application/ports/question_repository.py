@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
 from proctoring_api.domain.question import Question, QuestionSummary
+
+
+@dataclass(frozen=True, slots=True)
+class QuestionOwner:
+    """A quien pertenece una pregunta: a una sesion o a un banco, nunca a ambos."""
+
+    session_id: UUID | None
+    bank_id: UUID | None
 
 
 class QuestionRepository(Protocol):
@@ -17,8 +26,15 @@ class QuestionRepository(Protocol):
     para eso existe `Question.for_student()`.
     """
 
-    def find_session_id(self, question_id: UUID) -> UUID | None:
-        """Sesion a la que pertenece la pregunta, o `None` si no existe."""
+    def find_owner(self, question_id: UUID) -> QuestionOwner | None:
+        """De quien es la pregunta, o `None` si no existe.
+
+        Devuelve los dos duenos posibles en vez de solo la sesion porque una
+        pregunta puede venir de un banco, y entonces **no tiene sesion**: la
+        comparte cualquier examen al que se le asocie ese banco. Decidir si vale
+        para una sesion concreta es una regla, y las reglas no viven en un
+        repositorio.
+        """
         ...
 
     def save_many(self, questions: Sequence[Question]) -> None:

@@ -7,6 +7,7 @@ from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from uuid import UUID
 
+from proctoring_api.application.ports.question_repository import QuestionOwner
 from proctoring_api.domain.grading import MANUAL_TYPES
 from proctoring_api.domain.question import Question, QuestionSummary
 
@@ -18,10 +19,12 @@ class InMemoryQuestionRepository:
         self._questions: dict[UUID, Question] = {q.id: q for q in questions}
         self._lock = threading.Lock()
 
-    def find_session_id(self, question_id: UUID) -> UUID | None:
+    def find_owner(self, question_id: UUID) -> QuestionOwner | None:
         with self._lock:
             pregunta = self._questions.get(question_id)
-        return pregunta.session_id if pregunta else None
+        if pregunta is None:
+            return None
+        return QuestionOwner(session_id=pregunta.session_id, bank_id=pregunta.bank_id)
 
     def save_many(self, questions: Sequence[Question]) -> None:
         with self._lock:
