@@ -27,7 +27,7 @@ import {
   type AvisoSupervision
 } from './avisos'
 import { recordDiagnostic, type DiagnosticCode } from './diagnostics'
-import { prepararDetectores } from './arranque'
+import { prepararDetectores, type Arranque } from './arranque'
 import type { SenalDetectada } from './tipos'
 import { EmisorDeSenales } from './emisor'
 import { publicarFotogramas, type AjustesMonitoreo, type Publicacion } from './monitoreo'
@@ -299,32 +299,44 @@ export function useSupervision({
         // A la vez y con límite de tiempo: ver `arranque.ts`. En serie, un
         // detector que no respondía nunca dejaba sin arrancar a los que vinieran
         // detrás **y** al bucle que mira fotogramas, que se crea más abajo.
-        const arranques = await prepararDetectores(detectores, {
-          stream: camara.video.srcObject as MediaStream,
-          captureSender: () => {
-            const enviar = emisor.captureSender()
-            return (senal) => {
-              enviar(senal)
-              notificar(senal.evento)
-            }
-          }
-        })
-        if (cancelado) {
-          for (const { detector } of arranques) detector.detener?.()
-          return
-        }
-
+        // `listos` crece segun van arrancando, y el bucle de abajo lo recorre
+        // en cada vuelta: el que tarde no retrasa a los que ya estan.
         const listos: Detector[] = []
-        for (const { detector, listo, motivo } of arranques) {
+        const incorporar = ({ detector, listo, motivo }: Arranque): void => {
+          if (cancelado) {
+            detector.detener?.()
+            return
+          }
           if (listo) {
             listos.push(detector)
-            continue
+          } else {
+            fallidos.add(detector.nombre)
+            console.error(`[supervisión] no se pudo preparar ${detector.nombre}: ${motivo}`)
+            informar('vision_module_failed', detector.nombre, { reason: motivo ?? 'desconocido' })
           }
-          fallidos.add(detector.nombre)
-          console.error(`[supervisión] no se pudo preparar ${detector.nombre}: ${motivo}`)
-          informar('vision_module_failed', detector.nombre, { reason: motivo ?? 'desconocido' })
+          reportarFallidos()
         }
-        reportarFallidos()
+
+        const preparando = prepararDetectores(
+          detectores,
+          {
+            stream: camara.video.srcObject as MediaStream,
+            captureSender: () => {
+              const enviar = emisor.captureSender()
+              return (senal) => {
+                enviar(senal)
+                notificar(senal.evento)
+              }
+            }
+          },
+          undefined,
+          incorporar
+        )
+        // No se espera aqui a proposito; se recoge al salir para apagar lo que
+        // hubiera quedado a medias.
+        void preparando.then((arranques) => {
+          if (cancelado) for (const { detector } of arranques) detector.detener?.()
+        })
 
         temporizador = setInterval(() => {
           // **Solo se deja de observar si la pista se terminó de verdad.**

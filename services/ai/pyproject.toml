@@ -48,6 +48,16 @@ voice = [
     "transformers>=5,<6",
     "truststore>=0.10,<1",
 ]
+# Verificacion facial (SPEC-005). Estaba solo en `requirements-face.txt`, con la
+# nota de instalarlo "a mano en el worker": en Render no hay instalacion a mano,
+# asi que nunca estuvo en la imagen y cada trabajo moria con
+# `ModuleNotFoundError: No module named 'cv2'`. Por eso ninguna verificacion ha
+# terminado jamas y los participantes se admiten uno a uno.
+face = [
+    "insightface>=0.7,<1",
+    "onnxruntime>=1.19,<2",
+    "opencv-python-headless>=4.10,<5",
+]
 
 [dependency-groups]
 dev = [

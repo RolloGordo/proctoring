@@ -64,6 +64,14 @@ export interface Detector {
    * kiosco: lo que no quede registrado aqui, no se sabe.
    */
   diagnostico?(): string
+  /**
+   * Cuanto tarda este detector en arrancar, como mucho.
+   *
+   * Lo declara el detector porque solo el sabe lo que le cuesta: la vision
+   * tiene el modelo a mano en cuanto responde la red, y el habla baja casi
+   * trece megas de runtime y modelo antes de poder decir nada.
+   */
+  readonly limiteArranqueMs?: number
   /** Audio emits bounded segments instead of a second empty event. */
   readonly ownsSegments?: boolean
   /** Mira el instante actual. Tiene que ser rápido: corre muchas veces por segundo. */

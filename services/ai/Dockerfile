@@ -23,11 +23,24 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
+# Compilador solo en esta etapa. `insightface` no publica rueda para Python 3.12
+# y se construye desde fuente, asi que sin g++ la imagen fallaba con
+# `error: [Errno 2] No such file or directory: 'g++'`. La etapa de runtime copia
+# el `.venv` ya construido y sigue sin compiladores, que es como tiene que ser.
+RUN apt-get update     && apt-get install -y --no-install-recommends build-essential     && rm -rf /var/lib/apt/lists/*
+
 # `similarity` trae sentence-transformers, y con el torch. Es el diferencial del
 # proyecto —comparar lo que se dijo con el enunciado— asi que va por defecto;
 # queda como argumento para poder construir una imagen minima y medir la
 # diferencia.
-ARG EXTRAS="--extra similarity"
+#
+# `face` va tambien por defecto desde que se descubrio por que la verificacion
+# facial no habia terminado nunca: sus dependencias vivian solo en
+# `requirements-face.txt`, con la nota de instalarlas "a mano en el worker".
+# En Render no hay instalacion a mano, asi que no estaban en la imagen y cada
+# trabajo moria con `ModuleNotFoundError: No module named 'cv2'`. Lo que el
+# despliegue necesita tiene que estar en el Dockerfile, no en un documento.
+ARG EXTRAS="--extra similarity --extra face"
 
 COPY pyproject.toml uv.lock ./
 # [tool.uv] package = false: aqui no hay proyecto que instalar, solo dependencias.

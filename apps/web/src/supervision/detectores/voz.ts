@@ -69,6 +69,23 @@ export class DetectorHabla implements Detector {
     ].join(' ')
   }
 
+  /**
+   * Noventa segundos, y no quince.
+   *
+   * **Medido, no supuesto.** Antes de poder decir una palabra, este detector
+   * baja 12,93 MB: 10,69 del runtime de ONNX multihilo y 2,22 del modelo
+   * Silero. A 5 Mbps son casi veintidos segundos solo de descarga, y a 3 Mbps
+   * mas de treinta y seis, antes de compilar el WASM.
+   *
+   * El limite anterior eran quince, elegidos razonando sobre MediaPipe, que
+   * tarda segundo y medio. Por eso cada examen registraba «no arranco en 15000
+   * ms» con todas las condiciones en orden: no fallaba, no le daba tiempo.
+   *
+   * Que sea tan largo no retrasa a nadie: los detectores arrancan a la vez y
+   * cada uno se incorpora en cuanto esta listo.
+   */
+  readonly limiteArranqueMs = 90_000
+
   /** Lo que `prepararDetectores` pregunta cuando se agota el tiempo. */
   diagnostico(): string {
     return this.entorno(this.context)

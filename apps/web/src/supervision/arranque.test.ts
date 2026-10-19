@@ -120,3 +120,43 @@ it('un detector que falla al describirse no rompe el arranque', async () => {
   expect(arranque.listo).toBe(false)
   expect(arranque.motivo).toBe('sin micrófono')
 })
+
+it('cada detector puede declarar cuanto tarda en arrancar', async () => {
+  // El de habla baja casi trece megas antes de poder decir nada; la vision
+  // tiene el modelo listo en segundo y medio. Un limite unico condenaba al
+  // lento a fallar siempre.
+  vi.useFakeTimers()
+  const rapido = detector('mirada', async () => undefined)
+  const lento = detector('habla', () => new Promise<void>((ok) => setTimeout(ok, 40_000)))
+  ;(lento as { limiteArranqueMs?: number }).limiteArranqueMs = 90_000
+
+  const corriendo = prepararDetectores([rapido, lento], contexto, 15_000)
+  await vi.advanceTimersByTimeAsync(41_000)
+  const arranques = await corriendo
+
+  expect(arranques.every((a) => a.listo)).toBe(true)
+  vi.useRealTimers()
+})
+
+it('los que ya estan listos no esperan al lento', async () => {
+  // **Arrancar a la vez no sirve de nada si luego se espera a todos.** Con el
+  // limite del habla en noventa segundos, la camara esta lista en dos y el
+  // estudiante seguiria sin su vista previa minuto y medio.
+  vi.useFakeTimers()
+  const listos: string[] = []
+  const rapido = detector('mirada', async () => undefined)
+  const lento = detector('habla', () => new Promise<void>((ok) => setTimeout(ok, 60_000)))
+  ;(lento as { limiteArranqueMs?: number }).limiteArranqueMs = 90_000
+
+  const corriendo = prepararDetectores([rapido, lento], contexto, 15_000, (a) =>
+    listos.push(a.detector.nombre)
+  )
+
+  await vi.advanceTimersByTimeAsync(100)
+  expect(listos).toEqual(['mirada']) // ya supervisa, con el habla todavia cargando
+
+  await vi.advanceTimersByTimeAsync(61_000)
+  await corriendo
+  expect(listos).toEqual(['mirada', 'habla'])
+  vi.useRealTimers()
+})
