@@ -274,17 +274,39 @@ class TestQuestionRepository:
         return SupabaseQuestionRepository(as_client(fake))
 
     def test_resolves_the_session(self, repository: SupabaseQuestionRepository) -> None:
-        assert repository.find_session_id(QUESTION) == SESSION
+        owner = repository.find_owner(QUESTION)
+        assert owner is not None
+        assert owner.session_id == SESSION
+
+    def test_a_bank_question_exists_even_without_a_session(
+        self, repository: SupabaseQuestionRepository, fake: FakeSupabaseClient
+    ) -> None:
+        # **El fallo que dejaba sin evidencia a todo examen armado desde un
+        # banco.** Estas preguntas tienen `session_id` nulo, y devolver `None`
+        # las hacia indistinguibles de una pregunta inexistente: la API
+        # rechazaba cada senal de camara con "la pregunta no existe" y el
+        # docente se quedaba sin una sola alerta ni una sola captura.
+        de_banco = uuid4()
+        banco = uuid4()
+        fake.tables["questions"].rows.append(
+            {"id": str(de_banco), "session_id": None, "bank_id": str(banco)}
+        )
+
+        owner = repository.find_owner(de_banco)
+
+        assert owner is not None
+        assert owner.session_id is None
+        assert owner.bank_id == banco
 
     def test_unknown_question(self, repository: SupabaseQuestionRepository) -> None:
-        assert repository.find_session_id(uuid4()) is None
+        assert repository.find_owner(uuid4()) is None
 
     def test_positive_results_are_cached_forever(
         self, repository: SupabaseQuestionRepository, fake: FakeSupabaseClient
     ) -> None:
-        # questions.session_id no cambia nunca una vez creada la pregunta.
-        repository.find_session_id(QUESTION)
-        repository.find_session_id(QUESTION)
+        # Ni la sesion ni el banco cambian una vez creada la pregunta.
+        repository.find_owner(QUESTION)
+        repository.find_owner(QUESTION)
 
         assert fake.tables["questions"].select_count == 1
 
@@ -293,8 +315,10 @@ class TestQuestionRepository:
     ) -> None:
         # Una pregunta puede crearse despues de que se consulte.
         unknown = uuid4()
-        assert repository.find_session_id(unknown) is None
+        assert repository.find_owner(unknown) is None
 
         fake.tables["questions"].rows.append({"id": str(unknown), "session_id": str(SESSION)})
 
-        assert repository.find_session_id(unknown) == SESSION
+        owner = repository.find_owner(unknown)
+        assert owner is not None
+        assert owner.session_id == SESSION

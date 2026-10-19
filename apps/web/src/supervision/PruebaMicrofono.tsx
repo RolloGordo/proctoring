@@ -176,7 +176,14 @@ export function PruebaMicrofono() {
           audio.
         </p>
 
-        {microfonos.length > 1 && (
+        {/*
+          Se ensena en cuanto hay un microfono, no solo si hay varios. Con el
+          umbral en «mas de uno» no aparecia en el equipo donde hacia falta:
+          quien tiene una camara virtual no siempre acaba con dos entradas
+          enumeradas, y sin la lista no hay forma de saber cual se esta usando
+          ni de probar con otra.
+        */}
+        {microfonos.length > 0 && (
           <p>
             <label htmlFor="elegir-microfono">Micrófono</label>
             <select

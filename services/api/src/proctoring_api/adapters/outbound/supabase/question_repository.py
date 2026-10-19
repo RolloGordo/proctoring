@@ -14,6 +14,7 @@ from uuid import UUID
 
 from supabase import Client
 
+from proctoring_api.application.ports.question_repository import QuestionOwner
 from proctoring_api.domain.grading import MANUAL_TYPES
 from proctoring_api.domain.question import (
     Question,
@@ -37,12 +38,13 @@ class SupabaseQuestionRepository:
 
     def __init__(self, client: Client) -> None:
         self._client = client
-        #: question_id -> session_id. No cambia nunca una vez creada la pregunta,
-        #: y esta consulta se hace en cada `gaze_away` y cada `speech_detected`.
-        self._session_cache: dict[UUID, UUID] = {}
+        #: question_id -> de quien es. No cambia nunca una vez creada la
+        #: pregunta, y esta consulta se hace en cada `gaze_away` y cada
+        #: `speech_detected`.
+        self._session_cache: dict[UUID, QuestionOwner] = {}
         self._lock = threading.Lock()
 
-    def find_session_id(self, question_id: UUID) -> UUID | None:
+    def find_owner(self, question_id: UUID) -> QuestionOwner | None:
         with self._lock:
             cached = self._session_cache.get(question_id)
         if cached is not None:
@@ -50,7 +52,7 @@ class SupabaseQuestionRepository:
 
         response = (
             self._client.table(QUESTIONS_TABLE)
-            .select("session_id")
+            .select("session_id, bank_id")
             .eq("id", str(question_id))
             .limit(1)
             .execute()
@@ -59,14 +61,16 @@ class SupabaseQuestionRepository:
         if not rows:
             return None
 
-        raw = rows[0].get("session_id")
-        if not isinstance(raw, str):
-            return None
-
-        session_id = UUID(raw)
+        fila = rows[0]
+        cruda_sesion = fila.get("session_id")
+        cruda_banco = fila.get("bank_id")
+        dueno = QuestionOwner(
+            session_id=UUID(cruda_sesion) if isinstance(cruda_sesion, str) else None,
+            bank_id=UUID(cruda_banco) if isinstance(cruda_banco, str) else None,
+        )
         with self._lock:
-            self._session_cache[question_id] = session_id
-        return session_id
+            self._session_cache[question_id] = dueno
+        return dueno
 
     def save_many(self, questions: Sequence[Question]) -> None:
         """Crea o reemplaza las preguntas con sus opciones.
@@ -91,10 +95,13 @@ class SupabaseQuestionRepository:
 
         with self._lock:
             for pregunta in questions:
-                # Las de banco no tienen sesion: cachearlas con `None` haria que
-                # `find_session_id` devolviera un acierto falso.
-                if pregunta.session_id is not None:
-                    self._session_cache[pregunta.id] = pregunta.session_id
+                # Las de banco tambien se cachean: el dueno guarda los dos
+                # campos, asi que ya no se confunde "es de un banco" con "no
+                # existe", que es lo que rechazaba todas las senales de camara
+                # de un examen armado desde un banco.
+                self._session_cache[pregunta.id] = QuestionOwner(
+                    session_id=pregunta.session_id, bank_id=pregunta.bank_id
+                )
 
     def find_by_id(self, question_id: UUID) -> Question | None:
         response = (

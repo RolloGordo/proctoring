@@ -54,6 +54,16 @@ export interface Detector {
    * estudiante sin rendir.
    */
   preparar?(context?: DetectorContext): Promise<void>
+  /**
+   * En que condiciones intento arrancar, en una linea.
+   *
+   * Lo pregunta `prepararDetectores` cuando un detector agota su tiempo. Un
+   * tiempo agotado no lanza nada, asi que sin esto el unico dato era «no
+   * arranco en 15000 ms», que no distingue entre un modelo que no carga y una
+   * pista de audio que no se abre. El examen corre en una ventana en modo
+   * kiosco: lo que no quede registrado aqui, no se sabe.
+   */
+  diagnostico?(): string
   /** Audio emits bounded segments instead of a second empty event. */
   readonly ownsSegments?: boolean
   /** Mira el instante actual. Tiene que ser rápido: corre muchas veces por segundo. */

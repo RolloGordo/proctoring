@@ -86,3 +86,37 @@ describe('arrancar los detectores', () => {
     await expect(prepararDetectores([roto], contexto)).resolves.toHaveLength(1)
   })
 })
+
+it('al que agota el tiempo se le pregunta en que condiciones lo intento', async () => {
+  // «No arranco en 15000 ms» no distingue un modelo que no carga de una pista
+  // de audio que no se abre, y el examen corre en modo kiosco: lo que no quede
+  // en el registro no se sabe. La excepcion la lanza el reloj, no el detector,
+  // asi que hay que preguntarle.
+  vi.useFakeTimers()
+  const colgado = detector('habla', () => new Promise<void>(() => {}))
+  ;(colgado as { diagnostico?: () => string }).diagnostico = () =>
+    'isolated=false sab=undefined cores=4 pistas=1'
+
+  const corriendo = prepararDetectores([colgado], contexto, 15_000)
+  await vi.advanceTimersByTimeAsync(15_001)
+  const [arranque] = await corriendo
+
+  expect(arranque.listo).toBe(false)
+  expect(arranque.motivo).toContain('No arrancó')
+  expect(arranque.motivo).toContain('isolated=false')
+  vi.useRealTimers()
+})
+
+it('un detector que falla al describirse no rompe el arranque', async () => {
+  const roto = detector('habla', async () => {
+    throw new Error('sin micrófono')
+  })
+  ;(roto as { diagnostico?: () => string }).diagnostico = () => {
+    throw new Error('tambien roto')
+  }
+
+  const [arranque] = await prepararDetectores([roto], contexto)
+
+  expect(arranque.listo).toBe(false)
+  expect(arranque.motivo).toBe('sin micrófono')
+})

@@ -46,6 +46,34 @@ export class DetectorHabla implements Detector {
     }
   }
 
+  /**
+   * Las condiciones que el VAD necesita, en una línea.
+   *
+   * Va dentro del motivo del fallo porque el examen corre en una ventana en
+   * modo kiosco de Electron, donde no hay consola que abrir. Probado contra la
+   * web desplegada desde un navegador normal, `MicVAD.new()` y `start()` tardan
+   * medio segundo; dentro de la aplicación se pasa de los quince. La diferencia
+   * está en alguna de estas condiciones, y adivinar cuál ya costó bastante.
+   */
+  private entorno(context?: DetectorContext): string {
+    const pista = context?.stream.getAudioTracks()[0]
+    const ajustes = pista?.getSettings() ?? {}
+    return [
+      `isolated=${self.crossOriginIsolated}`,
+      `sab=${typeof SharedArrayBuffer}`,
+      `cores=${navigator.hardwareConcurrency ?? '?'}`,
+      `pistas=${context?.stream.getAudioTracks().length ?? 0}`,
+      `rate=${ajustes.sampleRate ?? '?'}`,
+      `canales=${ajustes.channelCount ?? '?'}`,
+      `estado=${pista?.readyState ?? '?'}`
+    ].join(' ')
+  }
+
+  /** Lo que `prepararDetectores` pregunta cuando se agota el tiempo. */
+  diagnostico(): string {
+    return this.entorno(this.context)
+  }
+
   async preparar(context?: DetectorContext): Promise<void> {
     const generation = ++this.generation
     if (!context?.stream.getAudioTracks().length) throw new Error('Falta la pista de micrófono.')
@@ -56,42 +84,53 @@ export class DetectorHabla implements Detector {
     this.sampleRate = context.stream.getAudioTracks()[0].getSettings().sampleRate ?? 0
     const { MicVAD } = await import('@ricky0123/vad-web')
     if (this.stopped || generation !== this.generation) return
-    const vad = await MicVAD.new({
-      model: 'v5',
-      startOnLoad: false,
-      baseAssetPath: '/vad/',
-      onnxWASMBasePath: '/vad/',
-      getStream: async () => new MediaStream(context.stream.getAudioTracks()),
-      pauseStream: async () => {},
-      resumeStream: async () => new MediaStream(context.stream.getAudioTracks()),
-      positiveSpeechThreshold: this.threshold,
-      negativeSpeechThreshold: Math.max(0.05, this.threshold - 0.15),
-      minSpeechMs: this.minimoMs,
-      redemptionMs: 400,
-      preSpeechPadMs: 0,
-      submitUserSpeechOnPause: false,
-      onSpeechStart: () => {
-        if (this.stopped || generation !== this.generation) return
-        this.speaking = true
-        this.startSegment()
-      },
-      onSpeechEnd: () => {
-        if (generation !== this.generation) return
-        this.speaking = false
-        void this.finishSegment()
-      },
-      onVADMisfire: () => {
-        if (generation !== this.generation) return
-        this.speaking = false
-        void this.finishSegment(true)
+
+    // Cada etapa por separado: «no arrancó» no dice lo mismo si se quedó
+    // cargando el modelo que si se quedó al abrir la pista de audio, y hasta
+    // ahora las dos daban el mismo mensaje.
+    let etapa = 'cargando el modelo'
+    try {
+      const vad = await MicVAD.new({
+        model: 'v5',
+        startOnLoad: false,
+        baseAssetPath: '/vad/',
+        onnxWASMBasePath: '/vad/',
+        getStream: async () => new MediaStream(context.stream.getAudioTracks()),
+        pauseStream: async () => {},
+        resumeStream: async () => new MediaStream(context.stream.getAudioTracks()),
+        positiveSpeechThreshold: this.threshold,
+        negativeSpeechThreshold: Math.max(0.05, this.threshold - 0.15),
+        minSpeechMs: this.minimoMs,
+        redemptionMs: 400,
+        preSpeechPadMs: 0,
+        submitUserSpeechOnPause: false,
+        onSpeechStart: () => {
+          if (this.stopped || generation !== this.generation) return
+          this.speaking = true
+          this.startSegment()
+        },
+        onSpeechEnd: () => {
+          if (generation !== this.generation) return
+          this.speaking = false
+          void this.finishSegment()
+        },
+        onVADMisfire: () => {
+          if (generation !== this.generation) return
+          this.speaking = false
+          void this.finishSegment(true)
+        }
+      })
+      if (this.stopped || generation !== this.generation) {
+        await vad.destroy()
+        return
       }
-    })
-    if (this.stopped || generation !== this.generation) {
-      await vad.destroy()
-      return
+      this.vad = vad
+      etapa = 'abriendo la pista de audio'
+      await vad.start()
+    } catch (fallo) {
+      const causa = fallo instanceof Error ? fallo.message : String(fallo)
+      throw new Error(`${etapa}: ${causa} [${this.entorno(context)}]`)
     }
-    this.vad = vad
-    await vad.start()
   }
 
   private startSegment(): void {
