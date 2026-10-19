@@ -84,10 +84,20 @@ export async function prepararDetectores(
         } catch {
           // Si ni apagarse puede, no hay nada mejor que hacer aqui.
         }
+        const causa = fallo instanceof Error ? fallo.message : 'desconocido'
+        // Al que agota el tiempo se le pregunta en que condiciones lo intento:
+        // la excepcion la lanza el reloj, no el detector, asi que por si sola
+        // no dice nada util.
+        let contexto = ''
+        try {
+          contexto = detector.diagnostico?.() ?? ''
+        } catch {
+          // Un detector roto puede fallar tambien al describirse.
+        }
         return {
           detector,
           listo: false,
-          motivo: fallo instanceof Error ? fallo.message.slice(0, 200) : 'desconocido'
+          motivo: (contexto ? `${causa} [${contexto}]` : causa).slice(0, 200)
         }
       }
     })
