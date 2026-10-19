@@ -71,13 +71,26 @@ export async function conLimite<T>(promesa: Promise<T>, ms: number): Promise<T> 
 export async function prepararDetectores(
   detectores: readonly Detector[],
   contexto: DetectorContext,
-  limiteMs = LIMITE_ARRANQUE_MS
+  limiteMs = LIMITE_ARRANQUE_MS,
+  alTerminar?: (arranque: Arranque) => void
 ): Promise<Arranque[]> {
+  // `alTerminar` se llama segun va terminando cada uno, no al final.
+  //
+  // Sin esto, el detector mas lento decidia cuando empezaba a supervisar todo
+  // lo demas: con un limite de noventa segundos para el habla, la camara
+  // estaria lista en dos y el estudiante seguiria viendo «iniciando» minuto y
+  // medio, sin su vista previa. Arrancar a la vez no sirve de nada si luego se
+  // espera a todos.
+  const avisar = (arranque: Arranque): Arranque => {
+    alTerminar?.(arranque)
+    return arranque
+  }
   return Promise.all(
     detectores.map(async (detector): Promise<Arranque> => {
+      const suLimite = detector.limiteArranqueMs ?? limiteMs
       try {
-        await conLimite(Promise.resolve(detector.preparar?.(contexto)), limiteMs)
-        return { detector, listo: true }
+        await conLimite(Promise.resolve(detector.preparar?.(contexto)), suLimite)
+        return avisar({ detector, listo: true })
       } catch (fallo) {
         try {
           detector.detener?.()
@@ -94,11 +107,11 @@ export async function prepararDetectores(
         } catch {
           // Un detector roto puede fallar tambien al describirse.
         }
-        return {
+        return avisar({
           detector,
           listo: false,
           motivo: (contexto ? `${causa} [${contexto}]` : causa).slice(0, 200)
-        }
+        })
       }
     })
   )

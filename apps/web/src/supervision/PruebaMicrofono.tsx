@@ -183,7 +183,14 @@ export function PruebaMicrofono() {
           enumeradas, y sin la lista no hay forma de saber cual se esta usando
           ni de probar con otra.
         */}
-        {microfonos.length > 0 && (
+        {/*
+          Se ensena en cuanto la prueba ha arrancado, aunque la lista venga
+          vacia. **Un control que desaparece cuando no hay nada que elegir es
+          indistinguible de uno que no se desplego**: se pidio este selector dos
+          veces y las dos parecia que no estaba hecho, cuando lo que pasaba era
+          que el equipo no enumeraba ninguna entrada.
+        */}
+        {estado !== 'pendiente' && estado !== 'preparando' && (
           <p>
             <label htmlFor="elegir-microfono">Micrófono</label>
             <select
@@ -203,8 +210,9 @@ export function PruebaMicrofono() {
               ))}
             </select>
             <span className="ayuda">
-              Si tienes una cámara virtual instalada (ManyCam, OBS), suele añadir su propio
-              micrófono. Elige el real si la prueba no confirma.
+              {microfonos.length === 0
+                ? 'Tu equipo no dio la lista de micrófonos, así que se usa el que elija el sistema. No impide rendir.'
+                : `${microfonos.length} ${microfonos.length === 1 ? 'entrada detectada' : 'entradas detectadas'}. Si tienes una cámara virtual instalada (ManyCam, OBS), suele añadir su propio micrófono: elige el real si la prueba no confirma.`}
             </span>
           </p>
         )}
