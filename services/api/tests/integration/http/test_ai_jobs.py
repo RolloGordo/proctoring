@@ -18,7 +18,7 @@ from proctoring_api.domain.exam_session import (
     SupervisionPreset,
 )
 from proctoring_api.domain.participant import SessionParticipant
-from proctoring_api.domain.question import QuestionType
+from proctoring_api.domain.question import Question, QuestionType
 
 from tests.conftest import (
     CONTRACT_STUDENT_ID,
@@ -523,3 +523,39 @@ class TestElWorkerNoNecesitaLaClaveDeServicio:
 
         assert trabajo.audio_url is None
         assert trabajo.audio_path == "audio/fragmento.webm"
+
+
+class TestPreguntaDeBanco:
+    """Un examen armado desde un banco tambien tiene que traer su enunciado.
+
+    Las preguntas de banco tienen `session_id` nulo -las comparte cualquier
+    examen al que se asocie el banco-, asi que buscarlas entre las de la sesion
+    no las encontraba. El worker se quedaba sin enunciado y la similitud no se
+    calculaba: en produccion quedaron 18 fragmentos transcritos con la similitud
+    vacia, es decir, el diferencial del proyecto a medias.
+    """
+
+    def test_trae_el_enunciado_de_una_pregunta_de_banco(self, client: TestClient, app: Any) -> None:
+        datos = examen_con_habla(app)
+        de_banco = Question.create(
+            bank_id=uuid4(),
+            position=1,
+            question_type=QuestionType.ESSAY,
+            statement=ENUNCIADO,
+        )
+        app.state.question_repository.save_many([de_banco])
+        evento = ProctoringEvent.create(
+            session_id=datos["sesion"].id,
+            student_id=datos["evento"].student_id,
+            question_id=de_banco.id,
+            event_type=EventType.SPEECH_DETECTED,
+            started_at=NOW,
+            duration_ms=8_000,
+            evidence_path="audio/de-banco.webm",
+        )
+        app.state.event_repository.save(evento)
+
+        respuesta = client.get(f"/api/v1/internal/audio-jobs/{evento.id}")
+
+        assert respuesta.status_code == 200, respuesta.text
+        assert respuesta.json()["question_statement"] == ENUNCIADO
