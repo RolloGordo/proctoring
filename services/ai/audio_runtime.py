@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import logging
 import math
 import os
 from functools import lru_cache
@@ -13,6 +14,8 @@ from typing import Any
 from urllib.parse import quote, urlsplit
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 SIM_REVISION = "e8f8c211226b894fcb81acc59f3b34ba3efd5f42"
 MAX_AUDIO_BYTES = 8_000_000
@@ -206,12 +209,33 @@ def measure_audio(path: Path, question: str | None) -> dict[str, Any]:
 
     waveform = decode_audio(path)  # Bounds duration/decoded memory before ASR.
     asr = asr_model()
-    # Validate local prerequisites before a billable external transcription request.
-    model = similarity_model() if question is not None and question.strip() else None
+    model = None
+    sin_modelo: str | None = None
+    if question is not None and question.strip():
+        try:
+            model = similarity_model()
+        except RuntimeError as fallo:
+            # **Que falte el modelo no puede tirar el analisis entero.**
+            #
+            # Esto no se capturaba, asi que la excepcion subia hasta RQ y el
+            # trabajo moria completo: ni transcripcion, ni fragmento analizado,
+            # ni nada en el expediente del docente. Se leia igual que si el
+            # estudiante no hubiera hablado, que es el peor fallo posible aqui.
+            #
+            # Con el modelo caido no se puede medir la similitud, y entonces la
+            # alerta de consulta a IA no se dispara: eso es la regla funcionando
+            # —exige las dos condiciones—, no un fallo. Pero el habla si se
+            # reporta por si sola desde el 19/10, y el docente tiene que recibir
+            # su fragmento y su transcripcion igualmente.
+            logger.warning("Similitud no disponible: %s", fallo)
+            sin_modelo = str(fallo)
     detector = synthetic_model()
     transcript = str(asr.transcribe(path)["transcript"])
     similarity = None
     versions: dict[str, str] = {"asr": _asr_version(asr), "sim": "not-applicable"}
+    if sin_modelo is not None:
+        versions["sim"] = "unavailable:model-not-loaded"
+        versions["sim_error"] = sin_modelo[:200]
     if model is not None:
         try:
             similarity = model.score(question, transcript)
