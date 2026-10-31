@@ -9,6 +9,21 @@
       content="Plataforma de exámenes remotos con supervisión transparente."
     />
     <!--
+      El icono de la pestaña.
+
+      El SVG es el que usan los navegadores actuales: pesa 700 bytes y se ve
+      nitido en cualquier tamano. Los PNG son para los que no lo aceptan y para
+      la pantalla de inicio de iOS, que ignora el SVG. Los cuatro salen de la
+      misma forma, con `npm run iconos`.
+
+      Van en `public/`, servidos por nosotros: ni un CDN, por lo mismo que las
+      tipografias.
+    -->
+    <link rel="icon" href="/icono.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icono-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/icono-180.png" />
+    <meta name="theme-color" content="#212529" />
+    <!--
       Sin tipografias de Google a proposito.
 
       El proyecto se toma el trabajo de auto-alojar MediaPipe y el VAD para no
