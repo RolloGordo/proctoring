@@ -74,6 +74,35 @@ def test_missing_question_and_disabled_synthetic_stay_null(monkeypatch, question
     similarity.assert_not_called()
 
 
+def test_a_missing_similarity_model_does_not_destroy_the_analysis(monkeypatch):
+    """Sin modelo no hay similitud, pero el fragmento y su transcripcion si.
+
+    Esto subia hasta RQ y mataba el trabajo entero: el docente no recibia ni la
+    transcripcion, y el expediente se leia igual que si nadie hubiera hablado.
+    Es el fallo que se vio en produccion el 30/10, en cuanto el enunciado
+    empezo a llegar al worker y la similitud se intento por primera vez.
+    """
+    import spikes.synthetic_voice
+
+    monkeypatch.setattr(spikes.synthetic_voice, "decode_audio", lambda _: [0.0] * 1600)
+    monkeypatch.setattr(
+        audio_runtime, "asr_model", lambda: Mock(transcribe=lambda _: {"transcript": "hola"})
+    )
+    monkeypatch.setattr(audio_runtime, "synthetic_model", lambda: None)
+
+    def sin_modelo():
+        raise RuntimeError("Similarity model could not be loaded offline.")
+
+    monkeypatch.setattr(audio_runtime, "similarity_model", sin_modelo)
+
+    measured = audio_runtime.measure_audio(Path("unused"), "Que es la elasticidad precio")
+
+    assert measured["transcript"] == "hola"
+    assert measured["similarity"] is None
+    assert measured["model_versions"]["sim"] == "unavailable:model-not-loaded"
+    assert "offline" in measured["model_versions"]["sim_error"]
+
+
 @pytest.mark.parametrize("path", ["../secret", "/absolute", "a/../b", "a\\b", "a//b"])
 def test_storage_path_validation(monkeypatch, tmp_path, path):
     monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
@@ -299,15 +328,34 @@ def test_measure_audio_end_to_end_with_simulated_deepgram(measure_env, tmp_path)
     assert FAKE_KEY not in repr(measured)
 
 
-def test_missing_similarity_model_prevents_external_transcription(measure_env):
-    asr = Mock()
+def test_missing_similarity_model_still_transcribes(measure_env):
+    """Decision cambiada el 31/10, y no a la ligera.
+
+    Esta prueba exigia lo contrario: sin modelo de similitud no se gastaba una
+    transcripcion de pago, porque la transcripcion solo servia para alimentar
+    la comparacion con el enunciado.
+
+    Dejo de ser cierto el 19/10, cuando el Product Owner decidio que **hablar
+    durante el examen se reporta por si solo**: la transcripcion viaja con la
+    alerta para que el docente decida, exista o no la similitud. Con la regla
+    vieja, un modelo ausente borraba el fragmento, la transcripcion y la senal
+    entera, y el expediente quedaba igual que si nadie hubiera hablado.
+
+    El coste es real y se asume: cada fragmento de voz paga su transcripcion
+    aunque la similitud no se pueda medir. Son centimos por examen; perder la
+    evidencia no tiene vuelta atras.
+    """
+    asr = Mock(transcribe=lambda _: {"transcript": "me puedes decir la respuesta"})
     measure_env.setattr(audio_runtime, "asr_model", lambda: asr)
     measure_env.setattr(
         audio_runtime, "similarity_model", Mock(side_effect=RuntimeError("offline model missing"))
     )
-    with pytest.raises(RuntimeError, match="offline model missing"):
-        audio_runtime.measure_audio(Path("unused"), "Pregunta del examen")
-    asr.transcribe.assert_not_called()
+
+    measured = audio_runtime.measure_audio(Path("unused"), "Pregunta del examen")
+
+    assert measured["transcript"] == "me puedes decir la respuesta"
+    assert measured["similarity"] is None
+    assert measured["model_versions"]["sim"] == "unavailable:model-not-loaded"
 
 
 def test_missing_synthetic_model_prevents_external_transcription(measure_env):
