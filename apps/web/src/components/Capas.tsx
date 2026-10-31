@@ -24,22 +24,41 @@ interface Enlace {
   activo: (ruta: string) => boolean
 }
 
-const ENLACES: Record<Rol, Enlace[]> = {
+interface GrupoEnlaces {
+  titulo: string
+  enlaces: Enlace[]
+}
+
+const ENLACES: Record<Rol, GrupoEnlaces[]> = {
   teacher: [
-    { a: '/docente', texto: 'Panel', activo: (r) => r === '/docente' },
     {
-      a: '/sesiones',
-      texto: 'Mis exámenes',
-      // "Crear" tiene su propio enlace: sin esta excepción se encenderían los dos.
-      activo: (r) => r.startsWith('/sesiones') && r !== '/sesiones/nueva'
+      titulo: 'Inicio',
+      enlaces: [{ a: '/docente', texto: 'Panel', activo: (r) => r === '/docente' }]
     },
-    { a: '/sesiones/nueva', texto: 'Crear examen', activo: (r) => r === '/sesiones/nueva' },
-    { a: '/bancos', texto: 'Bancos de preguntas', activo: (r) => r.startsWith('/bancos') },
-    { a: '/cursos', texto: 'Mis cursos', activo: (r) => r.startsWith('/cursos') }
+    {
+      titulo: 'Organización',
+      enlaces: [
+        { a: '/cursos', texto: 'Cursos y estudiantes', activo: (r) => r.startsWith('/cursos') },
+        { a: '/bancos', texto: 'Bancos de preguntas', activo: (r) => r.startsWith('/bancos') }
+      ]
+    },
+    {
+      titulo: 'Evaluaciones',
+      enlaces: [
+        {
+          a: '/sesiones',
+          texto: 'Exámenes',
+          activo: (r) => r.startsWith('/sesiones') && r !== '/sesiones/nueva'
+        },
+        { a: '/sesiones/nueva', texto: 'Crear examen', activo: (r) => r === '/sesiones/nueva' }
+      ]
+    }
   ],
   student: [
-    { a: '/estudiante', texto: 'Panel', activo: (r) => r === '/estudiante' },
-    { a: '/examen', texto: 'Entrar a un examen', activo: (r) => r.startsWith('/examen') }
+    {
+      titulo: 'Inicio',
+      enlaces: [{ a: '/estudiante', texto: 'Panel', activo: (r) => r === '/estudiante' }]
+    }
   ]
 }
 
@@ -103,6 +122,37 @@ export function CapaPanel({ rol, children }: { rol: Rol; children: ReactNode }) 
   const [abierto, setAbierto] = useState(false)
   const inicio = inicioSegunRol(rol)
   const otro: Rol = rol === 'teacher' ? 'student' : 'teacher'
+  const segmento = pathname.match(/^\/sesiones\/([^/]+)(?:\/|$)/)
+  const idExamen = segmento?.[1] && segmento[1] !== 'nueva' ? segmento[1] : undefined
+  const navegacionExamen: Enlace[] = idExamen
+    ? [
+        {
+          a: `/sesiones/${idExamen}`,
+          texto: 'Resumen y alertas',
+          activo: (r) => r === `/sesiones/${idExamen}`
+        },
+        {
+          a: `/sesiones/${idExamen}/participantes`,
+          texto: 'Participantes',
+          activo: (r) => r.endsWith('/participantes')
+        },
+        {
+          a: `/sesiones/${idExamen}/preguntas`,
+          texto: 'Preguntas',
+          activo: (r) => r.endsWith('/preguntas')
+        },
+        {
+          a: `/sesiones/${idExamen}/resultados`,
+          texto: 'Resultados',
+          activo: (r) => r.endsWith('/resultados') || /\/estudiantes\/[^/]+$/.test(r)
+        },
+        {
+          a: `/sesiones/${idExamen}/editar`,
+          texto: 'Configuración',
+          activo: (r) => r.endsWith('/editar')
+        }
+      ]
+    : []
 
   return (
     <div className="app">
@@ -124,16 +174,36 @@ export function CapaPanel({ rol, children }: { rol: Rol; children: ReactNode }) 
         <p className="lateral-rol">{NOMBRE_ROL[rol]}</p>
 
         <nav className="lateral-nav" aria-label={`Menú del ${NOMBRE_ROL[rol].toLowerCase()}`}>
-          {ENLACES[rol].map((enlace) => (
-            <NavLink
-              key={enlace.a}
-              to={enlace.a}
-              className={enlace.activo(pathname) ? 'activo' : ''}
-              onClick={() => setAbierto(false)}
-            >
-              {enlace.texto}
-            </NavLink>
+          {ENLACES[rol].map((grupo) => (
+            <div className="lateral-grupo" key={grupo.titulo}>
+              <p className="lateral-grupo-titulo">{grupo.titulo}</p>
+              {grupo.enlaces.map((enlace) => (
+                <NavLink
+                  key={enlace.a}
+                  to={enlace.a}
+                  className={enlace.activo(pathname) ? 'activo' : ''}
+                  onClick={() => setAbierto(false)}
+                >
+                  {enlace.texto}
+                </NavLink>
+              ))}
+            </div>
           ))}
+          {navegacionExamen.length > 0 && (
+            <div className="lateral-grupo lateral-grupo-examen">
+              <p className="lateral-grupo-titulo">Este examen</p>
+              {navegacionExamen.map((enlace) => (
+                <NavLink
+                  key={enlace.a}
+                  to={enlace.a}
+                  className={enlace.activo(pathname) ? 'activo' : ''}
+                  onClick={() => setAbierto(false)}
+                >
+                  {enlace.texto}
+                </NavLink>
+              ))}
+            </div>
+          )}
         </nav>
 
         <div className="lateral-pie">

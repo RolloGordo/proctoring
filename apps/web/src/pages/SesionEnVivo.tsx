@@ -11,7 +11,14 @@ import {
 } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
-import { detalleEvento, duracion, fechaLarga, nombreEvento, nombrePreset, soloHora } from '../lib/formato'
+import {
+  detalleEvento,
+  duracion,
+  fechaLarga,
+  nombreEvento,
+  nombrePreset,
+  soloHora
+} from '../lib/formato'
 import { CodigoAcceso } from '../components/CodigoAcceso'
 import { mergeAlerts } from '../lib/live-alerts'
 import { mergeEvents } from '../lib/live-events'
@@ -197,7 +204,10 @@ export function SesionEnVivo() {
     () => (alertasSesion?.sessionId === id ? alertasSesion.datos : []),
     [alertasSesion, id]
   )
-  const eventoPorId = useMemo(() => new Map(eventos.map((evento) => [evento.id, evento])), [eventos])
+  const eventoPorId = useMemo(
+    () => new Map(eventos.map((evento) => [evento.id, evento])),
+    [eventos]
+  )
   const resumen = useMemo(() => {
     const porSeveridad = { high: 0, medium: 0, low: 0 }
     for (const alerta of alertas) porSeveridad[alerta.severity] += 1
@@ -304,7 +314,7 @@ export function SesionEnVivo() {
               Editar
             </Link>
             <Link to={`/sesiones/${id}/participantes`} className="boton boton-secundario">
-              Sala de espera
+              Participantes
             </Link>
             <Link to={`/sesiones/${id}/resultados`} className="boton boton-secundario">
               Resultados

@@ -118,10 +118,32 @@ export function Curso() {
         </Link>
       </div>
 
+      <section className="bloque tarjeta">
+        <div className="tarjeta-cuerpo">
+          <h2>Preparar una evaluación</h2>
+          <p className="ayuda">
+            Si ya tienes preguntas, crea el examen y selecciónalas allí. Si aún no, prepara un banco
+            para reutilizarlas. También puedes crear el examen y añadir preguntas después.
+          </p>
+          <div className="fila">
+            <Link to={`/bancos?curso=${encodeURIComponent(id)}`} className="boton boton-secundario">
+              1. Preparar preguntas
+            </Link>
+            <Link to={`/sesiones/nueva?curso=${encodeURIComponent(id)}`} className="boton">
+              2. Crear examen para este curso
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className="bloque">
         <div className="tarjeta">
           <div className="tarjeta-cuerpo">
-            <h2>Matricular a un estudiante</h2>
+            <h2>Estudiantes del curso</h2>
+            <p className="ayuda">
+              Añadirlos aquí organiza la lista del curso. Para entrar al examen, cada estudiante
+              sigue necesitando el código de acceso que se genera al crearlo.
+            </p>
             <form onSubmit={(e) => void matricular(e)} className="formulario-curso">
               <label className="campo">
                 <span>Correo del estudiante</span>
@@ -146,19 +168,6 @@ export function Curso() {
             {aviso && <p className="aviso aviso-neutro">{aviso}</p>}
           </div>
         </div>
-      </section>
-
-      <section className="bloque">
-        <div className="encabezado-seccion">
-          <h2>Bancos de este curso</h2>
-          <Link to={`/bancos?curso=${encodeURIComponent(id)}`} className="boton boton-secundario">
-            Ver bancos del curso
-          </Link>
-        </div>
-        <p className="ayuda">
-          Desde esa vista puedes revisar los bancos asociados y distinguir los que aún no tienen
-          curso.
-        </p>
       </section>
 
       <section className="bloque">

@@ -27,10 +27,10 @@ export function Sesiones() {
     <>
       <div className="encabezado-pagina">
         <div>
-          <h1>Mis exámenes</h1>
+          <h1>Exámenes</h1>
           <p className="subtitulo">
-            Entra a un examen para ver sus alertas en vivo, o ve directo a sus preguntas y a su sala
-            de espera
+            Abre un examen para ver sus alertas, revisar sus preguntas o gestionar a sus
+            participantes.
           </p>
         </div>
         <Link to="/sesiones/nueva" className="boton">
@@ -121,7 +121,7 @@ export function Sesiones() {
                         to={`/sesiones/${sesion.id}/participantes`}
                         className="boton boton-texto"
                       >
-                        Sala de espera
+                        Participantes
                       </Link>
                     </div>
                   </td>

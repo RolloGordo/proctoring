@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { EditorPregunta, ListaPreguntas } from '../components/EditorPregunta'
 import { ImportarPreguntas } from '../components/ImportarPreguntas'
 import { api, type NewQuestion, type Question, type QuestionBank } from '../lib/api'
@@ -8,16 +8,28 @@ import { useAuth } from '../lib/auth-context'
 /** Las preguntas de un banco, con sus respuestas correctas. */
 export function Banco() {
   const { id = '' } = useParams()
+  const [searchParams] = useSearchParams()
   const { token } = useAuth()
 
   const [banco, setBanco] = useState<QuestionBank>()
   const [preguntas, setPreguntas] = useState<Question[]>()
   const [error, setError] = useState<string>()
+  const [mostrarEditor, setMostrarEditor] = useState(false)
+  const [avisoImportacion, setAvisoImportacion] = useState<string>()
+  // En una referencia y no en estado: lo único que hace es recordar que la
+  // próxima lista que llegue hay que traerla a la vista. Guardarlo en estado
+  // obligaba a apagarlo desde dentro del efecto, que es un render en cascada
+  // y lo que el linter rechaza.
+  const desplazarALista = useRef(false)
+  const listaRef = useRef<HTMLElement>(null)
 
   function recargarPreguntas(): void {
     api
       .listBankQuestions(id, token)
-      .then(setPreguntas)
+      .then((datos) => {
+        setPreguntas(datos)
+        if (datos.length === 0) setMostrarEditor(true)
+      })
       .catch((fallo: Error) => setError(fallo.message))
   }
 
@@ -33,6 +45,22 @@ export function Banco() {
       .then(setPreguntas)
       .catch((fallo: Error) => setError(fallo.message))
   }, [id, token])
+
+  useEffect(() => {
+    if (!desplazarALista.current || !preguntas) return
+    desplazarALista.current = false
+    listaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [preguntas])
+
+  function alImportar(_bancoId: string, importadas: number, completada: boolean): void {
+    recargarPreguntas()
+    if (!completada) return
+    setMostrarEditor(false)
+    setAvisoImportacion(
+      `${importadas} pregunta${importadas === 1 ? '' : 's'} importada${importadas === 1 ? '' : 's'}. Ya puedes revisarla${importadas === 1 ? '' : 's'} en el banco.`
+    )
+    desplazarALista.current = true
+  }
 
   async function cambiarPuntos(preguntaId: string, puntos: string): Promise<void> {
     setError(undefined)
@@ -68,6 +96,10 @@ export function Banco() {
   }
 
   const cuantas = preguntas?.length ?? 0
+  const cursoId = banco?.course_id ?? searchParams.get('curso')
+  const parametrosExamen = new URLSearchParams({ banco: id })
+  if (cursoId) parametrosExamen.set('curso', cursoId)
+  const rutaBancos = searchParams.toString() ? `/bancos?${searchParams.toString()}` : '/bancos'
 
   return (
     <>
@@ -78,56 +110,77 @@ export function Banco() {
             {preguntas ? `${cuantas} pregunta${cuantas === 1 ? '' : 's'}` : 'Cargando…'}
           </p>
         </div>
-        <Link to="/bancos" className="boton boton-secundario">
-          Volver a mis bancos
-        </Link>
+        <div className="fila">
+          {banco && cuantas > 0 && (
+            <Link to={`/sesiones/nueva?${parametrosExamen.toString()}`} className="boton">
+              Crear examen con este banco
+            </Link>
+          )}
+          <Link to={rutaBancos} className="boton boton-secundario">
+            Volver a mis bancos
+          </Link>
+        </div>
       </div>
 
       {error && <p className="aviso">{error}</p>}
 
-      <div className="columnas">
-        <section>
-          <div className="encabezado-seccion">
-            <h2>Añadir preguntas</h2>
-          </div>
+      <section className="bloque" ref={listaRef}>
+        <div className="encabezado-seccion">
+          <h2>Preguntas del banco</h2>
+          <button
+            type="button"
+            className="boton boton-secundario"
+            aria-expanded={mostrarEditor}
+            aria-controls="editor-preguntas-banco"
+            onClick={() => setMostrarEditor((abierto) => !abierto)}
+          >
+            {mostrarEditor ? 'Ocultar formulario' : 'Añadir o importar preguntas'}
+          </button>
+        </div>
 
-          <div className="tarjeta">
-            <div className="tarjeta-cuerpo">
-              <ImportarPreguntas
-                bancoId={id}
-                nombreBanco={banco?.name}
-                onImportado={() => recargarPreguntas()}
-              />
-              <hr className="separador" />
-              <EditorPregunta onGuardar={agregar} textoBoton="Añadir al banco" />
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <div className="encabezado-seccion">
-            <h2>En el banco</h2>
-          </div>
-
-          {preguntas?.length === 0 ? (
+        {mostrarEditor && (
+          <div id="editor-preguntas-banco" className="preguntas-editor">
+            <ImportarPreguntas
+              bancoId={id}
+              nombreBanco={banco?.name}
+              onImportado={alImportar}
+            />
             <div className="tarjeta">
-              <div className="vacio">
-                <h3>El banco está vacío</h3>
-                <p className="subtitulo">
-                  Añade la primera pregunta a la izquierda. Un banco con muchas preguntas es lo que
-                  permite que cada estudiante reciba un examen distinto.
-                </p>
+              <div className="tarjeta-cuerpo">
+                <h3>Crear una pregunta</h3>
+                <EditorPregunta onGuardar={agregar} textoBoton="Añadir al banco" />
               </div>
             </div>
-          ) : (
-            <ListaPreguntas
-              preguntas={preguntas ?? []}
-              onCambiarPuntos={cambiarPuntos}
-              onBorrar={borrar}
-            />
-          )}
-        </section>
-      </div>
+          </div>
+        )}
+
+        {avisoImportacion && (
+          <p className="aviso aviso-exito" role="status">
+            {avisoImportacion}
+          </p>
+        )}
+
+        {!preguntas ? (
+          <p className="tenue">Cargando preguntas…</p>
+        ) : preguntas.length === 0 ? (
+          <div className="tarjeta">
+            <div className="vacio">
+              <h3>El banco todavía está vacío</h3>
+              <p className="subtitulo">
+                Añade preguntas o impórtalas desde un archivo. Después podrás reutilizar este banco
+                en tus exámenes.
+              </p>
+              {!mostrarEditor && (
+                <button type="button" className="boton" onClick={() => setMostrarEditor(true)}>
+                  Añadir o importar preguntas
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <ListaPreguntas preguntas={preguntas} onCambiarPuntos={cambiarPuntos} onBorrar={borrar} />
+        )}
+      </section>
     </>
   )
 }

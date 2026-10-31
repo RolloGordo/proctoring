@@ -83,6 +83,43 @@ class TestCrear:
         assert [p["position"] for p in cuerpo] == [1, 2]
         assert [o["position"] for o in cuerpo[0]["options"]] == [1, 2, 3]
 
+    def test_no_se_anaden_preguntas_a_un_examen_ya_entregado(
+        self, client: TestClient, app: Any
+    ) -> None:
+        """Una pregunta anadida despues aparece en el expediente como si hubiera
+        formado parte de la prueba, y no formo parte de ninguna.
+
+        `UpdateQuestion` y `DeleteQuestion` ya se negaban a tocar una pregunta
+        contestada; anadir no comprobaba nada.
+        """
+        sid = sesion_abierta(app)
+        matricular_verificado(app, sid)
+        entregado = app.state.participant_repository.find(
+            UUID(sid), DEFAULT_DEV_STUDENT_ID
+        ).submitted(NOW)
+        app.state.participant_repository.save(entregado)
+
+        respuesta = client.post(
+            f"/api/v1/sessions/{sid}/questions", json={"questions": [UNA_PREGUNTA]}
+        )
+
+        assert respuesta.status_code == 400, respuesta.text
+        assert "anadir preguntas" in respuesta.json()["detail"]
+
+    def test_matricular_no_impide_seguir_preparando_el_examen(
+        self, client: TestClient, app: Any
+    ) -> None:
+        """El corte es la entrega, no la matricula: un docente matricula a su
+        clase y sigue escribiendo preguntas hasta el dia antes."""
+        sid = sesion_abierta(app)
+        matricular_verificado(app, sid)
+
+        respuesta = client.post(
+            f"/api/v1/sessions/{sid}/questions", json={"questions": [UNA_PREGUNTA]}
+        )
+
+        assert respuesta.status_code == 201, respuesta.text
+
     def test_400_si_ninguna_opcion_es_correcta(self, client: TestClient, app: Any) -> None:
         sid = sesion_abierta(app)
         mala = {**UNA_PREGUNTA, "options": [{"option_text": "A"}, {"option_text": "B"}]}

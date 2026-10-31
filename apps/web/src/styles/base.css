@@ -772,7 +772,7 @@ input[type='file']::file-selector-button:hover {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--e4);
+  gap: var(--e2);
 }
 
 /* Solo la lista del docente se numera sola: la del estudiante ya trae el
@@ -789,6 +789,137 @@ input[type='file']::file-selector-button:hover {
 
 .lista-preguntas .tarjeta-cuerpo {
   min-width: 0;
+}
+
+.preguntas-controles {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr) minmax(150px, 0.75fr);
+  gap: var(--e3);
+  align-items: end;
+  margin-bottom: var(--e2);
+}
+
+.preguntas-controles .campo {
+  margin: 0;
+}
+
+.preguntas-conteo {
+  margin: 0 0 var(--e2);
+  color: var(--tinta-suave);
+  font-size: 0.8125rem;
+}
+
+.preguntas-paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e3);
+  margin: var(--e3) 0;
+}
+
+.preguntas-paginacion > span {
+  min-width: 7rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+}
+
+.pregunta-desplegable > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--e3);
+  align-items: center;
+  padding: var(--e4);
+  cursor: pointer;
+  list-style: none;
+}
+
+.pregunta-desplegable > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pregunta-desplegable > summary::after {
+  content: '＋';
+  grid-column: 3;
+  grid-row: 1;
+  color: var(--tinta-suave);
+  font-size: 1.125rem;
+}
+
+.pregunta-desplegable[open] > summary::after {
+  content: '−';
+}
+
+.pregunta-desplegable > summary:hover {
+  background: var(--papel-gris);
+}
+
+.pregunta-desplegable > summary:focus-visible {
+  outline: 3px solid var(--amarillo);
+  outline-offset: -3px;
+}
+
+.pregunta-resumen-texto {
+  min-width: 0;
+}
+
+.pregunta-resumen-texto h4 {
+  margin: 0 0 var(--e1);
+  font-size: 0.75rem;
+  color: var(--tinta-suave);
+}
+
+.pregunta-resumen-texto p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.pregunta-desplegable[open] .pregunta-resumen-texto p {
+  display: block;
+  overflow: visible;
+}
+
+.pregunta-puntos {
+  grid-column: 2;
+  grid-row: 1;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+}
+
+.pregunta-detalle {
+  border-top: 1px solid var(--linea);
+}
+
+.pregunta-detalle .puntos-editables {
+  margin: var(--e3) 0;
+}
+
+.preguntas-editor {
+  display: grid;
+  gap: var(--e4);
+  margin-bottom: var(--e4);
+}
+
+@media (max-width: 600px) {
+  .preguntas-controles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pregunta-desplegable > summary {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: var(--e2);
+    padding: var(--e3);
+  }
+
+  .preguntas-paginacion {
+    gap: var(--e2);
+  }
 }
 
 .lista-preguntas.numerada h4::before {

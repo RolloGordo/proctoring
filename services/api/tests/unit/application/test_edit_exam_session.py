@@ -241,6 +241,25 @@ class TestConEstudiantesDentro:
                 sesion.id, ExamSessionChanges(question_pool_size=5), actor=DOCENTE
             )
 
+    def test_tampoco_el_nivel_de_supervision(
+        self,
+        sessions: InMemoryExamSessionRepository,
+        participants: InMemoryParticipantRepository,
+        sesion: ExamSession,
+    ) -> None:
+        """Lo que se observó durante el examen es un hecho, y no se edita después.
+
+        Sin esto, un examen rendido sin cámara podía quedar guardado como si se
+        hubiera rendido con ella: el expediente decía que se vigiló algo que
+        nunca se vigiló.
+        """
+        con_un_estudiante(participants, sesion)
+
+        with pytest.raises(ExamInUseError, match="nivel de supervision"):
+            UpdateExamSession(sessions, participants).execute(
+                sesion.id, ExamSessionChanges(preset=SupervisionPreset.BASIC), actor=DOCENTE
+            )
+
     def test_la_duracion_si_se_puede_alargar(
         self,
         sessions: InMemoryExamSessionRepository,

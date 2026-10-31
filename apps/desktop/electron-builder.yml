@@ -11,6 +11,9 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+# Quita los 52 idiomas de Chromium que esta aplicacion no habla. Ver el propio
+# script: son 50 MB en disco y 9 dentro del instalador.
+afterPack: scripts/quitar-idiomas.mjs
 win:
   executableName: proctoring
 nsis:

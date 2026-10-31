@@ -599,7 +599,9 @@ def create_app(
     )
     app.state.get_exam_session = GetExamSession(session_repository)
     app.state.join_exam_session = JoinExamSession(session_repository, clock)
-    app.state.add_questions = AddQuestions(question_repository, session_repository)
+    app.state.add_questions = AddQuestions(
+        question_repository, session_repository, participant_repository
+    )
     app.state.list_session_questions = ListSessionQuestions(question_repository, session_repository)
     app.state.get_exam_questions = GetExamQuestions(
         question_repository,

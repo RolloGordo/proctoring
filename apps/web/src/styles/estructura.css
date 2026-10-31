@@ -161,7 +161,29 @@
 .lateral-nav {
   display: flex;
   flex-direction: column;
+  gap: var(--e4);
   margin: var(--e5) calc(var(--e5) * -1) 0;
+}
+
+.lateral-grupo {
+  display: flex;
+  flex-direction: column;
+}
+
+.lateral-grupo-titulo {
+  margin: 0 0 var(--e1);
+  padding: 0 var(--e5);
+  font-family: var(--titulo);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgb(255 255 255 / 45%);
+}
+
+.lateral-grupo-examen {
+  padding-top: var(--e3);
+  border-top: 1px solid rgb(255 255 255 / 14%);
 }
 
 .lateral-nav a {
@@ -358,6 +380,19 @@
   min-width: 0;
 }
 
+.bancos-lista-scroll {
+  max-height: min(68vh, 700px);
+  overflow-y: auto;
+  padding-right: var(--e2);
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.bancos-lista-scroll:focus-visible {
+  outline: 3px solid var(--amarillo);
+  outline-offset: 3px;
+}
+
 .lista-bancos h4 {
   overflow-wrap: anywhere;
 }
@@ -452,8 +487,23 @@
 .importacion-vista-previa {
   width: 100%;
   min-width: 0;
-  margin-top: var(--e3);
+  margin-top: 0;
   overflow-wrap: anywhere;
+}
+
+.importador-preguntas {
+  display: grid;
+  min-width: 0;
+  gap: var(--e3);
+}
+
+.importador-preguntas > .tarjeta + .tarjeta {
+  margin-top: 0;
+}
+
+.seccion-importar-banco {
+  width: 100%;
+  margin-top: var(--e6);
 }
 
 .importacion-vista-previa .tarjeta-cuerpo {
@@ -466,32 +516,130 @@
   overflow-wrap: anywhere;
 }
 
-.importacion-preguntas {
+.importacion-navegacion {
   display: grid;
-  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: end;
   gap: var(--e2);
-  margin: var(--e3) 0;
-  padding-left: 1.5rem;
+  margin-top: var(--e3);
 }
 
-.importacion-preguntas li > * {
-  display: block;
-}
-
-.importacion-preguntas li {
+.importacion-navegacion .campo {
   min-width: 0;
-  overflow-wrap: anywhere;
+  margin: 0;
 }
 
-.importacion-preguntas li > strong,
-.importacion-preguntas li > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
+.importacion-navegacion .boton {
+  white-space: nowrap;
 }
 
-.importacion-preguntas li > span {
+.importacion-pregunta-tipo {
   color: var(--tinta-suave);
+  font-size: 0.8125rem;
+  text-transform: capitalize;
+}
+
+.importacion-simulacion {
+  margin-top: var(--e4);
+  padding: var(--e4);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--papel-gris);
+}
+
+.importacion-simulacion-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e2);
+  padding-bottom: var(--e2);
+  border-bottom: 1px solid var(--linea);
+}
+
+.importacion-simulacion-cabecera h4 {
+  margin: var(--e1) 0 0;
+}
+
+.importacion-simulacion-puntos {
+  padding: var(--e1) var(--e2);
+  border-radius: 999px;
+  background: var(--papel);
   font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.importacion-simulacion-cuerpo {
+  max-height: 34vh;
+  overflow-y: auto;
+  padding: var(--e3) 0;
+}
+
+.importacion-enunciado {
+  margin: 0 0 var(--e3);
+  color: var(--tinta);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.importacion-respuestas-estudiante {
+  display: grid;
+  gap: var(--e2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.importacion-respuestas-estudiante li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e2);
+  padding: var(--e2) var(--e3);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--papel);
+  overflow-wrap: anywhere;
+}
+
+.importacion-circulo {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+  margin-top: 0.15rem;
+  border: 2px solid var(--tinta-suave);
+  border-radius: 50%;
+}
+
+.importacion-circulo.multiple {
+  border-radius: 0.2rem;
+}
+
+.importacion-campo-ejemplo {
+  padding: var(--e2) var(--e3);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--papel);
+  color: var(--tinta-suave);
+}
+
+.importacion-campo-desarrollo {
+  min-height: 6rem;
+}
+
+.importacion-revision-docente {
+  padding: var(--e3);
+  border-left: 3px solid var(--exito);
+  background: var(--papel);
+}
+
+.importacion-revision-docente > p,
+.importacion-revision-docente > ul {
+  margin: var(--e1) 0 0;
+}
+
+.importacion-revision-docente ul {
+  padding-left: var(--e4);
 }
 
 .importacion-acciones {
@@ -638,15 +786,15 @@
   height: 100%;
   object-fit: cover;
   opacity: 0;
-  animation: portada-releva 30s infinite;
+  animation: portada-releva 21s infinite;
 }
 
 .portada-escenas img:nth-child(2) {
-  animation-delay: 10s;
+  animation-delay: 7s;
 }
 
 .portada-escenas img:nth-child(3) {
-  animation-delay: 20s;
+  animation-delay: 14s;
 }
 
 /* El velo: sin el, el texto blanco cae encima de los trazos claros del dibujo.
@@ -669,35 +817,61 @@
   z-index: 1;
 }
 
-/* Tres escenas, 30 s de vuelta: cada una entra, se queda y se va con un
-   desvanecido largo. Un corte brusco detras de un titular distrae. */
+/* Tres escenas, 21 s de vuelta: siete segundos cada una.
+ *
+ * Los porcentajes estan calculados para que una entre mientras la otra sale.
+ * Cada imagen arranca con un tercio de retraso —7 s y 14 s—, asi que su 0 %
+ * cae en el 33,3 % de la anterior: la que se va se desvanece del 33 % al 39 %
+ * justo mientras la que llega aparece del 0 % al 6 % de su propio ciclo. Si
+ * cambias la duracion, estos numeros siguen valiendo; si cambias el numero de
+ * escenas, no. */
 @keyframes portada-releva {
   0% {
     opacity: 0;
     transform: scale(1.06);
   }
 
-  8%,
-  26% {
+  6%,
+  33% {
     opacity: 0.4;
-    transform: scale(1.02);
   }
 
-  34%,
+  39%,
   100% {
     opacity: 0;
     transform: scale(1);
   }
 }
 
-/* Quien pidio menos movimiento ve una sola escena, quieta. */
+/* Menos movimiento no es ninguna escena.
+ *
+ * Esto ponia `animation: none` y dejaba fija la primera imagen **para
+ * siempre**, y es lo que hacia que el carrusel pareciera roto: en Windows el
+ * ajuste de efectos de animacion esta apagado en muchos equipos, asi que no es
+ * un caso raro, es medio mundo.
+ *
+ * Lo que molesta de una animacion es el movimiento, no que la imagen cambie.
+ * Asi que aqui se rota igual, con los mismos tiempos, y lo unico que se quita
+ * es el zoom. */
 @media (prefers-reduced-motion: reduce) {
   .portada-escenas img {
-    animation: none;
+    animation-name: portada-releva-sin-movimiento;
+  }
+}
+
+@keyframes portada-releva-sin-movimiento {
+  0% {
+    opacity: 0;
   }
 
-  .portada-escenas img:first-child {
+  6%,
+  33% {
     opacity: 0.4;
+  }
+
+  39%,
+  100% {
+    opacity: 0;
   }
 }
 
@@ -952,6 +1126,19 @@
 
   .codigo-bloque {
     text-align: left;
+  }
+
+  .importacion-navegacion {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .importacion-navegacion .campo {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .importacion-navegacion .boton {
+    justify-content: center;
   }
 }
 

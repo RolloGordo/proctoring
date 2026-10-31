@@ -68,7 +68,7 @@ export function Resultados() {
             Volver al examen
           </Link>
           <Link to={`/sesiones/${id}/participantes`} className="boton boton-secundario">
-            Sala de espera
+            Participantes
           </Link>
         </div>
       </div>

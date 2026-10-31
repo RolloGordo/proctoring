@@ -176,16 +176,23 @@ class GetAudioJob:
             return None
 
     def _statement_of(self, event: ProctoringEvent) -> str | None:
+        """El enunciado contra el que el worker compara lo que se dijo.
+
+        Se busca **por id** y no entre las preguntas de la sesion. Un examen
+        armado desde un banco usa preguntas con `session_id` nulo -las comparte
+        cualquier examen al que se asocie el banco-, asi que recorrer
+        `list_by_session` no las encontraba nunca: devolvia `None`, el worker se
+        quedaba sin enunciado y la similitud no se calculaba. En produccion eso
+        dejo 18 fragmentos transcritos con "similitud: --", es decir, el
+        diferencial del proyecto a medias.
+
+        Es el mismo fallo que rechazaba las senales de camara con "la pregunta
+        no existe", en otro sitio: la suposicion de que toda pregunta tiene
+        sesion se colo en dos caminos y solo se arreglo uno.
+        """
         if event.question_id is None:
             return None
-        pregunta = next(
-            (
-                q
-                for q in self._questions.list_by_session(event.session_id)
-                if q.id == event.question_id
-            ),
-            None,
-        )
+        pregunta = self._questions.find_by_id(event.question_id)
         return pregunta.statement if pregunta else None
 
 

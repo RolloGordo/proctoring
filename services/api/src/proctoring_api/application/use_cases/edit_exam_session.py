@@ -71,6 +71,12 @@ class ExamSessionChanges:
         Estos son los campos que no se pueden mover con gente dentro: cambiar la
         escala o cuántas preguntas tocan a mitad de un examen dejaría a unos
         calificados con una regla y a otros con otra.
+
+        **El nivel de supervisión está aquí desde el 30/10.** No estaba, así que
+        un examen rendido con la cámara apagada podía quedar guardado como si se
+        hubiera rendido con ella encendida, y al revés: el expediente decía que
+        se vigiló algo que nunca se vigiló. Lo que se observó durante el examen
+        es un hecho ocurrido, y un hecho no se edita después.
         """
         return (
             any(
@@ -80,6 +86,7 @@ class ExamSessionChanges:
                     self.question_pool_size,
                     self.shuffle_questions,
                     self.shuffle_options,
+                    self.preset,
                 )
             )
             or self.clear_pool_size
@@ -126,9 +133,9 @@ class UpdateExamSession:
 
         if changes.touches_the_exam_itself() and self._anyone_inside(session_id):
             raise ExamInUseError(
-                "Ya hay estudiantes en este examen: no se puede cambiar la nota maxima "
-                "ni como se sortean las preguntas. El titulo, la descripcion y la "
-                "duracion si se pueden cambiar."
+                "Ya hay estudiantes en este examen: no se puede cambiar la nota maxima, "
+                "como se sortean las preguntas ni el nivel de supervision. El titulo, "
+                "la descripcion y la duracion si se pueden cambiar."
             )
 
         corregida = sesion.with_changes(

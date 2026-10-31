@@ -302,10 +302,14 @@ empaquetado acepta cualquiera de las dos.
 
 | Cambias esto | Qué hay que hacer |
 |---|---|
-| Web o API | Nada: Vercel y Render redespliegan al hacer push a `develop` |
+| Web o API | Nada: Vercel y Render redespliegan al fusionar en `main` |
 | Una variable `VITE_*` | Volver a desplegar en Vercel |
 | Algo de `apps/desktop/src/main/` | Construir y publicar un instalador nuevo |
 | El esquema de la base | Ejecutar la migración nueva en el SQL Editor |
+| Redis (Upstash) | Nada, nunca. No se despliega: es una base que está ahí |
+
+Esta tabla decía `develop` y es `main`, que es lo que dice el README y lo que
+se viene haciendo. Un día costó entender por qué la web no cambiaba.
 
 ## Si algo falla
 
