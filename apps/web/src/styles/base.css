@@ -175,6 +175,23 @@ textarea::placeholder {
   margin-top: var(--e4);
 }
 
+/* …pero no cuando las tarjetas van en una rejilla o en una fila.
+ *
+ * Ahí el hueco lo pone `gap`, y este margen bajaba 16 px **todas menos la
+ * primera**. Como la rejilla las estira a la misma altura, la primera salía
+ * 16 px más alta que las demás: era lo que se veía disparejo en el panel del
+ * examen (medido: 141 px contra 125 px, y el borde superior 16 px más arriba).
+ */
+.panel-resumen > .tarjeta + .tarjeta,
+.columnas > .tarjeta + .tarjeta,
+.cuadricula-camaras > .tarjeta + .tarjeta,
+.evidencia-categorias > .tarjeta + .tarjeta,
+.importador-preguntas > .tarjeta + .tarjeta,
+.fila > .tarjeta + .tarjeta,
+[class^='rejilla-'] > .tarjeta + .tarjeta {
+  margin-top: 0;
+}
+
 /* ---------- Botones ---------- */
 .boton {
   display: inline-flex;
@@ -1132,11 +1149,18 @@ input[type='file']::file-selector-button:hover {
   border-bottom: none;
 }
 
+/* El guion de cada punto.
+ *
+ * Iba clavado a `0.95em` del borde, que cuadra con una línea de texto suelta y
+ * se descoloca en cuanto la fila crece: en los bancos del examen la fila lleva
+ * un botón, mide 34 px, y el guion quedaba flotando once píxeles por encima
+ * del nombre. Centrado con la fila cuadra en los dos casos. */
 .lista-modulos li::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 0.95em;
+  top: 50%;
+  transform: translateY(-50%);
   width: 10px;
   height: 2px;
   background: var(--amarillo);
