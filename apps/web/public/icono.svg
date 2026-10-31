@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Proctoring">
+  <!--
+    El icono de la pestaña.
+
+    Es la línea de tiempo de señales, que es lo que el sistema entrega: filas
+    con su hora, y una marcada. Se dibuja con los dos colores de la marca
+    —tinta y ámbar— y sin texto, porque una letra a 16 px se convierte en una
+    mancha.
+
+    Las barras cortas de la izquierda son las horas; las largas, las señales.
+    La ámbar es la que el docente va a mirar.
+  -->
+  <rect width="32" height="32" rx="7" fill="#212529"/>
+  <g fill="#ffffff" opacity="0.45">
+    <rect x="7" y="9" width="4" height="2.5" rx="1.25"/>
+    <rect x="13" y="9" width="12" height="2.5" rx="1.25"/>
+    <rect x="7" y="21" width="4" height="2.5" rx="1.25"/>
+    <rect x="13" y="21" width="9" height="2.5" rx="1.25"/>
+  </g>
+  <g fill="#e8a700">
+    <rect x="7" y="15" width="4" height="2.5" rx="1.25"/>
+    <rect x="13" y="15" width="12" height="2.5" rx="1.25"/>
+  </g>
+</svg>
