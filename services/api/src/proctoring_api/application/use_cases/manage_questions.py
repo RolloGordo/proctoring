@@ -14,6 +14,10 @@ from proctoring_api.application.ports.participant_repository import ParticipantR
 from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
+
+# El mismo error que al editar el examen, y a proposito: para el docente es la
+# misma situacion —hay gente dentro— y merece el mismo mensaje y el mismo codigo.
+from proctoring_api.application.use_cases.edit_exam_session import ExamInUseError
 from proctoring_api.application.use_cases.manage_enrollment import (
     DEFAULT_DEV_STUDENT_ID,
     ExamCancelledError,
@@ -50,13 +54,27 @@ class NewQuestion:
 
 
 class AddQuestions:
-    """Anade preguntas al final del examen. Solo el docente dueno."""
+    """Anade preguntas al final del examen. Solo el docente dueno.
+
+    Y solo mientras nadie haya entregado. `UpdateQuestion` y `DeleteQuestion`
+    ya se negaban a tocar una pregunta contestada, pero *anadir* no comprobaba
+    nada: un examen entregado admitia preguntas nuevas, que aparecian en el
+    expediente del docente como si hubieran formado parte de la prueba.
+
+    El corte es la **entrega**, no la matricula. Un docente matricula a su clase
+    y sigue preparando el examen hasta el dia antes: eso es trabajo normal. Lo
+    que no puede es anadir una pregunta a una prueba que alguien ya rindio.
+    """
 
     def __init__(
-        self, questions: QuestionRepository, sessions: ExamSessionRepository | None = None
+        self,
+        questions: QuestionRepository,
+        sessions: ExamSessionRepository | None = None,
+        participants: ParticipantRepository | None = None,
     ) -> None:
         self._questions = questions
         self._sessions = sessions
+        self._participants = participants
 
     def execute(
         self,
@@ -69,12 +87,22 @@ class AddQuestions:
 
         Raises:
             AuthorizationError: si quien pide no es el docente dueno.
+            ExamInUseError: si algun estudiante ya entro al examen.
             InvalidQuestionError: si alguna pregunta viola una regla, o si se
                 pasa del tope por sesion.
         """
         if actor is not None and not actor.is_teacher:
             raise AuthorizationError("Solo un docente puede anadir preguntas a un examen")
         ensure_teacher_owns_session(self._sessions, session_id, actor)
+
+        if self._participants is not None and any(
+            participante.has_submitted
+            for participante in self._participants.list_by_session(session_id)
+        ):
+            raise ExamInUseError(
+                "Este examen ya lo entrego alguien: no se le pueden anadir preguntas. "
+                "Duplica el examen si necesitas una version con mas preguntas."
+            )
 
         if not nuevas:
             raise InvalidQuestionError("No se envio ninguna pregunta")

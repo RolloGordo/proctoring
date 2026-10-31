@@ -24,7 +24,7 @@ export function Bancos() {
   const [reintentoCursos, setReintentoCursos] = useState(0)
 
   const [nombre, setNombre] = useState('')
-  const [cursoId, setCursoId] = useState('')
+  const [cursoId, setCursoId] = useState(() => searchParams.get('curso') ?? '')
   const [descripcion, setDescripcion] = useState('')
   const [creando, setCreando] = useState(false)
   const [eliminando, setEliminando] = useState<string>()
@@ -81,7 +81,6 @@ export function Bancos() {
       setErrorBancos(undefined)
       setNombre('')
       setDescripcion('')
-      setCursoId('')
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo crear el banco')
     } finally {
@@ -116,7 +115,6 @@ export function Bancos() {
     if (completada) {
       setNombre('')
       setDescripcion('')
-      setCursoId('')
     }
   }
 
@@ -258,17 +256,6 @@ export function Bancos() {
                   {creando ? 'Creando…' : 'Crear banco vacío'}
                 </button>
               </form>
-              <hr className="separador" />
-              <h3>Importar archivo como banco nuevo</h3>
-              <p className="ayuda">
-                Escribe arriba el nombre y, si quieres, el curso. Al confirmar la importación, se
-                crea un banco con esas preguntas; no necesitas crear un banco vacío antes.
-              </p>
-              <ImportarPreguntas
-                nombreBanco={nombre}
-                crearBanco={crearBancoParaImportar}
-                onImportado={actualizarTrasImportacion}
-              />
             </div>
           </div>
         </section>
@@ -330,43 +317,70 @@ export function Bancos() {
                 </div>
               </div>
             ) : (
-              <ul className="lista-bancos">
-                {bancosVisibles.map((banco) => (
-                  <li key={banco.id} className="tarjeta">
-                    <div className="tarjeta-cuerpo">
-                      <div className="fila" style={{ justifyContent: 'space-between' }}>
-                        <h4>{banco.name}</h4>
-                        <span className="tenue">
-                          {banco.question_count} pregunta{banco.question_count === 1 ? '' : 's'}
-                        </span>
+              <div
+                className="bancos-lista-scroll"
+                role="region"
+                aria-label="Lista de bancos"
+                tabIndex={0}
+              >
+                <ul className="lista-bancos">
+                  {bancosVisibles.map((banco) => (
+                    <li key={banco.id} className="tarjeta">
+                      <div className="tarjeta-cuerpo">
+                        <div className="fila" style={{ justifyContent: 'space-between' }}>
+                          <h4>{banco.name}</h4>
+                          <span className="tenue">
+                            {banco.question_count} pregunta{banco.question_count === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                        <p className="ayuda">
+                          {banco.course_id
+                            ? `Curso: ${cursoPorId.get(banco.course_id)?.name ?? 'curso asociado'}`
+                            : 'Sin curso · disponible para cualquiera de tus exámenes'}
+                        </p>
+                        {banco.description && <p className="ayuda">{banco.description}</p>}
+                        <div className="fila fila-banco-acciones" style={{ marginTop: 'var(--e2)' }}>
+                          <Link
+                            to={`/bancos/${banco.id}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`}
+                            className="boton boton-secundario"
+                          >
+                            Ver y añadir preguntas
+                          </Link>
+                          <button
+                            type="button"
+                            className="boton boton-peligro"
+                            disabled={eliminando !== undefined}
+                            onClick={() => void eliminar(banco)}
+                          >
+                            {eliminando === banco.id ? 'Eliminando…' : 'Eliminar banco'}
+                          </button>
+                        </div>
                       </div>
-                      <p className="ayuda">
-                        {banco.course_id
-                          ? `Curso: ${cursoPorId.get(banco.course_id)?.name ?? 'curso asociado'}`
-                          : 'Sin curso · disponible para cualquiera de tus exámenes'}
-                      </p>
-                      {banco.description && <p className="ayuda">{banco.description}</p>}
-                      <div className="fila fila-banco-acciones" style={{ marginTop: 'var(--e2)' }}>
-                        <Link to={`/bancos/${banco.id}`} className="boton boton-secundario">
-                          Ver y añadir preguntas
-                        </Link>
-                        <button
-                          type="button"
-                          className="boton boton-peligro"
-                          disabled={eliminando !== undefined}
-                          onClick={() => void eliminar(banco)}
-                        >
-                          {eliminando === banco.id ? 'Eliminando…' : 'Eliminar banco'}
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )
           ) : null}
         </section>
       </div>
+
+      <section className="seccion-importar-banco">
+        <div className="encabezado-seccion">
+          <div>
+            <h2>Importar archivo como banco nuevo</h2>
+            <p className="ayuda">
+              Escribe el nombre y, si quieres, el curso en el formulario «Crear banco vacío». Al
+              confirmar, se creará el banco con las preguntas del archivo.
+            </p>
+          </div>
+        </div>
+        <ImportarPreguntas
+          nombreBanco={nombre}
+          crearBanco={crearBancoParaImportar}
+          onImportado={actualizarTrasImportacion}
+        />
+      </section>
     </>
   )
 }

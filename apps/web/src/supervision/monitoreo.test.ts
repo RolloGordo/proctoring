@@ -10,6 +10,7 @@ import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 import {
   EVENTO_FOTOGRAMA,
   EVENTO_ESTADO_VISION,
+  FPS_MAXIMO,
   nombreCanal,
   periodoMs,
   publicarFotogramas,
@@ -153,7 +154,11 @@ describe('si nadie mira, no se envía', () => {
     canal.presentes([ESTUDIANTE, DOCENTE])
     vi.advanceTimersByTime(3000)
 
-    expect(canal.enviados).toHaveLength(6)
+    // Derivado del ritmo y no escrito a mano: lo que esta prueba vigila es que
+    // se envíe mientras el docente mira, no a qué velocidad. Con el número
+    // fijo, cambiar los fotogramas por segundo rompía una prueba que no iba de
+    // eso.
+    expect(canal.enviados).toHaveLength(3000 / periodoMs(undefined))
     expect(canal.enviados[0]).toMatchObject({
       type: 'broadcast',
       event: EVENTO_FOTOGRAMA,
@@ -314,19 +319,25 @@ describe('mirar', () => {
 })
 
 describe('el ritmo', () => {
-  it('dos fotogramas por segundo por defecto', () => {
-    expect(periodoMs(undefined)).toBe(500)
+  it('ocho fotogramas por segundo por defecto', () => {
+    expect(periodoMs(undefined)).toBe(125)
   })
 
   it.each([0, -1, 60, Number.NaN])('un fps de %s cae al valor por defecto', (fps) => {
     // Los ajustes vienen de `session_modules.settings`, que es jsonb: nada
     // impide que ahí haya un cero. Con `1000 / 0` el intervalo sería infinito y
     // el monitoreo quedaría apagado sin decir nada.
-    expect(periodoMs(fps)).toBe(500)
+    expect(periodoMs(fps)).toBe(125)
   })
 
   it('respeta un fps razonable', () => {
     expect(periodoMs(2)).toBe(500)
+  })
+
+  it('no acepta pasarse del techo del transporte', () => {
+    // Treinta no se consiguen subiendo el número: el canal encola y se ve peor.
+    expect(periodoMs(30)).toBe(periodoMs(undefined))
+    expect(periodoMs(FPS_MAXIMO)).toBe(100)
   })
 })
 

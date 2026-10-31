@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, type Course, type QuestionBank, type SupervisionPreset } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 
@@ -29,6 +29,8 @@ const PRESETS: Array<{ valor: SupervisionPreset; nombre: string; detalle: string
 export function NuevaSesion() {
   const { token } = useAuth()
   const navegar = useNavigate()
+  const [searchParams] = useSearchParams()
+  const bancoInicialId = searchParams.get('banco')
   const [titulo, setTitulo] = useState('')
   const [inicio, setInicio] = useState(inicioPorDefecto)
   const [duracion, setDuracion] = useState(90)
@@ -40,7 +42,7 @@ export function NuevaSesion() {
   const [cargandoCursos, setCargandoCursos] = useState(true)
   const [errorCursos, setErrorCursos] = useState<string>()
   const [reintentoCursos, setReintentoCursos] = useState(0)
-  const [cursoId, setCursoId] = useState('')
+  const [cursoId, setCursoId] = useState(() => searchParams.get('curso') ?? '')
   const [bancos, setBancos] = useState<QuestionBank[]>([])
   const [cargandoBancos, setCargandoBancos] = useState(true)
   const [errorBancos, setErrorBancos] = useState<string>()
@@ -73,6 +75,14 @@ export function NuevaSesion() {
       .then((datos) => {
         if (cancelado) return
         setBancos(datos)
+        if (
+          bancoInicialId &&
+          datos.some((banco) => banco.id === bancoInicialId && banco.question_count > 0)
+        ) {
+          setElegidos((actuales) =>
+            actuales.includes(bancoInicialId) ? actuales : [...actuales, bancoInicialId]
+          )
+        }
         setErrorBancos(undefined)
       })
       .catch((fallo: Error) => !cancelado && setErrorBancos(fallo.message))
@@ -80,7 +90,7 @@ export function NuevaSesion() {
     return () => {
       cancelado = true
     }
-  }, [token, reintentoBancos])
+  }, [token, reintentoBancos, bancoInicialId])
 
   const disponibles = bancos
     .filter((b) => elegidos.includes(b.id))
@@ -141,6 +151,16 @@ export function NuevaSesion() {
         return
       }
 
+      if (elegidos.length === 0) {
+        navegar(`/sesiones/${sesion.id}/preguntas`, {
+          state: {
+            aviso:
+              'El examen está creado. Añade y guarda sus preguntas antes de compartir el código de acceso.'
+          }
+        })
+        return
+      }
+
       navegar(`/sesiones/${sesion.id}`)
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo crear el examen')
@@ -163,6 +183,12 @@ export function NuevaSesion() {
   const elegido = PRESETS.find((p) => p.valor === preset)
   const demasiadas = Boolean(cuantas) && Number(cuantas) > disponibles && disponibles > 0
   const cursoPorId = new Map(cursos.map((curso) => [curso.id, curso]))
+  const cursoSeleccionado = cursoPorId.get(cursoId)
+  const bancosOrdenados = [...bancos].sort((a, b) => {
+    const prioridad = (banco: QuestionBank): number =>
+      banco.course_id === cursoId && cursoId ? 0 : banco.course_id === null ? 1 : 2
+    return prioridad(a) - prioridad(b)
+  })
 
   return (
     <>
@@ -170,7 +196,10 @@ export function NuevaSesion() {
         <div>
           <h1>Crear examen</h1>
           <p className="subtitulo">
-            Completa los datos, elige las preguntas y al final obtendrás un código de acceso.
+            {cursoSeleccionado
+              ? `Para ${cursoSeleccionado.name}${cursoSeleccionado.section ? ` · sección ${cursoSeleccionado.section}` : ''}. `
+              : ''}
+            Completa los datos y las preguntas; al final obtendrás un código de acceso.
           </p>
         </div>
       </div>
@@ -185,7 +214,7 @@ export function NuevaSesion() {
             )}
 
             <section className="bloque">
-              <h2>1. Datos del examen</h2>
+              <h2>1. Datos básicos</h2>
             </section>
             <label className="campo">
               <span>Título del examen (obligatorio)</span>
@@ -198,7 +227,7 @@ export function NuevaSesion() {
             </label>
 
             <label className="campo">
-              <span>Curso (opcional)</span>
+              <span>Curso {cursoId ? '(seleccionado)' : '(opcional)'}</span>
               {cursos.length > 0 ? (
                 <select value={cursoId} onChange={(e) => setCursoId(e.target.value)}>
                   <option value="">Sin curso</option>
@@ -215,7 +244,12 @@ export function NuevaSesion() {
                     ? 'Cargando cursos…'
                     : errorCursos
                       ? 'No se pudieron cargar los cursos; puedes reintentar o continuar sin asociar uno.'
-                      : 'No tienes cursos todavía. Puedes crear el examen sin asociarlo a un curso.'}
+                      : 'No tienes cursos todavía. Puedes crear un examen independiente o crear un curso primero.'}
+                </span>
+              )}
+              {!cargandoCursos && !errorCursos && cursos.length === 0 && (
+                <span className="ayuda">
+                  <Link to="/cursos">Crear un curso</Link>
                 </span>
               )}
               {errorCursos && (
@@ -241,7 +275,7 @@ export function NuevaSesion() {
             </label>
 
             <section className="bloque">
-              <h2>Horario</h2>
+              <h2>2. Horario y acceso</h2>
               <p className="ayuda">
                 La fecha y la hora se interpretan según la zona horaria de este equipo.
               </p>
@@ -307,7 +341,7 @@ export function NuevaSesion() {
             </div>
 
             <section className="bloque">
-              <h2>2. Preguntas del examen</h2>
+              <h2>3. Preguntas del examen</h2>
             </section>
             <div className="campo">
               <span>Bancos de preguntas (opcional)</span>
@@ -330,26 +364,34 @@ export function NuevaSesion() {
                 </div>
               ) : bancos.length === 0 ? (
                 <p className="ayuda">
-                  Aún no tienes bancos. Puedes <Link to="/bancos">crear o importar un banco</Link>,
-                  o continuar y escribir preguntas en el examen después.
+                  Aún no tienes bancos. Puedes{' '}
+                  <Link to={cursoId ? `/bancos?curso=${encodeURIComponent(cursoId)}` : '/bancos'}>
+                    crear o importar un banco
+                    {cursoSeleccionado ? ` para ${cursoSeleccionado.name}` : ''}
+                  </Link>
+                  , o continuar y escribir preguntas en el examen después.
                 </p>
               ) : (
                 <>
                   <p className="ayuda" style={{ marginBottom: 0 }}>
-                    Selecciona uno o más bancos. Las preguntas se tomarán de estos bancos; si no
-                    marcas ninguno, podrás añadir preguntas directamente al examen.
+                    Los bancos de este curso y los generales aparecen primero. Puedes elegir otros
+                    también. Si no marcas ninguno, podrás añadir preguntas directamente al examen.
                   </p>
                   <ul className="selector-bancos">
-                    {bancos.map((banco) => (
+                    {bancosOrdenados.map((banco) => (
                       <li key={banco.id}>
                         <label>
                           <input
                             type="checkbox"
                             checked={elegidos.includes(banco.id)}
+                            disabled={banco.question_count === 0}
                             onChange={() => alternar(banco.id)}
                           />
                           <span className="selector-banco-detalle">
-                            <strong>{banco.name}</strong>
+                            <strong>
+                              {banco.name}
+                              {banco.question_count === 0 && ' · sin preguntas'}
+                            </strong>
                             <span className="ayuda">
                               {banco.course_id
                                 ? `Curso: ${cursoPorId.get(banco.course_id)?.name ?? 'asociado'}`
@@ -392,7 +434,7 @@ export function NuevaSesion() {
             )}
 
             <section className="bloque">
-              <h2>3. Supervisión y otras indicaciones</h2>
+              <h2>4. Supervisión e indicaciones</h2>
             </section>
             <label className="campo">
               <span>Nivel de supervisión</span>
@@ -419,9 +461,20 @@ export function NuevaSesion() {
               />
             </label>
 
+            {elegidos.length === 0 && (
+              <p className="aviso aviso-neutro" role="status">
+                Aún no elegiste preguntas. Al continuar se creará el examen y se abrirá el editor;
+                añade preguntas antes de compartir el código.
+              </p>
+            )}
+
             <div className="fila">
               <button type="submit" className="boton" disabled={enviando}>
-                {enviando ? 'Creando…' : 'Crear examen'}
+                {enviando
+                  ? 'Creando…'
+                  : elegidos.length === 0
+                    ? 'Crear examen y añadir preguntas'
+                    : 'Crear examen'}
               </button>
               <button
                 type="button"

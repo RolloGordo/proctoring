@@ -87,9 +87,14 @@ export function PanelDocente() {
           <h1>Panel del docente</h1>
           {email && <p className="subtitulo">{email}</p>}
         </div>
-        <Link to="/sesiones/nueva" className="boton">
-          Crear examen
-        </Link>
+        <div className="fila">
+          <Link to="/cursos" className="boton boton-secundario">
+            Preparar un curso
+          </Link>
+          <Link to="/sesiones/nueva" className="boton">
+            Crear examen
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -126,7 +131,10 @@ export function PanelDocente() {
                 </p>
                 <p style={{ marginTop: 'var(--e5)' }}>
                   <Link to="/sesiones/nueva" className="boton">
-                    Crear el primero
+                    Crear examen independiente
+                  </Link>{' '}
+                  <Link to="/cursos" className="boton boton-secundario">
+                    Preparar un curso primero
                   </Link>
                 </p>
               </div>
@@ -269,7 +277,7 @@ function TarjetaExamen({
             Preguntas
           </Link>
           <Link to={`/sesiones/${examen.id}/participantes`} className="boton boton-secundario">
-            Sala de espera
+            Participantes
           </Link>
         </div>
       </div>

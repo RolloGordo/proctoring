@@ -54,7 +54,7 @@ export interface Fotograma {
 
 /** `session_modules.settings` del módulo `live_monitoring`. */
 export interface AjustesMonitoreo {
-  /** Fotogramas por segundo. Uno basta para ver quién está y qué hace. */
+  /** Fotogramas por segundo. */
   fps?: number
   /** Ancho en píxeles del fotograma enviado. */
   width?: number
@@ -62,15 +62,38 @@ export interface AjustesMonitoreo {
   quality?: number
 }
 
+/**
+ * Ocho fotogramas por segundo, no dos.
+ *
+ * Estaba en dos —«uno basta para ver quién está y qué hace»— y al verlo en uso
+ * resultó que no basta: el estudiante hace una cosa, la imagen salta a otra y
+ * el docente no sigue lo que pasa. Fue lo primero que dijo el Product Owner al
+ * usar el sistema.
+ *
+ * Ocho es el techo de este transporte, no una preferencia. Cada fotograma viaja
+ * como un JPEG en base64 por un canal de Supabase Realtime: a 480 px y calidad
+ * 0,62 son unos 40 KB, así que ocho por segundo rondan los 320 KB/s **del
+ * estudiante que se está mirando**, y solo mientras se le mira, porque la
+ * tarjeta se monta de una en una.
+ *
+ * Los treinta de una videollamada no salen de aquí subiendo el número: a ese
+ * ritmo el canal encola y se ve peor que ahora. Treinta exigen una conexión
+ * directa entre los dos navegadores (WebRTC), que es otro trabajo y está
+ * anotado como tal.
+ */
 export const AJUSTES_POR_DEFECTO: Required<AjustesMonitoreo> = {
-  fps: 2,
+  fps: 8,
   width: 480,
   quality: 0.62
 }
 
+/** Lo máximo que se acepta configurar por sesión. Ver `AJUSTES_POR_DEFECTO`. */
+export const FPS_MAXIMO = 10
+
 /** Un fotograma cada tanto. Un `fps` fuera de rango cae al valor por defecto. */
 export function periodoMs(fps: number | undefined): number {
-  const valor = typeof fps === 'number' && fps > 0 && fps <= 10 ? fps : AJUSTES_POR_DEFECTO.fps
+  const valor =
+    typeof fps === 'number' && fps > 0 && fps <= FPS_MAXIMO ? fps : AJUSTES_POR_DEFECTO.fps
   return Math.round(1000 / valor)
 }
 

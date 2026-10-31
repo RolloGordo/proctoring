@@ -114,13 +114,14 @@ export function Participantes() {
     <>
       <div className="encabezado-pagina">
         <div>
-          <h1>Sala de espera</h1>
+          <h1>Participantes</h1>
           <p className="subtitulo">
             {participantes
               ? `${participantes.length} ${participantes.length === 1 ? 'estudiante' : 'estudiantes'}` +
                 (esperando > 0 ? ` · ${esperando} esperando que los admitas` : '')
               : 'Cargando…'}
           </p>
+          <p className="ayuda">Sala de espera, admisión manual y cámara en vivo.</p>
         </div>
         <div className="fila">
           {supabase && (

@@ -14,6 +14,23 @@ type ArchivoImportable = {
   formato: 'qti' | 'pdf' | FormatoArchivoPreguntas
 }
 
+function observarPregunta(pregunta: NewQuestion): string[] {
+  const observaciones: string[] = []
+  const requiereOpciones = ['multiple_choice', 'true_false', 'multiple_select'].includes(
+    pregunta.question_type
+  )
+  if (!pregunta.statement.trim()) observaciones.push('Falta el enunciado.')
+  if (requiereOpciones && !pregunta.options?.length) {
+    observaciones.push('Faltan las alternativas.')
+  } else if (requiereOpciones && !pregunta.options?.some((opcion) => opcion.is_correct)) {
+    observaciones.push('No se marcó una respuesta correcta.')
+  }
+  if (pregunta.question_type === 'numeric' && !pregunta.correct_numeric_answer?.trim()) {
+    observaciones.push('Falta la respuesta numérica correcta.')
+  }
+  return observaciones
+}
+
 const MAX_PREGUNTAS_POR_IMPORTACION = 50
 const MAX_ARCHIVO_BYTES = 1_000_000
 const MAX_PDF_BYTES = 5_000_000
@@ -39,6 +56,7 @@ export function ImportarPreguntas({
   const [trabajando, setTrabajando] = useState(false)
   const [importadas, setImportadas] = useState(0)
   const [bancoImportacionId, setBancoImportacionId] = useState<string>()
+  const [indicePrevisualizado, setIndicePrevisualizado] = useState(0)
   const destinoTexto = bancoId
     ? `«${nombreBanco || 'este banco'}»`
     : nombreBanco?.trim()
@@ -52,6 +70,7 @@ export function ImportarPreguntas({
     setError(undefined)
     setImportadas(0)
     setBancoImportacionId(undefined)
+    setIndicePrevisualizado(0)
     if (entrada.current) entrada.current.value = ''
   }
 
@@ -186,7 +205,10 @@ export function ImportarPreguntas({
   }
 
   return (
-    <div className="campo">
+    <div className="importador-preguntas">
+      <section className="tarjeta importacion-archivo">
+        <div className="tarjeta-cuerpo">
+          <div className="campo">
       <span>Importar preguntas desde un archivo</span>
       <p className="ayuda">
         Se admite QTI XML, CSV, JSON, TXT y PDF con texto seleccionable (máximo 5 MB; otros
@@ -247,6 +269,9 @@ essay,"Explica tu procedimiento",2,,`}</pre>
       )}
       {resultado && <p className="aviso aviso-exito">{resultado}</p>}
       {trabajando && <p className="ayuda">Leyendo el archivo…</p>}
+          </div>
+        </div>
+      </section>
 
       {vistaPreguntas && archivo && (
         <div className="tarjeta importacion-vista-previa">
@@ -270,47 +295,141 @@ essay,"Explica tu procedimiento",2,,`}</pre>
                 correcta.
               </p>
             )}
-            <ol className="importacion-preguntas">
-              {vistaPreguntas.slice(0, 5).map((pregunta, indice) => (
-                <li key={`${indice}-${pregunta.statement}`}>
-                  <strong>{pregunta.statement}</strong>
-                  <span>
-                    {pregunta.question_type} · {pregunta.points ?? '1'} pts
-                  </span>
-                  {pregunta.options?.map((opcion) => (
-                    <span key={opcion.option_text}>
-                      {opcion.is_correct ? '✓ ' : '· '}
-                      {opcion.option_text}
-                    </span>
-                  ))}
-                </li>
-              ))}
-            </ol>
-            {vistaPreguntas.length > 5 && (
-              <p className="ayuda">Y {vistaPreguntas.length - 5} preguntas más.</p>
+            {vistaPreguntas.length > 0 && (
+              <>
+                <div className="importacion-navegacion">
+                  <button
+                    type="button"
+                    className="boton boton-secundario"
+                    disabled={indicePrevisualizado === 0}
+                    onClick={() => setIndicePrevisualizado((indice) => Math.max(0, indice - 1))}
+                    aria-label="Ver pregunta anterior"
+                  >
+                    ← Anterior
+                  </button>
+                  <label className="campo">
+                    <span>Revisar pregunta</span>
+                    <select
+                      value={indicePrevisualizado}
+                      onChange={(evento) => setIndicePrevisualizado(Number(evento.target.value))}
+                    >
+                      {vistaPreguntas.map((pregunta, indice) => (
+                        <option key={`${indice}-${pregunta.statement}`} value={indice}>
+                          {observarPregunta(pregunta).length > 0 ? 'Revisar · ' : ''}
+                          {indice + 1}. {pregunta.statement.slice(0, 80)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    className="boton boton-secundario"
+                    disabled={indicePrevisualizado >= vistaPreguntas.length - 1}
+                    onClick={() =>
+                      setIndicePrevisualizado((indice) => Math.min(vistaPreguntas.length - 1, indice + 1))
+                    }
+                    aria-label="Ver pregunta siguiente"
+                  >
+                    Siguiente →
+                  </button>
+                </div>
+                <div className="fila importacion-acciones">
+                  <button
+                    type="button"
+                    className="boton"
+                    disabled={trabajando || (!bancoId && !nombreBanco?.trim())}
+                    onClick={() => void confirmar()}
+                  >
+                    {trabajando
+                      ? `Importando ${importadas + 1} de ${vistaPreguntas.length}…`
+                      : importadas > 0
+                        ? 'Continuar importación'
+                        : 'Importar al banco'}
+                  </button>
+                  <button
+                    type="button"
+                    className="boton boton-secundario"
+                    disabled={trabajando}
+                    onClick={() => void cancelar()}
+                  >
+                    {importadas > 0 ? 'Cerrar importación' : 'Cancelar'}
+                  </button>
+                </div>
+              </>
             )}
-            <div className="fila importacion-acciones">
-              <button
-                type="button"
-                className="boton"
-                disabled={trabajando || (!bancoId && !nombreBanco?.trim())}
-                onClick={() => void confirmar()}
-              >
-                {trabajando
-                  ? `Importando ${importadas + 1} de ${vistaPreguntas.length}…`
-                  : importadas > 0
-                    ? 'Continuar importación'
-                    : 'Importar al banco'}
-              </button>
-              <button
-                type="button"
-                className="boton boton-secundario"
-                disabled={trabajando}
-                onClick={() => void cancelar()}
-              >
-                {importadas > 0 ? 'Cerrar importación' : 'Cancelar'}
-              </button>
-            </div>
+            {vistaPreguntas.length === 0 && (
+              <>
+                <p className="aviso aviso-neutro">No se encontraron preguntas importables en este archivo.</p>
+                <div className="fila importacion-acciones">
+                  <button
+                    type="button"
+                    className="boton boton-secundario"
+                    disabled={trabajando}
+                    onClick={() => void cancelar()}
+                  >
+                    Cerrar vista previa
+                  </button>
+                </div>
+              </>
+            )}
+            {vistaPreguntas[indicePrevisualizado] && (
+              <section className="importacion-simulacion">
+                {(() => {
+                  const pregunta = vistaPreguntas[indicePrevisualizado]
+                  const observaciones = observarPregunta(pregunta)
+                  const correctas = pregunta.options?.filter((opcion) => opcion.is_correct) ?? []
+                  return (
+                    <>
+                      <div className="importacion-simulacion-cabecera">
+                        <div>
+                          <span className="importacion-pregunta-tipo">Vista del estudiante</span>
+                          <h4 aria-live="polite">Pregunta {indicePrevisualizado + 1} de {vistaPreguntas.length}</h4>
+                        </div>
+                        <span className="importacion-simulacion-puntos">{pregunta.points ?? '1'} pts</span>
+                      </div>
+                      <div className="importacion-simulacion-cuerpo">
+                        <p className="importacion-enunciado">{pregunta.statement}</p>
+                        {pregunta.options?.length ? (
+                          <ul className="importacion-respuestas-estudiante">
+                            {pregunta.options.map((opcion, opcionIndice) => (
+                              <li key={`${opcionIndice}-${opcion.option_text}`}>
+                                <span
+                                  className={`importacion-circulo${pregunta.question_type === 'multiple_select' ? ' multiple' : ''}`}
+                                  aria-hidden="true"
+                                />
+                                <span>{opcion.option_text}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : pregunta.question_type === 'numeric' ? (
+                          <div className="importacion-campo-ejemplo">La respuesta numérica aparecerá aquí</div>
+                        ) : (
+                          <div className="importacion-campo-ejemplo importacion-campo-desarrollo">
+                            El estudiante escribirá su respuesta aquí
+                          </div>
+                        )}
+                      </div>
+                      <div className="importacion-revision-docente">
+                        <strong>Revisión docente</strong>
+                        {observaciones.length > 0 ? (
+                          <ul>
+                            {observaciones.map((observacion) => <li key={observacion}>{observacion}</li>)}
+                          </ul>
+                        ) : correctas.length > 0 ? (
+                          <p>Respuesta{correctas.length === 1 ? '' : 's'} correcta{correctas.length === 1 ? '' : 's'}: {correctas.map((opcion) => opcion.option_text).join(', ')}</p>
+                        ) : pregunta.question_type === 'numeric' && pregunta.correct_numeric_answer ? (
+                          <p>Respuesta correcta: {pregunta.correct_numeric_answer}</p>
+                        ) : pregunta.correct_text_answer ? (
+                          <p>Respuesta de referencia: {pregunta.correct_text_answer}</p>
+                        ) : (
+                          <p>Respuesta abierta; requiere revisión manual.</p>
+                        )}
+                      </div>
+                    </>
+                  )
+                })()}
+              </section>
+            )}
           </div>
         </div>
       )}
