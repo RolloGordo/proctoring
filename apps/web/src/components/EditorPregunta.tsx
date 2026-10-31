@@ -168,54 +168,190 @@ export function ListaPreguntas({
   onCambiarPuntos?: (id: string, puntos: string) => Promise<void>
   onBorrar?: (id: string) => Promise<void>
 }) {
+  const [busqueda, setBusqueda] = useState('')
+  const [tipoFiltro, setTipoFiltro] = useState('')
+  const [pagina, setPagina] = useState(1)
+  const [porPagina, setPorPagina] = useState(5)
+  const termino = normalizar(busqueda.trim())
+  const filtradas = preguntas.filter((pregunta) => {
+    if (tipoFiltro && pregunta.question_type !== tipoFiltro) return false
+    if (!termino) return true
+    const texto = normalizar(
+      [pregunta.statement, ...pregunta.options.map((opcion) => opcion.option_text)].join(' ')
+    )
+    return texto.includes(termino)
+  })
+  const paginas = Math.max(1, Math.ceil(filtradas.length / porPagina))
+  const paginaActual = Math.min(pagina, paginas)
+  const inicio = (paginaActual - 1) * porPagina
+  const visibles = filtradas.slice(inicio, inicio + porPagina)
+
   return (
-    <ol className="lista-preguntas numerada">
-      {preguntas.map((pregunta) => (
-        <li key={pregunta.id} className="tarjeta">
-          <div className="tarjeta-cuerpo">
-            <div className="fila" style={{ justifyContent: 'space-between' }}>
-              <h4>{nombreDeTipo(pregunta.question_type)}</h4>
-              {onCambiarPuntos ? (
-                <PuntosEditables
-                  puntos={pregunta.points}
-                  onGuardar={(valor) => onCambiarPuntos(pregunta.id, valor)}
-                />
-              ) : (
-                <span className="tenue">{pregunta.points} pts</span>
-              )}
-            </div>
-            <p className="motivo" style={{ marginTop: 'var(--e2)' }}>
-              {pregunta.statement}
-            </p>
-            {pregunta.options.length > 0 && (
-              <ul className="lista-opciones">
-                {pregunta.options.map((opcion) => (
-                  <li key={opcion.id} className={opcion.is_correct ? 'correcta' : ''}>
-                    {opcion.option_text}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {pregunta.correct_numeric_answer && (
-              <p className="ayuda">Respuesta: {pregunta.correct_numeric_answer}</p>
-            )}
-            {pregunta.correct_text_answer && (
-              <p className="ayuda">Respuesta: {pregunta.correct_text_answer}</p>
-            )}
-            {onBorrar && (
-              <button
-                type="button"
-                className="boton boton-texto"
-                onClick={() => void onBorrar(pregunta.id)}
-              >
-                Quitar esta pregunta
-              </button>
-            )}
-          </div>
-        </li>
-      ))}
-    </ol>
+    <>
+      <div className="preguntas-controles">
+        <label className="campo preguntas-busqueda">
+          <span>Buscar preguntas</span>
+          <input
+            type="search"
+            value={busqueda}
+            onChange={(evento) => {
+              setBusqueda(evento.target.value)
+              setPagina(1)
+            }}
+            placeholder="Escribe parte del enunciado o una opción"
+          />
+        </label>
+        <label className="campo preguntas-filtro">
+          <span>Tipo de pregunta</span>
+          <select
+            value={tipoFiltro}
+            onChange={(evento) => {
+              setTipoFiltro(evento.target.value)
+              setPagina(1)
+            }}
+          >
+            <option value="">Todos los tipos</option>
+            {TIPOS.map((tipo) => (
+              <option key={tipo.valor} value={tipo.valor}>
+                {tipo.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="campo preguntas-cantidad">
+          <span>Preguntas por página</span>
+          <select
+            value={porPagina}
+            onChange={(evento) => {
+              setPorPagina(Number(evento.target.value))
+              setPagina(1)
+            }}
+          >
+            {[5, 10, 20, 50].map((cantidad) => (
+              <option key={cantidad} value={cantidad}>
+                {cantidad}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <p className="preguntas-conteo" aria-live="polite">
+        {filtradas.length === preguntas.length
+          ? `${preguntas.length} preguntas`
+          : `${filtradas.length} de ${preguntas.length} preguntas`}
+        {filtradas.length > 0 && ` · mostrando ${inicio + 1}–${inicio + visibles.length}`}
+      </p>
+
+      {filtradas.length === 0 ? (
+        <div className="tarjeta">
+          <p className="tarjeta-cuerpo">
+            {preguntas.length === 0
+              ? 'Todavía no hay preguntas.'
+              : 'No hay preguntas que coincidan. Prueba otra búsqueda o tipo.'}
+          </p>
+        </div>
+      ) : (
+        <>
+          <PaginacionPreguntas pagina={paginaActual} paginas={paginas} alCambiar={setPagina} />
+          <ol
+            className="lista-preguntas numerada preguntas-compactas"
+            style={{ counterReset: `pregunta ${inicio}` }}
+          >
+            {visibles.map((pregunta) => (
+              <li key={pregunta.id} className="tarjeta">
+                <details className="pregunta-desplegable">
+                  <summary className="pregunta-resumen">
+                    <div className="pregunta-resumen-texto">
+                      <h4>{nombreDeTipo(pregunta.question_type)}</h4>
+                      <p>{pregunta.statement}</p>
+                    </div>
+                    <span className="pregunta-puntos">{pregunta.points} pts</span>
+                  </summary>
+                  <div className="tarjeta-cuerpo pregunta-detalle">
+                    {pregunta.options.length > 0 && (
+                      <ul className="lista-opciones">
+                        {pregunta.options.map((opcion) => (
+                          <li key={opcion.id} className={opcion.is_correct ? 'correcta' : ''}>
+                            {opcion.option_text}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {pregunta.correct_numeric_answer !== null && (
+                      <p className="ayuda">Respuesta: {pregunta.correct_numeric_answer}</p>
+                    )}
+                    {pregunta.correct_text_answer && (
+                      <p className="ayuda">Respuesta: {pregunta.correct_text_answer}</p>
+                    )}
+                    {onCambiarPuntos && (
+                      <PuntosEditables
+                        puntos={pregunta.points}
+                        onGuardar={(valor) => onCambiarPuntos(pregunta.id, valor)}
+                      />
+                    )}
+                    {onBorrar && (
+                      <button
+                        type="button"
+                        className="boton boton-texto"
+                        onClick={() => void onBorrar(pregunta.id)}
+                      >
+                        Quitar esta pregunta
+                      </button>
+                    )}
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ol>
+          <PaginacionPreguntas pagina={paginaActual} paginas={paginas} alCambiar={setPagina} />
+        </>
+      )}
+    </>
   )
+}
+
+function PaginacionPreguntas({
+  pagina,
+  paginas,
+  alCambiar
+}: {
+  pagina: number
+  paginas: number
+  alCambiar: (pagina: number) => void
+}) {
+  if (paginas <= 1) return null
+
+  return (
+    <nav className="preguntas-paginacion" aria-label="Páginas de preguntas">
+      <button
+        type="button"
+        className="boton boton-secundario"
+        disabled={pagina === 1}
+        onClick={() => alCambiar(pagina - 1)}
+      >
+        Anterior
+      </button>
+      <span>
+        Página {pagina} de {paginas}
+      </span>
+      <button
+        type="button"
+        className="boton boton-secundario"
+        disabled={pagina === paginas}
+        onClick={() => alCambiar(pagina + 1)}
+      >
+        Siguiente
+      </button>
+    </nav>
+  )
+}
+
+function normalizar(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase()
 }
 
 /**
@@ -297,9 +433,7 @@ function EditorOpciones({
 
   /** En una de varias correctas cada opción se marca y desmarca por su cuenta. */
   function alternarCorrecta(indice: number): void {
-    onCambio(
-      opciones.map((o, i) => (i === indice ? { ...o, is_correct: !o.is_correct } : o))
-    )
+    onCambio(opciones.map((o, i) => (i === indice ? { ...o, is_correct: !o.is_correct } : o)))
   }
 
   return (

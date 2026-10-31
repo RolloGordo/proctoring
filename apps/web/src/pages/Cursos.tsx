@@ -16,6 +16,7 @@ export function Cursos() {
   const [error, setError] = useState<string>()
   const [nombre, setNombre] = useState('')
   const [seccion, setSeccion] = useState('')
+  const [cursoCreado, setCursoCreado] = useState<Course>()
   const [creando, setCreando] = useState(false)
   const [reintento, setReintento] = useState(0)
 
@@ -41,6 +42,7 @@ export function Cursos() {
     try {
       const curso = await api.createCourse(nombre, seccion.trim() || null, token)
       setCursos((previos) => [curso, ...(previos ?? [])])
+      setCursoCreado(curso)
       setNombre('')
       setSeccion('')
     } catch (fallo) {
@@ -55,11 +57,19 @@ export function Cursos() {
       <div className="encabezado-pagina">
         <div>
           <h1>Mis cursos</h1>
-          <p className="subtitulo">Los grupos a los que tomas exámenes</p>
+          <p className="subtitulo">
+            Organiza tus grupos y prepara desde aquí los exámenes de cada curso.
+          </p>
         </div>
       </div>
 
       {error && <p className="aviso">{error}</p>}
+      {cursoCreado && (
+        <div className="aviso aviso-neutro" role="status">
+          <span>Curso creado. Puedes añadir estudiantes o preparar su primer examen.</span>{' '}
+          <Link to={`/cursos/${cursoCreado.id}`}>Continuar con {cursoCreado.name}</Link>
+        </div>
+      )}
 
       <section className="bloque">
         <div className="tarjeta">

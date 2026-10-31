@@ -35,6 +35,16 @@ export function EditarSesion() {
   const [notaMaxima, setNotaMaxima] = useState('20')
   const [descripcion, setDescripcion] = useState('')
   const [guardarCodigo, setGuardarCodigo] = useState(false)
+  /** Si ya entró alguien, el nivel de supervisión deja de poderse cambiar. */
+  const [hayEstudiantes, setHayEstudiantes] = useState(false)
+
+  useEffect(() => {
+    // Si esto falla no se bloquea nada: la API rechaza el cambio igual.
+    api
+      .listParticipants(id, token)
+      .then((lista) => setHayEstudiantes(lista.length > 0))
+      .catch(() => undefined)
+  }, [id, token])
 
   useEffect(() => {
     api
@@ -247,6 +257,7 @@ export function EditarSesion() {
                 <span>Nivel de supervisión</span>
                 <select
                   value={preset}
+                  disabled={hayEstudiantes}
                   onChange={(e) => setPreset(e.target.value as SupervisionPreset)}
                 >
                   {PRESETS.map((p) => (
@@ -255,6 +266,13 @@ export function EditarSesion() {
                     </option>
                   ))}
                 </select>
+                {hayEstudiantes && (
+                  <span className="ayuda">
+                    Ya hay estudiantes en este examen. Lo que se observó mientras lo rendían es un
+                    hecho ocurrido, y cambiarlo ahora dejaría un expediente que no se corresponde
+                    con lo que pasó.
+                  </span>
+                )}
               </label>
 
               <label className="campo">

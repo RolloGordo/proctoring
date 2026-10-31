@@ -25,6 +25,30 @@ interface Capacidad {
   icono: 'pantalla' | 'rostro' | 'ojo' | 'voz'
 }
 
+/**
+ * Las tres escenas del fondo de la portada, en orden de aparición.
+ *
+ * `foto` es opcional en disco; `dibujo` no, y por eso el orden importa: cuenta
+ * la misma historia que la página —el docente prepara, el estudiante rinde, el
+ * sistema registra— tanto si hay fotos como si no.
+ */
+const ESCENAS = [
+  { foto: 'foto-1.jpg', dibujo: 'escena-docente.svg' },
+  { foto: 'foto-2.jpg', dibujo: 'escena-estudiante.svg' },
+  { foto: 'foto-3.jpg', dibujo: 'escena-senales.svg' }
+]
+
+/**
+ * El estado de cada módulo, y **se corresponde con lo que hay en producción**.
+ *
+ * Mirada y voz pasaron a 'listo' el 30/10: llevaban semanas registrando señales
+ * reales con su evidencia mientras esta página seguía diciendo «en desarrollo»,
+ * que es mentir en contra nuestra a quien entra por primera vez.
+ *
+ * Identidad sigue en 'desarrollo' a propósito: se guarda la foto de referencia,
+ * pero ninguna verificación ha terminado todavía de punta a punta (BU-008). No
+ * se marca como lista hasta que un estudiante real quede verificado.
+ */
 const CAPACIDADES: Capacidad[] = [
   {
     titulo: 'Entorno del equipo',
@@ -43,14 +67,14 @@ const CAPACIDADES: Capacidad[] = [
   {
     titulo: 'Mirada y presencia',
     texto: 'Mirada fuera de la pantalla, rostro ausente y una segunda persona en cámara.',
-    estado: 'desarrollo',
+    estado: 'listo',
     icono: 'ojo'
   },
   {
     titulo: 'Consulta a una IA por voz',
     texto:
       'Compara lo que el estudiante dice en voz alta con la pregunta en curso. Leerla para concentrarse no genera alerta.',
-    estado: 'desarrollo',
+    estado: 'listo',
     icono: 'voz'
   }
 ]
@@ -149,24 +173,38 @@ export function Portada() {
   return (
     <CapaPublica>
       <section className="portada-inicio">
-        {/* El fondo que se releva.
+        {/* El fondo que se releva: tres escenas que se van fundiendo.
          *
-         * Las fotos van en `apps/web/public/portada/` con estos nombres. No se
-         * incluye ninguna en el repositorio a propósito: una foto de banco
-         * tiene licencia, y este proyecto no carga nada de un CDN, menos
-         * durante un examen. Mientras no estén, cada `img` falla y se oculta
-         * sola, y la portada se ve como un fondo oscuro limpio.
+         * Cada una intenta primero su fotografía y, si no está, cae al dibujo
+         * del proyecto, que sí vive en el repositorio. Así la portada nunca se
+         * queda en un rectángulo oscuro vacío —que es como estaba— y el día que
+         * haya fotos **con licencia** basta con dejarlas en
+         * `apps/web/public/portada/` con esos nombres: no hay que tocar código.
+         *
+         * No se incluye ninguna foto a propósito. Una imagen sacada de la
+         * página de otro producto no es nuestra, y varias llevan su marca
+         * escrita dentro. Y nada se carga desde un CDN, menos durante un examen.
          *
          * Decorativo: `aria-hidden` y `alt` vacío, porque no añaden nada que no
          * diga ya el texto de al lado. */}
         <div className="portada-escenas" aria-hidden="true">
-          {['foto-1.jpg', 'foto-2.jpg', 'foto-3.jpg'].map((archivo) => (
+          {ESCENAS.map((escena) => (
             <img
-              key={archivo}
-              src={`/portada/${archivo}`}
+              key={escena.foto}
+              src={`/portada/${escena.foto}`}
               alt=""
+              loading="eager"
+              decoding="async"
               onError={(e) => {
-                e.currentTarget.style.display = 'none'
+                const img = e.currentTarget
+                // Una sola vez: si el dibujo tampoco estuviera, volver a
+                // asignarlo dispararía `onError` otra vez, y en bucle.
+                if (img.dataset.respaldo === 'si') {
+                  img.style.display = 'none'
+                  return
+                }
+                img.dataset.respaldo = 'si'
+                img.src = `/portada/${escena.dibujo}`
               }}
             />
           ))}
