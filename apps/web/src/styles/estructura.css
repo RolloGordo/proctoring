@@ -625,7 +625,8 @@
 
 .importacion-revision-docente {
   padding: var(--e3);
-  border-left: 3px solid var(--exito);
+  border: 1px solid var(--exito);
+  border-radius: var(--radio);
   background: var(--papel);
 }
 
@@ -871,9 +872,11 @@
   font-weight: 700;
 }
 
+/* La decisión que rige el caso: el recuadro entero en ámbar, no solo una
+   franja a un lado. */
 .decision-vigente {
   margin-bottom: var(--e4);
-  border-left: 3px solid var(--amarillo);
+  border-color: var(--amarillo);
 }
 
 .justificacion {

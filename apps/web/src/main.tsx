@@ -10,6 +10,7 @@ import '@fontsource-variable/archivo/standard.css'
 import './styles/publica.css'
 import './styles/aviso-almacenamiento.css'
 import './styles/avisos-supervision.css'
+import './styles/panel-oscuro.css'
 
 const raiz = document.getElementById('root')
 if (!raiz) throw new Error('Falta el elemento #root en index.html')

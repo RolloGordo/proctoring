@@ -9,7 +9,7 @@ import {
   type ProctoringEvent
 } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
-import { detalleEvento, duracion, fechaLarga, nombreEvento } from '../lib/formato'
+import { detalleEvento, duracion, fechaLarga, nombreEvento, nombreSeveridad } from '../lib/formato'
 
 interface Detalle {
   exam: MyExam
@@ -134,9 +134,7 @@ export function DetalleExamenEstudiante() {
               <li key={question.id} className="tarjeta">
                 <div className="tarjeta-cuerpo">
                   <h3>{question.statement}</h3>
-                  <p>
-                    {respuestaTexto(question, answers.get(question.id)) || 'Sin respuesta'}
-                  </p>
+                  <p>{respuestaTexto(question, answers.get(question.id)) || 'Sin respuesta'}</p>
                 </div>
               </li>
             ))}
@@ -154,12 +152,10 @@ export function DetalleExamenEstudiante() {
             <div className="tarjeta-cuerpo">
               <h3>{TEXTO_DECISION[detalle.decision.decision].titulo}</h3>
               <p>{TEXTO_DECISION[detalle.decision.decision].detalle}</p>
-              <blockquote className="justificacion">
-                {detalle.decision.justification}
-              </blockquote>
+              <blockquote className="justificacion">{detalle.decision.justification}</blockquote>
               <p className="ayuda">
-                Decidido el {fechaLarga(detalle.decision.decided_at)}. El sistema no decide por
-                su cuenta: reúne evidencia y la revisa una persona, que tiene que justificar por
+                Decidido el {fechaLarga(detalle.decision.decided_at)}. El sistema no decide por su
+                cuenta: reúne evidencia y la revisa una persona, que tiene que justificar por
                 escrito lo que resuelve.
               </p>
             </div>
@@ -177,7 +173,9 @@ export function DetalleExamenEstudiante() {
           <ul className="lista-alertas">
             {detalle.events.map((event) => (
               <li key={event.id}>
-                <span className={`severidad severidad-${event.severity}`}>{event.severity}</span>
+                <span className={`severidad severidad-${event.severity}`}>
+                  {nombreSeveridad(event.severity)}
+                </span>
                 <div>
                   <p className="motivo">{nombreEvento(event.event_type)}</p>
                   <p className="ayuda">

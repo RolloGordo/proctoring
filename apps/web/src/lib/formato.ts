@@ -1,6 +1,13 @@
 /** Formato de fechas, duraciones y nombres para la interfaz, que va en español. */
 
-import type { DecisionType, EventType, RiskLevel, SessionStatus, SupervisionPreset } from './api'
+import type {
+  DecisionType,
+  EventType,
+  RiskLevel,
+  SessionStatus,
+  Severity,
+  SupervisionPreset
+} from './api'
 
 const LARGA = new Intl.DateTimeFormat('es-PE', {
   day: '2-digit',
@@ -22,6 +29,23 @@ export function fechaLarga(iso: string): string {
 
 export function soloHora(iso: string): string {
   return HORA.format(new Date(iso))
+}
+
+/**
+ * «13:55»: la hora en punto de 24 horas, sin segundos.
+ *
+ * Para los extremos de la línea de un examen. Cortar `soloHora` a cinco
+ * caracteres daba «01:55» para la 1:55 p. m.: perdía el «p. m.» y parecía de
+ * madrugada.
+ */
+const HORA_CORTA = new Intl.DateTimeFormat('es-PE', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23'
+})
+
+export function horaCorta(iso: string): string {
+  return HORA_CORTA.format(new Date(iso))
 }
 
 export function duracion(ms: number): string {
@@ -157,6 +181,18 @@ export function nombreNivel(nivel: RiskLevel): string {
   return NIVELES[nivel]
 }
 
+const SEVERIDADES: Record<Severity, string> = { low: 'Baja', medium: 'Media', high: 'Alta' }
+
+/**
+ * «Alta», «Media», «Baja»: la severidad de una señal o una alerta, en
+ * español. Antes varias pantallas imprimían el valor tal cual («medium»,
+ * «high») y la sesión en vivo llamaba «Media» a todo lo que no era alta,
+ * también a las bajas.
+ */
+export function nombreSeveridad(severidad: Severity): string {
+  return SEVERIDADES[severidad]
+}
+
 /**
  * Lo más útil de los metadatos de una señal, en una frase.
  *
@@ -168,8 +204,10 @@ export function detalleEvento(metadatos: Record<string, unknown>): string {
     return `Atajo ${metadatos.shortcut} bloqueado`
   }
   if (typeof metadatos.object_name === 'string') {
-    const confianza = typeof metadatos.score === 'number'
-      ? ` (${Math.round(metadatos.score * 100)}% de confianza)` : ''
+    const confianza =
+      typeof metadatos.score === 'number'
+        ? ` (${Math.round(metadatos.score * 100)}% de confianza)`
+        : ''
     return `${metadatos.object_name}${confianza}`
   }
   if (typeof metadatos.process_name === 'string') {

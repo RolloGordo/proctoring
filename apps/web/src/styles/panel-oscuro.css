@@ -1,0 +1,758 @@
+/* ===========================================================================
+   El panel del docente, en oscuro
+   ===========================================================================
+
+   La misma casa que la portada y el acceso: lienzo casi negro, Archivo y el
+   ámbar de la marca. Pero esto **no es una portada**: es la herramienta que un
+   docente mira una hora seguida mientras vigila un examen. Por eso aquí manda
+   lo que se aprendió de los paneles de trabajo (`design-taste-frontend`,
+   «app screens»):
+
+   - El color va en los datos y en la única acción principal, no en el marco:
+     la barra lateral es del mismo negro que la página y lo activo se marca con
+     una píldora gris, sin barra de color.
+   - Las superficies son planas: un escalón de gris y una línea de 1 px, sin
+     sombras (las sombras son para lo que flota: un menú, un diálogo).
+   - Nada en mayúsculas forzadas: ni las cabeceras de tabla ni los grupos del
+     menú ni los chips. Las mayúsculas gritan y se leen más despacio.
+   - Las cifras con dígitos de ancho fijo, para que no bailen al actualizarse.
+
+   **Se aplica redefiniendo las variables de `tokens.css` dentro del marco**,
+   como `.publica` hace con la portada: todas las pantallas del docente cambian
+   a la vez sin tocarlas una por una, y el panel del estudiante sigue claro
+   hasta su turno.
+
+   Contraste medido sobre la superficie #141414 (AA pide 4,5 en texto):
+     tinta    #f2f2f2  17,1      media  #c4c4c4  11,3      suave  #9a9a9a  6,6
+     ámbar    #e8a700   8,9      (y #141414 sobre el ámbar del botón: 8,9)
+     alta     #ff9b8d   8,6      media  #ffb36b   9,6      éxito  #5ad394  9,7
+   =========================================================================== */
+
+.app.tema-oscuro {
+  --amarillo: #e8a700;
+  --amarillo-oscuro: #ffbb1f;
+  --amarillo-tenue: #2a2109;
+
+  /* La acción principal es el ámbar de la portada, con texto negro. */
+  --accion: #e8a700;
+  --accion-hover: #ffbb1f;
+
+  --tinta: #f2f2f2;
+  --tinta-media: #c4c4c4;
+  --tinta-suave: #9a9a9a;
+
+  /* Tres escalones: la página, las tarjetas y lo hundido o seleccionado. */
+  --papel: #141414;
+  --papel-gris: #0a0a0a;
+  --papel-hundido: #1d1d1d;
+
+  --linea: #262626;
+  --linea-fuerte: #3a3a3a;
+
+  /* Severidades: el color en el texto, sobre un fondo oscuro de su mismo
+     tono. El rojo sigue reservado para `high`. */
+  --alta: #ff9b8d;
+  --alta-fondo: #2a1411;
+  --alta-linea: #5a231d;
+
+  --media: #ffb36b;
+  --media-fondo: #2a1a0c;
+  --media-linea: #5a3612;
+
+  --baja: #b4b4b4;
+  --baja-fondo: #1d1d1d;
+  --baja-linea: #333333;
+
+  --exito: #5ad394;
+  --exito-fondo: #10241a;
+
+  /* Una sola familia en toda la casa: la Archivo de la portada. */
+  --sistema: 'Archivo Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* `--titulo` y `--texto` valen `var(--sistema)` en `:root`, pero ya
+     resueltos ahí: cambiar `--sistema` aquí no les llega. Se repiten. */
+  --titulo: var(--sistema);
+  --texto: var(--sistema);
+  font-family: var(--texto);
+
+  --radio: 8px;
+  --radio-grande: 14px;
+  --sombra: none;
+  --sombra-alta: 0 12px 32px rgb(0 0 0 / 55%);
+
+  background: var(--papel-gris);
+  color: var(--tinta);
+  color-scheme: dark;
+}
+
+/* Que el rebote del scroll no enseñe el gris claro de fuera del marco. */
+html:has(.app.tema-oscuro),
+html:has(.app.tema-oscuro) body {
+  background: #0a0a0a;
+}
+
+/* ---------- La barra lateral ----------
+   Del mismo negro que la página, separada por una línea. El producto arriba
+   (la marca y a quién sirve), los destinos con su nombre, y la cuenta abajo. */
+
+.tema-oscuro .lateral {
+  gap: 0;
+  padding: var(--e5) var(--e3);
+  background: var(--papel-gris);
+  border-right: 1px solid #1c1c1c;
+  color: var(--tinta);
+}
+
+.tema-oscuro .lateral > .marca {
+  padding: 0 var(--e3);
+  color: var(--tinta);
+}
+
+.tema-oscuro .marca span {
+  color: var(--amarillo);
+}
+
+.tema-oscuro .lateral-rol {
+  margin: var(--e1) 0 0;
+  padding: 0 var(--e3);
+  font-size: 0.8125rem;
+  font-weight: 450;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tinta-suave);
+}
+
+.tema-oscuro .lateral-nav {
+  gap: var(--e5);
+  margin: var(--e6) 0 0;
+}
+
+.tema-oscuro .lateral-grupo {
+  gap: 2px;
+}
+
+.tema-oscuro .lateral-grupo-titulo {
+  margin: 0 0 var(--e1);
+  padding: 0 var(--e3);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tinta-suave);
+}
+
+.tema-oscuro .lateral-grupo-examen {
+  padding-top: var(--e5);
+  border-top: 1px solid #1c1c1c;
+}
+
+.tema-oscuro .lateral-nav a {
+  display: flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 var(--e3);
+  border-left: 0;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 450;
+  color: var(--tinta-media);
+  transition:
+    color 120ms ease-out,
+    background-color 120ms ease-out;
+}
+
+.tema-oscuro .lateral-nav a:hover {
+  background: #151515;
+  color: var(--tinta);
+}
+
+/* Dónde estás: una píldora gris y el texto en blanco. Sin barra de color: el
+   ámbar se guarda para lo que hay que hacer. */
+.tema-oscuro .lateral-nav a.activo {
+  background: var(--papel-hundido);
+  color: #ffffff;
+  font-weight: 550;
+}
+
+.tema-oscuro .lateral-pie {
+  padding: var(--e4) var(--e3) 0;
+  border-top: 1px solid #1c1c1c;
+}
+
+.tema-oscuro .lateral-correo {
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+}
+
+.tema-oscuro .lateral .boton-texto {
+  padding-left: 0;
+  color: var(--tinta-media);
+}
+
+.tema-oscuro .lateral .boton-texto:hover:not(:disabled) {
+  color: var(--tinta);
+}
+
+.tema-oscuro .lateral-cambio {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* ---------- El lienzo ---------- */
+
+.tema-oscuro .app-pagina {
+  max-width: 1240px;
+  padding: var(--e6) clamp(var(--e4), 3vw, var(--e7)) var(--e8);
+}
+
+.tema-oscuro h1 {
+  font-size: 1.5rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.tema-oscuro h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.tema-oscuro h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.tema-oscuro a {
+  color: var(--tinta);
+  text-decoration-color: var(--linea-fuerte);
+}
+
+.tema-oscuro a:hover {
+  text-decoration-color: var(--amarillo);
+}
+
+.tema-oscuro .tarjeta {
+  border-color: var(--linea);
+  border-radius: var(--radio-grande);
+  box-shadow: none; /* taste-skill-ignore: anula la sombra de la .tarjeta global, no añade una */
+}
+
+/* ---------- Botones ----------
+   Píldoras, como en la portada. El principal en ámbar con texto negro; el
+   secundario con borde; el de texto, sin nada. Todos responden al pulsar. */
+
+.tema-oscuro .boton {
+  min-height: 2.25rem;
+  padding: 0 var(--e4);
+  border-radius: 999px;
+  color: #141414;
+  font-weight: 600;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.tema-oscuro .boton:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.tema-oscuro .boton-secundario {
+  background: transparent;
+  border-color: var(--linea-fuerte);
+  color: var(--tinta);
+  font-weight: 500;
+}
+
+.tema-oscuro .boton-secundario:hover:not(:disabled) {
+  background: var(--papel-hundido);
+}
+
+/* Borrar: texto y borde rojos sobre transparente. `.tema-oscuro .boton`
+   pone el texto en negro (para el ámbar) y le ganaba a `.boton-peligro`: el
+   botón quedaba negro sobre negro y solo se leía al pasar el cursor. */
+.tema-oscuro .boton-peligro {
+  background: transparent;
+  border-color: var(--alta-linea);
+  color: var(--alta);
+  font-weight: 500;
+}
+
+.tema-oscuro .boton-peligro:hover:not(:disabled) {
+  background: var(--alta-fondo);
+  border-color: var(--alta);
+}
+
+.tema-oscuro .boton-texto {
+  background: none;
+  color: var(--tinta-media);
+  font-weight: 500;
+}
+
+.tema-oscuro .boton-texto:hover:not(:disabled) {
+  background: var(--papel-hundido);
+  color: var(--tinta);
+}
+
+/* ---------- Formularios ---------- */
+
+.tema-oscuro .campo > label:not(.casilla),
+.tema-oscuro .campo > span {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--tinta);
+}
+
+/* El campo va un escalón por debajo de la tarjeta: con el mismo gris que
+   ella no se veía dónde escribir. El borde #3a3a3a da 3,2 contra la tarjeta. */
+.tema-oscuro .campo input,
+.tema-oscuro .campo select,
+.tema-oscuro .campo textarea {
+  background: var(--papel-gris);
+  border-color: var(--linea-fuerte);
+  border-radius: 10px;
+  color: var(--tinta);
+}
+
+.tema-oscuro .campo input:focus,
+.tema-oscuro .campo select:focus,
+.tema-oscuro .campo textarea:focus {
+  border-color: var(--amarillo);
+  box-shadow: 0 0 0 3px rgb(232 167 0 / 22%); /* taste-skill-ignore: anillo de foco, no sombra */
+}
+
+/* ---------- Tablas ----------
+   Reglas y alineación: cabeceras en minúscula y gris, sin franja; filas
+   separadas por una línea tenue; números a la derecha con dígitos fijos. */
+
+.tema-oscuro .tabla th {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tinta-suave);
+}
+
+.tema-oscuro .tabla td {
+  border-bottom-color: #1f1f1f;
+}
+
+.tema-oscuro .tabla tbody tr:hover {
+  background: #181818;
+}
+
+.tema-oscuro .celda-titulo > a {
+  font-weight: 550;
+  text-decoration: none;
+}
+
+.tema-oscuro .celda-titulo > a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--amarillo);
+}
+
+/* Las fechas ya no van en monoespaciada: en la letra del texto y con dígitos
+   fijos se alinean igual y no parecen código. */
+.tema-oscuro .hora {
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta-suave);
+}
+
+/* ---------- Chips y severidades ----------
+   En frase normal, no en mayúsculas: «En curso», «2 altas». Píldoras pálidas
+   con el texto de su mismo tono. */
+
+.tema-oscuro .chip,
+.tema-oscuro .severidad {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  min-height: 1.375rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.tema-oscuro .chip-en_curso {
+  color: #ffd27a;
+  background: var(--amarillo-tenue);
+  border-color: #5a4410;
+}
+
+.tema-oscuro .etiqueta {
+  font-size: 0.8125rem;
+  font-weight: 450;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.tema-oscuro .codigo-acceso {
+  background: var(--amarillo-tenue);
+  border-color: #5a4410;
+  color: #ffd27a;
+}
+
+/* ---------- Avisos ----------
+   Un recuadro entero de su tono, sin la franja gruesa a un lado. */
+
+.tema-oscuro .aviso {
+  border: 1px solid var(--alta-linea);
+  border-radius: var(--radio-grande);
+  background: var(--alta-fondo);
+  color: var(--alta);
+}
+
+.tema-oscuro .aviso-neutro {
+  border-color: var(--linea);
+  background: var(--papel);
+  color: var(--tinta-media);
+}
+
+/* ---------- Cifras ----------
+   Un solo contenedor dividido por líneas finas, no una caja por cifra (en la
+   sesión en vivo y en resultados). El hueco de 1 px de la rejilla deja ver el
+   color de la línea, así los cortes salen también cuando la fila se parte en
+   dos en pantallas estrechas. */
+
+.tema-oscuro .panel-resumen {
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-grande);
+  background: var(--linea);
+}
+
+.tema-oscuro .panel-resumen > .tarjeta {
+  border: 0;
+  border-radius: 0;
+  background: var(--papel);
+}
+
+.tema-oscuro .cifra {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+/* La decisión que rige el caso, con su borde ámbar: aquí `.tema-oscuro
+   .tarjeta` es más específica que `.decision-vigente` y se lo quitaba. */
+.tema-oscuro .tarjeta.decision-vigente {
+  border-color: #5a4410;
+}
+
+/* ---------- Selectores sueltos ----------
+   Los que no van dentro de un `.campo` (elegir un banco, filtrar por tipo)
+   se quedaban con el desplegable claro del navegador. */
+
+.tema-oscuro select {
+  min-height: 2.25rem;
+  padding: 0 var(--e3);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: 10px;
+  background: var(--papel-gris);
+  color: var(--tinta);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.tema-oscuro select:focus-visible {
+  outline: 2px solid var(--amarillo);
+  outline-offset: 2px;
+}
+
+/* ---------- Panel de inicio ----------
+   Lo que pide atención ahora: los exámenes en curso, grandes y con su línea;
+   debajo, a la par y con las mismas filas, lo que viene y lo que terminó. */
+
+.tema-oscuro .inicio-hallazgo {
+  margin: var(--e1) 0 0;
+  font-size: 0.9375rem;
+  color: var(--tinta-media);
+  font-variant-numeric: tabular-nums;
+}
+
+.tema-oscuro .inicio-cuenta {
+  margin-left: 0.35em;
+  font-weight: 450;
+  color: var(--tinta-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+.tema-oscuro .inicio-en-curso {
+  display: grid;
+  gap: var(--e4);
+}
+
+.tema-oscuro .en-curso {
+  display: grid;
+  gap: var(--e5);
+  padding: var(--e5);
+}
+
+.tema-oscuro .en-curso-cabeza {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--e5);
+}
+
+.tema-oscuro .en-curso-cabeza h3 {
+  font-size: 1.125rem;
+}
+
+.tema-oscuro .en-curso-cabeza .codigo-bloque {
+  text-align: right;
+}
+
+.tema-oscuro .en-curso-cabeza .ayuda {
+  margin: var(--e1) 0 0;
+}
+
+/* La línea del examen. La pista es la duración; lo ámbar, lo que ya pasó (el
+   dato principal de la pantalla lleva el único tono); cada marca, una alerta
+   en su minuto, del color de su severidad y por encima de la pista. */
+.tema-oscuro .linea-pista {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--papel-hundido);
+}
+
+.tema-oscuro .linea-hecho {
+  width: var(--en);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--amarillo);
+}
+
+.tema-oscuro .linea-marca {
+  position: absolute;
+  top: 50%;
+  left: var(--en);
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--baja);
+  transform: translate(-50%, -50%);
+  /* Se separa de la pista ámbar con un filo del color de la tarjeta. */
+  box-shadow: 0 0 0 2px var(--papel); /* taste-skill-ignore: es un filo de separación, no una sombra */
+}
+
+.tema-oscuro .linea-marca-high {
+  background: var(--alta);
+}
+
+.tema-oscuro .linea-marca-medium {
+  background: var(--media);
+}
+
+.tema-oscuro .linea-horas {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--e2);
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+.tema-oscuro .linea-faltan {
+  color: var(--tinta);
+  font-weight: 500;
+}
+
+.tema-oscuro .en-curso-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e4) var(--e5);
+  flex-wrap: wrap;
+}
+
+.tema-oscuro .en-curso-alertas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e2) var(--e4);
+  min-width: 0;
+}
+
+.tema-oscuro .en-curso-cuentas {
+  gap: var(--e2);
+}
+
+.tema-oscuro .en-curso-ultima {
+  font-size: 0.875rem;
+  color: var(--tinta-media);
+}
+
+.tema-oscuro .en-curso-ultima .tenue {
+  white-space: nowrap;
+}
+
+/* La regla global `.tarjeta + .tarjeta` le sumaba 16 px a la segunda: en una
+   rejilla el hueco lo pone `gap`. */
+.tema-oscuro .inicio-listas > .tarjeta + .tarjeta,
+.tema-oscuro .inicio-en-curso > .tarjeta + .tarjeta {
+  margin-top: 0;
+}
+
+.tema-oscuro .inicio-listas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--e4);
+  /* Cada tarjeta con su altura: estirada a la de su vecina dejaba un hueco
+     bajo la última fila. */
+  align-items: start;
+}
+
+.tema-oscuro .inicio-lista {
+  padding: var(--e5) var(--e5) var(--e3);
+}
+
+.tema-oscuro .inicio-lista .encabezado-seccion {
+  margin-bottom: var(--e2);
+}
+
+.tema-oscuro .inicio-lista .encabezado-seccion a {
+  font-size: 0.875rem;
+}
+
+.tema-oscuro .inicio-filas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tema-oscuro .inicio-filas li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e4);
+  min-height: 3.5rem;
+  padding: var(--e3) 0;
+  border-top: 1px solid #1f1f1f;
+}
+
+.tema-oscuro .inicio-fila-texto {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tema-oscuro .inicio-fila-texto a {
+  overflow: hidden;
+  font-weight: 550;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tema-oscuro .inicio-fila-texto a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--amarillo);
+}
+
+.tema-oscuro .inicio-fila-texto > span {
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+.tema-oscuro .inicio-fila-dato {
+  flex: none;
+  font-family: var(
+    --mono
+  ); /* taste-skill-ignore: es un código de acceso, se teclea letra a letra */
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  color: #ffd27a;
+}
+
+.tema-oscuro .inicio-fila-dato .tenue {
+  font-family: var(--sistema);
+  letter-spacing: 0;
+}
+
+.tema-oscuro .inicio-fila-accion {
+  flex: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.tema-oscuro .inicio-vacio {
+  margin: 0;
+  padding: var(--e4) 0 var(--e3);
+  border-top: 1px solid #1f1f1f;
+  color: var(--tinta-suave);
+}
+
+.tema-oscuro .inicio-primero {
+  padding: var(--e6);
+}
+
+.tema-oscuro .inicio-primero .subtitulo {
+  max-width: 56ch;
+  margin-bottom: var(--e5);
+}
+
+/* Cargando: el sitio de cada bloque con barras grises de su tamaño, sin
+   brillo que pase: el panel no salta cuando llegan los datos. */
+.tema-oscuro .inicio-cargando {
+  display: grid;
+  gap: var(--e4);
+}
+
+.tema-oscuro .inicio-cargando-bloque {
+  display: grid;
+  gap: var(--e3);
+  padding: var(--e5);
+}
+
+.tema-oscuro .barra-carga {
+  display: block;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--papel-hundido);
+}
+
+@media (max-width: 760px) {
+  .tema-oscuro .inicio-listas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tema-oscuro .en-curso-cabeza {
+    flex-direction: column;
+  }
+
+  .tema-oscuro .en-curso-cabeza .codigo-bloque {
+    text-align: left;
+  }
+}
+
+/* ---------- Teléfono ----------
+   La barra lateral se pliega en una cabecera con la marca y el menú. */
+
+@media (max-width: 900px) {
+  .tema-oscuro .app-movil {
+    background: var(--papel-gris);
+    border-bottom: 1px solid #1c1c1c;
+  }
+
+  .tema-oscuro .app-movil .boton-texto {
+    color: var(--tinta);
+  }
+
+  .tema-oscuro .lateral {
+    border-right: 1px solid #262626;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tema-oscuro .boton,
+  .tema-oscuro .lateral-nav a {
+    transition: none;
+  }
+}
