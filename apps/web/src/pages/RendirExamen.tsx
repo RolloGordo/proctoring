@@ -311,7 +311,7 @@ export function RendirExamen() {
             Pregunta {total > 0 ? enCurso + 1 : 0} de {total}
           </strong>
           <p className="ayuda">
-            {respondidas} respondidas · {faltantes} sin responder
+            {respondidas} {respondidas === 1 ? 'respondida' : 'respondidas'} · {faltantes} sin responder
           </p>
           <p className="ayuda">{textoGuardado(guardado)}</p>
           {restante !== undefined && (
@@ -328,7 +328,9 @@ export function RendirExamen() {
         </div>
         <button
           type="button"
-          className="boton"
+          // Secundario: siempre a mano, pero sin competir con «Siguiente». En
+          // la última pregunta el botón principal de abajo ya es entregar.
+          className="boton boton-secundario"
           onClick={() => void entregar()}
           // Solo mientras se entrega. Bloquearlo por un guardado fallido o por
           // `navigator.onLine` dejaba al estudiante sin poder entregar por un

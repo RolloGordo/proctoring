@@ -953,7 +953,6 @@
   color: var(--exito);
   background: var(--exito-fondo);
   border-color: rgb(6 118 71 / 30%);
-  border-left-color: var(--exito);
 }
 
 /* Cancelar y borrar: separados del formulario y marcados, porque una pulsación
