@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth-context'
 import { inicioSegunRol } from '../lib/rutas'
 import { authEnabled } from '../lib/supabase'
+import { AvisoAlmacenamiento } from '../components/AvisoAlmacenamiento'
 
 export function Login() {
   const { entrar, salir, token, cargando, rol, perfilListo } = useAuth()
@@ -104,6 +105,10 @@ export function Login() {
           <Link to="/">← Volver al inicio</Link>
         </p>
       </div>
+      {/* Aquí sí: es donde se llega antes de tener sesión. Debajo de la
+       * caja y no flotando: en un teléfono pequeño, una barra fija abajo
+       * podía tapar el botón de entrar. */}
+      <AvisoAlmacenamiento />
     </div>
   )
 }

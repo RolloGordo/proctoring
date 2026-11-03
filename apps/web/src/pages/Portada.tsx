@@ -1,7 +1,9 @@
+import { type CSSProperties, type RefObject, useEffect, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { CapaPublica } from '../components/Capas'
 import { useAuth } from '../lib/auth-context'
 import { inicioSegunRol } from '../lib/rutas'
+import { montarBurbuja } from '../lib/burbuja'
 import { authEnabled } from '../lib/supabase'
 
 /**
@@ -10,337 +12,656 @@ import { authEnabled } from '../lib/supabase'
  * Explica qué es el sistema antes de pedir credenciales. Quien ya tiene sesión
  * no pasa por aquí: va directo a su panel.
  *
- * **Dice solo lo que el sistema hace.** Las capacidades que todavía no existen
- * llevan la etiqueta "En desarrollo" en vez de venderse como hechas: una
- * portada que promete más de lo que hay es lo primero que un docente evaluador
- * detecta.
+ * **Dice solo lo que el sistema hace.** Lo que todavía no funciona en
+ * producción lleva «En desarrollo» en vez de venderse como hecho: una portada
+ * que promete más de lo que hay es lo primero que un docente evaluador detecta.
+ *
+ * La composición sale del propio lema. Sus tres verbos —detecta, documenta,
+ * decide— abren cada uno su capítulo a tamaño de arquitectura, y el titular es
+ * la frase que resume el proyecto: decide el docente.
  */
 
-type Estado = 'listo' | 'desarrollo'
+const DESCARGA = 'https://github.com/RolloGordo/proctoring/releases/latest'
 
-interface Capacidad {
-  titulo: string
-  texto: string
-  estado: Estado
-  icono: 'pantalla' | 'rostro' | 'ojo' | 'voz'
+/**
+ * Las fotos de la burbuja, de Unsplash (licencia de Unsplash: uso libre, sin
+ * atribución obligatoria; la damos igual en el pie). Se sirven desde nuestro
+ * dominio, no desde el de Unsplash: la portada no le hace peticiones a nadie
+ * más, como dice la política de privacidad.
+ *
+ * `foco` es dónde cae el sujeto a lo ancho (0 izquierda, 1 derecha): la
+ * burbuja es cuadrada y recorta los lados, y sin él el estudiante de la
+ * primera quedaba cortado. Cada una tiene un respaldo del repositorio por si
+ * el fichero faltara: así la burbuja nunca queda vacía.
+ */
+type Foto = {
+  src: string
+  respaldo: string
+  alt: string
+  foco: number
+  autor: string
+  perfil: string
 }
 
-/**
- * Las tres escenas del fondo de la portada, en orden de aparición.
- *
- * `foto` es opcional en disco; `dibujo` no, y por eso el orden importa: cuenta
- * la misma historia que la página —el docente prepara, el estudiante rinde, el
- * sistema registra— tanto si hay fotos como si no.
- */
-const ESCENAS = [
-  { foto: 'foto-1.jpg', dibujo: 'escena-docente.svg' },
-  { foto: 'foto-2.jpg', dibujo: 'escena-estudiante.svg' },
-  { foto: 'foto-3.jpg', dibujo: 'escena-senales.svg' }
-]
+const FOTOS = {
+  rinde: {
+    src: '/portada/promo-rinde.jpg',
+    respaldo: '/portada/foto-1.jpg',
+    alt: 'Un estudiante con auriculares, concentrado frente a su portátil.',
+    foco: 0.3,
+    autor: 'Wes Hicks',
+    perfil: 'https://unsplash.com/@sickhews'
+  },
+  escribe: {
+    src: '/portada/promo-escribe.jpg',
+    respaldo: '/portada/foto-2.jpg',
+    alt: 'Un estudiante escribe en su portátil.',
+    foco: 0.5,
+    autor: 'Christian Velitchkov',
+    perfil: 'https://unsplash.com/@cvelitchkov'
+  },
+  casa: {
+    src: '/portada/promo-casa.jpg',
+    respaldo: '/portada/foto-3.jpg',
+    alt: 'Un estudiante con auriculares rinde desde casa.',
+    foco: 0.5,
+    autor: 'Vitaly Gariev',
+    perfil: 'https://unsplash.com/@silverkblack'
+  },
+  camara: {
+    src: '/portada/promo-camara.jpg',
+    respaldo: '/portada/escena-senales.svg',
+    alt: 'Una cámara web sobre el monitor.',
+    foco: 0.45,
+    autor: 'Emiliano Cicero',
+    perfil: 'https://unsplash.com/@emilianocicero'
+  },
+  docente: {
+    src: '/portada/promo-docente.jpg',
+    respaldo: '/portada/escena-docente.svg',
+    alt: 'Una docente revisa en su portátil, frente a la pizarra.',
+    foco: 0.5,
+    autor: 'Vitaly Gariev',
+    perfil: 'https://unsplash.com/@silverkblack'
+  },
+  hoja: {
+    src: '/portada/promo-hoja.jpg',
+    respaldo: '/portada/escena-estudiante.svg',
+    alt: 'Una mano marca las respuestas de una hoja de examen.',
+    foco: 0.6,
+    autor: 'Nguyen Dang Hoang Nhu',
+    perfil: 'https://unsplash.com/@nguyendhn'
+  }
+} satisfies Record<string, Foto>
+
+const RESPALDOS = new Map(Object.values(FOTOS).map((foto) => [foto.src, foto.respaldo]))
+
+/** Cada autor una vez, en el orden en que salen sus fotos. */
+const AUTORES = Object.values(FOTOS).filter(
+  (foto, indice, todas) => todas.findIndex((otra) => otra.autor === foto.autor) === indice
+)
+
+const CREDITOS = (
+  <>
+    Fotos de{' '}
+    {AUTORES.map((foto, indice) => (
+      <span key={foto.autor}>
+        {indice > 0 && (indice === AUTORES.length - 1 ? ' y ' : ', ')}
+        <a href={foto.perfil} target="_blank" rel="noreferrer">
+          {foto.autor}
+        </a>
+      </span>
+    ))}{' '}
+    en Unsplash.
+  </>
+)
 
 /**
- * El estado de cada módulo, y **se corresponde con lo que hay en producción**.
+ * Lo que observa, y en qué estado está **en producción**.
  *
- * Mirada y voz pasaron a 'listo' el 30/10: llevaban semanas registrando señales
- * reales con su evidencia mientras esta página seguía diciendo «en desarrollo»,
- * que es mentir en contra nuestra a quien entra por primera vez.
- *
- * Identidad sigue en 'desarrollo' a propósito: se guarda la foto de referencia,
- * pero ninguna verificación ha terminado todavía de punta a punta (BU-008). No
- * se marca como lista hasta que un estudiante real quede verificado.
+ * La consulta a una IA va por separado del habla, y en desarrollo: el habla se
+ * detecta, se transcribe y llega al docente con su fragmento, pero la alerta de
+ * consulta exige además la similitud con la pregunta y una voz sintética, y en
+ * producción todavía no se calcula ninguna de las dos. Identidad igual: se
+ * guarda la foto de referencia, pero ninguna verificación ha terminado aún de
+ * punta a punta.
  */
-const CAPACIDADES: Capacidad[] = [
+const FAMILIAS = [
   {
-    titulo: 'Entorno del equipo',
+    nombre: 'Entorno del equipo',
     texto:
-      'Salidas de la ventana del examen, monitores adicionales y aplicaciones de captura, control remoto o máquinas virtuales.',
-    estado: 'listo',
-    icono: 'pantalla'
+      'Salir de la ventana del examen, conectar un segundo monitor o abrir aplicaciones de captura, control remoto o máquinas virtuales.',
+    listo: true
   },
   {
-    titulo: 'Identidad',
+    nombre: 'Mirada y presencia',
     texto:
-      'Verificación por rostro al entrar. Si la cámara no reconoce a alguien por la luz, el docente lo admite a mano.',
-    estado: 'desarrollo',
-    icono: 'rostro'
+      'Mirada fuera de la pantalla, rostro ausente, una segunda persona en cámara o un celular a la vista.',
+    listo: true
   },
   {
-    titulo: 'Mirada y presencia',
-    texto: 'Mirada fuera de la pantalla, rostro ausente y una segunda persona en cámara.',
-    estado: 'listo',
-    icono: 'ojo'
+    nombre: 'Habla durante el examen',
+    texto:
+      'Cuando el micrófono oye voz, el docente recibe el fragmento de audio y su transcripción para decidir.',
+    listo: true
   },
   {
-    titulo: 'Consulta a una IA por voz',
+    nombre: 'Consulta a una IA por voz',
     texto:
-      'Compara lo que el estudiante dice en voz alta con la pregunta en curso. Leerla para concentrarse no genera alerta.',
-    estado: 'listo',
-    icono: 'voz'
+      'Compara lo dicho con la pregunta en curso y escucha si responde una voz sintética. Solo avisa si ocurren las dos cosas.',
+    listo: false
+  },
+  {
+    nombre: 'Identidad',
+    texto:
+      'Verificación por rostro al entrar. Si la cámara no reconoce a alguien, el docente lo admite a mano.',
+    listo: false
   }
 ]
 
-const PASOS = [
+const RECORRIDO = [
   {
-    titulo: 'El docente crea el examen',
-    texto: 'Elige el nivel de supervisión, escribe las preguntas y recibe un código de acceso.'
+    momento: 'Antes',
+    titulo: 'El docente prepara el examen',
+    texto: 'Elige las preguntas o su banco, decide qué se supervisa y recibe un código de acceso.'
   },
   {
-    titulo: 'El estudiante entra y acepta',
+    momento: 'Al entrar',
+    titulo: 'El estudiante acepta',
     texto:
-      'Escribe el código, lee qué se va a observar y lo acepta. Sin esa aceptación no recibe ni una pregunta.'
+      'Ve todo lo que se va a observar antes de empezar. Sin su aceptación no recibe ni una pregunta.'
   },
   {
-    titulo: 'Se registran señales, no video',
+    momento: 'Durante',
+    titulo: 'Se guardan señales, no vídeo',
     texto:
-      'Durante el examen se guardan avisos puntuales y la evidencia asociada. No se graba ni se envía video continuo.'
+      'Cada señal queda con su hora, la pregunta en curso y su evidencia: una captura o un fragmento de voz.'
   },
   {
-    titulo: 'El docente revisa y decide',
-    texto:
-      'Ve las señales con su evidencia y resuelve. La decisión lleva una justificación escrita.'
+    momento: 'Después',
+    titulo: 'El docente revisa',
+    texto: 'Abre el expediente de cada estudiante, con el riesgo desglosado señal por señal.'
   }
 ]
 
 const PRINCIPIOS = [
   {
-    titulo: 'Auditor, no juez',
+    titulo: 'Auditor, no juez.',
     texto:
-      'El sistema calcula un nivel de riesgo desglosado por señal y entrega evidencia. Nunca anula un examen por su cuenta.'
+      'Calcula un riesgo desglosado por señal y entrega la evidencia. Nunca anula un examen por su cuenta: la decisión es del docente y lleva una justificación escrita.'
   },
   {
-    titulo: 'Sin video continuo',
+    titulo: 'Sin vídeo continuo.',
     texto:
-      'La detección liviana corre en el equipo del estudiante. Solo salen eventos, capturas puntuales y fragmentos de audio con habla.'
+      'La detección corre en el equipo del estudiante. Solo salen eventos, capturas sueltas y fragmentos de audio en los que hay voz.'
   },
   {
-    titulo: 'Consentimiento explícito',
+    titulo: 'Con consentimiento.',
     texto:
-      'El estudiante ve, antes de empezar, cada cosa que se observa. La supervisión comienza después de que acepta, no antes.'
+      'El estudiante ve, antes de empezar, cada cosa que se observa. La supervisión empieza cuando acepta, no antes.'
   }
 ]
 
-function Icono({ tipo }: { tipo: Capacidad['icono'] }) {
-  // Trazos simples a mano: nada de librerías de iconos para cuatro dibujos.
-  const comun = {
-    width: 28,
-    height: 28,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.8,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true
+type Caso = 'lee' | 'consulta'
+
+/**
+ * Lo único que el visitante toca: la regla que distingue al proyecto.
+ *
+ * Leer la pregunta en voz alta para concentrarse no es pedirle la respuesta a
+ * una IA, y el sistema no los trata igual. Las frases son un ejemplo y lo dice;
+ * los nombres de los campos y de los niveles son los del producto.
+ */
+const CASOS: Record<
+  Caso,
+  {
+    opcion: string
+    voz: string
+    respuesta?: string
+    similitud: string
+    sintetica: string
+    nivel: 'media' | 'alta'
+    nivelTexto: string
+    resultado: string
   }
-  switch (tipo) {
-    case 'pantalla':
-      return (
-        <svg {...comun}>
-          <rect x="3" y="4" width="18" height="12" rx="1.5" />
-          <path d="M8 20h8M12 16v4" />
-        </svg>
-      )
-    case 'rostro':
-      return (
-        <svg {...comun}>
-          <circle cx="12" cy="9" r="3.5" />
-          <path d="M5 20c.8-3.6 3.5-5.5 7-5.5s6.2 1.9 7 5.5" />
-        </svg>
-      )
-    case 'ojo':
-      return (
-        <svg {...comun}>
-          <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" />
-          <circle cx="12" cy="12" r="2.8" />
-        </svg>
-      )
-    case 'voz':
-      return (
-        <svg {...comun}>
-          <rect x="9" y="3" width="6" height="11" rx="3" />
-          <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3" />
-        </svg>
-      )
+> = {
+  lee: {
+    opcion: 'Lee la pregunta en voz alta',
+    voz: '¿Qué mide la elasticidad precio de la demanda?',
+    similitud: 'Alta',
+    sintetica: 'No',
+    nivel: 'media',
+    nivelTexto: 'Media',
+    resultado: 'Habla detectada. El docente recibe el fragmento y decide si importa.'
+  },
+  consulta: {
+    opcion: 'Le pregunta a una IA',
+    voz: 'Oye, ¿qué mide la elasticidad precio de la demanda?',
+    respuesta: 'Mide cuánto cambia la cantidad demandada cuando cambia el precio…',
+    similitud: 'Alta',
+    sintetica: 'Sí',
+    nivel: 'alta',
+    nivelTexto: 'Alta',
+    resultado: 'Posible consulta a una IA: se cumplen las dos condiciones.'
   }
 }
 
 export function Portada() {
   const { token, rol } = useAuth()
+  const [caso, setCaso] = useState<Caso>('lee')
+  const raiz = useRef<HTMLDivElement>(null)
+  const lienzo = useRef<HTMLCanvasElement>(null)
+
+  useAparecer(raiz)
+  useBurbuja(raiz, lienzo)
 
   // Quien ya tiene sesión no necesita la portada: va a lo suyo.
   if (authEnabled && token && rol) return <Navigate to={inicioSegunRol(rol)} replace />
 
+  const entrar = authEnabled ? '/login' : '/docente'
+  const textoEntrar = authEnabled ? 'Iniciar sesión' : 'Entrar'
+  const actual = CASOS[caso]
+
   return (
-    <CapaPublica>
-      <section className="portada-inicio">
-        {/* El fondo que se releva: tres escenas que se van fundiendo.
-         *
-         * Cada una intenta primero su fotografía y, si no está, cae al dibujo
-         * del proyecto, que sí vive en el repositorio. Así la portada nunca se
-         * queda en un rectángulo oscuro vacío —que es como estaba— y el día que
-         * haya fotos **con licencia** basta con dejarlas en
-         * `apps/web/public/portada/` con esos nombres: no hay que tocar código.
-         *
-         * No se incluye ninguna foto a propósito. Una imagen sacada de la
-         * página de otro producto no es nuestra, y varias llevan su marca
-         * escrita dentro. Y nada se carga desde un CDN, menos durante un examen.
-         *
-         * Decorativo: `aria-hidden` y `alt` vacío, porque no añaden nada que no
-         * diga ya el texto de al lado. */}
-        <div className="portada-escenas" aria-hidden="true">
-          {ESCENAS.map((escena) => (
-            <img
-              key={escena.foto}
-              src={`/portada/${escena.foto}`}
-              alt=""
-              loading="eager"
-              decoding="async"
-              onError={(e) => {
-                const img = e.currentTarget
-                // Una sola vez: si el dibujo tampoco estuviera, volver a
-                // asignarlo dispararía `onError` otra vez, y en bucle.
-                if (img.dataset.respaldo === 'si') {
-                  img.style.display = 'none'
-                  return
-                }
-                img.dataset.respaldo = 'si'
-                img.src = `/portada/${escena.dibujo}`
-              }}
-            />
-          ))}
-        </div>
-        <div className="contenedor">
-          <p className="portada-lema">Exámenes remotos con supervisión transparente</p>
-          <h1>
-            Detecta. Documenta.
+    <CapaPublica creditos={CREDITOS}>
+      <div ref={raiz}>
+        <canvas ref={lienzo} className="pub-lienzo" aria-hidden="true" />
+
+        <section className="pub-hero pub-marco" aria-labelledby="portada-titulo">
+          {/* El salto va tras «el»: «Decide el / docente.» son dos líneas de
+           * nueve y ocho letras. Tras «Decide», «el docente.» no cabía y salían
+           * tres. */}
+          {/* Nada del primer pantallazo espera a una animación: lo que explica
+           * qué es esto tiene que estar a la vista desde el primer fotograma. El
+           * movimiento de esta sección lo pone el relevo de las pantallas. */}
+          <h1 id="portada-titulo" className="pub-hero-titulo">
+            Decide el
             <br />
-            Decide el docente.
+            docente.
           </h1>
-          <p className="portada-resumen">
-            Una plataforma que aloja sus propios exámenes, supervisa al estudiante mientras los
-            rinde y entrega al docente la evidencia, no un veredicto.
-          </p>
-          <div className="fila">
-            <Link to={authEnabled ? '/login' : '/docente'} className="boton boton-grande">
-              {authEnabled ? 'Iniciar sesión' : 'Entrar'}
-            </Link>
-            <a href="#como-funciona" className="boton boton-grande boton-claro">
-              Cómo funciona
-            </a>
+
+          <div className="pub-hero-cuerpo">
+            <div>
+              <p className="pub-declaracion">
+                Proctoring supervisa exámenes remotos y le entrega al docente la evidencia de cada
+                señal. Nunca decide por él.
+              </p>
+              <div className="pub-acciones">
+                <Link to={entrar} className="pub-boton">
+                  {textoEntrar}
+                </Link>
+                <a href="#empieza" className="pub-enlace">
+                  Rendir un examen
+                </a>
+              </div>
+            </div>
+
+            <Burbuja fotos={[FOTOS.rinde, FOTOS.escribe, FOTOS.casa]} />
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="portada-seccion" id="que-detecta">
-        <div className="contenedor">
-          <h2>Qué observa</h2>
-          <p className="subtitulo portada-sub">
-            Cuatro tipos de señal, cada una con su propio módulo
-          </p>
-
-          <div className="rejilla-capacidades">
-            {CAPACIDADES.map((c) => (
-              <article key={c.titulo} className="capacidad">
-                <span className="capacidad-icono">
-                  <Icono tipo={c.icono} />
-                </span>
-                <h3>{c.titulo}</h3>
-                <p>{c.texto}</p>
-                <span
-                  className={c.estado === 'listo' ? 'etiqueta-estado listo' : 'etiqueta-estado'}
-                >
-                  {c.estado === 'listo' ? 'Disponible' : 'En desarrollo'}
-                </span>
-              </article>
-            ))}
+        <section className="pub-seccion pub-marco" id="que-detecta" aria-labelledby="detecta">
+          <div className="pub-capitulo-cabeza">
+            <div>
+              <h2 id="detecta" className="pub-capitulo" data-aparece>
+                Detecta.
+              </h2>
+              <p className="pub-intro" data-aparece style={{ '--orden': 1 } as Estilo}>
+                Mientras el estudiante rinde, cada módulo vigila una cosa y solo avisa cuando la ve.
+              </p>
+            </div>
+            <Burbuja fotos={[FOTOS.camara]} ancla />
           </div>
-        </div>
-      </section>
 
-      <section className="portada-seccion portada-gris" id="como-funciona">
-        <div className="contenedor">
-          <h2>Cómo funciona</h2>
-          <p className="subtitulo portada-sub">De la creación del examen a la decisión</p>
-
-          <ol className="pasos">
-            {PASOS.map((paso) => (
-              <li key={paso.titulo}>
-                <h3>{paso.titulo}</h3>
-                <p>{paso.texto}</p>
+          <ul className="pub-familias">
+            {FAMILIAS.map((familia, indice) => (
+              <li
+                key={familia.nombre}
+                className="pub-familia"
+                data-aparece
+                style={{ '--orden': indice } as Estilo}
+              >
+                <h3>{familia.nombre}</h3>
+                <p>{familia.texto}</p>
+                <span className="pub-familia-estado" data-listo={familia.listo || undefined}>
+                  {familia.listo ? 'Disponible' : 'En desarrollo'}
+                </span>
               </li>
             ))}
-          </ol>
-        </div>
-      </section>
+          </ul>
 
-      <section className="portada-seccion" id="aplicacion-estudiante">
-        <div className="contenedor">
-          <h2>Rinde el examen desde la app de escritorio</h2>
-          <p className="subtitulo portada-sub">
-            La app permite el modo de examen protegido y el acceso a las funciones de supervisión.
-            Antes de iniciar, revisa los permisos de cámara y micrófono que solicite tu equipo.
-          </p>
-          <div className="portada-accion">
-            <a
-              href="https://github.com/RolloGordo/proctoring/releases"
-              className="boton boton-grande"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Revisar versiones de la app
-            </a>
-            <p className="ayuda">
-              Si todavía no hay una versión publicada, solicita el instalador a tu docente.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="portada-seccion" id="principios">
-        <div className="contenedor">
-          <h2>Principios</h2>
-          <p className="subtitulo portada-sub">Lo que el sistema se compromete a no hacer</p>
-
-          <div className="rejilla-principios">
-            {PRINCIPIOS.map((p) => (
-              <article key={p.titulo}>
-                <h3>{p.titulo}</h3>
-                <p>{p.texto}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="portada-seccion portada-oscura">
-        <div className="contenedor">
-          <div className="rejilla-roles">
+          <div className="pub-demo" data-aparece>
             <div>
-              <h2>Si eres docente</h2>
-              <ul>
-                <li>Crea exámenes con preguntas de cinco tipos.</li>
-                <li>Elige el nivel de supervisión: básica, estándar o estricta.</li>
-                <li>Admite a mano a quien la cámara no reconozca.</li>
-                <li>Recibe las alertas mientras el examen ocurre.</li>
-              </ul>
+              <h3>Leer la pregunta no es consultar a una IA.</h3>
+              <p className="pub-demo-texto">
+                Hay quien lee en voz alta para concentrarse. Elige un caso y mira cómo le llega cada
+                uno al docente.
+              </p>
+              <div className="pub-demo-control" role="group" aria-label="Elige un caso">
+                {(Object.keys(CASOS) as Caso[]).map((clave) => (
+                  <button
+                    key={clave}
+                    type="button"
+                    className="pub-opcion"
+                    aria-pressed={caso === clave}
+                    onClick={() => setCaso(clave)}
+                  >
+                    {CASOS[clave].opcion}
+                  </button>
+                ))}
+              </div>
+              <p className="pub-demo-nota">
+                Las frases son un ejemplo. La regla es la del sistema: la alerta de consulta exige
+                las dos condiciones a la vez.
+              </p>
             </div>
-            <div>
-              <h2>Si eres estudiante</h2>
-              <ul>
-                <li>Entra con el código que te dio tu docente.</li>
-                <li>Ve qué se observa antes de aceptar.</li>
-                <li>Tus respuestas se guardan solas mientras escribes.</li>
-                <li>Consulta tus exámenes entregados desde tu panel.</li>
-              </ul>
+
+            {/* La región que se anuncia es fija; lo que cambia va dentro. Si
+             * la propia región se remontara con la `key`, el lector de
+             * pantalla no anunciaría el cambio. La `key` es para repetir la
+             * pequeña animación al cambiar de caso. */}
+            <div aria-live="polite">
+              <div data-ui key={caso}>
+                <div className="pub-ui-cabeza">
+                  <strong>Fragmento de voz</strong>
+                  <span>Pregunta 3 · 12:07:10</span>
+                </div>
+                <div className="pub-ui-cuerpo">
+                  <blockquote className="pub-ui-cita">
+                    <small>Estudiante</small>«{actual.voz}»
+                  </blockquote>
+                  {actual.respuesta && (
+                    <blockquote className="pub-ui-cita" data-sintetica>
+                      <small>Segunda voz</small>«{actual.respuesta}»
+                    </blockquote>
+                  )}
+                  <dl className="pub-ui-medidas">
+                    <dt>Similitud con la pregunta</dt>
+                    <dd>{actual.similitud}</dd>
+                    <dt>Voz sintética</dt>
+                    <dd>{actual.sintetica}</dd>
+                  </dl>
+                  <p className="pub-ui-resultado">
+                    <span className="pub-ui-nivel" data-nivel={actual.nivel}>
+                      {actual.nivelTexto}
+                    </span>
+                    {actual.resultado}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-          <p className="portada-cierre">
-            <Link to={authEnabled ? '/login' : '/docente'} className="boton boton-grande">
-              {authEnabled ? 'Iniciar sesión' : 'Entrar'}
-            </Link>
+        </section>
+
+        <section className="pub-seccion pub-marco" id="como-funciona" aria-labelledby="documenta">
+          <h2 id="documenta" className="pub-capitulo" data-aparece>
+            Documenta.
+          </h2>
+          <p className="pub-intro" data-aparece style={{ '--orden': 1 } as Estilo}>
+            No se graba vídeo. Cada señal queda en el expediente con su hora y su evidencia.
           </p>
-        </div>
-      </section>
+
+          <div className="pub-documenta">
+            <ol className="pub-recorrido">
+              {RECORRIDO.map((paso, indice) => (
+                <li key={paso.momento} data-aparece style={{ '--orden': indice } as Estilo}>
+                  <span className="pub-momento">{paso.momento}</span>
+                  <h3>{paso.titulo}</h3>
+                  <p>{paso.texto}</p>
+                </li>
+              ))}
+            </ol>
+
+            <div data-ui data-aparece style={{ '--orden': 2 } as Estilo}>
+              <div className="pub-ui-cabeza">
+                <strong>Expediente del estudiante</strong>
+                <span>Riesgo: medio</span>
+              </div>
+              <ol className="pub-linea">
+                <li>
+                  <time>12:06:58</time>
+                  <span>
+                    Monitor adicional
+                    <small>2 monitores conectados</small>
+                  </span>
+                  <span className="pub-ui-nivel" data-nivel="media">
+                    Media
+                  </span>
+                </li>
+                <li>
+                  <time>12:07:00</time>
+                  <span>
+                    Aplicación sospechosa
+                    <small>Control remoto en ejecución</small>
+                  </span>
+                  <span className="pub-ui-nivel" data-nivel="alta">
+                    Alta
+                  </span>
+                </li>
+                <li>
+                  <time>12:07:12</time>
+                  <span>
+                    Mirada fuera de pantalla
+                    <small>Giro de cabeza de 29°, umbral 25° · con captura</small>
+                  </span>
+                  <span className="pub-ui-nivel" data-nivel="baja">
+                    Baja
+                  </span>
+                </li>
+              </ol>
+              <div className="pub-ui-decision">
+                <p>Decisión del docente</p>
+                <blockquote>
+                  Confirmada. La aplicación de control remoto estuvo abierta durante todo el examen.
+                </blockquote>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="pub-seccion pub-marco" id="principios" aria-labelledby="decide">
+          <div className="pub-capitulo-cabeza">
+            <h2 id="decide" className="pub-capitulo" data-aparece>
+              Decide.
+            </h2>
+            <Burbuja fotos={[FOTOS.docente]} ancla />
+          </div>
+
+          <div className="pub-decide">
+            <div className="pub-principios">
+              {PRINCIPIOS.map((principio, indice) => (
+                <article
+                  key={principio.titulo}
+                  className="pub-principio"
+                  data-aparece
+                  style={{ '--orden': indice } as Estilo}
+                >
+                  <h3>{principio.titulo}</h3>
+                  <p>{principio.texto}</p>
+                </article>
+              ))}
+            </div>
+
+            <aside className="pub-cifra" data-aparece style={{ '--orden': 1 } as Estilo}>
+              <strong>4,4 s</strong>
+              <p>
+                tarda de media el análisis de un fragmento de voz en el servidor, medido sobre 18
+                fragmentos de exámenes reales. El objetivo del proyecto es menos de 10 s.
+              </p>
+            </aside>
+          </div>
+        </section>
+
+        <section className="pub-seccion pub-marco" id="empieza" aria-labelledby="empieza-titulo">
+          <div className="pub-capitulo-cabeza">
+            <h2 id="empieza-titulo" className="pub-capitulo" data-aparece>
+              Empieza.
+            </h2>
+            <Burbuja fotos={[FOTOS.hoja]} ancla />
+          </div>
+
+          <div className="pub-puertas">
+            <article className="pub-puerta" data-aparece>
+              <h3>Si eres docente</h3>
+              <p>
+                Desde el navegador: crea tus cursos y exámenes, elige qué se supervisa, admite a tus
+                estudiantes y recibe las alertas mientras el examen ocurre.
+              </p>
+              <div className="pub-acciones">
+                <Link to={entrar} className="pub-boton">
+                  {textoEntrar}
+                </Link>
+              </div>
+            </article>
+
+            <article className="pub-puerta" data-aparece style={{ '--orden': 1 } as Estilo}>
+              <h3>Si eres estudiante</h3>
+              <p>
+                El examen se rinde en la aplicación de escritorio, en una ventana protegida. Pide la
+                cámara y el micrófono solo después de que aceptas.
+              </p>
+              <div className="pub-acciones">
+                <a href={DESCARGA} className="pub-enlace" target="_blank" rel="noreferrer">
+                  Descargar para Windows
+                </a>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
     </CapaPublica>
   )
+}
+
+type Estilo = CSSProperties & Record<'--orden', number>
+
+/**
+ * La burbuja: un hueco del diseño donde se posa la de WebGL.
+ *
+ * Por sí sola es la burbuja de CSS con sus fotos, que es lo que se ve sin
+ * WebGL o con el movimiento reducido. Cuando la de WebGL arranca, esta se
+ * vuelve transparente pero sigue en su sitio: marca dónde posarse y conserva
+ * el texto alternativo para el lector de pantalla.
+ *
+ * `ancla` es la de los capítulos: más pequeña y solo en pantallas anchas,
+ * donde junto al título queda sitio libre.
+ */
+function Burbuja({ fotos, ancla = false }: { fotos: Foto[]; ancla?: boolean }) {
+  return (
+    <figure
+      className={ancla ? 'pub-burbuja pub-burbuja-ancla' : 'pub-burbuja'}
+      data-burbuja={fotos.map((foto) => foto.src).join(' ')}
+      data-burbuja-foco={fotos.map((foto) => foto.foco).join(' ')}
+    >
+      <div className="pub-burbuja-forma">
+        {fotos.map((foto) => (
+          <img
+            key={foto.src}
+            src={foto.src}
+            alt={foto.alt}
+            style={{ objectPosition: `${foto.foco * 100}% 50%` }}
+            width={1200}
+            height={1200}
+            decoding="async"
+            onError={(e) => {
+              const img = e.currentTarget
+              // Una sola vez: si el respaldo tampoco estuviera, volver a
+              // asignarlo dispararía `onError` otra vez, y en bucle.
+              if (img.dataset.respaldo === 'si') {
+                img.style.display = 'none'
+                return
+              }
+              img.dataset.respaldo = 'si'
+              img.src = foto.respaldo
+            }}
+          />
+        ))}
+      </div>
+    </figure>
+  )
+}
+
+/**
+ * Arranca la burbuja de WebGL sobre las anclas de la página.
+ *
+ * Con el movimiento reducido arranca quieta: una burbuja de cristal en cada
+ * ancla, sin viajar ni respirar, que es lo que esa preferencia pide no ver.
+ * Windows la activa al apagar los «efectos de animación», y muchos equipos la
+ * tienen así sin saberlo. Sin WebGL se queda la de CSS.
+ */
+function useBurbuja(
+  raiz: RefObject<HTMLDivElement | null>,
+  lienzo: RefObject<HTMLCanvasElement | null>
+) {
+  useEffect(() => {
+    const nodo = raiz.current
+    const canvas = lienzo.current
+    if (!nodo || !canvas) return
+    const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const anclas = Array.from(nodo.querySelectorAll<HTMLElement>('[data-burbuja]'))
+    const desmontar = montarBurbuja(
+      canvas,
+      anclas,
+      (src) => RESPALDOS.get(src),
+      () => nodo.classList.remove('pub-con-burbuja'),
+      sinMovimiento
+    )
+    if (!desmontar) return
+    nodo.classList.add('pub-con-burbuja')
+
+    return () => {
+      desmontar()
+      nodo.classList.remove('pub-con-burbuja')
+    }
+  }, [raiz, lienzo])
+}
+
+/**
+ * Enseña cada `[data-aparece]` cuando entra en pantalla, **cada vez**.
+ *
+ * Al salir del todo de la pantalla se vuelve a esconder, así que al volver a
+ * pasar por él aparece otra vez: la página no se queda «ya cargada» después
+ * del primer recorrido. Son dos observadores porque el que enseña espera a que
+ * la pieza suba un poco (el margen de abajo), y ese margen no sirve para
+ * esconder: la pieza desaparecería mientras todavía se ve en el borde.
+ *
+ * La clase `pub-js` va en `<html>` y es la que esconde lo que todavía no se ha
+ * visto: sin este script nada se esconde, y si el navegador no tiene
+ * `IntersectionObserver`, todo se enseña de golpe en vez de quedarse oculto.
+ */
+function useAparecer(raiz: RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const nodo = raiz.current
+    if (!nodo) return
+    const piezas = Array.from(nodo.querySelectorAll<HTMLElement>('[data-aparece]'))
+
+    if (typeof IntersectionObserver === 'undefined') {
+      piezas.forEach((pieza) => pieza.classList.add('visto'))
+      return
+    }
+
+    document.documentElement.classList.add('pub-js')
+    const ensena = new IntersectionObserver(
+      (entradas) => {
+        for (const entrada of entradas) {
+          if (entrada.isIntersecting) entrada.target.classList.add('visto')
+        }
+      },
+      { rootMargin: '0px 0px -10% 0px', threshold: 0.12 }
+    )
+    const esconde = new IntersectionObserver((entradas) => {
+      for (const entrada of entradas) {
+        if (!entrada.isIntersecting) entrada.target.classList.remove('visto')
+      }
+    })
+    piezas.forEach((pieza) => {
+      ensena.observe(pieza)
+      esconde.observe(pieza)
+    })
+
+    return () => {
+      ensena.disconnect()
+      esconde.disconnect()
+      document.documentElement.classList.remove('pub-js')
+    }
+  }, [raiz])
 }

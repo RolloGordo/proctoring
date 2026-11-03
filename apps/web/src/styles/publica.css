@@ -1,0 +1,1181 @@
+/* ===========================================================================
+   La parte pública: portada, 404 y el aviso de «rinde desde la app»
+   ===========================================================================
+
+   Dirección de ThoughtLab (refero) adaptada: lienzo casi negro, la tipografía
+   como arquitectura y un solo acento. El acento es el ámbar de la marca y no el
+   rojo del original, porque en el producto el rojo ya significa «alerta alta».
+
+   **Todo va encerrado en `.publica`.** El panel del docente y el examen siguen
+   con sus tokens claros: este negro no puede salirse de aquí aunque alguien se
+   equivoque, porque ninguna regla de este fichero empieza fuera de `.publica`.
+
+   Contraste medido sobre el lienzo y sobre la superficie (AA pide 4,5):
+     blanco  #ffffff  19,80 / 17,93
+     tinta   #d4d4d4  13,36 / 12,09
+     tenue   #999999   6,95 /  6,29
+     ámbar   #e8a700   9,39 /  8,50   (y el lienzo sobre el ámbar: 9,39)
+   El gris del original, #4c4c4c, daba 2,31 y no se usa para nada.
+   =========================================================================== */
+
+.publica {
+  --pub-lienzo: #0a0a0a;
+  --pub-superficie: #171717;
+  --pub-blanco: #ffffff;
+  --pub-tinta: #d4d4d4;
+  --pub-tenue: #999999;
+  --pub-acento: #e8a700;
+  --pub-acento-vivo: #ffbb1f;
+
+  /* Una sola familia, auto-alojada: se descarga solo cuando algo de aquí la
+     pide, así que el examen y el panel nunca la cargan. */
+  --pub-letra: 'Archivo Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Cinco tamaños y ninguno más: el titular de portada y los capítulos son
+     el mismo; las cifras, los principios y las puertas, el mismo también.
+
+     El de portada tiene techo para que el titular deje sitio en el primer
+     pantallazo a la frase que explica qué es esto. */
+  /* 12,2vw y no 13,2: «DOCUMENTA.» es el capítulo más largo y, medido, ocupa
+     7,2 veces su tamaño. Con 13,2 se salía 5 px por la derecha a 768.
+     El mínimo es 2,25rem y no 3,25: con 52 px fijos, en un teléfono de 390 el
+     mínimo le ganaba al 12,2vw y «DOCUMENTA.» cortaba el punto contra el borde.
+     A 2,25rem aguanta hasta un teléfono de 320. */
+  --pub-texto-portada: clamp(2.25rem, 12.2vw, 10rem);
+  --pub-texto-capitulo: var(--pub-texto-portada);
+  --pub-texto-grande: clamp(2rem, 4.2vw, 3.75rem);
+  --pub-texto-titulo: clamp(1.5rem, 2.3vw, 2.125rem);
+  --pub-texto-cuerpo: clamp(1.0625rem, 1.15vw, 1.1875rem);
+  --pub-texto-nota: 0.9375rem;
+
+  --pub-margen: clamp(1.25rem, 5.5vw, 6.5rem);
+  --pub-entre-secciones: clamp(6rem, 11vw, 10.5rem);
+  --pub-alto-cabecera: 4.5rem;
+
+  --pub-entrada: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--pub-lienzo);
+  color: var(--pub-tinta);
+  font-family: var(--pub-letra);
+  font-size: var(--pub-texto-cuerpo);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Que el rebote del scroll no enseñe el gris claro del resto de la aplicación. */
+html:has(.publica) {
+  background: #0a0a0a;
+}
+
+.publica main {
+  flex: 1;
+}
+
+.publica h1,
+.publica h2,
+.publica h3 {
+  font-family: var(--pub-letra);
+  color: var(--pub-blanco);
+  margin: 0;
+}
+
+.publica p {
+  margin: 0;
+}
+
+.publica a {
+  color: inherit;
+}
+
+.publica :focus-visible {
+  outline: 3px solid var(--pub-acento);
+  outline-offset: 4px;
+}
+
+/* Un margen exterior, el mismo a los dos lados, en todas las anchuras. */
+.publica .contenedor,
+.publica .pub-marco {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding-inline: var(--pub-margen);
+}
+
+/* ---------- Cabecera ---------- */
+
+.publica .cabecera {
+  height: var(--pub-alto-cabecera);
+  background: var(--pub-lienzo);
+}
+
+.publica .marca {
+  font-family: var(--pub-letra);
+  font-weight: 800;
+  font-stretch: 112%;
+  font-size: var(--pub-texto-cuerpo);
+  letter-spacing: 0.04em;
+  color: var(--pub-blanco);
+}
+
+.publica .marca span {
+  color: var(--pub-acento);
+}
+
+.publica .navegacion {
+  gap: clamp(1.25rem, 2.5vw, 2.5rem);
+}
+
+.publica .navegacion a {
+  font-family: var(--pub-letra);
+  font-size: var(--pub-texto-nota);
+  font-weight: 500;
+  color: var(--pub-tinta);
+  border: 0;
+  padding: 0.5rem 0;
+}
+
+.publica .navegacion a:hover {
+  color: var(--pub-blanco);
+  text-decoration: underline;
+  text-decoration-color: var(--pub-acento);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+
+/* ---------- Botones ----------
+   Uno solo relleno por vista, y en píldora: la forma se decide una vez. */
+
+.publica .pub-boton,
+.publica .boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  min-height: 3.25rem;
+  padding: 0 1.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pub-acento);
+  color: var(--pub-lienzo);
+  font-family: var(--pub-letra);
+  font-size: var(--pub-texto-cuerpo);
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    transform 160ms var(--pub-entrada);
+}
+
+.publica .pub-boton:hover,
+.publica .boton:hover:not(:disabled) {
+  background: var(--pub-acento-vivo);
+}
+
+.publica .pub-boton:active,
+.publica .boton:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* La acción de la cabecera es texto: el botón relleno ya está en el primer
+   pantallazo, y dos píldoras ámbar en la misma vista se anulan. */
+.publica .cabecera .boton:not(.boton-claro):not(.boton-texto) {
+  min-height: 0;
+  padding: 0.5rem 0;
+  background: transparent;
+  color: var(--pub-blanco);
+  font-size: var(--pub-texto-nota);
+  font-weight: 650;
+  border-radius: 0;
+}
+
+.publica .cabecera .boton:not(.boton-claro):not(.boton-texto):hover:not(:disabled) {
+  background: transparent;
+  text-decoration: underline;
+  text-decoration-color: var(--pub-acento);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+
+.publica .pub-enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  min-height: 3.25rem;
+  color: var(--pub-blanco);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.publica .pub-enlace::after {
+  content: '→';
+  transition: transform 200ms var(--pub-entrada);
+}
+
+.publica .pub-enlace:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--pub-acento);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+
+.publica .pub-enlace:hover::after {
+  transform: translateX(4px);
+}
+
+/* ---------- Primer pantallazo ---------- */
+
+.publica .pub-hero {
+  padding-block: clamp(2.5rem, 6vw, 5.5rem) var(--pub-entre-secciones);
+}
+
+.publica .pub-hero-titulo {
+  font-size: var(--pub-texto-portada);
+  font-weight: 800;
+  font-stretch: 106%;
+  line-height: 0.9;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.publica .pub-hero-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(2rem, 5vw, 6rem);
+  /* Arriba y no abajo: alineados al pie de la imagen, la frase y el botón
+     quedaban por debajo del pliegue a 1440x900. */
+  align-items: start;
+  margin-top: clamp(2rem, 4.5vw, 4rem);
+}
+
+.publica .pub-declaracion {
+  max-width: 38ch;
+  font-size: var(--pub-texto-titulo);
+  font-weight: 450;
+  line-height: 1.25;
+  color: var(--pub-blanco);
+}
+
+.publica .pub-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 2rem;
+  margin-top: clamp(1.75rem, 3vw, 2.75rem);
+}
+
+/* ---------- La burbuja ----------
+   La de ThoughtLab. La dibuja WebGL (`lib/burbuja.ts`) en un lienzo fijo
+   detrás del contenido, y viaja con el scroll entre los huecos marcados con
+   `data-burbuja`: el del primer pantallazo y uno junto a tres capítulos.
+
+   Lo de aquí es su respaldo: la misma burbuja hecha con CSS, quieta, para
+   quien no tiene WebGL o pide menos movimiento. Con WebGL (`pub-con-burbuja`)
+   se vuelve transparente y solo marca el sitio.
+
+   **Va contra tres reglas de la casa a propósito** —degradado, brillo y forma
+   decorativa— porque la pidió el Product Owner tomando ThoughtLab como
+   referencia. Es la única excepción del fichero: nada más lleva sombra ni
+   degradado.
+
+   Nunca se posa sobre texto: los huecos están donde no hay nada. Entre uno y
+   otro sí cruza por detrás de alguno, y por eso viaja oscurecida. */
+
+.publica .pub-lienzo {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* El contenido va por encima del lienzo: lo que tiene fondo propio tapa la
+   burbuja, y el texto se dibuja sobre ella. La cabecera ya va por encima. */
+.publica .pub-hero,
+.publica .pub-seccion,
+.publica .aviso-almacenamiento,
+.publica .pie-publico {
+  position: relative;
+  z-index: 1;
+}
+
+.publica .pub-burbuja {
+  justify-self: end;
+  width: min(100%, 36rem);
+  margin: 0;
+}
+
+/* Junto al título de un capítulo, donde a la derecha queda sitio. */
+.publica .pub-capitulo-cabeza {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(1.5rem, 3vw, 3rem);
+}
+
+/* Con margen arriba y abajo: la forma respira y se estira más allá de su
+   caja, y sin él rozaba la cifra de «Decide». */
+.publica .pub-burbuja-ancla {
+  width: clamp(12rem, 21vw, 19rem);
+  margin-block: clamp(1rem, 2.5vw, 2.5rem);
+}
+
+.publica .pub-con-burbuja .pub-burbuja {
+  animation: none;
+}
+
+.publica .pub-con-burbuja .pub-burbuja-forma {
+  opacity: 0;
+  animation: none;
+  filter: none;
+}
+
+.publica .pub-con-burbuja .pub-burbuja-forma img {
+  animation: none;
+}
+
+.publica .pub-burbuja-forma {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 46% 54% 52% 48% / 53% 47% 53% 47%;
+  background: var(--pub-superficie);
+  /* El borde iridiscente: dos sombras de color desplazadas, azul a un lado y
+     ámbar al otro, siguen la forma de la burbuja porque `drop-shadow` dibuja
+     el contorno real y no la caja. */
+  filter: drop-shadow(-4px -2px 0 rgb(110 150 255 / 55%))
+    drop-shadow(4px 3px 0 rgb(232 167 0 / 50%));
+  animation: pub-burbuja-forma 16s ease-in-out infinite alternate;
+  isolation: isolate;
+}
+
+/* El cristal: un aro blanco por dentro, más intenso en el borde, y el brillo
+   frío arriba a la izquierda. Encima de la foto y sin capturar el ratón. */
+.publica .pub-burbuja-forma::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 2px rgb(255 255 255 / 85%),
+    inset 0 0 22px 6px rgb(255 255 255 / 55%),
+    inset 18px 22px 60px rgb(150 185 255 / 30%),
+    inset -22px -26px 70px rgb(255 175 60 / 28%);
+  background: radial-gradient(ellipse 38% 24% at 30% 18%, rgb(255 255 255 / 34%), transparent 70%);
+}
+
+.publica .pub-burbuja-forma img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  animation: pub-releva 21s infinite;
+}
+
+/* La de un capítulo tiene una sola foto: no se releva, se queda. */
+.publica .pub-burbuja-forma img:only-child {
+  opacity: 1;
+  animation: none;
+}
+
+.publica .pub-burbuja-forma img:nth-child(2) {
+  animation-delay: 7s;
+}
+
+.publica .pub-burbuja-forma img:nth-child(3) {
+  animation-delay: 14s;
+}
+
+/* Muta sin parar, pero tan despacio que se nota como respiración y no como
+   animación: dieciséis segundos de ida y otros tantos de vuelta. */
+@keyframes pub-burbuja-forma {
+  0% {
+    border-radius: 46% 54% 52% 48% / 53% 47% 53% 47%;
+  }
+
+  33% {
+    border-radius: 58% 42% 45% 55% / 45% 58% 42% 55%;
+  }
+
+  66% {
+    border-radius: 42% 58% 60% 40% / 56% 44% 56% 44%;
+  }
+
+  100% {
+    border-radius: 52% 48% 40% 60% / 42% 56% 44% 58%;
+  }
+}
+
+/* Acompaña al scroll: mientras el primer pantallazo sube, la burbuja baja más
+   despacio, se encoge un poco y gira, así que parece que sigue al visitante.
+   Solo donde el navegador sabe atar una animación al scroll; donde no, se
+   queda quieta en su sitio, que también está bien. */
+@supports (animation-timeline: scroll()) {
+  .publica .pub-burbuja {
+    animation: pub-burbuja-deriva linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 100vh;
+  }
+}
+
+@keyframes pub-burbuja-deriva {
+  to {
+    transform: translateY(14vh) scale(0.86) rotate(-7deg);
+  }
+}
+
+/* Siete segundos cada una. Los porcentajes hacen que la que llega aparezca
+   mientras la anterior se va: con tres escenas y un tercio de retraso, el 0 %
+   de una cae en el 33 % de la otra. Ahora van a opacidad plena porque ya no
+   están detrás de ningún texto. */
+@keyframes pub-releva {
+  0% {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+
+  6%,
+  33% {
+    opacity: 1;
+  }
+
+  39%,
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+/* ---------- Secciones y capítulos ----------
+   Las tres palabras del lema —detecta, documenta, decide— abren cada una su
+   capítulo, a tamaño de arquitectura. */
+
+.publica .pub-seccion {
+  padding-block: var(--pub-entre-secciones) 0;
+}
+
+.publica .pub-capitulo {
+  font-size: var(--pub-texto-capitulo);
+  font-weight: 800;
+  font-stretch: 106%;
+  line-height: 0.9;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.publica .pub-intro {
+  max-width: 38ch;
+  margin-top: clamp(1.5rem, 3vw, 2.5rem);
+  font-size: var(--pub-texto-titulo);
+  font-weight: 450;
+  line-height: 1.25;
+  color: var(--pub-blanco);
+}
+
+/* ---------- Detecta: las cuatro familias ---------- */
+
+.publica .pub-familias {
+  list-style: none;
+  margin: clamp(3rem, 6vw, 5.5rem) 0 0;
+  padding: 0;
+  display: grid;
+  gap: clamp(2.25rem, 4vw, 3.5rem);
+}
+
+.publica .pub-familia {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 6fr) minmax(0, 2fr);
+  gap: 0.75rem clamp(1.5rem, 4vw, 4rem);
+  align-items: baseline;
+}
+
+.publica .pub-familia h3 {
+  font-size: var(--pub-texto-titulo);
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.publica .pub-familia p {
+  max-width: 52ch;
+}
+
+.publica .pub-familia-estado {
+  font-size: var(--pub-texto-nota);
+  color: var(--pub-tenue);
+  text-align: right;
+}
+
+.publica .pub-familia-estado[data-listo] {
+  color: var(--pub-blanco);
+}
+
+/* ---------- Lo único que el visitante toca ----------
+   La regla que distingue al proyecto, demostrada: leer la pregunta en voz alta
+   no es consultar a una IA. */
+
+.publica .pub-demo {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(2rem, 5vw, 6rem);
+  align-items: start;
+  margin-top: clamp(5rem, 9vw, 8rem);
+  padding: clamp(1.75rem, 4vw, 3.5rem);
+  background: var(--pub-superficie);
+}
+
+.publica .pub-demo h3 {
+  font-size: var(--pub-texto-titulo);
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.publica .pub-demo-texto {
+  margin-top: 1.25rem;
+  max-width: 40ch;
+}
+
+.publica .pub-demo-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: 2rem;
+}
+
+/* Sin contorno: la opción elegida se distingue por el relleno, no por una raya. */
+.publica .pub-opcion {
+  min-height: 3rem;
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 9%);
+  color: var(--pub-blanco);
+  font-family: var(--pub-letra);
+  font-size: var(--pub-texto-cuerpo);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms var(--pub-entrada);
+}
+
+.publica .pub-opcion:hover {
+  background: rgb(255 255 255 / 16%);
+}
+
+.publica .pub-opcion:active {
+  transform: scale(0.97);
+}
+
+.publica .pub-opcion[aria-pressed='true'] {
+  background: var(--pub-blanco);
+  color: var(--pub-lienzo);
+}
+
+.publica .pub-demo-nota {
+  margin-top: 1.5rem;
+  font-size: var(--pub-texto-nota);
+  color: var(--pub-tenue);
+  max-width: 44ch;
+}
+
+/* ---------- Fragmentos de la interfaz del producto ----------
+   Llevan `data-ui`: son el producto tal como es, con su papel claro, su letra
+   del sistema y sus etiquetas de severidad. Por eso aquí el rojo sí aparece: es
+   lo que significa dentro del producto. */
+
+.publica [data-ui] {
+  font-family: var(--cuerpo, system-ui, sans-serif);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--tinta);
+  background: var(--papel);
+}
+
+.publica [data-ui] * {
+  font-family: inherit;
+}
+
+.publica [data-ui] .pub-ui-cabeza {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.875rem 1.25rem;
+  background: var(--papel-gris);
+  border-bottom: 1px solid var(--linea);
+  font-size: 0.875rem;
+  color: var(--tinta-suave);
+}
+
+.publica [data-ui] .pub-ui-cabeza strong {
+  color: var(--tinta);
+  font-size: 0.9375rem;
+}
+
+.publica [data-ui] .pub-ui-cuerpo {
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.publica [data-ui] .pub-ui-cita {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--amarillo);
+  background: var(--papel-gris);
+  color: var(--tinta);
+}
+
+.publica [data-ui] .pub-ui-cita[data-sintetica] {
+  border-left-color: var(--alta);
+  background: var(--alta-fondo);
+}
+
+.publica [data-ui] .pub-ui-cita small {
+  display: block;
+  margin-bottom: 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+}
+
+.publica [data-ui] .pub-ui-medidas {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.375rem 1rem;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.publica [data-ui] .pub-ui-medidas dt {
+  color: var(--tinta-suave);
+}
+
+.publica [data-ui] .pub-ui-medidas dd {
+  margin: 0;
+  color: var(--tinta);
+  font-weight: 600;
+}
+
+.publica [data-ui] .pub-ui-resultado {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--linea);
+}
+
+.publica [data-ui] .pub-ui-nivel {
+  flex: none;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.publica [data-ui] .pub-ui-nivel[data-nivel='media'] {
+  background: var(--media-fondo);
+  color: var(--media);
+  border: 1px solid var(--media-linea);
+}
+
+.publica [data-ui] .pub-ui-nivel[data-nivel='alta'] {
+  background: var(--alta-fondo);
+  color: var(--alta);
+  border: 1px solid var(--alta-linea);
+}
+
+.publica [data-ui] .pub-ui-nivel[data-nivel='baja'] {
+  background: var(--papel-gris);
+  color: var(--tinta-media);
+  border: 1px solid var(--linea);
+}
+
+/* El cambio entre los dos casos: se nota que algo cambió, sin mover la página. */
+.publica .pub-demo [data-ui] {
+  animation: pub-cambia 280ms var(--pub-entrada);
+}
+
+@keyframes pub-cambia {
+  from {
+    opacity: 0.4;
+    transform: translateY(6px);
+  }
+}
+
+/* ---------- Documenta: el recorrido y el expediente ---------- */
+
+.publica .pub-documenta {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(2.5rem, 6vw, 7rem);
+  align-items: start;
+  margin-top: clamp(3rem, 6vw, 5.5rem);
+}
+
+.publica .pub-recorrido {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+.publica .pub-recorrido li {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.25rem 1.5rem;
+}
+
+.publica .pub-momento {
+  grid-row: span 2;
+  padding-top: 0.3em;
+  font-size: var(--pub-texto-nota);
+  font-weight: 650;
+  color: var(--pub-acento);
+}
+
+.publica .pub-recorrido h3 {
+  font-size: var(--pub-texto-titulo);
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.publica .pub-recorrido p {
+  max-width: 50ch;
+}
+
+.publica [data-ui] .pub-linea {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.publica [data-ui] .pub-linea li {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--linea);
+}
+
+.publica [data-ui] .pub-linea li:last-child {
+  border-bottom: 0;
+}
+
+.publica [data-ui] .pub-linea time {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+  color: var(--tinta-suave);
+}
+
+.publica [data-ui] .pub-linea small {
+  display: block;
+  color: var(--tinta-suave);
+  font-size: 0.8125rem;
+}
+
+.publica [data-ui] .pub-ui-decision {
+  display: grid;
+  gap: 0.625rem;
+  padding: 1.25rem;
+  background: var(--papel-gris);
+  border-top: 1px solid var(--linea);
+}
+
+.publica [data-ui] .pub-ui-decision p {
+  font-size: 0.875rem;
+  color: var(--tinta-suave);
+}
+
+.publica [data-ui] .pub-ui-decision blockquote {
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  font-size: 0.9375rem;
+}
+
+/* ---------- Decide: los principios y la cifra ---------- */
+
+.publica .pub-decide {
+  display: grid;
+  grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+  gap: clamp(2.5rem, 6vw, 7rem);
+  margin-top: clamp(3rem, 6vw, 5.5rem);
+}
+
+.publica .pub-principios {
+  display: grid;
+  gap: clamp(2.5rem, 4.5vw, 4rem);
+}
+
+.publica .pub-principio h3 {
+  font-size: var(--pub-texto-grande);
+  font-weight: 750;
+  font-stretch: 104%;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.publica .pub-principio p {
+  margin-top: 0.875rem;
+  max-width: 52ch;
+}
+
+.publica .pub-cifra {
+  align-self: start;
+  position: sticky;
+  top: calc(var(--pub-alto-cabecera) + 2rem);
+  padding: clamp(1.75rem, 3vw, 2.5rem);
+  background: var(--pub-acento);
+  color: var(--pub-lienzo);
+}
+
+.publica .pub-cifra strong {
+  display: block;
+  font-size: var(--pub-texto-grande);
+  font-weight: 800;
+  font-stretch: 106%;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.publica .pub-cifra p {
+  margin-top: 1rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* ---------- Empieza: las dos puertas ---------- */
+
+.publica .pub-puertas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 2vw, 1.5rem);
+  margin-top: clamp(3rem, 6vw, 5.5rem);
+}
+
+.publica .pub-puerta {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: clamp(1.75rem, 4vw, 3.5rem);
+  background: var(--pub-superficie);
+}
+
+.publica .pub-puerta h3 {
+  font-size: var(--pub-texto-grande);
+  font-weight: 750;
+  font-stretch: 104%;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.publica .pub-puerta p {
+  max-width: 44ch;
+}
+
+.publica .pub-puerta .pub-acciones {
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.publica .pub-puerta-nota {
+  font-size: var(--pub-texto-nota);
+  color: var(--pub-tenue);
+}
+
+/* ---------- Pie: el nombre vuelve a ancho completo ---------- */
+
+.publica .pie-publico {
+  margin-top: var(--pub-entre-secciones);
+  padding: 0 0 clamp(1.5rem, 3vw, 2.5rem);
+  background: var(--pub-lienzo);
+  color: var(--pub-tenue);
+  font-size: var(--pub-texto-nota);
+}
+
+.publica .pub-pie-marca {
+  display: block;
+  margin: 0 0 clamp(1.5rem, 3vw, 2.5rem);
+  /* Cabe entre los dos márgenes. Medido en el navegador: «PROCTORING» a
+     112 % de ancho ocupa 7,5 veces su tamaño, y el hueco libre es 100vw menos
+     los dos márgenes. Con 12,4vw se comía el margen derecho. */
+  font-size: min(11.6vw, 10rem);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  color: var(--pub-blanco);
+  white-space: nowrap;
+}
+
+.publica .pub-pie-marca span {
+  color: var(--pub-acento);
+}
+
+.publica .pub-pie-lineas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+}
+
+.publica .pub-creditos {
+  margin-top: 1.25rem;
+  color: var(--pub-tenue);
+}
+
+/* Los nombres no van subrayados en ámbar como el resto del pie: son una nota,
+   no un enlace que el visitante haya venido a buscar. */
+.publica .pie-publico .pub-creditos a {
+  color: inherit;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+}
+
+/* ---------- Privacidad ----------
+   Texto para leer de verdad: una sola columna a medida de lectura, cuerpo a
+   tamaño de cuerpo y los títulos a un paso. El capítulo de arriba es el mismo
+   gesto que en la portada, para que se note que es la misma casa. */
+
+.publica .pub-legal {
+  padding-block: clamp(2.5rem, 6vw, 5.5rem) 0;
+}
+
+.publica .pub-legal-fecha {
+  margin-top: 1.5rem;
+  font-size: var(--pub-texto-nota);
+  color: var(--pub-tenue);
+}
+
+.publica .pub-legal section {
+  max-width: 68ch;
+  margin-top: clamp(3rem, 6vw, 4.5rem);
+}
+
+.publica .pub-legal h2 {
+  font-size: var(--pub-texto-titulo);
+  font-weight: 650;
+  line-height: 1.15;
+  margin-bottom: 1rem;
+}
+
+.publica .pub-legal h3 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: var(--pub-texto-cuerpo);
+  font-weight: 650;
+}
+
+.publica .pub-legal p + p,
+.publica .pub-legal ul + p,
+.publica .pub-legal p + ul {
+  margin-top: 1rem;
+}
+
+.publica .pub-legal ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.625rem;
+}
+
+.publica .pub-legal li::marker {
+  color: var(--pub-acento);
+}
+
+.publica .pub-legal strong {
+  color: var(--pub-blanco);
+  font-weight: 650;
+}
+
+.publica .pub-legal a,
+.publica .pie-publico a {
+  color: var(--pub-blanco);
+  text-decoration-color: var(--pub-acento);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.publica .pub-legal-nota {
+  color: var(--pub-tenue);
+  font-size: var(--pub-texto-nota);
+}
+
+/* ---------- Las otras dos páginas de la cáscara ----------
+   La 404 y el aviso de «rinde desde la app» traían colores pensados para fondo
+   claro: el titular de la 404 era tinta sobre tinta, invisible. */
+
+.publica .vacio {
+  color: var(--pub-tenue);
+  padding-block: var(--pub-entre-secciones);
+}
+
+.publica .vacio h3 {
+  color: var(--pub-blanco);
+  font-size: var(--pub-texto-titulo);
+}
+
+.publica .subtitulo,
+.publica .ayuda,
+.publica .tenue {
+  color: var(--pub-tenue);
+}
+
+.publica .tarjeta {
+  background: var(--pub-superficie);
+  border: 0;
+  box-shadow: none; /* taste-skill-ignore: anula la sombra de la .tarjeta global, no añade una */
+  color: var(--pub-tinta);
+}
+
+.publica .tarjeta h1 {
+  font-size: var(--pub-texto-titulo);
+  line-height: 1.15;
+  margin-bottom: 1rem;
+}
+
+.publica .tarjeta p + p,
+.publica .tarjeta p + .boton {
+  margin-top: 1rem;
+}
+
+/* ---------- Movimiento ----------
+   Cada parte entra cuando su sección aparece: el titular, luego el texto,
+   luego la imagen. Solo se esconde si el script que la va a enseñar ya está
+   corriendo (`pub-js`): sin él, todo está a la vista desde el principio. */
+
+.pub-js .publica [data-aparece] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 700ms var(--pub-entrada),
+    transform 700ms var(--pub-entrada);
+  transition-delay: calc(var(--orden, 0) * 80ms);
+}
+
+.pub-js .publica [data-aparece].visto {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pub-js .publica [data-aparece] {
+    transform: none;
+    transition: opacity 300ms linear;
+  }
+
+  /* Menos movimiento no es ninguna escena: siguen relevándose, sin el zoom.
+     La burbuja deja de mutar y de seguir al scroll: se queda redonda y quieta. */
+  .publica .pub-burbuja-forma img {
+    animation-name: pub-releva-quieto;
+  }
+
+  .publica .pub-burbuja,
+  .publica .pub-burbuja-forma {
+    animation: none;
+  }
+
+  .publica .pub-demo [data-ui] {
+    animation: none;
+  }
+
+  .publica .pub-enlace::after,
+  .publica .pub-boton,
+  .publica .pub-opcion {
+    transition: none;
+  }
+}
+
+@keyframes pub-releva-quieto {
+  0% {
+    opacity: 0;
+  }
+
+  6%,
+  33% {
+    opacity: 1;
+  }
+
+  39%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---------- Teléfono y tableta: su propia composición ---------- */
+
+@media (max-width: 960px) {
+  .publica .pub-hero-cuerpo,
+  .publica .pub-demo,
+  .publica .pub-documenta,
+  .publica .pub-decide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .publica .pub-cifra {
+    position: static;
+  }
+
+  /* Junto a los capítulos ya no hay sitio: la burbuja se queda en el primer
+     pantallazo y sube con él. */
+  .publica .pub-capitulo-cabeza {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .publica .pub-burbuja-ancla {
+    display: none;
+  }
+
+  .publica .pub-familia {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .publica .pub-familia p {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .publica .pub-puertas {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3rem;
+  }
+
+  .publica .pub-recorrido li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .publica .pub-momento {
+    grid-row: auto;
+    padding-top: 0;
+  }
+
+  .publica .pub-linea li {
+    grid-template-columns: 4rem minmax(0, 1fr);
+  }
+
+  .publica .pub-linea li > :last-child {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .publica .pub-pie-lineas {
+    flex-direction: column;
+  }
+}
