@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "apps/web", "exec", "--", "vite", "preview", "apps/web", "--port", "4173", "--strictPort"],
       "port": 4173
+    },
+    {
+      "name": "web-maqueta",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/web", "exec", "--", "vite", "apps/web", "--mode", "maqueta", "--port", "5174", "--strictPort"],
+      "port": 5174
     }
   ]
 }

@@ -17,6 +17,7 @@ import {
   nombreDecision,
   nombreEvento,
   nombreNivel,
+  nombreSeveridad,
   soloHora
 } from '../lib/formato'
 
@@ -235,7 +236,7 @@ export function RevisionCaso() {
                       <td>
                         {nombreEvento(s.event_type)}{' '}
                         <span className={`severidad severidad-${s.max_severity}`}>
-                          {s.max_severity}
+                          {nombreSeveridad(s.max_severity)}
                         </span>
                       </td>
                       <td>{s.count}</td>
@@ -327,7 +328,9 @@ export function RevisionCaso() {
                     <td className="tenue">{detalleEvento(e.metadata) || '—'}</td>
                     <td className="tenue">{e.duration_ms > 0 ? duracion(e.duration_ms) : '—'}</td>
                     <td>
-                      <span className={`severidad severidad-${e.severity}`}>{e.severity}</span>
+                      <span className={`severidad severidad-${e.severity}`}>
+                        {nombreSeveridad(e.severity)}
+                      </span>
                     </td>
                   </tr>
                 ))}

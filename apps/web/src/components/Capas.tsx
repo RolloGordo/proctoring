@@ -190,7 +190,9 @@ export function CapaPanel({ rol, children }: { rol: Rol; children: ReactNode }) 
     : []
 
   return (
-    <div className="app">
+    // El docente ya tiene el tema oscuro de la portada (`panel-oscuro.css`);
+    // el estudiante sigue claro hasta que le toque su rediseño.
+    <div className={rol === 'teacher' ? 'app tema-oscuro' : 'app'}>
       <header className="app-movil">
         <Marca a={inicio} />
         <button

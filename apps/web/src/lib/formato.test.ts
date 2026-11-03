@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cuandoEmpieza, detalleEvento, estadoExamen } from './formato'
+import { cuandoEmpieza, detalleEvento, estadoExamen, horaCorta, nombreSeveridad } from './formato'
 import { inicioSegunRol } from './rutas'
 
 const INICIO = '2026-10-05T15:00:00.000Z'
@@ -63,5 +63,21 @@ describe('inicioSegunRol', () => {
 
   it('sin rol vuelve a la portada y no adivina un panel', () => {
     expect(inicioSegunRol(undefined)).toBe('/')
+  })
+})
+
+describe('horaCorta', () => {
+  it('da la hora de 24 horas, sin el «p. m.» que se perdía al cortar', () => {
+    // Construida con la hora local: la prueba no depende de la zona horaria.
+    expect(horaCorta(new Date(2026, 10, 3, 13, 55).toISOString())).toBe('13:55')
+    expect(horaCorta(new Date(2026, 10, 3, 9, 5).toISOString())).toBe('09:05')
+  })
+})
+
+describe('nombreSeveridad', () => {
+  it('nombra las tres en español, también la baja', () => {
+    expect(nombreSeveridad('high')).toBe('Alta')
+    expect(nombreSeveridad('medium')).toBe('Media')
+    expect(nombreSeveridad('low')).toBe('Baja')
   })
 })

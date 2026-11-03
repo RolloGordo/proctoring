@@ -652,16 +652,19 @@ html:has(.publica) {
   gap: 1rem;
 }
 
+/* Un recuadro entero, como en el panel real: la franja de color a un lado ya
+   no se usa en el producto y la demo tiene que parecerse a él. */
 .publica [data-ui] .pub-ui-cita {
   margin: 0;
   padding: 0.75rem 1rem;
-  border-left: 3px solid var(--amarillo);
+  border: 1px solid var(--linea);
+  border-radius: 8px;
   background: var(--papel-gris);
   color: var(--tinta);
 }
 
 .publica [data-ui] .pub-ui-cita[data-sintetica] {
-  border-left-color: var(--alta);
+  border-color: var(--alta-linea);
   background: var(--alta-fondo);
 }
 

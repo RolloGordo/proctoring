@@ -438,13 +438,15 @@ input[type='file']::file-selector-button:hover {
 
 /* La justificación escrita del docente, citada tal cual.
    Se presenta como cita y no como párrafo normal porque son sus palabras, no
-   las del sistema: quien la lee tiene que poder distinguirlas. */
+   las del sistema: quien la lee tiene que poder distinguirlas.
+   Un recuadro entero y no una franja de color a un lado: la franja gruesa es
+   el gesto más reconocible de una interfaz de plantilla. */
 .justificacion {
   margin: var(--e4) 0;
   padding: var(--e3) var(--e4);
-  border-left: 3px solid var(--amarillo);
+  border: 1px solid var(--linea);
   background: var(--papel-gris);
-  border-radius: 0 var(--radio) var(--radio) 0;
+  border-radius: var(--radio-grande);
   font-size: 0.9375rem;
   line-height: 1.7;
   color: var(--tinta-media);
@@ -511,7 +513,6 @@ input[type='file']::file-selector-button:hover {
 .aviso {
   padding: var(--e3) var(--e4);
   border: 1px solid var(--alta-linea);
-  border-left: 3px solid var(--alta);
   border-radius: var(--radio);
   background: var(--alta-fondo);
   color: var(--alta);
@@ -521,7 +522,6 @@ input[type='file']::file-selector-button:hover {
 
 .aviso-neutro {
   border-color: var(--linea);
-  border-left-color: var(--tinta-suave);
   background: var(--papel-gris);
   color: var(--tinta-media);
 }
@@ -713,10 +713,18 @@ input[type='file']::file-selector-button:hover {
   border-bottom: none;
 }
 
-/* La más reciente se marca con una línea de color, no con un fondo: el fondo
-   compite con la etiqueta de severidad y quita contraste al texto. */
-.lista-alertas li:first-child {
-  box-shadow: inset 3px 0 0 var(--amarillo);
+/* La más reciente se marca con un punto ámbar delante de su hora: ni un
+   fondo, que competía con la etiqueta de severidad, ni una franja de color a
+   un lado. */
+.lista-alertas li:first-child > :last-child::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--amarillo);
+  vertical-align: middle;
 }
 
 .motivo {
@@ -908,7 +916,8 @@ input[type='file']::file-selector-button:hover {
 .lista-opciones > li {
   min-width: 0;
   padding: var(--e2) var(--e3);
-  border-left: 3px solid var(--linea);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
   background: var(--papel-gris);
   overflow-wrap: anywhere;
 }
