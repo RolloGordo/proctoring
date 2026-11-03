@@ -1,7 +1,7 @@
 /* El aviso sobre el almacenamiento.
  *
- * En su propio fichero y no en `publica.css` porque también sale en la página
- * de acceso, que todavía no vive dentro de `.publica`.
+ * En su propio fichero porque es una pieza suelta que podría salir fuera de la
+ * parte pública; hoy sale en la portada, el acceso y la política.
  *
  * **En el flujo, nunca fijo.** La primera versión flotaba abajo y tapaba el
  * texto que pasaba por debajo al hacer scroll —el inspector lo midió: hasta la
@@ -22,7 +22,10 @@
   line-height: 1.45;
 }
 
+/* Con tope de lectura: a todo el ancho de 1440 la frase corría 148
+   caracteres por línea, el doble de lo que se lee cómodo. */
 .aviso-almacenamiento p {
+  max-width: 72ch;
   margin: 0;
 }
 
@@ -68,13 +71,6 @@
   justify-content: space-between;
   padding-inline: var(--pub-margen);
   font-family: var(--pub-letra);
-}
-
-/* En el acceso es una caja más, del mismo ancho que la del formulario. */
-.pantalla-acceso .aviso-almacenamiento {
-  width: 100%;
-  max-width: 400px;
-  border-radius: 12px;
 }
 
 @media (max-width: 560px) {

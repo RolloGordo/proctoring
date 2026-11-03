@@ -1,4 +1,5 @@
 import { CapaPublica } from '../components/Capas'
+import { CONTACTO } from '../lib/contacto'
 
 /**
  * Política de privacidad y de almacenamiento en el navegador.
@@ -16,8 +17,6 @@ import { CapaPublica } from '../components/Capas'
  * es peor que no tener ninguna.
  */
 
-/** A quién se escribe para ejercer los derechos. */
-const CONTACTO = 'hsilvav2@upao.edu.pe'
 const ACTUALIZADA = '3 de noviembre de 2026'
 
 export function Privacidad() {
