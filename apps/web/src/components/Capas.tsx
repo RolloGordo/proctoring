@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth-context'
+import { AvisoAlmacenamiento } from './AvisoAlmacenamiento'
 import { inicioSegunRol, type Rol } from '../lib/rutas'
 import { authEnabled } from '../lib/supabase'
 
@@ -101,6 +102,10 @@ export function CapaPublica({ children }: { children: ReactNode }) {
         </div>
       </header>
 
+      {/* En el flujo, bajo la cabecera, y no fijo abajo: fijo tapaba el texto
+       * que pasaba por debajo al bajar, hasta que se cerraba. */}
+      <AvisoAlmacenamiento />
+
       <main>{children}</main>
 
       <footer className="pie-publico">
@@ -116,6 +121,9 @@ export function CapaPublica({ children }: { children: ReactNode }) {
             </p>
             <p className="tenue">
               El sistema es un auditor, no un juez: decide siempre el docente.
+            </p>
+            <p>
+              <Link to="/privacidad">Privacidad y cookies</Link>
             </p>
           </div>
         </div>

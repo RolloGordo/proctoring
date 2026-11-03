@@ -20,6 +20,7 @@ import { DetalleExamenEstudiante } from './pages/DetalleExamenEstudiante'
 import { CursoEstudiante } from './pages/CursoEstudiante'
 import { Participantes } from './pages/Participantes'
 import { Portada } from './pages/Portada'
+import { Privacidad } from './pages/Privacidad'
 import { RevisionCaso } from './pages/RevisionCaso'
 import { Resultados } from './pages/Resultados'
 import { Preguntas } from './pages/Preguntas'
@@ -126,6 +127,7 @@ function Aplicacion() {
         {/* Público */}
         <Route path="/" element={<Portada />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/privacidad" element={<Privacidad />} />
 
         {/* Docente */}
         <Route

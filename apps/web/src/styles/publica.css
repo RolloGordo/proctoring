@@ -269,19 +269,57 @@ html:has(.publica) {
   margin-top: clamp(1.75rem, 3vw, 2.75rem);
 }
 
-/* Las tres pantallas reales del panel, relevándose. */
-.publica .pub-pantallas {
+/* ---------- La burbuja ----------
+   La de ThoughtLab, sin WebGL: una forma orgánica que muta despacio, con el
+   carrusel dentro, un borde de cristal y un reflejo de color en cada lado.
+
+   **Va contra tres reglas de la casa a propósito** —degradado, brillo y forma
+   decorativa— porque la pidió el Product Owner tomando ThoughtLab como
+   referencia. Es la única excepción del fichero: nada más lleva sombra ni
+   degradado.
+
+   No se monta sobre el titular, como hace el original: allí la burbuja tapa
+   media frase, y aquí el titular es lo que explica qué es esto. */
+
+.publica .pub-burbuja {
+  justify-self: end;
+  width: min(100%, 36rem);
   margin: 0;
 }
 
-.publica .pub-pantallas-marco {
+.publica .pub-burbuja-forma {
   position: relative;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1;
   overflow: hidden;
+  border-radius: 46% 54% 52% 48% / 53% 47% 53% 47%;
   background: var(--pub-superficie);
+  /* El borde iridiscente: dos sombras de color desplazadas, azul a un lado y
+     ámbar al otro, siguen la forma de la burbuja porque `drop-shadow` dibuja
+     el contorno real y no la caja. */
+  filter: drop-shadow(-4px -2px 0 rgb(110 150 255 / 55%))
+    drop-shadow(4px 3px 0 rgb(232 167 0 / 50%));
+  animation: pub-burbuja-forma 16s ease-in-out infinite alternate;
+  isolation: isolate;
 }
 
-.publica .pub-pantallas-marco img {
+/* El cristal: un aro blanco por dentro, más intenso en el borde, y el brillo
+   frío arriba a la izquierda. Encima de la foto y sin capturar el ratón. */
+.publica .pub-burbuja-forma::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 2px rgb(255 255 255 / 85%),
+    inset 0 0 22px 6px rgb(255 255 255 / 55%),
+    inset 18px 22px 60px rgb(150 185 255 / 30%),
+    inset -22px -26px 70px rgb(255 175 60 / 28%);
+  background: radial-gradient(ellipse 38% 24% at 30% 18%, rgb(255 255 255 / 34%), transparent 70%);
+}
+
+.publica .pub-burbuja-forma img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -291,18 +329,50 @@ html:has(.publica) {
   animation: pub-releva 21s infinite;
 }
 
-.publica .pub-pantallas-marco img:nth-child(2) {
+.publica .pub-burbuja-forma img:nth-child(2) {
   animation-delay: 7s;
 }
 
-.publica .pub-pantallas-marco img:nth-child(3) {
+.publica .pub-burbuja-forma img:nth-child(3) {
   animation-delay: 14s;
 }
 
-.publica .pub-pantallas figcaption {
-  margin-top: 0.875rem;
-  font-size: var(--pub-texto-nota);
-  color: var(--pub-tenue);
+/* Muta sin parar, pero tan despacio que se nota como respiración y no como
+   animación: dieciséis segundos de ida y otros tantos de vuelta. */
+@keyframes pub-burbuja-forma {
+  0% {
+    border-radius: 46% 54% 52% 48% / 53% 47% 53% 47%;
+  }
+
+  33% {
+    border-radius: 58% 42% 45% 55% / 45% 58% 42% 55%;
+  }
+
+  66% {
+    border-radius: 42% 58% 60% 40% / 56% 44% 56% 44%;
+  }
+
+  100% {
+    border-radius: 52% 48% 40% 60% / 42% 56% 44% 58%;
+  }
+}
+
+/* Acompaña al scroll: mientras el primer pantallazo sube, la burbuja baja más
+   despacio, se encoge un poco y gira, así que parece que sigue al visitante.
+   Solo donde el navegador sabe atar una animación al scroll; donde no, se
+   queda quieta en su sitio, que también está bien. */
+@supports (animation-timeline: scroll()) {
+  .publica .pub-burbuja {
+    animation: pub-burbuja-deriva linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 100vh;
+  }
+}
+
+@keyframes pub-burbuja-deriva {
+  to {
+    transform: translateY(14vh) scale(0.86) rotate(-7deg);
+  }
 }
 
 /* Siete segundos cada una. Los porcentajes hacen que la que llega aparezca
@@ -806,6 +876,74 @@ html:has(.publica) {
   gap: 0.5rem 2rem;
 }
 
+/* ---------- Privacidad ----------
+   Texto para leer de verdad: una sola columna a medida de lectura, cuerpo a
+   tamaño de cuerpo y los títulos a un paso. El capítulo de arriba es el mismo
+   gesto que en la portada, para que se note que es la misma casa. */
+
+.publica .pub-legal {
+  padding-block: clamp(2.5rem, 6vw, 5.5rem) 0;
+}
+
+.publica .pub-legal-fecha {
+  margin-top: 1.5rem;
+  font-size: var(--pub-texto-nota);
+  color: var(--pub-tenue);
+}
+
+.publica .pub-legal section {
+  max-width: 68ch;
+  margin-top: clamp(3rem, 6vw, 4.5rem);
+}
+
+.publica .pub-legal h2 {
+  font-size: var(--pub-texto-titulo);
+  font-weight: 650;
+  line-height: 1.15;
+  margin-bottom: 1rem;
+}
+
+.publica .pub-legal h3 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: var(--pub-texto-cuerpo);
+  font-weight: 650;
+}
+
+.publica .pub-legal p + p,
+.publica .pub-legal ul + p,
+.publica .pub-legal p + ul {
+  margin-top: 1rem;
+}
+
+.publica .pub-legal ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.625rem;
+}
+
+.publica .pub-legal li::marker {
+  color: var(--pub-acento);
+}
+
+.publica .pub-legal strong {
+  color: var(--pub-blanco);
+  font-weight: 650;
+}
+
+.publica .pub-legal a,
+.publica .pie-publico a {
+  color: var(--pub-blanco);
+  text-decoration-color: var(--pub-acento);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.publica .pub-legal-nota {
+  color: var(--pub-tenue);
+  font-size: var(--pub-texto-nota);
+}
+
 /* ---------- Las otras dos páginas de la cáscara ----------
    La 404 y el aviso de «rinde desde la app» traían colores pensados para fondo
    claro: el titular de la 404 era tinta sobre tinta, invisible. */
@@ -869,9 +1007,15 @@ html:has(.publica) {
     transition: opacity 300ms linear;
   }
 
-  /* Menos movimiento no es ninguna escena: siguen relevándose, sin el zoom. */
-  .publica .pub-pantallas-marco img {
+  /* Menos movimiento no es ninguna escena: siguen relevándose, sin el zoom.
+     La burbuja deja de mutar y de seguir al scroll: se queda redonda y quieta. */
+  .publica .pub-burbuja-forma img {
     animation-name: pub-releva-quieto;
+  }
+
+  .publica .pub-burbuja,
+  .publica .pub-burbuja-forma {
+    animation: none;
   }
 
   .publica .pub-demo [data-ui] {

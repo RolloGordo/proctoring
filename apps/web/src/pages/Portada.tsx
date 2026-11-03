@@ -223,8 +223,8 @@ export function Portada() {
               </div>
             </div>
 
-            <figure className="pub-pantallas">
-              <div className="pub-pantallas-marco">
+            <figure className="pub-burbuja">
+              <div className="pub-burbuja-forma">
                 {PANTALLAS.map((pantalla) => (
                   <img
                     key={pantalla.foto}
@@ -247,7 +247,6 @@ export function Portada() {
                   />
                 ))}
               </div>
-              <figcaption>Pantallas reales del panel del docente, durante un examen.</figcaption>
             </figure>
           </div>
         </section>

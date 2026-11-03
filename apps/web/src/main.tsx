@@ -8,6 +8,7 @@ import './styles/estructura.css'
 // dominio: el navegador solo la descarga cuando algo de `.publica` la usa.
 import '@fontsource-variable/archivo/standard.css'
 import './styles/publica.css'
+import './styles/aviso-almacenamiento.css'
 import './styles/avisos-supervision.css'
 
 const raiz = document.getElementById('root')

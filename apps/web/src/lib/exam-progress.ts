@@ -15,6 +15,7 @@ export function formatRemainingTime(milliseconds: number): string {
 }
 
 export function pageTitle(pathname: string): string {
+  if (pathname === '/privacidad') return 'Proctoring — Privacidad'
   if (pathname.startsWith('/examen/')) return 'Proctoring — Examen'
   if (pathname === '/examen') return 'Proctoring — Acceso al examen'
   if (pathname === '/sesiones/nueva') return 'Proctoring — Crear examen'
