@@ -16,9 +16,11 @@
  * cuando el cursor entra en algo marcado con `data-burbuja-evita` o cuando se
  * escribe en ello.
  *
- * Todo lo que se ve sale del sombreador: la forma que respira, la esfera
- * iluminada (luz difusa, brillo, nube), la lente, la dispersión de color y el
- * filo blanco del canto. El DOM no se toca: las anclas siguen siendo la
+ * Todo lo que se ve sale del sombreador: una superficie de agua con relieve
+ * (bultos que fluyen y que el chapoteo arrastra), la habitación que se refleja
+ * en ella sobre todo hacia el canto, la lente, la dispersión de color y el filo
+ * del borde. El chapoteo es un resorte: cuando la burbuja acelera, el agua de
+ * dentro se queda atrás y luego va y viene hasta calmarse. El DOM no se toca: las anclas siguen siendo la
  * burbuja de CSS con sus `<img>` y su texto alternativo, que es lo que ven
  * quien no tiene WebGL y el lector de pantalla.
  *
@@ -72,6 +74,7 @@ uniform float uCerca;
 uniform float uPixel;
 uniform float uLejania;
 uniform float uFundido;
+uniform vec2 uOla;
 
 float azar(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -85,10 +88,34 @@ float ruido(vec2 p) {
              mix(azar(i + vec2(0.0, 1.0)), azar(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
-// Cuánto cae un punto del borde, de ángulo a, dentro de un reflejo centrado en centro.
-float lobulo(float a, float centro, float ancho) {
-  float d = atan(sin(a - centro), cos(a - centro));
-  return exp(-d * d / ancho);
+// El relieve de la superficie: bultos grandes y otros más pequeños que fluyen
+// cada uno hacia su lado, y que el agua de dentro (uOla) arrastra al moverse.
+float relieve(vec2 p, float t) {
+  vec2 corriente = uOla * 1.6;
+  // Pocos bultos y grandes: con más detalle salían hoyuelos, y el agua de
+  // verdad hace pliegues largos y suaves.
+  return ruido(p * 1.5 + vec2(t * 0.11, -t * 0.07) + corriente) * 0.72
+       + ruido(p * 2.9 + vec2(-t * 0.09, t * 0.13) + corriente * 1.4 + 5.0) * 0.28;
+}
+
+// La habitación que se refleja en el agua, como un estudio de fotografía:
+// focos detrás y a los lados de la burbuja, que es hacia donde rebota la vista
+// cerca del canto. Un panel blanco grande a la derecha y algo por debajo, una
+// luz violeta arriba, el suelo cálido abajo y un azul a la izquierda. Gira un
+// poco, despacio, como si la burbuja rotara.
+float foco(vec3 r, vec3 hacia, float filo) {
+  return pow(max(dot(r, normalize(hacia)), 0.0), filo);
+}
+
+vec3 entorno(vec3 r, float t) {
+  float giro = 0.25 * sin(t * 0.15);
+  r.xy = mat2(cos(giro), -sin(giro), sin(giro), cos(giro)) * r.xy;
+  vec3 c = vec3(0.0);
+  c += vec3(1.0) * foco(r, vec3(0.55, -0.25, -0.8), 4.0) * 2.0;
+  c += vec3(0.58, 0.42, 1.0) * foco(r, vec3(-0.1, 0.75, -0.65), 4.0) * 1.3;
+  c += vec3(1.0, 0.56, 0.24) * foco(r, vec3(0.2, -0.8, -0.55), 3.5) * 1.2;
+  c += vec3(0.3, 0.46, 1.0) * foco(r, vec3(-0.8, 0.1, -0.6), 5.0) * 0.8;
+  return c;
 }
 
 vec3 muestra(sampler2D foto, vec2 n, float escala, float dispersion, float desenfoque) {
@@ -110,42 +137,54 @@ void main() {
   vec2 lado = vec2(-dir.y, dir.x);
   vec2 q = dir * (dot(vP, dir) / (1.0 + k)) + lado * (dot(vP, lado) / (1.0 - 0.4 * k));
 
-  // Ondula como si llevara agua dentro: cuatro ondas largas, cada una a su
-  // ritmo, y su fuerza sube y baja (la marea), así que nunca se repite igual y
-  // se mueve en su sitio aunque nadie la toque. Todas son de periodo entero
-  // alrededor del borde: no dejan costura.
+  // El contorno: ondas largas a su ritmo, con una marea que sube y baja, más
+  // los mismos bultos del relieve asomando por el borde. Todo continuo
+  // alrededor (sin costura en el lado izquierdo).
   float a = atan(q.y, q.x);
+  vec2 haciaBorde = normalize(q + 1e-5);
   float fuerza = 1.0 + 2.0 * k + 0.35 * uCerca;
   float marea = 0.75 + 0.25 * sin(t * 0.31);
-  float onda = (0.024 * sin(2.0 * a - t * 0.55 + 2.1)
-             + 0.017 * sin(3.0 * a + t * 0.72)
-             + 0.011 * sin(4.0 * a - t * 0.93 + 1.3)
-             + 0.006 * sin(6.0 * a + t * 1.21 + 0.7)) * marea;
+  float onda = (0.018 * sin(2.0 * a - t * 0.55 + 2.1)
+             + 0.013 * sin(3.0 * a + t * 0.72)
+             + 0.008 * sin(4.0 * a - t * 0.93 + 1.3)) * marea
+             + 0.05 * (relieve(haciaBorde * 0.9, t) - 0.5);
   float lp = length(uPuntero);
   float bulto = lp > 0.0001
-    ? 0.035 * uCerca * pow(max(dot(normalize(q + 1e-5), uPuntero / lp), 0.0), 2.0)
+    ? 0.035 * uCerca * pow(max(dot(haciaBorde, uPuntero / lp), 0.0), 2.0)
     : 0.0;
   float radio = 1.0 + onda * fuerza + bulto;
   float rr = length(q) / radio;
   if (rr > 1.01) discard;
 
-  // La esfera: su normal en cada punto, la luz arriba a la izquierda y algo
-  // hacia quien mira, el brillo y el borde que refleja más (Fresnel).
+  // La superficie: una esfera con relieve. La normal sale de la esfera más
+  // la pendiente de los bultos, que pesa más hacia el borde.
   vec2 n = q / radio;
   float h = sqrt(max(1.0 - rr * rr, 0.0));
-  float canto = 1.0 - h;
-  vec3 normal = vec3(n, h);
-  vec3 luz = normalize(vec3(-0.5 + 0.12 * sin(t * 0.2) + uPuntero.x * 0.1 * uCerca, 0.62, 0.62));
-  float difusa = max(dot(normal, luz), 0.0);
-  vec3 medio = normalize(luz + vec3(0.0, 0.0, 1.0));
-  float brillo = pow(max(dot(normal, medio), 0.0), 70.0);
-  float lustre = pow(max(dot(normal, medio), 0.0), 9.0);
-  float fresnel = pow(canto, 2.6);
+  float e = 0.03;
+  vec2 pendiente = vec2(
+    relieve(n + vec2(e, 0.0), t) - relieve(n - vec2(e, 0.0), t),
+    relieve(n + vec2(0.0, e), t) - relieve(n - vec2(0.0, e), t)
+  ) / (2.0 * e);
+  float pesoRelieve = mix(0.04, 0.9, smoothstep(0.45, 0.97, rr));
+  vec3 normal = normalize(vec3(n - pendiente * pesoRelieve * 0.85, h + 0.02));
+  float canto = 1.0 - clamp(normal.z, 0.0, 1.0);
+
+  // Lo que refleja: la habitación, mirada en la dirección en que rebota la
+  // vista. Casi nada de frente y casi todo hacia el borde (Fresnel): por eso
+  // los reflejos se agolpan cerca del canto y siguen los pliegues, y donde
+  // un pliegue mira a un rincón oscuro queda una arruga negra.
+  vec3 rebote = reflect(vec3(0.0, 0.0, -1.0), normal);
+  float fresnel = 0.04 + 0.96 * pow(canto, 1.7);
+  vec3 reflejo = entorno(rebote, t) * fresnel;
+
+  // Lo que se ve a través: la luz se tuerce en los bultos, así que el fondo
+  // se mueve como detrás de agua.
+  vec2 torcido = normal.xy - n;
 
   // Con foto: la lente aumenta el centro y comprime hacia el borde, con la
-  // foto un poco desplazada contra el puntero, como si estuviera detrás.
+  // foto desplazada por el relieve y un poco contra el puntero.
   float escala = mix(0.7, 1.0, pow(canto, 1.4)) * (0.95 + 0.025 * sin(t * 0.17));
-  vec2 nf = n - uPuntero * 0.03 * uCerca;
+  vec2 nf = n + torcido * 0.25 - uPuntero * 0.03 * uCerca;
   float dispersion = 0.05 * pow(canto, 2.2);
   float desenfoque = 3.5 * pow(canto, 3.0);
   vec3 fotoA = muestra(uFotoA, nf, escala, dispersion, desenfoque);
@@ -154,29 +193,23 @@ void main() {
   float m = smoothstep(frente + 0.12, frente - 0.12, rr + 0.05 * sin(a * 4.0 + t * 1.5));
   // Con el movimiento reducido no hay frente que avance: un fundido y ya.
   m = mix(m, uMezcla, uFundido);
-  vec3 conFoto = mix(fotoA, fotoB, m) * (0.78 + 0.32 * difusa);
+  vec3 conFoto = mix(fotoA, fotoB, m) * 0.9;
 
-  // Vacía: humo oscuro con nube y luz de esfera, y a través del cristal el
-  // texto de detrás. Se mira más cerca del centro de lo que está (la lente
-  // aumenta), cerca del canto se dobla hacia dentro (el texto salta, como en
-  // un vaso) y cada color va un poco desplazado, que es la dispersión.
+  // Vacía: el texto de detrás, aumentado por la lente, doblado hacia dentro
+  // cerca del canto, movido por el relieve y con cada color desplazado.
   vec2 desdeCentro = vPx - uCentro;
   vec2 mira = desdeCentro * mix(0.58, 1.0, pow(canto, 1.2))
-            - normalize(desdeCentro + 1e-5) * uRadio * 0.1 * pow(canto, 2.5);
+            - normalize(desdeCentro + 1e-5) * uRadio * 0.1 * pow(canto, 2.5)
+            + vec2(torcido.x, -torcido.y) * uRadio * 0.13;
   float separa = 0.06 * pow(canto, 1.5);
   vec4 tR = texture2D(uTexto, (uCentro + mira * (1.0 + separa)) / uVista);
   vec4 tG = texture2D(uTexto, (uCentro + mira) / uVista);
   vec4 tB = texture2D(uTexto, (uCentro + mira * (1.0 - separa)) / uVista);
-  // El interior es como agua en penumbra: un claro grande y suave que se
-  // pasea despacio, y dos olas anchas que lo cruzan. Limpio, sin vetas: las
-  // vetas de nube lo ensuciaban y lo volvían opaco.
-  vec2 claroEn = vec2(-0.16, 0.1) + 0.14 * vec2(sin(t * 0.47), cos(t * 0.38));
-  float claro = smoothstep(1.0, 0.0, length(n - claroEn));
-  float ola = sin(dot(n, vec2(0.8, 0.6)) * 5.0 - t * 1.1) * 0.5
-            + sin(dot(n, vec2(-0.5, 0.85)) * 4.0 + t * 0.8) * 0.5;
-  vec3 humo = vec3(0.03 + 0.4 * claro) * (0.8 + 0.3 * difusa)
-            + ola * 0.03 * (1.0 - rr)
-            + (ruido(n * 1.6 + t * 0.05) - 0.5) * 0.04;
+  // El interior: agua en penumbra, con un claro grande que se pasea, que el
+  // chapoteo empuja y que los bultos tuercen.
+  vec2 claroEn = vec2(-0.16, 0.1) + 0.14 * vec2(sin(t * 0.47), cos(t * 0.38)) - uOla * 0.5;
+  float claro = smoothstep(1.0, 0.0, length(n + torcido * 0.6 - claroEn));
+  vec3 humo = vec3(0.03 + 0.38 * claro) * (1.0 - 0.6 * smoothstep(0.55, 0.95, rr));
   vec3 vacia = vec3(
     mix(humo.r, tR.r * 0.9, tR.a),
     mix(humo.g, tG.g * 0.9, tG.a),
@@ -184,68 +217,19 @@ void main() {
   );
 
   vec3 color = mix(conFoto, vacia, uVacia);
-
   // Lejos (entre dos anclas) se oscurece, para que el texto que cruza se lea.
   color *= 1.0 - 0.55 * uLejania;
+  color = color * (1.0 - fresnel * 0.85) + reflejo;
 
-  // De qué lado cae cada punto del borde: 0 del lado de la luz (arriba a la
-  // izquierda), 1 del contrario. Ahí la ThoughtLab tiene todo su canto.
-  float cara = dot(normalize(q + 1e-5), normalize(luz.xy));
-  float sombra = smoothstep(-0.35, 1.0, -cara);
-  // Vetas que cambian despacio a lo largo del borde: el canto no tiene el
-  // mismo grosor en todas partes, como el de un cristal hecho a mano. El ruido
-  // se mira sobre la dirección y no sobre el ángulo: el ángulo salta de +180°
-  // a -180° en el lado izquierdo y dejaba ahí una costura recta.
-  vec2 haciaBorde = normalize(q + 1e-5);
-  float veta = ruido(haciaBorde * 2.2 + vec2(t * 0.12, 3.0)) * 0.6
-             + ruido(haciaBorde * 5.0 + vec2(1.0, -t * 0.09)) * 0.4;
-
-  // El anillo oscuro justo antes del canto, que es lo que lo hace resaltar.
-  color *= 1.0 - 0.6 * smoothstep(0.72, 0.9, rr) * (0.55 + 0.45 * sombra);
-
-  // Los reflejos de la luz que le cae por ciertos lados, como las ventanas de
-  // una habitación reflejadas: un lóbulo blanco grande abajo a la derecha
-  // (cálido por dentro), uno rosado a la derecha y una veta violeta arriba.
-  // Se deslizan despacio por el borde.
-  // El blanco ocupa casi un cuarto del borde y entra hasta media esfera,
-  // como en la de ThoughtLab; más intenso cuanto más cerca del canto.
-  float lobuloBlanco = lobulo(a, -0.72 + 0.25 * sin(t * 0.23), 0.38)
-                     * pow(smoothstep(0.4, 0.95, rr), 1.4);
-  color = mix(color, mix(vec3(1.0, 0.68, 0.4), vec3(1.0), smoothstep(0.72, 0.95, rr)),
-              lobuloBlanco * 0.95);
-  color += vec3(1.0, 0.76, 0.86) * lobulo(a, 0.32 + 0.2 * sin(t * 0.31 + 1.0), 0.08)
-         * smoothstep(0.62, 0.95, rr) * 0.6;
-  color += vec3(0.6, 0.45, 1.0) * lobulo(a, 1.75 + 0.22 * sin(t * 0.27 + 2.0), 0.1)
-         * smoothstep(0.74, 0.97, rr) * 0.7;
-
-  // El canto: fino y azul violeta del lado de la luz; grueso y blanco del
-  // otro, con la franja de color por dentro. Cada canal de color empieza a
-  // un radio distinto, y esa diferencia es la dispersión: del lado contrario
-  // el rojo entra antes (franja ámbar), del lado de la luz el azul.
-  // Medido sobre la de ThoughtLab: del lado contrario la franja blanca ocupa
-  // cerca del 5 % del diámetro (un 11 % del radio); del lado de la luz, un 2 %.
-  float grosor = mix(0.022, 0.1, pow(sombra, 1.3)) * (0.8 + 0.4 * veta);
-  float desfase = mix(-0.008, 0.012, sombra);
-  vec3 aro = vec3(
-    smoothstep(1.0 - grosor - desfase, 1.0 - grosor * 0.5 - desfase, rr),
-    smoothstep(1.0 - grosor, 1.0 - grosor * 0.5, rr),
-    smoothstep(1.0 - grosor + desfase, 1.0 - grosor * 0.5 + desfase, rr)
+  // El filo: una línea fina y clara justo en el borde, con la dispersión de
+  // color (cada canal empieza a un radio un poco distinto).
+  vec3 filo = vec3(
+    smoothstep(0.955, 0.99, rr * 1.006),
+    smoothstep(0.955, 0.99, rr),
+    smoothstep(0.955, 0.99, rr * 0.994)
   );
-  vec3 tinte = mix(vec3(0.56, 0.6, 1.0), vec3(1.0), sombra);
-  color = mix(color, tinte, aro * (0.55 + 0.45 * sombra));
+  color = mix(color, vec3(1.0), filo * 0.55);
 
-  // Pegada por dentro a la franja blanca, una franja ámbar estrecha: la luz
-  // que atraviesa la esfera y sale por el otro lado. Sin hueco entre las dos
-  // (si el ámbar se apagaba antes de que empezara el blanco, quedaba una
-  // línea oscura en medio).
-  float dentro = 1.0 - grosor;
-  float resplandor = smoothstep(dentro - 0.09, dentro + 0.01, rr);
-  color += vec3(1.0, 0.52, 0.2) * resplandor * pow(sombra, 1.6) * 0.38;
-  // Sin punto de brillo: lo convertía en una bola de billar. En el cristal la
-  // luz vive en el canto; aquí solo un velo muy suave.
-  color += vec3(1.0) * (fresnel * 0.05 + lustre * 0.04);
-
-  // El borde de fuera es nítido, sin halo: el resplandor exterior la aplanaba.
   float alfa = 1.0 - smoothstep(1.0 - uPixel * 1.5, 1.0, rr);
   gl_FragColor = vec4(color * alfa, alfa);
 }
@@ -272,6 +256,9 @@ const AMORTIGUACION = 2 * 0.72 * Math.sqrt(RIGIDEZ)
 /** Detrás del cursor va más suelta, como si flotara: tarda más y rebota menos. */
 const RIGIDEZ_CURSOR = 45
 const AMORTIGUACION_CURSOR = 2 * 0.85 * Math.sqrt(RIGIDEZ_CURSOR)
+/** El agua de dentro: blanda y poco amortiguada, para que vaya y venga. */
+const RIGIDEZ_OLA = 22
+const AMORTIGUACION_OLA = 2 * 0.18 * Math.sqrt(RIGIDEZ_OLA)
 
 export type OpcionesBurbuja = {
   /**
@@ -385,7 +372,8 @@ export function montarBurbuja(
     cerca: u('uCerca'),
     pixel: u('uPixel'),
     lejania: u('uLejania'),
-    fundido: u('uFundido')
+    fundido: u('uFundido'),
+    ola: u('uOla')
   }
   gl.uniform1i(uni.fotoA, 0)
   gl.uniform1i(uni.fotoB, 1)
@@ -590,6 +578,11 @@ export function montarBurbuja(
   // El estado del resorte, en píxeles CSS de la ventana.
   let pos = { x: 0, y: 0 }
   const vel = { x: 0, y: 0 }
+  // El agua de dentro: se queda atrás cuando la burbuja acelera y luego va y
+  // viene hasta calmarse, y arrastra el relieve, el claro y lo que se ve a
+  // través. En radios, con la y hacia arriba como en el sombreador.
+  const ola = { x: 0, y: 0 }
+  const velOla = { x: 0, y: 0 }
   let radio = 0
   let velRadio = 0
   let iniciada = false
@@ -669,6 +662,8 @@ export function montarBurbuja(
     py: number
     cerca: number
     lejania: number
+    /** Cuánto se ha corrido el agua de dentro, en radios (y hacia arriba). */
+    ola: { x: number; y: number }
   }
 
   function dibujar(t: Trazo) {
@@ -690,6 +685,7 @@ export function montarBurbuja(
     gl.uniform1f(uni.cerca, t.cerca)
     gl.uniform1f(uni.pixel, 1 / t.r)
     gl.uniform1f(uni.lejania, t.lejania)
+    gl.uniform2f(uni.ola, t.ola.x, t.ola.y)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
   }
 
@@ -728,7 +724,8 @@ export function montarBurbuja(
         px: 0,
         py: 0,
         cerca: 0,
-        lejania: 0
+        lejania: 0,
+        ola: { x: 0, y: 0 }
       })
     }
     lienzo.classList.toggle('pub-lienzo-encima', encima || conTexto)
@@ -813,6 +810,15 @@ export function montarBurbuja(
     velRadio += (RIGIDEZ * (meta.r - radio) - AMORTIGUACION * velRadio) * dt
     radio += velRadio * dt
 
+    // El chapoteo: el agua quiere correrse al revés de como se mueve la
+    // burbuja, y un resorte poco amortiguado la hace ir y venir.
+    const empujeX = (-vel.x / Math.max(radio, 1)) * 0.09
+    const empujeY = (vel.y / Math.max(radio, 1)) * 0.09
+    velOla.x += (RIGIDEZ_OLA * (empujeX - ola.x) - AMORTIGUACION_OLA * velOla.x) * dt
+    velOla.y += (RIGIDEZ_OLA * (empujeY - ola.y) - AMORTIGUACION_OLA * velOla.y) * dt
+    ola.x = entre(ola.x + velOla.x * dt, -0.5, 0.5)
+    ola.y = entre(ola.y + velOla.y * dt, -0.5, 0.5)
+
     // Qué fotos se mezclan: en viaje, la del ancla de arriba con la de abajo;
     // posada en un ancla con carrusel, la anterior con la actual.
     let fotos: { fotoA: string; fotoB: string; mezcla: number }
@@ -844,7 +850,8 @@ export function montarBurbuja(
       px: dx / radio,
       py: -dy / radio,
       cerca,
-      lejania: meta.lejania
+      lejania: meta.lejania,
+      ola
     })
   }
 
