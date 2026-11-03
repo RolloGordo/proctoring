@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Burbuja } from '../components/Burbuja'
 import { CapaPublica } from '../components/Capas'
@@ -20,7 +20,11 @@ import { useBurbuja } from '../lib/use-burbuja'
  *
  * Lo que se puede revisar sin preguntarle a nadie se revisa aquí, campo por
  * campo (`lib/acceso.ts`); lo demás lo dice Supabase, ya traducido.
+ *
+ * La burbuja va vacía y sigue al cursor por el lado izquierdo; en cuanto el
+ * cursor entra al formulario, o se escribe en él, vuelve a su sitio.
  */
+
 export function Login() {
   const { entrar, salir, token, cargando, rol, perfilListo } = useAuth()
   const [email, setEmail] = useState('')
@@ -35,7 +39,7 @@ export function Login() {
   const campoCorreo = useRef<HTMLInputElement>(null)
   const campoClave = useRef<HTMLInputElement>(null)
 
-  useBurbuja(raiz, lienzo)
+  useBurbuja(raiz, lienzo, { seguirCursor: true })
 
   // Sin Supabase configurado no hay a quien pedirle credenciales.
   if (!authEnabled) return <Navigate to="/" replace />
@@ -79,12 +83,14 @@ export function Login() {
         <canvas ref={lienzo} className="pub-lienzo" aria-hidden="true" />
 
         <div className="pub-acceso-portada">
-          <h1 className="pub-capitulo">Entra.</h1>
-          <p className="pub-intro">Docentes y estudiantes, con su correo institucional.</p>
+          <Tecleado texto="Entra" />
+          <p className="pub-intro" data-burbuja-refracta>
+            Docentes y estudiantes, con su correo institucional.
+          </p>
           <Burbuja fotos={[FOTOS.escribe]} ancla />
         </div>
 
-        <section className="pub-acceso-panel" aria-labelledby="acceso-titulo">
+        <section className="pub-acceso-panel" aria-labelledby="acceso-titulo" data-burbuja-evita>
           {sinPerfil ? (
             perfilListo ? (
               <>
@@ -194,5 +200,54 @@ export function Login() {
         </section>
       </div>
     </CapaPublica>
+  )
+}
+
+/** Cuánto tarda cada letra del título y cuánto espera antes de la primera. */
+const LETRA_MS = 130
+const ANTES_MS = 450
+
+/**
+ * El título se teclea letra a letra cada vez que se entra, y el punto hace de
+ * cursor: va tras la última letra escrita y, al terminar, se queda
+ * parpadeando, como si esperara a que escribas tú.
+ *
+ * El lector de pantalla oye el título entero desde el principio (`sr-only`);
+ * lo que se teclea va oculto para él, que si no lo leería letra a letra. Con el
+ * movimiento reducido sale entero y el punto no parpadea.
+ */
+function Tecleado({ texto }: { texto: string }) {
+  const [quieto] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [escritas, setEscritas] = useState(quieto ? texto.length : 0)
+
+  useEffect(() => {
+    if (quieto) return
+    let cuenta = 0
+    let intervalo = 0
+    const espera = window.setTimeout(() => {
+      intervalo = window.setInterval(() => {
+        cuenta += 1
+        setEscritas(cuenta)
+        if (cuenta >= texto.length) window.clearInterval(intervalo)
+      }, LETRA_MS)
+    }, ANTES_MS)
+    return () => {
+      window.clearTimeout(espera)
+      window.clearInterval(intervalo)
+    }
+  }, [texto, quieto])
+
+  const terminado = escritas >= texto.length
+  return (
+    <h1 className="pub-capitulo pub-tecleado" data-burbuja-refracta>
+      <span className="sr-only">{texto}.</span>
+      <span aria-hidden="true">{texto.slice(0, escritas)}</span>
+      <span
+        aria-hidden="true"
+        className={terminado ? 'pub-tecleado-punto pub-tecleado-espera' : 'pub-tecleado-punto'}
+      >
+        .
+      </span>
+    </h1>
   )
 }
