@@ -17,6 +17,7 @@ import {
   fechaLarga,
   nombreEvento,
   nombrePreset,
+  nombreSeveridad,
   soloHora
 } from '../lib/formato'
 import { CodigoAcceso } from '../components/CodigoAcceso'
@@ -438,7 +439,7 @@ export function SesionEnVivo() {
                 {alertas.map((alerta) => (
                   <li key={alerta.id}>
                     <span className={`severidad severidad-${alerta.severity}`}>
-                      {alerta.severity === 'high' ? 'Alta' : 'Media'}
+                      {nombreSeveridad(alerta.severity)}
                     </span>
                     <div>
                       <p className="motivo">{alerta.reason}</p>
@@ -502,7 +503,7 @@ export function SesionEnVivo() {
                       </td>
                       <td>
                         <span className={`severidad severidad-${evento.severity}`}>
-                          {evento.severity}
+                          {nombreSeveridad(evento.severity)}
                         </span>
                       </td>
                       <td className="hora">{soloHora(evento.started_at)}</td>

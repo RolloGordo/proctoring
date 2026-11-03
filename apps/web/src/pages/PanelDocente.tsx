@@ -1,32 +1,41 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { ChipEstado } from '../components/ChipEstado'
-import { api, type Alert, type ExamSessionSummary } from '../lib/api'
-import { useAuth } from '../lib/auth-context'
-import { cuandoEmpieza, estadoExamen, fechaLarga, nombrePreset, soloHora } from '../lib/formato'
 import { CodigoAcceso } from '../components/CodigoAcceso'
+import { api, type Alert, type ExamSessionSummary, type Severity } from '../lib/api'
+import { useAuth } from '../lib/auth-context'
+import { cuandoEmpieza, estadoExamen, fechaLarga, horaCorta, nombrePreset } from '../lib/formato'
+import { haceCuanto, lineaExamen } from '../lib/linea-examen'
 
 /** Cuántos exámenes en curso se consultan por alertas. Cada uno es una petición. */
 const MAX_CON_ALERTAS = 3
+/** Filas de las dos listas de abajo: las mismas en las dos, para que acaben a la par. */
+const FILAS = 4
 
 /**
  * El panel del docente: **qué pide su atención ahora**.
  *
- * Lo primero que necesita un docente al entrar no es una lista de todo lo que
- * creó, sino saber si hay un examen en marcha y cómo va. Si no lo hay, cuál es
- * el próximo. La lista completa está en "Mis exámenes".
+ * Su pregunta es «¿hay un examen en marcha y algo que mirar?». Por eso lo más
+ * grande son los exámenes en curso, cada uno con su línea: la duración, lo que
+ * ya pasó y cada alerta en el minuto en que llegó, con la última dicha en
+ * palabras y «Ver en vivo» al lado. Es lo único de este panel que no tendría
+ * otro producto. Debajo, a la par, lo que viene y lo que terminó.
+ *
+ * Sin cifras en tarjetas: los totales ya están en la línea de debajo del
+ * título y en las cabeceras de cada lista, y repetirlos en tres cajas no
+ * añadía nada.
  */
 export function PanelDocente() {
-  const { token, email } = useAuth()
+  const { token } = useAuth()
   const [sesiones, setSesiones] = useState<ExamSessionSummary[]>()
   const [alertas, setAlertas] = useState<Record<string, Alert[]>>({})
   const [error, setError] = useState<string>()
   const [reintentos, setReintentos] = useState(0)
-  // El estado de un examen cambia con la hora; un reloj por minuto basta.
+  // La línea de un examen en curso avanza sola: un reloj cada 30 s basta.
   const [ahora, setAhora] = useState(() => Date.now())
 
   useEffect(() => {
-    const temporizador = setInterval(() => setAhora(Date.now()), 60_000)
+    const temporizador = setInterval(() => setAhora(Date.now()), 30_000)
     return () => clearInterval(temporizador)
   }, [])
 
@@ -51,8 +60,9 @@ export function PanelDocente() {
     return {
       enCurso: todos.filter((s) => s.estado === 'en_curso').sort(porInicio),
       proximos: todos.filter((s) => s.estado === 'programado').sort(porInicio),
-      terminados: todos.filter((s) => s.estado === 'terminado').sort((a, b) => porInicio(b, a)),
-      todos
+      pasados: todos
+        .filter((s) => s.estado === 'terminado' || s.estado === 'cancelado')
+        .sort((a, b) => porInicio(b, a))
     }
   }, [sesiones, ahora])
 
@@ -75,31 +85,49 @@ export function PanelDocente() {
     }
   }, [idsEnCurso, token])
 
-  const recientes = [...grupos.todos]
-    .sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime())
-    .slice(0, 6)
+  const enCurso = grupos.enCurso.length
+  const altas = grupos.enCurso.reduce(
+    (suma, s) => suma + (alertas[s.id]?.filter((a) => a.severity === 'high').length ?? 0),
+    0
+  )
   const proximo = grupos.proximos[0]
+  const hallazgo = !sesiones
+    ? undefined
+    : enCurso > 0
+      ? `${enCurso} ${enCurso === 1 ? 'examen en curso' : 'exámenes en curso'}` +
+        (altas > 0 ? ` · ${altas} ${altas === 1 ? 'alerta alta' : 'alertas altas'}` : '')
+      : proximo
+        ? `Tu próximo examen empieza ${cuandoEmpieza(new Date(proximo.starts_at).getTime() - ahora)}.`
+        : sesiones.length > 0
+          ? 'No tienes exámenes programados.'
+          : undefined
 
   return (
-    <>
-      <div className="encabezado-pagina">
+    <div className="inicio-docente">
+      <header className="encabezado-pagina">
         <div>
-          <h1>Panel del docente</h1>
-          {email && <p className="subtitulo">{email}</p>}
+          <h1>Panel</h1>
+          {hallazgo && <p className="inicio-hallazgo">{hallazgo}</p>}
         </div>
-        <div className="fila">
-          <Link to="/cursos" className="boton boton-secundario">
-            Preparar un curso
-          </Link>
-          <Link to="/sesiones/nueva" className="boton">
-            Crear examen
-          </Link>
-        </div>
-      </div>
+        {/* La primera vez, las acciones van en la tarjeta de bienvenida, donde
+         * luego estarán los exámenes: aquí arriba repetían el mismo botón. */}
+        {sesiones?.length !== 0 && (
+          <div className="fila">
+            <Link to="/cursos" className="boton boton-secundario">
+              Preparar un curso
+            </Link>
+            {/* Una sola acción principal: con un examen en marcha es «Ver en
+             * vivo», en su tarjeta; sin él, crear el siguiente. */}
+            <Link to="/sesiones/nueva" className={enCurso > 0 ? 'boton boton-secundario' : 'boton'}>
+              Crear examen
+            </Link>
+          </div>
+        )}
+      </header>
 
       {error && (
         <div className="aviso" role="alert">
-          <p>{error}</p>
+          <p>No se pudieron cargar tus exámenes: {error}</p>
           <button
             type="button"
             className="boton boton-secundario"
@@ -112,173 +140,242 @@ export function PanelDocente() {
           </button>
         </div>
       )}
-      {!sesiones && !error && <p className="tenue">Cargando…</p>}
 
-      {sesiones && (
-        <>
-          <div className="panel-resumen">
-            <Cifra valor={grupos.enCurso.length} etiqueta="En curso" tono="en-curso" />
-            <Cifra valor={grupos.proximos.length} etiqueta="Próximos" />
-            <Cifra valor={grupos.terminados.length} etiqueta="Terminados" />
+      {!sesiones && !error && <Cargando />}
+
+      {sesiones && sesiones.length === 0 && (
+        <section className="tarjeta inicio-primero">
+          <h2>Crea tu primer examen</h2>
+          <p className="subtitulo">
+            Al crearlo recibes un código de acceso para repartir a tus estudiantes. Si vas a
+            supervisar a un grupo fijo, prepara antes su curso.
+          </p>
+          <div className="fila">
+            <Link to="/sesiones/nueva" className="boton">
+              Crear examen
+            </Link>
+            <Link to="/cursos" className="boton boton-secundario">
+              Preparar un curso
+            </Link>
           </div>
+        </section>
+      )}
 
-          {sesiones.length === 0 ? (
-            <div className="tarjeta">
-              <div className="vacio">
-                <h3>Todavía no has creado ningún examen</h3>
-                <p className="subtitulo">
-                  Al crear uno obtienes un código de acceso para repartir a tus estudiantes.
-                </p>
-                <p style={{ marginTop: 'var(--e5)' }}>
-                  <Link to="/sesiones/nueva" className="boton">
-                    Crear examen independiente
-                  </Link>{' '}
-                  <Link to="/cursos" className="boton boton-secundario">
-                    Preparar un curso primero
-                  </Link>
-                </p>
+      {sesiones && sesiones.length > 0 && (
+        <>
+          {enCurso > 0 && (
+            <section className="bloque" aria-labelledby="en-curso">
+              <div className="encabezado-seccion">
+                <h2 id="en-curso">
+                  En curso <span className="inicio-cuenta">{enCurso}</span>
+                </h2>
               </div>
-            </div>
-          ) : (
-            <>
-              {grupos.enCurso.length > 0 && (
-                <section className="bloque">
-                  <h2>En curso ahora</h2>
-                  <div className="apilado">
-                    {grupos.enCurso.map((s) => (
-                      <TarjetaExamen
-                        key={s.id}
-                        examen={s}
-                        etiqueta={`Termina a las ${soloHoraCorta(
-                          new Date(s.starts_at).getTime() + s.duration_minutes * 60_000
-                        )}`}
-                        alertas={alertas[s.id]}
-                        principal="Ver en vivo"
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {grupos.enCurso.length === 0 && proximo && (
-                <section className="bloque">
-                  <h2>Tu próximo examen</h2>
-                  <TarjetaExamen
-                    examen={proximo}
-                    etiqueta={`Empieza ${cuandoEmpieza(new Date(proximo.starts_at).getTime() - ahora)}`}
-                    principal="Abrir"
-                  />
-                </section>
-              )}
-
-              <section className="bloque">
-                <div className="encabezado-seccion">
-                  <h2>Exámenes recientes</h2>
-                  <Link to="/sesiones">Ver todos</Link>
-                </div>
-                <div className="tarjeta">
-                  <table className="tabla">
-                    <thead>
-                      <tr>
-                        <th>Examen</th>
-                        <th>Inicio</th>
-                        <th>Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recientes.map((s) => (
-                        <tr key={s.id}>
-                          <td className="celda-titulo">
-                            <Link to={`/sesiones/${s.id}`}>{s.title}</Link>
-                            <span className="celda-detalle">
-                              Supervisión {nombrePreset(s.preset).toLowerCase()}
-                            </span>
-                          </td>
-                          <td className="hora">{fechaLarga(s.starts_at)}</td>
-                          <td>
-                            <ChipEstado estado={s.estado} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            </>
+              <div className="inicio-en-curso">
+                {grupos.enCurso.map((s) => (
+                  <ExamenEnCurso key={s.id} examen={s} alertas={alertas[s.id]} ahora={ahora} />
+                ))}
+              </div>
+            </section>
           )}
+
+          <div className="inicio-listas">
+            <section className="tarjeta inicio-lista" aria-labelledby="proximos">
+              <div className="encabezado-seccion">
+                <h2 id="proximos">
+                  Próximos <span className="inicio-cuenta">{grupos.proximos.length}</span>
+                </h2>
+                {grupos.proximos.length > FILAS && <Link to="/sesiones">Ver todos</Link>}
+              </div>
+              {grupos.proximos.length === 0 ? (
+                <p className="inicio-vacio">No hay exámenes programados.</p>
+              ) : (
+                <ul className="inicio-filas">
+                  {grupos.proximos.slice(0, FILAS).map((s) => (
+                    <li key={s.id}>
+                      <div className="inicio-fila-texto">
+                        <Link to={`/sesiones/${s.id}`}>{s.title}</Link>
+                        <span>
+                          {cuandoEmpiezaCorto(new Date(s.starts_at).getTime() - ahora)} ·{' '}
+                          {s.duration_minutes} min · Supervisión{' '}
+                          {nombrePreset(s.preset).toLowerCase()}
+                        </span>
+                      </div>
+                      <span className="inicio-fila-dato">
+                        {s.access_code ?? <span className="tenue">Código al empezar</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="tarjeta inicio-lista" aria-labelledby="pasados">
+              <div className="encabezado-seccion">
+                <h2 id="pasados">Terminados</h2>
+                <Link to="/sesiones">Ver todos</Link>
+              </div>
+              {grupos.pasados.length === 0 ? (
+                <p className="inicio-vacio">Todavía no ha terminado ningún examen.</p>
+              ) : (
+                <ul className="inicio-filas">
+                  {grupos.pasados.slice(0, FILAS).map((s) => (
+                    <li key={s.id}>
+                      <div className="inicio-fila-texto">
+                        <Link to={`/sesiones/${s.id}`}>{s.title}</Link>
+                        <span className="hora">{fechaLarga(s.starts_at)}</span>
+                      </div>
+                      {s.estado === 'cancelado' ? (
+                        <ChipEstado estado="cancelado" />
+                      ) : (
+                        <Link to={`/sesiones/${s.id}/resultados`} className="inicio-fila-accion">
+                          Resultados
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
         </>
       )}
-    </>
-  )
-}
-
-function soloHoraCorta(ms: number): string {
-  return soloHora(new Date(ms).toISOString()).slice(0, 5)
-}
-
-function Cifra({ valor, etiqueta, tono }: { valor: number; etiqueta: string; tono?: 'en-curso' }) {
-  return (
-    <div className="tarjeta dato">
-      <p className={tono ? `cifra cifra-${tono}` : 'cifra'}>{valor}</p>
-      <p className="etiqueta">{etiqueta}</p>
     </div>
   )
 }
 
-function TarjetaExamen({
+/** «Hoy, 16:30», «Mañana, 09:00» o la fecha: cuándo empieza, sin hacer cuentas. */
+function cuandoEmpiezaCorto(ms: number): string {
+  const inicio = new Date(Date.now() + ms)
+  const hoy = new Date()
+  const manana = new Date(hoy.getTime() + 86_400_000)
+  const hora = horaCorta(inicio.toISOString())
+  if (inicio.toDateString() === hoy.toDateString()) return `Hoy, ${hora}`
+  if (inicio.toDateString() === manana.toDateString()) return `Mañana, ${hora}`
+  return fechaLarga(inicio.toISOString())
+}
+
+const NOMBRES: Record<Severity, [string, string]> = {
+  high: ['alta', 'altas'],
+  medium: ['media', 'medias'],
+  low: ['baja', 'bajas']
+}
+
+type Estilo = CSSProperties & Record<'--en', string>
+
+function ExamenEnCurso({
   examen,
-  etiqueta,
   alertas,
-  principal
+  ahora
 }: {
   examen: ExamSessionSummary
-  etiqueta: string
   alertas?: Alert[]
-  principal: string
+  ahora: number
 }) {
-  const altas = alertas?.filter((a) => a.severity === 'high').length ?? 0
-  const medias = alertas?.filter((a) => a.severity === 'medium').length ?? 0
+  const linea = lineaExamen(examen.starts_at, examen.duration_minutes, ahora, alertas)
+  const pasaron = Math.round(linea.transcurrido * examen.duration_minutes)
+  const severidades = (['high', 'medium', 'low'] as Severity[]).filter((s) => linea.cuenta[s] > 0)
 
   return (
-    <div className="tarjeta tarjeta-examen">
-      <div className="tarjeta-examen-info">
-        <h3>{examen.title}</h3>
-        <p className="subtitulo">
-          {fechaLarga(examen.starts_at)} · {examen.duration_minutes} min · {etiqueta}
-        </p>
-        {alertas && (
-          <p className="alertas-resumen">
-            {altas === 0 && medias === 0 ? (
-              <span className="tenue">Sin alertas por ahora</span>
-            ) : (
-              <>
-                {altas > 0 && (
-                  <span className="severidad severidad-high">
-                    {altas} {altas === 1 ? 'alta' : 'altas'}
-                  </span>
-                )}
-                {medias > 0 && (
-                  <span className="severidad severidad-medium">
-                    {medias} {medias === 1 ? 'media' : 'medias'}
-                  </span>
-                )}
-              </>
-            )}
+    <article className="tarjeta en-curso" aria-labelledby={`examen-${examen.id}`}>
+      <div className="en-curso-cabeza">
+        <div>
+          <h3 id={`examen-${examen.id}`}>{examen.title}</h3>
+          <p className="subtitulo">
+            Supervisión {nombrePreset(examen.preset).toLowerCase()} · {examen.duration_minutes} min
           </p>
-        )}
-      </div>
-      <div className="tarjeta-examen-acciones">
+        </div>
         <CodigoAcceso codigo={examen.access_code} />
+      </div>
+
+      {/* La línea del examen: la pista es la duración, lo ámbar lo que ya
+       * pasó y cada marca una alerta en su minuto, del color de su
+       * severidad. Para el lector de pantalla, lo mismo dicho en una frase. */}
+      <div
+        className="linea"
+        role="img"
+        aria-label={`Han pasado ${pasaron} de ${examen.duration_minutes} minutos y faltan ${linea.faltan}. ${
+          alertas ? `${linea.marcas.length} alertas.` : ''
+        }`}
+      >
+        <div className="linea-pista">
+          <div
+            className="linea-hecho"
+            style={{ '--en': `${linea.transcurrido * 100}%` } as Estilo}
+          />
+          {linea.marcas.map((marca) => (
+            <span
+              key={marca.id}
+              className={`linea-marca linea-marca-${marca.severidad}`}
+              style={{ '--en': `${marca.en * 100}%` } as Estilo}
+              title={marca.motivo}
+            />
+          ))}
+        </div>
+        <div className="linea-horas">
+          <span>{horaCorta(examen.starts_at)}</span>
+          <span className="linea-faltan">
+            {linea.faltan > 0 ? `Faltan ${linea.faltan} min` : 'Terminando'}
+          </span>
+          <span>{horaCorta(new Date(linea.finMs).toISOString())}</span>
+        </div>
+      </div>
+
+      <div className="en-curso-pie">
+        <div className="en-curso-alertas">
+          {!alertas ? (
+            <span className="tenue">Cargando alertas…</span>
+          ) : severidades.length === 0 ? (
+            <span className="tenue">Sin alertas por ahora</span>
+          ) : (
+            <>
+              <span className="fila en-curso-cuentas">
+                {severidades.map((s) => (
+                  <span key={s} className={`severidad severidad-${s}`}>
+                    {linea.cuenta[s]} {NOMBRES[s][linea.cuenta[s] === 1 ? 0 : 1]}
+                  </span>
+                ))}
+              </span>
+              {linea.ultima && (
+                <span className="en-curso-ultima">
+                  Última: {linea.ultima.reason}{' '}
+                  <span className="tenue">
+                    · {haceCuanto(ahora - new Date(linea.ultima.created_at).getTime())}
+                  </span>
+                </span>
+              )}
+            </>
+          )}
+        </div>
         <div className="fila">
-          <Link to={`/sesiones/${examen.id}`} className="boton">
-            {principal}
-          </Link>
-          <Link to={`/sesiones/${examen.id}/preguntas`} className="boton boton-secundario">
-            Preguntas
-          </Link>
-          <Link to={`/sesiones/${examen.id}/participantes`} className="boton boton-secundario">
+          <Link to={`/sesiones/${examen.id}/participantes`} className="boton boton-texto">
             Participantes
           </Link>
+          <Link to={`/sesiones/${examen.id}`} className="boton">
+            Ver en vivo
+          </Link>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+/** Mientras cargan: el sitio de cada bloque, sin brillos ni saltos al llegar. */
+function Cargando() {
+  return (
+    <div className="inicio-cargando" aria-busy="true" aria-label="Cargando tus exámenes">
+      <div className="tarjeta inicio-cargando-bloque">
+        <span className="barra-carga" style={{ width: '40%' }} />
+        <span className="barra-carga" style={{ width: '100%', height: 6 }} />
+        <span className="barra-carga" style={{ width: '60%' }} />
+      </div>
+      <div className="inicio-listas">
+        <div className="tarjeta inicio-cargando-bloque">
+          <span className="barra-carga" style={{ width: '50%' }} />
+          <span className="barra-carga" style={{ width: '80%' }} />
+        </div>
+        <div className="tarjeta inicio-cargando-bloque">
+          <span className="barra-carga" style={{ width: '50%' }} />
+          <span className="barra-carga" style={{ width: '80%' }} />
         </div>
       </div>
     </div>
