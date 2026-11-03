@@ -52,6 +52,7 @@ uniform vec2 uPuntero;
 uniform float uCerca;
 uniform float uPixel;
 uniform float uLejania;
+uniform float uFundido;
 
 vec3 muestra(sampler2D foto, vec2 n, float escala, float dispersion, float desenfoque) {
   vec2 c = vec2(0.5);
@@ -104,6 +105,8 @@ void main() {
   // El relevo entra desde el centro con un frente ondulado.
   float frente = uMezcla * 1.4 - 0.2;
   float m = smoothstep(frente + 0.12, frente - 0.12, rr + 0.05 * sin(a * 4.0 + t * 1.5));
+  // Con el movimiento reducido no hay frente que avance: un fundido y ya.
+  m = mix(m, uMezcla, uFundido);
   vec3 color = mix(fotoA, fotoB, m) * 0.93;
 
   // Lejos (entre dos anclas) se oscurece, para que el texto que cruza se lea.
@@ -159,12 +162,18 @@ function suave(t: number): number {
  * `null` si el navegador no tiene WebGL: entonces se queda la de CSS.
  *
  * `respaldo` da, para cada foto, otra que probar si esa no carga.
+ *
+ * Con `sinMovimiento` (quien pide menos movimiento) no viaja ni respira: hay
+ * una burbuja quieta en cada ancla, que sube y baja con la página como
+ * cualquier otra imagen, y el carrusel cambia de foto con un fundido. Queda el
+ * cristal, que no es movimiento.
  */
 export function montarBurbuja(
   lienzo: HTMLCanvasElement,
   nodos: HTMLElement[],
   respaldo: (src: string) => string | undefined,
-  alPerderse: () => void
+  alPerderse: () => void,
+  sinMovimiento = false
 ): (() => void) | null {
   const contexto = lienzo.getContext('webgl', { premultipliedAlpha: true, antialias: false })
   if (!contexto || nodos.length === 0) return null
@@ -180,6 +189,14 @@ export function montarBurbuja(
     fotos: (nodo.dataset.burbuja ?? '').split(/\s+/).filter(Boolean),
     actual: 0
   }))
+
+  // Dónde cae el sujeto de cada foto a lo ancho (`data-burbuja-foco`, en el
+  // mismo orden que las fotos): el recorte cuadrado se centra ahí.
+  const focos = new Map<string, number>()
+  anclas.forEach(({ nodo, fotos }) => {
+    const valores = (nodo.dataset.burbujaFoco ?? '').split(/\s+/).map(Number)
+    fotos.forEach((src, i) => focos.set(src, Number.isFinite(valores[i]) ? valores[i] : 0.5))
+  })
 
   // El cuadrado: dos triángulos de -1 a 1.
   const bufer = gl.createBuffer()
@@ -205,10 +222,12 @@ export function montarBurbuja(
     puntero: u('uPuntero'),
     cerca: u('uCerca'),
     pixel: u('uPixel'),
-    lejania: u('uLejania')
+    lejania: u('uLejania'),
+    fundido: u('uFundido')
   }
   gl.uniform1i(uni.fotoA, 0)
   gl.uniform1i(uni.fotoB, 1)
+  gl.uniform1f(uni.fundido, sinMovimiento ? 1 : 0)
 
   let destruida = false
 
@@ -246,7 +265,7 @@ export function montarBurbuja(
       const corte = Math.min(anchoFoto, altoFoto)
       ctx.drawImage(
         imagen,
-        (anchoFoto - corte) / 2,
+        (anchoFoto - corte) * (focos.get(src) ?? 0.5),
         (altoFoto - corte) / 2,
         corte,
         corte,
@@ -342,8 +361,72 @@ export function montarBurbuja(
   let anterior = performance.now()
   const inicio = anterior
 
+  type Trazo = {
+    x: number
+    y: number
+    r: number
+    fotoA: string
+    fotoB: string
+    mezcla: number
+    tiempo: number
+    vx: number
+    vy: number
+    px: number
+    py: number
+    cerca: number
+    lejania: number
+  }
+
+  function dibujar(t: Trazo) {
+    if (t.y + t.r * MARGEN < 0 || t.y - t.r * MARGEN > alto || t.r < 2) return
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D, textura(t.fotoA).tex)
+    gl.activeTexture(gl.TEXTURE1)
+    gl.bindTexture(gl.TEXTURE_2D, textura(t.fotoB).tex)
+    gl.uniform2f(uni.centro, t.x, t.y)
+    gl.uniform1f(uni.radio, t.r)
+    gl.uniform2f(uni.vista, ancho, alto)
+    gl.uniform1f(uni.mezcla, t.mezcla)
+    gl.uniform1f(uni.tiempo, t.tiempo)
+    gl.uniform2f(uni.velocidad, t.vx, t.vy)
+    gl.uniform2f(uni.puntero, t.px, t.py)
+    gl.uniform1f(uni.cerca, t.cerca)
+    gl.uniform1f(uni.pixel, 1 / t.r)
+    gl.uniform1f(uni.lejania, t.lejania)
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+  }
+
+  /** El carrusel de un ancla con varias fotos: qué dos mezclar y cuánto. */
+  function relevo(ancla: Ancla, ahora: number) {
+    if (ancla.fotos.length > 1 && ahora - relevoDesde > RELEVO_MS) {
+      fotoAnterior = ancla.fotos[ancla.actual]
+      ancla.actual = (ancla.actual + 1) % ancla.fotos.length
+      relevoDesde = ahora
+    }
+    const fotoB = ancla.fotos[ancla.actual]
+    return { fotoA: fotoAnterior ?? fotoB, fotoB, mezcla: suave((ahora - relevoDesde) / CAMBIO_MS) }
+  }
+
+  function pasoQuieto(ahora: number) {
+    gl.clearColor(0, 0, 0, 0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    for (const ancla of anclas) {
+      const rect = rectDe(ancla.nodo)
+      if (!rect) continue
+      const fotos =
+        ancla.fotos.length > 1
+          ? relevo(ancla, ahora)
+          : { fotoA: ancla.fotos[0], fotoB: ancla.fotos[0], mezcla: 1 }
+      dibujar({ ...rect, ...fotos, tiempo: 0, vx: 0, vy: 0, px: 0, py: 0, cerca: 0, lejania: 0 })
+    }
+  }
+
   function paso(ahora: number) {
     cuadro = requestAnimationFrame(paso)
+    if (sinMovimiento) {
+      pasoQuieto(ahora)
+      return
+    }
     const dt = Math.min((ahora - anterior) / 1000, 1 / 30)
     anterior = ahora
     const meta = objetivo()
@@ -371,23 +454,16 @@ export function montarBurbuja(
 
     // Qué fotos se mezclan: en viaje, la del ancla de arriba con la de abajo;
     // posada en un ancla con carrusel, la anterior con la actual.
-    const quieta = meta.s < 0.001 || meta.a === meta.b
-    if (quieta && meta.a.fotos.length > 1 && ahora - relevoDesde > RELEVO_MS) {
-      fotoAnterior = meta.a.fotos[meta.a.actual]
-      meta.a.actual = (meta.a.actual + 1) % meta.a.fotos.length
-      relevoDesde = ahora
-    }
-    let fotoA: string
-    let fotoB: string
-    let mezcla: number
-    if (quieta) {
-      fotoB = meta.a.fotos[meta.a.actual]
-      fotoA = fotoAnterior ?? fotoB
-      mezcla = suave((ahora - relevoDesde) / CAMBIO_MS)
+    const posada = meta.s < 0.001 || meta.a === meta.b
+    let fotos: { fotoA: string; fotoB: string; mezcla: number }
+    if (posada) {
+      fotos = relevo(meta.a, ahora)
     } else {
-      fotoA = meta.a.fotos[meta.a.actual]
-      fotoB = meta.b.fotos[meta.b.actual]
-      mezcla = suave((meta.s - 0.3) / 0.4)
+      fotos = {
+        fotoA: meta.a.fotos[meta.a.actual],
+        fotoB: meta.b.fotos[meta.b.actual],
+        mezcla: suave((meta.s - 0.3) / 0.4)
+      }
       // Al volver a posarse no se repite un relevo que ya ocurrió.
       fotoAnterior = null
       relevoDesde = ahora - CAMBIO_MS
@@ -395,24 +471,19 @@ export function montarBurbuja(
 
     gl.clearColor(0, 0, 0, 0)
     gl.clear(gl.COLOR_BUFFER_BIT)
-    const fuera = pos.y + radio * MARGEN < 0 || pos.y - radio * MARGEN > alto
-    if (fuera || radio < 2) return
-
-    gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, textura(fotoA).tex)
-    gl.activeTexture(gl.TEXTURE1)
-    gl.bindTexture(gl.TEXTURE_2D, textura(fotoB).tex)
-    gl.uniform2f(uni.centro, pos.x, pos.y)
-    gl.uniform1f(uni.radio, radio)
-    gl.uniform2f(uni.vista, ancho, alto)
-    gl.uniform1f(uni.mezcla, mezcla)
-    gl.uniform1f(uni.tiempo, (ahora - inicio) / 1000)
-    gl.uniform2f(uni.velocidad, vel.x / radio, -vel.y / radio)
-    gl.uniform2f(uni.puntero, dx / radio, -dy / radio)
-    gl.uniform1f(uni.cerca, cerca)
-    gl.uniform1f(uni.pixel, 1 / radio)
-    gl.uniform1f(uni.lejania, meta.lejania)
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+    dibujar({
+      x: pos.x,
+      y: pos.y,
+      r: radio,
+      ...fotos,
+      tiempo: (ahora - inicio) / 1000,
+      vx: vel.x / radio,
+      vy: -vel.y / radio,
+      px: dx / radio,
+      py: -dy / radio,
+      cerca,
+      lejania: meta.lejania
+    })
   }
 
   function alMover(evento: PointerEvent) {

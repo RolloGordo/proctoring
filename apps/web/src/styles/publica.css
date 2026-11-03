@@ -935,6 +935,19 @@ html:has(.publica) {
   gap: 0.5rem 2rem;
 }
 
+.publica .pub-creditos {
+  margin-top: 1.25rem;
+  color: var(--pub-tenue);
+}
+
+/* Los nombres no van subrayados en ámbar como el resto del pie: son una nota,
+   no un enlace que el visitante haya venido a buscar. */
+.publica .pie-publico .pub-creditos a {
+  color: inherit;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+}
+
 /* ---------- Privacidad ----------
    Texto para leer de verdad: una sola columna a medida de lectura, cuerpo a
    tamaño de cuerpo y los títulos a un paso. El capítulo de arriba es el mismo

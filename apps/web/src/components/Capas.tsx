@@ -74,7 +74,11 @@ function Marca({ a }: { a: string }) {
 }
 
 /** La portada, el acceso y las páginas que no existen. */
-export function CapaPublica({ children }: { children: ReactNode }) {
+/**
+ * `creditos` es la línea de autoría de las fotos de la página, si las tiene:
+ * va al pie, pequeña, que es donde se busca.
+ */
+export function CapaPublica({ children, creditos }: { children: ReactNode; creditos?: ReactNode }) {
   const { token, rol } = useAuth()
   const conSesion = authEnabled && token !== undefined
 
@@ -126,6 +130,7 @@ export function CapaPublica({ children }: { children: ReactNode }) {
               <Link to="/privacidad">Privacidad y cookies</Link>
             </p>
           </div>
+          {creditos && <p className="pub-creditos">{creditos}</p>}
         </div>
       </footer>
     </div>
