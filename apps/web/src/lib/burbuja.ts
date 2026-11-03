@@ -117,7 +117,7 @@ void main() {
     : 0.0;
   float radio = 1.0 + onda * fuerza + bulto;
   float rr = length(q) / radio;
-  if (rr > ${ALCANCE.toFixed(2)} - 0.06) discard;
+  if (rr > 1.01) discard;
 
   // La esfera: su normal en cada punto, la luz arriba a la izquierda y algo
   // hacia quien mira, el brillo y el borde que refleja más (Fresnel).
@@ -157,11 +157,14 @@ void main() {
   vec4 tR = texture2D(uTexto, (uCentro + mira * (1.0 + separa)) / uVista);
   vec4 tG = texture2D(uTexto, (uCentro + mira) / uVista);
   vec4 tB = texture2D(uTexto, (uCentro + mira * (1.0 - separa)) / uVista);
-  float nube = ruido(n * 2.4 + vec2(t * 0.05, -t * 0.04)) * 0.6
-             + ruido(n * 5.1 - vec2(t * 0.07, t * 0.03)) * 0.4;
-  vec3 humo = mix(vec3(0.3), vec3(0.015), smoothstep(0.0, 0.95, rr))
-            * (0.6 + 0.6 * difusa)
-            + (nube - 0.5) * 0.07;
+  // El humo es una nube que se retuerce despacio (el ruido mira a otro
+  // ruido), más clara arriba a la izquierda y apagándose hacia el canto.
+  vec2 giro = vec2(ruido(n * 1.8 + t * 0.04), ruido(n * 1.8 - t * 0.05 + 4.0));
+  vec2 w = n * 1.5 + giro * 0.9;
+  float nube = ruido(w * 1.7) * 0.65 + ruido(w * 3.9 + 3.0) * 0.35;
+  vec3 humo = vec3(mix(0.33, 0.02, smoothstep(0.05, 0.93, rr)))
+            * (0.68 + 0.45 * difusa)
+            + (nube - 0.5) * 0.13;
   vec3 vacia = vec3(
     mix(humo.r, tR.r * 0.9, tR.a),
     mix(humo.g, tG.g * 0.9, tG.a),
@@ -173,30 +176,54 @@ void main() {
   // Lejos (entre dos anclas) se oscurece, para que el texto que cruza se lea.
   color *= 1.0 - 0.55 * uLejania;
 
-  // La banda oscura de dentro del canto, como en el cristal grueso.
-  color *= 1.0 - 0.55 * smoothstep(0.74, 0.93, rr);
-
-  // El canto: ancho y de colores, azul y violeta del lado de la luz, ámbar
-  // del otro, con el filo blanco encima y un resplandor cálido por dentro del
-  // lado en sombra, que es la luz que atraviesa la esfera y sale por detrás.
+  // De qué lado cae cada punto del borde: 0 del lado de la luz (arriba a la
+  // izquierda), 1 del contrario. Ahí la ThoughtLab tiene todo su canto.
   float cara = dot(normalize(q + 1e-5), normalize(luz.xy));
-  vec3 azul = vec3(0.3, 0.52, 1.0);
-  vec3 violeta = vec3(0.66, 0.46, 1.0);
-  vec3 ambar = vec3(1.0, 0.62, 0.22);
-  vec3 tono = cara > 0.0 ? mix(violeta, azul, cara) : mix(violeta, ambar, -cara);
-  float banda = smoothstep(0.8, 0.975, rr);
-  color = mix(color, tono, banda * (0.35 + 0.6 * abs(cara)));
-  float filo = smoothstep(0.935, 0.988, rr);
-  color = mix(color, vec3(1.0), filo * (0.45 + 0.5 * abs(cara)));
-  float resplandor = smoothstep(0.55, 0.9, rr) * (1.0 - smoothstep(0.9, 0.97, rr)) * max(-cara, 0.0);
-  color += ambar * resplandor * 0.18;
-  // El brillo es suave a propósito: un punto blanco duro la convertía en una
-  // bola de billar; en el cristal la luz se nota sobre todo en el canto.
-  color += vec3(1.0) * (fresnel * 0.12 + lustre * 0.07 + brillo * 0.2);
+  float sombra = smoothstep(-0.35, 1.0, -cara);
+  // Vetas que cambian despacio a lo largo del borde: el canto no tiene el
+  // mismo grosor en todas partes, como el de un cristal hecho a mano.
+  float veta = ruido(vec2(a * 2.2 + 3.0, t * 0.12)) * 0.6
+             + ruido(vec2(a * 5.3 + 1.0, -t * 0.09)) * 0.4;
 
+  // El anillo oscuro justo antes del canto, que es lo que lo hace resaltar.
+  color *= 1.0 - 0.7 * smoothstep(0.7, 0.9, rr) * (0.55 + 0.45 * sombra);
+
+  // Reflejos alargados por dentro del canto, violeta del lado de la luz y
+  // cálidos del otro, que aparecen y se van.
+  float reflejo = smoothstep(0.7, 0.86, rr) * (1.0 - smoothstep(0.88, 0.95, rr))
+                * pow(ruido(vec2(a * 1.7 + 7.0, t * 0.06)), 2.2);
+  color += mix(vec3(0.62, 0.42, 1.0), vec3(1.0, 0.58, 0.3), sombra) * reflejo * 0.6;
+
+  // El canto: fino y azul violeta del lado de la luz; grueso y blanco del
+  // otro, con la franja de color por dentro. Cada canal de color empieza a
+  // un radio distinto, y esa diferencia es la dispersión: del lado contrario
+  // el rojo entra antes (franja ámbar), del lado de la luz el azul.
+  // Medido sobre la de ThoughtLab: del lado contrario la franja blanca ocupa
+  // cerca del 5 % del diámetro (un 11 % del radio); del lado de la luz, un 2 %.
+  float grosor = mix(0.022, 0.12, pow(sombra, 1.3)) * (0.8 + 0.4 * veta);
+  float desfase = mix(-0.008, 0.012, sombra);
+  vec3 aro = vec3(
+    smoothstep(1.0 - grosor - desfase, 1.0 - grosor * 0.5 - desfase, rr),
+    smoothstep(1.0 - grosor, 1.0 - grosor * 0.5, rr),
+    smoothstep(1.0 - grosor + desfase, 1.0 - grosor * 0.5 + desfase, rr)
+  );
+  vec3 tinte = mix(vec3(0.56, 0.6, 1.0), vec3(1.0), sombra);
+  color = mix(color, tinte, aro * (0.55 + 0.45 * sombra));
+
+  // Pegada por dentro a la franja blanca, una franja ámbar estrecha: la luz
+  // que atraviesa la esfera y sale por el otro lado. Sin hueco entre las dos
+  // (si el ámbar se apagaba antes de que empezara el blanco, quedaba una
+  // línea oscura en medio).
+  float dentro = 1.0 - grosor;
+  float resplandor = smoothstep(dentro - 0.09, dentro + 0.01, rr);
+  color += vec3(1.0, 0.52, 0.2) * resplandor * pow(sombra, 1.6) * 0.38;
+  // Sin punto de brillo: lo convertía en una bola de billar. En el cristal la
+  // luz vive en el canto; aquí solo un velo muy suave.
+  color += vec3(1.0) * (fresnel * 0.05 + lustre * 0.04);
+
+  // El borde de fuera es nítido, sin halo: el resplandor exterior la aplanaba.
   float alfa = 1.0 - smoothstep(1.0 - uPixel * 1.5, 1.0, rr);
-  float halo = (1.0 - smoothstep(1.0, 1.035, rr)) * 0.2 * (1.0 - alfa);
-  gl_FragColor = vec4(color * alfa + tono * halo, alfa + halo);
+  gl_FragColor = vec4(color * alfa, alfa);
 }
 `
 
