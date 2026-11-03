@@ -39,7 +39,7 @@ export function Login() {
   const campoCorreo = useRef<HTMLInputElement>(null)
   const campoClave = useRef<HTMLInputElement>(null)
 
-  useBurbuja(raiz, lienzo, { seguirCursor: true })
+  useBurbuja(raiz, lienzo)
 
   // Sin Supabase configurado no hay a quien pedirle credenciales.
   if (!authEnabled) return <Navigate to="/" replace />
@@ -87,10 +87,14 @@ export function Login() {
           <p className="pub-intro" data-burbuja-refracta>
             Docentes y estudiantes, con su correo institucional.
           </p>
-          <Burbuja fotos={[FOTOS.escribe]} ancla />
+          <Burbuja fotos={[FOTOS.escribe]} ancla sigue />
         </div>
 
-        <section className="pub-acceso-panel" aria-labelledby="acceso-titulo" data-burbuja-evita>
+        <section
+          className="pub-acceso-panel"
+          aria-labelledby="acceso-titulo"
+          data-burbuja-evita="lado"
+        >
           {sinPerfil ? (
             perfilListo ? (
               <>

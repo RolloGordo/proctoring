@@ -283,8 +283,10 @@ html:has(.publica) {
    referencia. Es la única excepción del fichero: nada más lleva sombra ni
    degradado.
 
-   Nunca se posa sobre texto: los huecos están donde no hay nada. Entre uno y
-   otro sí cruza por detrás de alguno, y por eso viaja oscurecida. */
+   Con foto nunca se posa sobre texto: los huecos están donde no hay nada, y
+   entre uno y otro cruza por detrás, oscurecida. Vacía (la del primer
+   pantallazo y la del acceso, con ratón) sí pasa por encima del texto y lo
+   enseña a través del cristal. */
 
 .publica .pub-lienzo {
   position: fixed;
@@ -293,6 +295,27 @@ html:has(.publica) {
   width: 100%;
   height: 100%;
   pointer-events: none;
+}
+
+/* Mientras la burbuja vacía toca texto (el titular, la cabecera, el pie…) el
+   lienzo sube por encima de todo, cabecera incluida: detrás, el fondo de la
+   cabecera y del pie la cortaba en recto. Lo pone y lo quita `lib/burbuja.ts`.
+   No captura el ratón. */
+.publica .pub-lienzo.pub-lienzo-encima {
+  z-index: 20;
+}
+
+/* Con ratón, la del primer pantallazo es la de ThoughtLab: grande, arriba y
+   montada sobre el final del titular, que se ve a través del cristal. Solo
+   con WebGL (si no, una foto opaca taparía el titular) y en pantallas anchas;
+   en las demás se queda en su columna, con el carrusel. */
+@media (min-width: 961px) {
+  .publica .pub-con-cursor .pub-burbuja-portada {
+    position: absolute;
+    top: clamp(0.5rem, 3vw, 3rem);
+    right: var(--pub-margen);
+    width: clamp(22rem, 38vw, 40rem);
+  }
 }
 
 /* El contenido va por encima del lienzo: lo que tiene fondo propio tapa la
@@ -1030,26 +1053,19 @@ html:has(.publica) {
   padding-block: clamp(2.5rem, 6vw, 5rem) 0;
 }
 
-/* El lienzo va detrás, como en la portada, salvo mientras la burbuja vacía
-   toca texto: «Entra.», su frase, la cabecera, el aviso o el pie. Entonces
-   sube por encima de todo, cabecera incluida (`pub-lienzo-encima`, lo pone
-   `lib/burbuja.ts`), y enseña ese texto a través del cristal, como la de
-   ThoughtLab. Detrás, el fondo de la cabecera y del pie la cortaba en recto.
-   No captura el ratón, y nunca entra en el panel del formulario. */
+/* Como en la portada: el contenido por encima del lienzo, salvo mientras la
+   burbuja vacía toca texto (`pub-lienzo-encima`, arriba). Nunca entra en el
+   panel del formulario. */
 .publica .pub-acceso > :not(.pub-lienzo) {
   position: relative;
   z-index: 1;
-}
-
-.publica .pub-acceso > .pub-lienzo-encima {
-  z-index: 20;
 }
 
 /* Más grande que la de los capítulos: aquí es la protagonista de la mitad
    izquierda. */
 .publica .pub-acceso-portada .pub-burbuja-ancla {
   justify-self: start;
-  width: clamp(18rem, 30vw, 32rem);
+  width: clamp(18rem, 32vw, 34rem);
   margin-top: clamp(1.5rem, 3vw, 2.5rem);
 }
 

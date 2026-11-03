@@ -181,8 +181,10 @@ export function Portada() {
            * tres. */}
           {/* Nada del primer pantallazo espera a una animación: lo que explica
            * qué es esto tiene que estar a la vista desde el primer fotograma. El
-           * movimiento de esta sección lo pone el relevo de las pantallas. */}
-          <h1 id="portada-titulo" className="pub-hero-titulo">
+           * movimiento de esta sección lo pone la burbuja: con ratón, vacía,
+           * sobre el titular y detrás del cursor, como la de ThoughtLab; sin
+           * ratón, con el carrusel de estudiantes. */}
+          <h1 id="portada-titulo" className="pub-hero-titulo" data-burbuja-refracta>
             Decide el
             <br />
             docente.
@@ -190,11 +192,13 @@ export function Portada() {
 
           <div className="pub-hero-cuerpo">
             <div>
-              <p className="pub-declaracion">
+              <p className="pub-declaracion" data-burbuja-refracta>
                 Proctoring supervisa exámenes remotos y le entrega al docente la evidencia de cada
                 señal. Nunca decide por él.
               </p>
-              <div className="pub-acciones">
+              {/* La burbuja no se pone encima de los botones: taparía el
+               * ámbar justo cuando se va a pulsar. */}
+              <div className="pub-acciones" data-burbuja-evita>
                 <Link to={entrar} className="pub-boton">
                   {textoEntrar}
                 </Link>
@@ -204,7 +208,11 @@ export function Portada() {
               </div>
             </div>
 
-            <Burbuja fotos={[FOTOS.rinde, FOTOS.escribe, FOTOS.casa]} />
+            <Burbuja
+              fotos={[FOTOS.rinde, FOTOS.escribe, FOTOS.casa]}
+              sigue
+              className="pub-burbuja-portada"
+            />
           </div>
         </section>
 
@@ -218,7 +226,9 @@ export function Portada() {
                 Mientras el estudiante rinde, cada módulo vigila una cosa y solo avisa cuando la ve.
               </p>
             </div>
-            <Burbuja fotos={[FOTOS.camara]} ancla />
+            {/* Con ratón, el primer pantallazo va vacío: los estudiantes
+             * aparecen aquí, al empezar a bajar. */}
+            <Burbuja fotos={[FOTOS.rinde, FOTOS.casa, FOTOS.camara]} ancla />
           </div>
 
           <ul className="pub-familias">

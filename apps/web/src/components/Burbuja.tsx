@@ -9,14 +9,28 @@ import { AUTORES, type Foto } from '../lib/fotos-portada'
  * el texto alternativo para el lector de pantalla.
  *
  * `ancla` es la de los capítulos: más pequeña y solo en pantallas anchas,
- * donde junto al título queda sitio libre.
+ * donde junto al título queda sitio libre. `sigue` es la de ThoughtLab: con
+ * ratón, la de WebGL va vacía y sigue al cursor mientras está aquí
+ * (`lib/burbuja.ts`); sin ratón se queda con sus fotos.
  */
-export function Burbuja({ fotos, ancla = false }: { fotos: Foto[]; ancla?: boolean }) {
+export function Burbuja({
+  fotos,
+  ancla = false,
+  sigue = false,
+  className
+}: {
+  fotos: Foto[]
+  ancla?: boolean
+  sigue?: boolean
+  className?: string
+}) {
+  const clases = ['pub-burbuja', ancla && 'pub-burbuja-ancla', className].filter(Boolean)
   return (
     <figure
-      className={ancla ? 'pub-burbuja pub-burbuja-ancla' : 'pub-burbuja'}
+      className={clases.join(' ')}
       data-burbuja={fotos.map((foto) => foto.src).join(' ')}
       data-burbuja-foco={fotos.map((foto) => foto.foco).join(' ')}
+      data-burbuja-sigue={sigue ? '' : undefined}
     >
       <div className="pub-burbuja-forma">
         {fotos.map((foto) => (
