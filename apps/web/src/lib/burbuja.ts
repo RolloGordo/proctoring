@@ -85,6 +85,12 @@ float ruido(vec2 p) {
              mix(azar(i + vec2(0.0, 1.0)), azar(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
+// Cuánto cae un punto del borde, de ángulo a, dentro de un reflejo centrado en centro.
+float lobulo(float a, float centro, float ancho) {
+  float d = atan(sin(a - centro), cos(a - centro));
+  return exp(-d * d / ancho);
+}
+
 vec3 muestra(sampler2D foto, vec2 n, float escala, float dispersion, float desenfoque) {
   vec2 c = vec2(0.5);
   float r = texture2D(foto, c + n * 0.5 * escala * (1.0 + dispersion), desenfoque).r;
@@ -104,13 +110,17 @@ void main() {
   vec2 lado = vec2(-dir.y, dir.x);
   vec2 q = dir * (dot(vP, dir) / (1.0 + k)) + lado * (dot(vP, lado) / (1.0 - 0.4 * k));
 
-  // Respira con tres ondas largas y lentas, casi redonda, y se abomba un poco
-  // hacia el puntero.
+  // Ondula como si llevara agua dentro: cuatro ondas largas, cada una a su
+  // ritmo, y su fuerza sube y baja (la marea), así que nunca se repite igual y
+  // se mueve en su sitio aunque nadie la toque. Todas son de periodo entero
+  // alrededor del borde: no dejan costura.
   float a = atan(q.y, q.x);
   float fuerza = 1.0 + 2.0 * k + 0.35 * uCerca;
-  float onda = 0.017 * sin(2.0 * a - t * 0.35 + 2.1)
-             + 0.012 * sin(3.0 * a + t * 0.5)
-             + 0.006 * sin(5.0 * a - t * 0.7 + 1.3);
+  float marea = 0.75 + 0.25 * sin(t * 0.31);
+  float onda = (0.024 * sin(2.0 * a - t * 0.55 + 2.1)
+             + 0.017 * sin(3.0 * a + t * 0.72)
+             + 0.011 * sin(4.0 * a - t * 0.93 + 1.3)
+             + 0.006 * sin(6.0 * a + t * 1.21 + 0.7)) * marea;
   float lp = length(uPuntero);
   float bulto = lp > 0.0001
     ? 0.035 * uCerca * pow(max(dot(normalize(q + 1e-5), uPuntero / lp), 0.0), 2.0)
@@ -157,14 +167,16 @@ void main() {
   vec4 tR = texture2D(uTexto, (uCentro + mira * (1.0 + separa)) / uVista);
   vec4 tG = texture2D(uTexto, (uCentro + mira) / uVista);
   vec4 tB = texture2D(uTexto, (uCentro + mira * (1.0 - separa)) / uVista);
-  // El humo es una nube que se retuerce despacio (el ruido mira a otro
-  // ruido), más clara arriba a la izquierda y apagándose hacia el canto.
-  vec2 giro = vec2(ruido(n * 1.8 + t * 0.04), ruido(n * 1.8 - t * 0.05 + 4.0));
-  vec2 w = n * 1.5 + giro * 0.9;
-  float nube = ruido(w * 1.7) * 0.65 + ruido(w * 3.9 + 3.0) * 0.35;
-  vec3 humo = vec3(mix(0.33, 0.02, smoothstep(0.05, 0.93, rr)))
-            * (0.68 + 0.45 * difusa)
-            + (nube - 0.5) * 0.13;
+  // El interior es como agua en penumbra: un claro grande y suave que se
+  // pasea despacio, y dos olas anchas que lo cruzan. Limpio, sin vetas: las
+  // vetas de nube lo ensuciaban y lo volvían opaco.
+  vec2 claroEn = vec2(-0.16, 0.1) + 0.14 * vec2(sin(t * 0.47), cos(t * 0.38));
+  float claro = smoothstep(1.0, 0.0, length(n - claroEn));
+  float ola = sin(dot(n, vec2(0.8, 0.6)) * 5.0 - t * 1.1) * 0.5
+            + sin(dot(n, vec2(-0.5, 0.85)) * 4.0 + t * 0.8) * 0.5;
+  vec3 humo = vec3(0.03 + 0.4 * claro) * (0.8 + 0.3 * difusa)
+            + ola * 0.03 * (1.0 - rr)
+            + (ruido(n * 1.6 + t * 0.05) - 0.5) * 0.04;
   vec3 vacia = vec3(
     mix(humo.r, tR.r * 0.9, tR.a),
     mix(humo.g, tG.g * 0.9, tG.a),
@@ -181,18 +193,30 @@ void main() {
   float cara = dot(normalize(q + 1e-5), normalize(luz.xy));
   float sombra = smoothstep(-0.35, 1.0, -cara);
   // Vetas que cambian despacio a lo largo del borde: el canto no tiene el
-  // mismo grosor en todas partes, como el de un cristal hecho a mano.
-  float veta = ruido(vec2(a * 2.2 + 3.0, t * 0.12)) * 0.6
-             + ruido(vec2(a * 5.3 + 1.0, -t * 0.09)) * 0.4;
+  // mismo grosor en todas partes, como el de un cristal hecho a mano. El ruido
+  // se mira sobre la dirección y no sobre el ángulo: el ángulo salta de +180°
+  // a -180° en el lado izquierdo y dejaba ahí una costura recta.
+  vec2 haciaBorde = normalize(q + 1e-5);
+  float veta = ruido(haciaBorde * 2.2 + vec2(t * 0.12, 3.0)) * 0.6
+             + ruido(haciaBorde * 5.0 + vec2(1.0, -t * 0.09)) * 0.4;
 
   // El anillo oscuro justo antes del canto, que es lo que lo hace resaltar.
-  color *= 1.0 - 0.7 * smoothstep(0.7, 0.9, rr) * (0.55 + 0.45 * sombra);
+  color *= 1.0 - 0.6 * smoothstep(0.72, 0.9, rr) * (0.55 + 0.45 * sombra);
 
-  // Reflejos alargados por dentro del canto, violeta del lado de la luz y
-  // cálidos del otro, que aparecen y se van.
-  float reflejo = smoothstep(0.7, 0.86, rr) * (1.0 - smoothstep(0.88, 0.95, rr))
-                * pow(ruido(vec2(a * 1.7 + 7.0, t * 0.06)), 2.2);
-  color += mix(vec3(0.62, 0.42, 1.0), vec3(1.0, 0.58, 0.3), sombra) * reflejo * 0.6;
+  // Los reflejos de la luz que le cae por ciertos lados, como las ventanas de
+  // una habitación reflejadas: un lóbulo blanco grande abajo a la derecha
+  // (cálido por dentro), uno rosado a la derecha y una veta violeta arriba.
+  // Se deslizan despacio por el borde.
+  // El blanco ocupa casi un cuarto del borde y entra hasta media esfera,
+  // como en la de ThoughtLab; más intenso cuanto más cerca del canto.
+  float lobuloBlanco = lobulo(a, -0.72 + 0.25 * sin(t * 0.23), 0.38)
+                     * pow(smoothstep(0.4, 0.95, rr), 1.4);
+  color = mix(color, mix(vec3(1.0, 0.68, 0.4), vec3(1.0), smoothstep(0.72, 0.95, rr)),
+              lobuloBlanco * 0.95);
+  color += vec3(1.0, 0.76, 0.86) * lobulo(a, 0.32 + 0.2 * sin(t * 0.31 + 1.0), 0.08)
+         * smoothstep(0.62, 0.95, rr) * 0.6;
+  color += vec3(0.6, 0.45, 1.0) * lobulo(a, 1.75 + 0.22 * sin(t * 0.27 + 2.0), 0.1)
+         * smoothstep(0.74, 0.97, rr) * 0.7;
 
   // El canto: fino y azul violeta del lado de la luz; grueso y blanco del
   // otro, con la franja de color por dentro. Cada canal de color empieza a
@@ -200,7 +224,7 @@ void main() {
   // el rojo entra antes (franja ámbar), del lado de la luz el azul.
   // Medido sobre la de ThoughtLab: del lado contrario la franja blanca ocupa
   // cerca del 5 % del diámetro (un 11 % del radio); del lado de la luz, un 2 %.
-  float grosor = mix(0.022, 0.12, pow(sombra, 1.3)) * (0.8 + 0.4 * veta);
+  float grosor = mix(0.022, 0.1, pow(sombra, 1.3)) * (0.8 + 0.4 * veta);
   float desfase = mix(-0.008, 0.012, sombra);
   vec3 aro = vec3(
     smoothstep(1.0 - grosor - desfase, 1.0 - grosor * 0.5 - desfase, rr),
@@ -766,6 +790,13 @@ export function montarBurbuja(
     } else if (a.sigue && posada) {
       mx = meta.x
       my = meta.y
+    }
+    // Posada, flota en su sitio: un vaivén lento y pequeño, como algo que
+    // lleva agua dentro, que nunca la deja quieta del todo.
+    if (posada) {
+      const seg = (ahora - inicio) / 1000
+      mx += Math.sin(seg * 0.53) * meta.r * 0.03 + Math.sin(seg * 1.17 + 1.3) * meta.r * 0.01
+      my += Math.cos(seg * 0.41) * meta.r * 0.035
     }
     const rigidez = tras ? RIGIDEZ_CURSOR : RIGIDEZ
     const amortiguacion = tras ? AMORTIGUACION_CURSOR : AMORTIGUACION
