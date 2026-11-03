@@ -11,12 +11,12 @@ import { CapaPublica } from '../components/Capas'
  * `supervision/calibration.ts`). Si el sistema cambia, esta página cambia con
  * él.
  *
- * Donde el sistema todavía no cumple algo —el borrado automático de las
- * evidencias—, lo dice. Una política que promete lo que el código no hace es
- * peor que no tener ninguna.
+ * Donde el sistema no hace algo que se podría esperar —borrar las evidencias
+ * pasado un plazo—, lo dice. Una política que promete lo que el código no hace
+ * es peor que no tener ninguna.
  */
 
-/** A quién se escribe para ejercer los derechos. Confirmar antes de publicar. */
+/** A quién se escribe para ejercer los derechos. */
 const CONTACTO = 'hsilvav2@upao.edu.pe'
 const ACTUALIZADA = '3 de noviembre de 2026'
 
@@ -153,9 +153,9 @@ export function Privacidad() {
             abren con un enlace firmado que caduca.
           </p>
           <p>
-            Hoy la plataforma <strong>no borra las evidencias de forma automática</strong>. Nos
-            comprometemos a eliminarlas, junto con las fotos de referencia, al terminar el proyecto
-            académico en diciembre de 2026. Puedes pedir que borremos las tuyas antes.
+            Las evidencias y las fotos de referencia <strong>no tienen un plazo de borrado</strong>:
+            se conservan para que el docente pueda revisar o reabrir un caso. Puedes pedir en
+            cualquier momento que borremos las tuyas, y lo haremos.
           </p>
         </section>
 

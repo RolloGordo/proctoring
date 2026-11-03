@@ -135,3 +135,4 @@ apps/web/spikes/vision/datasets/predictions/
 # La evidencia va a Notion, no al repositorio.
 .taste-skill/
 .impeccable/
+.playwright-mcp/

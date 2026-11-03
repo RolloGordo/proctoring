@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { CapaPublica } from '../components/Capas'
 import { useAuth } from '../lib/auth-context'
 import { inicioSegunRol } from '../lib/rutas'
+import { montarBurbuja } from '../lib/burbuja'
 import { authEnabled } from '../lib/supabase'
 
 /**
@@ -23,30 +24,46 @@ import { authEnabled } from '../lib/supabase'
 const DESCARGA = 'https://github.com/RolloGordo/proctoring/releases/latest'
 
 /**
- * Las tres pantallas reales del panel que se relevan en el primer pantallazo.
- *
- * Salen de exámenes de prueba del 20/10, con los correos y las caras
- * difuminados por `docs/portada/montar-escenas.py`, porque este JPEG se le
- * sirve a cualquiera. Si alguna falta, cae al dibujo del proyecto, que sí vive
- * en el repositorio.
+ * Las fotos de la burbuja, de Unsplash (licencia libre, créditos en el pie de
+ * la portada). Cada una tiene un respaldo que vive en el repositorio por si el
+ * fichero faltara: así la burbuja nunca queda vacía.
  */
-const PANTALLAS = [
-  {
-    foto: 'foto-1.jpg',
-    dibujo: 'escena-senales.svg',
-    alt: 'Línea de tiempo de un examen: cada señal con su hora, su detalle, su duración y su nivel.'
+type Foto = { src: string; respaldo: string; alt: string }
+
+const FOTOS = {
+  rinde: {
+    src: '/portada/promo-rinde.jpg',
+    respaldo: '/portada/foto-1.jpg',
+    alt: 'Un estudiante con auriculares, concentrado frente a su portátil.'
   },
-  {
-    foto: 'foto-2.jpg',
-    dibujo: 'escena-docente.svg',
-    alt: 'Alertas en vivo del panel del docente mientras el examen ocurre.'
+  escribe: {
+    src: '/portada/promo-escribe.jpg',
+    respaldo: '/portada/foto-2.jpg',
+    alt: 'Un estudiante escribe en su portátil.'
   },
-  {
-    foto: 'foto-3.jpg',
-    dibujo: 'escena-estudiante.svg',
-    alt: 'Evidencia de una sesión: la captura que acompaña a cada señal de mirada y de rostro.'
+  casa: {
+    src: '/portada/promo-casa.jpg',
+    respaldo: '/portada/foto-3.jpg',
+    alt: 'Un estudiante con auriculares rinde desde casa.'
+  },
+  camara: {
+    src: '/portada/promo-camara.jpg',
+    respaldo: '/portada/escena-senales.svg',
+    alt: 'Una cámara web encendida sobre el monitor.'
+  },
+  docente: {
+    src: '/portada/promo-docente.jpg',
+    respaldo: '/portada/escena-docente.svg',
+    alt: 'Una docente revisa en su portátil, frente a la pizarra.'
+  },
+  hoja: {
+    src: '/portada/promo-hoja.jpg',
+    respaldo: '/portada/escena-estudiante.svg',
+    alt: 'Una mano marca las respuestas de una hoja de examen.'
   }
-]
+} satisfies Record<string, Foto>
+
+const RESPALDOS = new Map(Object.values(FOTOS).map((foto) => [foto.src, foto.respaldo]))
 
 /**
  * Lo que observa, y en qué estado está **en producción**.
@@ -181,8 +198,10 @@ export function Portada() {
   const { token, rol } = useAuth()
   const [caso, setCaso] = useState<Caso>('lee')
   const raiz = useRef<HTMLDivElement>(null)
+  const lienzo = useRef<HTMLCanvasElement>(null)
 
   useAparecer(raiz)
+  useBurbuja(raiz, lienzo)
 
   // Quien ya tiene sesión no necesita la portada: va a lo suyo.
   if (authEnabled && token && rol) return <Navigate to={inicioSegunRol(rol)} replace />
@@ -194,6 +213,8 @@ export function Portada() {
   return (
     <CapaPublica>
       <div ref={raiz}>
+        <canvas ref={lienzo} className="pub-lienzo" aria-hidden="true" />
+
         <section className="pub-hero pub-marco" aria-labelledby="portada-titulo">
           {/* El salto va tras «el»: «Decide el / docente.» son dos líneas de
            * nueve y ocho letras. Tras «Decide», «el docente.» no cabía y salían
@@ -223,41 +244,22 @@ export function Portada() {
               </div>
             </div>
 
-            <figure className="pub-burbuja">
-              <div className="pub-burbuja-forma">
-                {PANTALLAS.map((pantalla) => (
-                  <img
-                    key={pantalla.foto}
-                    src={`/portada/${pantalla.foto}`}
-                    alt={pantalla.alt}
-                    width={1200}
-                    height={900}
-                    decoding="async"
-                    onError={(e) => {
-                      const img = e.currentTarget
-                      // Una sola vez: si el dibujo tampoco estuviera, volver a
-                      // asignarlo dispararía `onError` otra vez, y en bucle.
-                      if (img.dataset.respaldo === 'si') {
-                        img.style.display = 'none'
-                        return
-                      }
-                      img.dataset.respaldo = 'si'
-                      img.src = `/portada/${pantalla.dibujo}`
-                    }}
-                  />
-                ))}
-              </div>
-            </figure>
+            <Burbuja fotos={[FOTOS.rinde, FOTOS.escribe, FOTOS.casa]} />
           </div>
         </section>
 
         <section className="pub-seccion pub-marco" id="que-detecta" aria-labelledby="detecta">
-          <h2 id="detecta" className="pub-capitulo" data-aparece>
-            Detecta.
-          </h2>
-          <p className="pub-intro" data-aparece style={{ '--orden': 1 } as Estilo}>
-            Mientras el estudiante rinde, cada módulo vigila una cosa y solo avisa cuando la ve.
-          </p>
+          <div className="pub-capitulo-cabeza">
+            <div>
+              <h2 id="detecta" className="pub-capitulo" data-aparece>
+                Detecta.
+              </h2>
+              <p className="pub-intro" data-aparece style={{ '--orden': 1 } as Estilo}>
+                Mientras el estudiante rinde, cada módulo vigila una cosa y solo avisa cuando la ve.
+              </p>
+            </div>
+            <Burbuja fotos={[FOTOS.camara]} ancla />
+          </div>
 
           <ul className="pub-familias">
             {FAMILIAS.map((familia, indice) => (
@@ -406,9 +408,12 @@ export function Portada() {
         </section>
 
         <section className="pub-seccion pub-marco" id="principios" aria-labelledby="decide">
-          <h2 id="decide" className="pub-capitulo" data-aparece>
-            Decide.
-          </h2>
+          <div className="pub-capitulo-cabeza">
+            <h2 id="decide" className="pub-capitulo" data-aparece>
+              Decide.
+            </h2>
+            <Burbuja fotos={[FOTOS.docente]} ancla />
+          </div>
 
           <div className="pub-decide">
             <div className="pub-principios">
@@ -436,9 +441,12 @@ export function Portada() {
         </section>
 
         <section className="pub-seccion pub-marco" id="empieza" aria-labelledby="empieza-titulo">
-          <h2 id="empieza-titulo" className="pub-capitulo" data-aparece>
-            Empieza.
-          </h2>
+          <div className="pub-capitulo-cabeza">
+            <h2 id="empieza-titulo" className="pub-capitulo" data-aparece>
+              Empieza.
+            </h2>
+            <Burbuja fotos={[FOTOS.hoja]} ancla />
+          </div>
 
           <div className="pub-puertas">
             <article className="pub-puerta" data-aparece>
@@ -476,7 +484,91 @@ export function Portada() {
 type Estilo = CSSProperties & Record<'--orden', number>
 
 /**
- * Marca cada `[data-aparece]` como visto cuando entra en pantalla, una vez.
+ * La burbuja: un hueco del diseño donde se posa la de WebGL.
+ *
+ * Por sí sola es la burbuja de CSS con sus fotos, que es lo que se ve sin
+ * WebGL o con el movimiento reducido. Cuando la de WebGL arranca, esta se
+ * vuelve transparente pero sigue en su sitio: marca dónde posarse y conserva
+ * el texto alternativo para el lector de pantalla.
+ *
+ * `ancla` es la de los capítulos: más pequeña y solo en pantallas anchas,
+ * donde junto al título queda sitio libre.
+ */
+function Burbuja({ fotos, ancla = false }: { fotos: Foto[]; ancla?: boolean }) {
+  return (
+    <figure
+      className={ancla ? 'pub-burbuja pub-burbuja-ancla' : 'pub-burbuja'}
+      data-burbuja={fotos.map((foto) => foto.src).join(' ')}
+    >
+      <div className="pub-burbuja-forma">
+        {fotos.map((foto) => (
+          <img
+            key={foto.src}
+            src={foto.src}
+            alt={foto.alt}
+            width={1200}
+            height={1200}
+            decoding="async"
+            onError={(e) => {
+              const img = e.currentTarget
+              // Una sola vez: si el respaldo tampoco estuviera, volver a
+              // asignarlo dispararía `onError` otra vez, y en bucle.
+              if (img.dataset.respaldo === 'si') {
+                img.style.display = 'none'
+                return
+              }
+              img.dataset.respaldo = 'si'
+              img.src = foto.respaldo
+            }}
+          />
+        ))}
+      </div>
+    </figure>
+  )
+}
+
+/**
+ * Arranca la burbuja de WebGL sobre las anclas de la página.
+ *
+ * No arranca con el movimiento reducido: la burbuja que viaja, se estira y
+ * respira es justo lo que esa preferencia pide no ver. Tampoco sin WebGL. En
+ * los dos casos se queda la de CSS, quieta.
+ */
+function useBurbuja(
+  raiz: RefObject<HTMLDivElement | null>,
+  lienzo: RefObject<HTMLCanvasElement | null>
+) {
+  useEffect(() => {
+    const nodo = raiz.current
+    const canvas = lienzo.current
+    if (!nodo || !canvas) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    const anclas = Array.from(nodo.querySelectorAll<HTMLElement>('[data-burbuja]'))
+    const desmontar = montarBurbuja(
+      canvas,
+      anclas,
+      (src) => RESPALDOS.get(src),
+      () => nodo.classList.remove('pub-con-burbuja')
+    )
+    if (!desmontar) return
+    nodo.classList.add('pub-con-burbuja')
+
+    return () => {
+      desmontar()
+      nodo.classList.remove('pub-con-burbuja')
+    }
+  }, [raiz, lienzo])
+}
+
+/**
+ * Enseña cada `[data-aparece]` cuando entra en pantalla, **cada vez**.
+ *
+ * Al salir del todo de la pantalla se vuelve a esconder, así que al volver a
+ * pasar por él aparece otra vez: la página no se queda «ya cargada» después
+ * del primer recorrido. Son dos observadores porque el que enseña espera a que
+ * la pieza suba un poco (el margen de abajo), y ese margen no sirve para
+ * esconder: la pieza desaparecería mientras todavía se ve en el borde.
  *
  * La clase `pub-js` va en `<html>` y es la que esconde lo que todavía no se ha
  * visto: sin este script nada se esconde, y si el navegador no tiene
@@ -494,20 +586,27 @@ function useAparecer(raiz: RefObject<HTMLDivElement | null>) {
     }
 
     document.documentElement.classList.add('pub-js')
-    const observador = new IntersectionObserver(
+    const ensena = new IntersectionObserver(
       (entradas) => {
         for (const entrada of entradas) {
-          if (!entrada.isIntersecting) continue
-          entrada.target.classList.add('visto')
-          observador.unobserve(entrada.target)
+          if (entrada.isIntersecting) entrada.target.classList.add('visto')
         }
       },
       { rootMargin: '0px 0px -10% 0px', threshold: 0.12 }
     )
-    piezas.forEach((pieza) => observador.observe(pieza))
+    const esconde = new IntersectionObserver((entradas) => {
+      for (const entrada of entradas) {
+        if (!entrada.isIntersecting) entrada.target.classList.remove('visto')
+      }
+    })
+    piezas.forEach((pieza) => {
+      ensena.observe(pieza)
+      esconde.observe(pieza)
+    })
 
     return () => {
-      observador.disconnect()
+      ensena.disconnect()
+      esconde.disconnect()
       document.documentElement.classList.remove('pub-js')
     }
   }, [raiz])

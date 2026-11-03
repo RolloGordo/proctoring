@@ -270,21 +270,74 @@ html:has(.publica) {
 }
 
 /* ---------- La burbuja ----------
-   La de ThoughtLab, sin WebGL: una forma orgánica que muta despacio, con el
-   carrusel dentro, un borde de cristal y un reflejo de color en cada lado.
+   La de ThoughtLab. La dibuja WebGL (`lib/burbuja.ts`) en un lienzo fijo
+   detrás del contenido, y viaja con el scroll entre los huecos marcados con
+   `data-burbuja`: el del primer pantallazo y uno junto a tres capítulos.
+
+   Lo de aquí es su respaldo: la misma burbuja hecha con CSS, quieta, para
+   quien no tiene WebGL o pide menos movimiento. Con WebGL (`pub-con-burbuja`)
+   se vuelve transparente y solo marca el sitio.
 
    **Va contra tres reglas de la casa a propósito** —degradado, brillo y forma
    decorativa— porque la pidió el Product Owner tomando ThoughtLab como
    referencia. Es la única excepción del fichero: nada más lleva sombra ni
    degradado.
 
-   No se monta sobre el titular, como hace el original: allí la burbuja tapa
-   media frase, y aquí el titular es lo que explica qué es esto. */
+   Nunca se posa sobre texto: los huecos están donde no hay nada. Entre uno y
+   otro sí cruza por detrás de alguno, y por eso viaja oscurecida. */
+
+.publica .pub-lienzo {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* El contenido va por encima del lienzo: lo que tiene fondo propio tapa la
+   burbuja, y el texto se dibuja sobre ella. La cabecera ya va por encima. */
+.publica .pub-hero,
+.publica .pub-seccion,
+.publica .aviso-almacenamiento,
+.publica .pie-publico {
+  position: relative;
+  z-index: 1;
+}
 
 .publica .pub-burbuja {
   justify-self: end;
   width: min(100%, 36rem);
   margin: 0;
+}
+
+/* Junto al título de un capítulo, donde a la derecha queda sitio. */
+.publica .pub-capitulo-cabeza {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(1.5rem, 3vw, 3rem);
+}
+
+/* Con margen arriba y abajo: la forma respira y se estira más allá de su
+   caja, y sin él rozaba la cifra de «Decide». */
+.publica .pub-burbuja-ancla {
+  width: clamp(12rem, 21vw, 19rem);
+  margin-block: clamp(1rem, 2.5vw, 2.5rem);
+}
+
+.publica .pub-con-burbuja .pub-burbuja {
+  animation: none;
+}
+
+.publica .pub-con-burbuja .pub-burbuja-forma {
+  opacity: 0;
+  animation: none;
+  filter: none;
+}
+
+.publica .pub-con-burbuja .pub-burbuja-forma img {
+  animation: none;
 }
 
 .publica .pub-burbuja-forma {
@@ -327,6 +380,12 @@ html:has(.publica) {
   object-fit: cover;
   opacity: 0;
   animation: pub-releva 21s infinite;
+}
+
+/* La de un capítulo tiene una sola foto: no se releva, se queda. */
+.publica .pub-burbuja-forma img:only-child {
+  opacity: 1;
+  animation: none;
 }
 
 .publica .pub-burbuja-forma img:nth-child(2) {
@@ -1057,6 +1116,16 @@ html:has(.publica) {
 
   .publica .pub-cifra {
     position: static;
+  }
+
+  /* Junto a los capítulos ya no hay sitio: la burbuja se queda en el primer
+     pantallazo y sube con él. */
+  .publica .pub-capitulo-cabeza {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .publica .pub-burbuja-ancla {
+    display: none;
   }
 
   .publica .pub-familia {
