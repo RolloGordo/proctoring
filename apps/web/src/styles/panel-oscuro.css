@@ -267,6 +267,21 @@ html:has(.app.tema-oscuro) body {
   background: var(--papel-hundido);
 }
 
+/* Borrar: texto y borde rojos sobre transparente. `.tema-oscuro .boton`
+   pone el texto en negro (para el ámbar) y le ganaba a `.boton-peligro`: el
+   botón quedaba negro sobre negro y solo se leía al pasar el cursor. */
+.tema-oscuro .boton-peligro {
+  background: transparent;
+  border-color: var(--alta-linea);
+  color: var(--alta);
+  font-weight: 500;
+}
+
+.tema-oscuro .boton-peligro:hover:not(:disabled) {
+  background: var(--alta-fondo);
+  border-color: var(--alta);
+}
+
 .tema-oscuro .boton-texto {
   background: none;
   color: var(--tinta-media);
