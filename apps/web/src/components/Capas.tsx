@@ -105,10 +105,19 @@ export function CapaPublica({ children }: { children: ReactNode }) {
 
       <footer className="pie-publico">
         <div className="contenedor">
-          <p>
-            <strong>Proctoring</strong> · Proyecto de Taller Integrador 1, UPAO
+          {/* El nombre vuelve a ancho completo como cierre. Oculto al lector
+           * de pantalla: la línea de abajo ya lo dice. */}
+          <p className="pub-pie-marca" aria-hidden="true">
+            Proc<span>toring</span>
           </p>
-          <p className="tenue">El sistema es un auditor, no un juez: decide siempre el docente.</p>
+          <div className="pub-pie-lineas">
+            <p>
+              <strong>Proctoring</strong> · Proyecto de Taller Integrador 1, UPAO
+            </p>
+            <p className="tenue">
+              El sistema es un auditor, no un juez: decide siempre el docente.
+            </p>
+          </div>
         </div>
       </footer>
     </div>

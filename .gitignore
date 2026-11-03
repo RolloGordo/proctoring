@@ -130,3 +130,8 @@ apps/web/spikes/vision/datasets/predictions/
 # El modelo de MediaPipe no esta en npm, asi que este si se versiona: sin el,
 # un despliegue corre sin deteccion de vision y no avisa de nada.
 !apps/web/public/mediapipe/face_landmarker.task
+
+# Ficheros de trabajo de las skills de diseño: capturas, borradores y medidas.
+# La evidencia va a Notion, no al repositorio.
+.taste-skill/
+.impeccable/
