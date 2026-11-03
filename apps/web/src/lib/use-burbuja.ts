@@ -26,12 +26,26 @@ export function useBurbuja(
     const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const anclas = Array.from(nodo.querySelectorAll<HTMLElement>('[data-burbuja]'))
     const evita = nodo.querySelector<HTMLElement>('[data-burbuja-evita]')
+    // Además del texto marcado, la cabecera, el aviso y el pie: la burbuja pasa
+    // por encima de ellos, como la de ThoughtLab, y no por detrás, donde su
+    // fondo la cortaba en recto.
+    const capa = nodo.closest('.publica')
+    const bordes = capa
+      ? Array.from(
+          capa.querySelectorAll<HTMLElement>(
+            ':scope > .cabecera, :scope > .aviso-almacenamiento, :scope > .pie-publico'
+          )
+        )
+      : []
     const seguir =
       seguirCursor && evita
         ? {
             evita,
             limite: nodo,
-            refracta: Array.from(nodo.querySelectorAll<HTMLElement>('[data-burbuja-refracta]'))
+            refracta: [
+              ...Array.from(nodo.querySelectorAll<HTMLElement>('[data-burbuja-refracta]')),
+              ...bordes
+            ]
           }
         : undefined
     const desmontar = montarBurbuja(

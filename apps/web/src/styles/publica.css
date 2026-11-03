@@ -1031,16 +1031,18 @@ html:has(.publica) {
 }
 
 /* El lienzo va detrás, como en la portada, salvo mientras la burbuja vacía
-   pasa por delante de «Entra.»: entonces sube (`pub-lienzo-encima`, lo pone
-   `lib/burbuja.ts`) y enseña el texto a través del cristal, como la de
-   ThoughtLab. No captura el ratón, y nunca entra en el panel del formulario. */
+   toca texto: «Entra.», su frase, la cabecera, el aviso o el pie. Entonces
+   sube por encima de todo, cabecera incluida (`pub-lienzo-encima`, lo pone
+   `lib/burbuja.ts`), y enseña ese texto a través del cristal, como la de
+   ThoughtLab. Detrás, el fondo de la cabecera y del pie la cortaba en recto.
+   No captura el ratón, y nunca entra en el panel del formulario. */
 .publica .pub-acceso > :not(.pub-lienzo) {
   position: relative;
   z-index: 1;
 }
 
 .publica .pub-acceso > .pub-lienzo-encima {
-  z-index: 2;
+  z-index: 20;
 }
 
 /* Más grande que la de los capítulos: aquí es la protagonista de la mitad

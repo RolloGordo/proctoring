@@ -633,9 +633,10 @@ export function montarBurbuja(
       const escribiendo = seguir.evita.contains(document.activeElement)
       if (!sobreFormulario && !escribiendo) {
         tras = true
-        mx = entre(puntero.x, zona.left + meta.r * 0.35, evita.left - meta.r * 1.08)
-        // Arriba, sin meterse bajo la cabecera: la tapaba y la cortaba en recto.
-        my = entre(puntero.y, zona.top + meta.r * 1.05, alto - meta.r * 0.25)
+        // Puede asomarse por el borde de la ventana y subir sobre la cabecera,
+        // como la de ThoughtLab; lo único que no pisa es el formulario.
+        mx = entre(puntero.x, zona.left - meta.r * 0.4, evita.left - meta.r * 1.08)
+        my = entre(puntero.y, meta.r * 0.2, alto - meta.r * 0.2)
       } else {
         mx = meta.x
         my = meta.y
