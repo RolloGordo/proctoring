@@ -397,6 +397,57 @@ html:has(.app.tema-oscuro) body {
   color: var(--tinta-media);
 }
 
+/* ---------- Cifras ----------
+   Un solo contenedor dividido por líneas finas, no una caja por cifra (en la
+   sesión en vivo y en resultados). El hueco de 1 px de la rejilla deja ver el
+   color de la línea, así los cortes salen también cuando la fila se parte en
+   dos en pantallas estrechas. */
+
+.tema-oscuro .panel-resumen {
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-grande);
+  background: var(--linea);
+}
+
+.tema-oscuro .panel-resumen > .tarjeta {
+  border: 0;
+  border-radius: 0;
+  background: var(--papel);
+}
+
+.tema-oscuro .cifra {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+/* La decisión que rige el caso, con su borde ámbar: aquí `.tema-oscuro
+   .tarjeta` es más específica que `.decision-vigente` y se lo quitaba. */
+.tema-oscuro .tarjeta.decision-vigente {
+  border-color: #5a4410;
+}
+
+/* ---------- Selectores sueltos ----------
+   Los que no van dentro de un `.campo` (elegir un banco, filtrar por tipo)
+   se quedaban con el desplegable claro del navegador. */
+
+.tema-oscuro select {
+  min-height: 2.25rem;
+  padding: 0 var(--e3);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: 10px;
+  background: var(--papel-gris);
+  color: var(--tinta);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.tema-oscuro select:focus-visible {
+  outline: 2px solid var(--amarillo);
+  outline-offset: 2px;
+}
+
 /* ---------- Panel de inicio ----------
    Lo que pide atención ahora: los exámenes en curso, grandes y con su línea;
    debajo, a la par y con las mismas filas, lo que viene y lo que terminó. */
