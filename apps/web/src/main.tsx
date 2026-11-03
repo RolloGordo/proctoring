@@ -4,6 +4,11 @@ import App from './App'
 import './styles/tokens.css'
 import './styles/base.css'
 import './styles/estructura.css'
+// La tipografía de la parte pública. Va en el paquete y se sirve desde nuestro
+// dominio: el navegador solo la descarga cuando algo de `.publica` la usa.
+import '@fontsource-variable/archivo/standard.css'
+import './styles/publica.css'
+import './styles/aviso-almacenamiento.css'
 import './styles/avisos-supervision.css'
 
 const raiz = document.getElementById('root')

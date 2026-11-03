@@ -19,6 +19,7 @@
     "iconos": "node scripts/generar-iconos.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
     "@mediapipe/tasks-vision": "0.10.34",
     "@ricky0123/vad-web": "0.0.30",
     "@supabase/supabase-js": "^2.47.10",

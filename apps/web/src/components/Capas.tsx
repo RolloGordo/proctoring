@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth-context'
+import { AvisoAlmacenamiento } from './AvisoAlmacenamiento'
 import { inicioSegunRol, type Rol } from '../lib/rutas'
 import { authEnabled } from '../lib/supabase'
 
@@ -73,7 +74,11 @@ function Marca({ a }: { a: string }) {
 }
 
 /** La portada, el acceso y las páginas que no existen. */
-export function CapaPublica({ children }: { children: ReactNode }) {
+/**
+ * `creditos` es la línea de autoría de las fotos de la página, si las tiene:
+ * va al pie, pequeña, que es donde se busca.
+ */
+export function CapaPublica({ children, creditos }: { children: ReactNode; creditos?: ReactNode }) {
   const { token, rol } = useAuth()
   const conSesion = authEnabled && token !== undefined
 
@@ -101,14 +106,31 @@ export function CapaPublica({ children }: { children: ReactNode }) {
         </div>
       </header>
 
+      {/* En el flujo, bajo la cabecera, y no fijo abajo: fijo tapaba el texto
+       * que pasaba por debajo al bajar, hasta que se cerraba. */}
+      <AvisoAlmacenamiento />
+
       <main>{children}</main>
 
       <footer className="pie-publico">
         <div className="contenedor">
-          <p>
-            <strong>Proctoring</strong> · Proyecto de Taller Integrador 1, UPAO
+          {/* El nombre vuelve a ancho completo como cierre. Oculto al lector
+           * de pantalla: la línea de abajo ya lo dice. */}
+          <p className="pub-pie-marca" aria-hidden="true">
+            Proc<span>toring</span>
           </p>
-          <p className="tenue">El sistema es un auditor, no un juez: decide siempre el docente.</p>
+          <div className="pub-pie-lineas">
+            <p>
+              <strong>Proctoring</strong> · Proyecto de Taller Integrador 1, UPAO
+            </p>
+            <p className="tenue">
+              El sistema es un auditor, no un juez: decide siempre el docente.
+            </p>
+            <p>
+              <Link to="/privacidad">Privacidad y cookies</Link>
+            </p>
+          </div>
+          {creditos && <p className="pub-creditos">{creditos}</p>}
         </div>
       </footer>
     </div>

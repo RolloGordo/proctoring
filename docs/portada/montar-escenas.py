@@ -29,8 +29,16 @@ SUBRAYADO = (232, 167, 0)
 #: Alto de la línea de texto que va encima del subrayado.
 ALTO_CORREO = 20
 
-LIENZO = (1600, 1000)
+#: El marco del hero: 4:3, la mitad derecha del primer pantallazo. Antes las
+#: escenas iban detrás del titular, a 1600x1000 y con el panel arrinconado a la
+#: derecha para que el velo oscuro lo dejara ver; ahora van enmarcadas y se ven
+#: enteras, así que el panel va centrado.
+LIENZO = (1200, 900)
 FONDO = (246, 247, 248)
+MARGEN = 48
+#: Una captura no se amplía más que esto: por encima, el texto se emborrona y
+#: deja de parecer una pantalla de verdad.
+AMPLIACION_MAXIMA = 1.25
 
 
 def difuminar(imagen, caja, radio=14):
@@ -68,14 +76,18 @@ def tapar_caras(imagen, cajas):
 
 
 def escena(imagen, destino):
-    """Pone el panel a la derecha, que es donde el velo deja ver algo."""
+    """Centra el panel en el marco, tan grande como quepa sin emborronarse."""
     lienzo = Image.new("RGB", LIENZO, FONDO)
-    alto = int(LIENZO[1] * 0.92)
-    ancho = round(imagen.width * alto / imagen.height)
+    escala = min(
+        (LIENZO[0] - 2 * MARGEN) / imagen.width,
+        (LIENZO[1] - 2 * MARGEN) / imagen.height,
+        AMPLIACION_MAXIMA,
+    )
+    ancho, alto = round(imagen.width * escala), round(imagen.height * escala)
     panel = imagen.resize((ancho, alto), Image.LANCZOS)
-    lienzo.paste(panel, (LIENZO[0] - ancho - 40, (LIENZO[1] - alto) // 2))
-    lienzo.save(destino, quality=82, optimize=True)
-    print(f"  {destino}  {lienzo.size}")
+    lienzo.paste(panel, ((LIENZO[0] - ancho) // 2, (LIENZO[1] - alto) // 2))
+    lienzo.save(destino, quality=84, optimize=True)
+    print(f"  {destino}  {lienzo.size}  panel x{escala:.2f}")
 
 
 linea = Image.open(ORIGEN["linea"]).convert("RGB")
