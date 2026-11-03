@@ -1,21 +1,32 @@
 /**
- * La burbuja de la portada, en WebGL.
+ * La burbuja de la portada y del acceso, en WebGL.
  *
- * Un solo lienzo fijo, a pantalla completa y detrás del contenido, dibuja una
- * burbuja de cristal que viaja con el scroll entre las «anclas» de la página:
- * huecos del diseño marcados con `data-burbuja`. En cada ancla se posa y se
- * llena con su foto; entre una y otra se aleja (se encoge y se oscurece, para
- * que el texto que cruza siga leyéndose), se estira según la velocidad y
- * cambia de foto con un frente que sale del centro.
+ * Un solo lienzo fijo, a pantalla completa, dibuja una burbuja de cristal que
+ * viaja con el scroll entre las «anclas» de la página: huecos del diseño
+ * marcados con `data-burbuja`. En cada ancla se posa y se llena con su foto;
+ * entre una y otra se aleja (se encoge y se oscurece, para que el texto que
+ * cruza siga leyéndose), se estira un poco según la velocidad y cambia de foto
+ * con un frente que sale del centro.
  *
- * Todo lo que se ve sale del sombreador: la forma que respira, la lente que
- * aumenta el centro y comprime el borde, la dispersión de color en el canto, el
- * borde blanco y el reflejo. El DOM no se toca: las anclas siguen siendo la
+ * Un ancla con `data-burbuja-sigue` es la de ThoughtLab, si hay ratón: la
+ * burbuja va vacía, de cristal oscuro, y sigue al cursor. Lo que tiene detrás
+ * se ve a través de ella, aumentado y doblado en el canto: el texto marcado
+ * con `data-burbuja-refracta` se copia a una textura, carácter a carácter y en
+ * su sitio, y el sombreador la mira a través de la lente. Vuelve a su sitio
+ * cuando el cursor entra en algo marcado con `data-burbuja-evita` o cuando se
+ * escribe en ello.
+ *
+ * Todo lo que se ve sale del sombreador: una superficie de agua con relieve
+ * (bultos que fluyen y que el chapoteo arrastra), la habitación que se refleja
+ * en ella sobre todo hacia el canto, la lente, la dispersión de color y el filo
+ * del borde. El chapoteo es un resorte: cuando la burbuja acelera, el agua de
+ * dentro se queda atrás y luego va y viene hasta calmarse. El DOM no se toca: las anclas siguen siendo la
  * burbuja de CSS con sus `<img>` y su texto alternativo, que es lo que ven
  * quien no tiene WebGL y el lector de pantalla.
  *
- * Coste: el cuadrado que se dibuja es solo el de la burbuja, no la pantalla, y
- * el bucle se para con la pestaña oculta y cuando la burbuja queda lejos.
+ * Coste: el cuadrado que se dibuja es solo el de la burbuja, no la pantalla; el
+ * bucle se para con la pestaña oculta, y la textura del texto solo se rehace
+ * cuando la burbuja lo toca y algo cambió.
  */
 
 /** Cuánto tarda cada foto del carrusel del ancla que tiene varias. */
@@ -25,7 +36,9 @@ const CAMBIO_MS = 1400
 /** Lado de la textura: potencia de dos, para tener mipmaps también en WebGL 1. */
 const LADO_TEXTURA = 1024
 /** El cuadrado dibujado mide esto por el radio: deja sitio al estiramiento. */
-const MARGEN = 1.45
+const MARGEN = 1.3
+/** Lo más que se aleja el borde del centro, respirando y estirada. */
+const ALCANCE = 1.1
 
 const VERTICES = `
 attribute vec2 aPos;
@@ -33,9 +46,11 @@ uniform vec2 uCentro;
 uniform float uRadio;
 uniform vec2 uVista;
 varying vec2 vP;
+varying vec2 vPx;
 void main() {
   vP = aPos * ${MARGEN.toFixed(2)};
   vec2 px = uCentro + vec2(aPos.x, -aPos.y) * uRadio * ${MARGEN.toFixed(2)};
+  vPx = px;
   gl_Position = vec4(px.x / uVista.x * 2.0 - 1.0, 1.0 - px.y / uVista.y * 2.0, 0.0, 1.0);
 }
 `
@@ -43,9 +58,15 @@ void main() {
 const FRAGMENTOS = `
 precision highp float;
 varying vec2 vP;
+varying vec2 vPx;
+uniform vec2 uCentro;
+uniform float uRadio;
+uniform vec2 uVista;
 uniform sampler2D uFotoA;
 uniform sampler2D uFotoB;
+uniform sampler2D uTexto;
 uniform float uMezcla;
+uniform float uVacia;
 uniform float uTiempo;
 uniform vec2 uVelocidad;
 uniform vec2 uPuntero;
@@ -53,6 +74,49 @@ uniform float uCerca;
 uniform float uPixel;
 uniform float uLejania;
 uniform float uFundido;
+uniform vec2 uOla;
+
+float azar(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float ruido(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(azar(i), azar(i + vec2(1.0, 0.0)), f.x),
+             mix(azar(i + vec2(0.0, 1.0)), azar(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+// El relieve de la superficie: bultos grandes y otros más pequeños que fluyen
+// cada uno hacia su lado, y que el agua de dentro (uOla) arrastra al moverse.
+float relieve(vec2 p, float t) {
+  vec2 corriente = uOla * 1.6;
+  // Pocos bultos y grandes: con más detalle salían hoyuelos, y el agua de
+  // verdad hace pliegues largos y suaves.
+  return ruido(p * 1.5 + vec2(t * 0.11, -t * 0.07) + corriente) * 0.72
+       + ruido(p * 2.9 + vec2(-t * 0.09, t * 0.13) + corriente * 1.4 + 5.0) * 0.28;
+}
+
+// La habitación que se refleja en el agua, como un estudio de fotografía:
+// focos detrás y a los lados de la burbuja, que es hacia donde rebota la vista
+// cerca del canto. Un panel blanco grande a la derecha y algo por debajo, una
+// luz violeta arriba, el suelo cálido abajo y un azul a la izquierda. Gira un
+// poco, despacio, como si la burbuja rotara.
+float foco(vec3 r, vec3 hacia, float filo) {
+  return pow(max(dot(r, normalize(hacia)), 0.0), filo);
+}
+
+vec3 entorno(vec3 r, float t) {
+  float giro = 0.25 * sin(t * 0.15);
+  r.xy = mat2(cos(giro), -sin(giro), sin(giro), cos(giro)) * r.xy;
+  vec3 c = vec3(0.0);
+  c += vec3(1.0) * foco(r, vec3(0.55, -0.25, -0.8), 4.0) * 2.0;
+  c += vec3(0.58, 0.42, 1.0) * foco(r, vec3(-0.1, 0.75, -0.65), 4.0) * 1.3;
+  c += vec3(1.0, 0.56, 0.24) * foco(r, vec3(0.2, -0.8, -0.55), 3.5) * 1.2;
+  c += vec3(0.3, 0.46, 1.0) * foco(r, vec3(-0.8, 0.1, -0.6), 5.0) * 0.8;
+  return c;
+}
 
 vec3 muestra(sampler2D foto, vec2 n, float escala, float dispersion, float desenfoque) {
   vec2 c = vec2(0.5);
@@ -65,75 +129,109 @@ vec3 muestra(sampler2D foto, vec2 n, float escala, float dispersion, float desen
 void main() {
   float t = uTiempo;
 
-  // Se estira en la dirección en que se mueve y adelgaza de lado.
+  // Se estira poco en la dirección en que se mueve: lo justo para notar la
+  // inercia sin que se vea estrujada.
   float rapidez = length(uVelocidad);
-  float k = clamp(rapidez * 0.07, 0.0, 0.3);
+  float k = clamp(rapidez * 0.045, 0.0, 0.18);
   vec2 dir = rapidez > 0.0001 ? uVelocidad / rapidez : vec2(0.0, 1.0);
   vec2 lado = vec2(-dir.y, dir.x);
-  vec2 q = dir * (dot(vP, dir) / (1.0 + k)) + lado * (dot(vP, lado) / (1.0 - 0.45 * k));
+  vec2 q = dir * (dot(vP, dir) / (1.0 + k)) + lado * (dot(vP, lado) / (1.0 - 0.4 * k));
 
-  // La forma respira: cuatro ondas lentas alrededor del borde, más fuertes
-  // cuando se mueve o cuando el puntero se acerca, y un bulto hacia él.
+  // El contorno: ondas largas a su ritmo, con una marea que sube y baja, más
+  // los mismos bultos del relieve asomando por el borde. Todo continuo
+  // alrededor (sin costura en el lado izquierdo).
   float a = atan(q.y, q.x);
-  float fuerza = 1.0 + 3.2 * k + 0.7 * uCerca;
-  float onda = 0.026 * sin(3.0 * a + t * 0.7)
-             + 0.017 * sin(5.0 * a - t * 1.1 + 1.3)
-             + 0.010 * sin(8.0 * a + t * 1.7 + 0.4)
-             + 0.015 * sin(2.0 * a - t * 0.45 + 2.1);
+  vec2 haciaBorde = normalize(q + 1e-5);
+  float fuerza = 1.0 + 2.0 * k + 0.35 * uCerca;
+  float marea = 0.75 + 0.25 * sin(t * 0.31);
+  float onda = (0.018 * sin(2.0 * a - t * 0.55 + 2.1)
+             + 0.013 * sin(3.0 * a + t * 0.72)
+             + 0.008 * sin(4.0 * a - t * 0.93 + 1.3)) * marea
+             + 0.05 * (relieve(haciaBorde * 0.9, t) - 0.5);
   float lp = length(uPuntero);
   float bulto = lp > 0.0001
-    ? 0.06 * uCerca * pow(max(dot(normalize(q + 1e-5), uPuntero / lp), 0.0), 4.0)
+    ? 0.035 * uCerca * pow(max(dot(haciaBorde, uPuntero / lp), 0.0), 2.0)
     : 0.0;
   float radio = 1.0 + onda * fuerza + bulto;
   float rr = length(q) / radio;
-  if (rr > 1.04) discard;
+  if (rr > 1.01) discard;
 
+  // La superficie: una esfera con relieve. La normal sale de la esfera más
+  // la pendiente de los bultos, que pesa más hacia el borde.
   vec2 n = q / radio;
   float h = sqrt(max(1.0 - rr * rr, 0.0));
-  float canto = 1.0 - h;
+  float e = 0.03;
+  vec2 pendiente = vec2(
+    relieve(n + vec2(e, 0.0), t) - relieve(n - vec2(e, 0.0), t),
+    relieve(n + vec2(0.0, e), t) - relieve(n - vec2(0.0, e), t)
+  ) / (2.0 * e);
+  float pesoRelieve = mix(0.04, 0.9, smoothstep(0.45, 0.97, rr));
+  vec3 normal = normalize(vec3(n - pendiente * pesoRelieve * 0.85, h + 0.02));
+  float canto = 1.0 - clamp(normal.z, 0.0, 1.0);
 
-  // La lente: aumenta el centro y comprime hacia el borde, con la foto un poco
-  // desplazada contra el puntero, como si estuviera detrás del cristal.
+  // Lo que refleja: la habitación, mirada en la dirección en que rebota la
+  // vista. Casi nada de frente y casi todo hacia el borde (Fresnel): por eso
+  // los reflejos se agolpan cerca del canto y siguen los pliegues, y donde
+  // un pliegue mira a un rincón oscuro queda una arruga negra.
+  vec3 rebote = reflect(vec3(0.0, 0.0, -1.0), normal);
+  float fresnel = 0.04 + 0.96 * pow(canto, 1.7);
+  vec3 reflejo = entorno(rebote, t) * fresnel;
+
+  // Lo que se ve a través: la luz se tuerce en los bultos, así que el fondo
+  // se mueve como detrás de agua.
+  vec2 torcido = normal.xy - n;
+
+  // Con foto: la lente aumenta el centro y comprime hacia el borde, con la
+  // foto desplazada por el relieve y un poco contra el puntero.
   float escala = mix(0.7, 1.0, pow(canto, 1.4)) * (0.95 + 0.025 * sin(t * 0.17));
-  vec2 paralaje = -uPuntero * 0.03 * uCerca;
+  vec2 nf = n + torcido * 0.25 - uPuntero * 0.03 * uCerca;
   float dispersion = 0.05 * pow(canto, 2.2);
   float desenfoque = 3.5 * pow(canto, 3.0);
-  vec2 nf = n + paralaje;
   vec3 fotoA = muestra(uFotoA, nf, escala, dispersion, desenfoque);
   vec3 fotoB = muestra(uFotoB, nf, escala, dispersion, desenfoque);
-
-  // El relevo entra desde el centro con un frente ondulado.
   float frente = uMezcla * 1.4 - 0.2;
   float m = smoothstep(frente + 0.12, frente - 0.12, rr + 0.05 * sin(a * 4.0 + t * 1.5));
   // Con el movimiento reducido no hay frente que avance: un fundido y ya.
   m = mix(m, uMezcla, uFundido);
-  vec3 color = mix(fotoA, fotoB, m) * 0.93;
+  vec3 conFoto = mix(fotoA, fotoB, m) * 0.9;
 
+  // Vacía: el texto de detrás, aumentado por la lente, doblado hacia dentro
+  // cerca del canto, movido por el relieve y con cada color desplazado.
+  vec2 desdeCentro = vPx - uCentro;
+  vec2 mira = desdeCentro * mix(0.58, 1.0, pow(canto, 1.2))
+            - normalize(desdeCentro + 1e-5) * uRadio * 0.1 * pow(canto, 2.5)
+            + vec2(torcido.x, -torcido.y) * uRadio * 0.13;
+  float separa = 0.06 * pow(canto, 1.5);
+  vec4 tR = texture2D(uTexto, (uCentro + mira * (1.0 + separa)) / uVista);
+  vec4 tG = texture2D(uTexto, (uCentro + mira) / uVista);
+  vec4 tB = texture2D(uTexto, (uCentro + mira * (1.0 - separa)) / uVista);
+  // El interior: agua en penumbra, con un claro grande que se pasea, que el
+  // chapoteo empuja y que los bultos tuercen.
+  vec2 claroEn = vec2(-0.16, 0.1) + 0.14 * vec2(sin(t * 0.47), cos(t * 0.38)) - uOla * 0.5;
+  float claro = smoothstep(1.0, 0.0, length(n + torcido * 0.6 - claroEn));
+  vec3 humo = vec3(0.03 + 0.38 * claro) * (1.0 - 0.6 * smoothstep(0.55, 0.95, rr));
+  vec3 vacia = vec3(
+    mix(humo.r, tR.r * 0.9, tR.a),
+    mix(humo.g, tG.g * 0.9, tG.a),
+    mix(humo.b, tB.b * 0.9, tB.a)
+  );
+
+  vec3 color = mix(conFoto, vacia, uVacia);
   // Lejos (entre dos anclas) se oscurece, para que el texto que cruza se lea.
   color *= 1.0 - 0.55 * uLejania;
+  color = color * (1.0 - fresnel * 0.85) + reflejo;
 
-  // La banda oscura de dentro del canto, como en el cristal grueso.
-  color *= 1.0 - 0.7 * smoothstep(0.78, 0.97, rr);
-
-  // El canto iridiscente: azul y violeta del lado de la luz, ámbar del otro.
-  vec2 haciaLuz = normalize(vec2(-0.65 + 0.15 * sin(t * 0.2), 0.76) + uPuntero * 0.15 * uCerca);
-  float cara = dot(normalize(q + 1e-5), haciaLuz);
-  vec3 azul = vec3(0.32, 0.5, 1.0);
-  vec3 violeta = vec3(0.64, 0.44, 1.0);
-  vec3 ambar = vec3(1.0, 0.63, 0.2);
-  vec3 tono = cara > 0.0 ? mix(violeta, azul, cara) : mix(violeta, ambar, -cara);
-  float banda = smoothstep(0.885, 0.982, rr);
-  color = mix(color, tono, banda * (0.5 + 0.45 * abs(cara)));
-  float filo = smoothstep(0.972, 0.993, rr);
-  color = mix(color, vec3(1.0), filo * (0.55 + 0.45 * max(cara, 0.0)));
-
-  // El reflejo de la ventana, arriba a la izquierda.
-  float reflejo = smoothstep(0.45, 0.0, length(n - vec2(-0.38, 0.44)));
-  color += vec3(1.0) * reflejo * 0.12;
+  // El filo: una línea fina y clara justo en el borde, con la dispersión de
+  // color (cada canal empieza a un radio un poco distinto).
+  vec3 filo = vec3(
+    smoothstep(0.955, 0.99, rr * 1.006),
+    smoothstep(0.955, 0.99, rr),
+    smoothstep(0.955, 0.99, rr * 0.994)
+  );
+  color = mix(color, vec3(1.0), filo * 0.55);
 
   float alfa = 1.0 - smoothstep(1.0 - uPixel * 1.5, 1.0, rr);
-  float halo = (1.0 - smoothstep(1.0, 1.035, rr)) * 0.22 * (1.0 - alfa);
-  gl_FragColor = vec4(color * alfa + tono * halo, alfa + halo);
+  gl_FragColor = vec4(color * alfa, alfa);
 }
 `
 
@@ -144,13 +242,57 @@ type Ancla = {
   fotos: string[]
   /** La foto del carrusel que toca ahora (las anclas de una sola, siempre 0). */
   actual: number
+  /** Sin foto: cristal oscuro que deja ver el texto de detrás. */
+  vacia: boolean
+  /** Sigue al cursor mientras la burbuja está posada en ella. */
+  sigue: boolean
 }
 
 type Textura = { tex: WebGLTexture; lista: boolean }
 
 /** Resorte con algo de rebote: sigue al objetivo con retraso y se pasa un poco. */
 const RIGIDEZ = 120
-const AMORTIGUACION = 2 * 0.68 * Math.sqrt(RIGIDEZ)
+const AMORTIGUACION = 2 * 0.72 * Math.sqrt(RIGIDEZ)
+/** Detrás del cursor va más suelta, como si flotara: tarda más y rebota menos. */
+const RIGIDEZ_CURSOR = 45
+const AMORTIGUACION_CURSOR = 2 * 0.85 * Math.sqrt(RIGIDEZ_CURSOR)
+/** El agua de dentro: blanda y poco amortiguada, para que vaya y venga. */
+const RIGIDEZ_OLA = 22
+const AMORTIGUACION_OLA = 2 * 0.18 * Math.sqrt(RIGIDEZ_OLA)
+
+export type OpcionesBurbuja = {
+  /**
+   * Quien pide menos movimiento: no viaja ni respira. Hay una burbuja quieta en
+   * cada ancla, que sube y baja con la página como cualquier otra imagen, y el
+   * carrusel cambia de foto con un fundido. Queda el cristal, que no es
+   * movimiento.
+   */
+  sinMovimiento?: boolean
+  /**
+   * Hay ratón o lápiz (`hover: hover` y puntero fino). Sin él las anclas que
+   * siguen al cursor se quedan con sus fotos: una burbuja vacía y quieta en un
+   * teléfono no enseñaría nada.
+   */
+  conCursor?: boolean
+  /**
+   * Lo que la burbuja que sigue no pisa: si el cursor entra o se escribe ahí,
+   * vuelve a su sitio. Con `lado`, además, no pasa de su borde izquierdo (el
+   * formulario del acceso).
+   */
+  evita?: { nodo: HTMLElement; lado: boolean }[]
+  /** El texto que se ve a través de la burbuja vacía. */
+  refracta?: HTMLElement[]
+  /**
+   * Lo que tiene fondo propio en los bordes de la página (la cabecera, el
+   * pie): la burbuja, vacía o con foto, pasa siempre por encima de ellos y no
+   * por detrás, donde su fondo la cortaba en recto.
+   */
+  bordes?: HTMLElement[]
+}
+
+function entre(valor: number, minimo: number, maximo: number): number {
+  return Math.min(Math.max(valor, minimo), Math.max(minimo, maximo))
+}
 
 function suave(t: number): number {
   const x = Math.min(Math.max(t, 0), 1)
@@ -162,18 +304,19 @@ function suave(t: number): number {
  * `null` si el navegador no tiene WebGL: entonces se queda la de CSS.
  *
  * `respaldo` da, para cada foto, otra que probar si esa no carga.
- *
- * Con `sinMovimiento` (quien pide menos movimiento) no viaja ni respira: hay
- * una burbuja quieta en cada ancla, que sube y baja con la página como
- * cualquier otra imagen, y el carrusel cambia de foto con un fundido. Queda el
- * cristal, que no es movimiento.
  */
 export function montarBurbuja(
   lienzo: HTMLCanvasElement,
   nodos: HTMLElement[],
   respaldo: (src: string) => string | undefined,
   alPerderse: () => void,
-  sinMovimiento = false
+  {
+    sinMovimiento = false,
+    conCursor = false,
+    evita = [],
+    refracta = [],
+    bordes = []
+  }: OpcionesBurbuja = {}
 ): (() => void) | null {
   const contexto = lienzo.getContext('webgl', { premultipliedAlpha: true, antialias: false })
   if (!contexto || nodos.length === 0) return null
@@ -184,16 +327,20 @@ export function montarBurbuja(
   const programa = compilar(gl)
   if (!programa) return null
 
-  const anclas: Ancla[] = nodos.map((nodo) => ({
-    nodo,
-    fotos: (nodo.dataset.burbuja ?? '').split(/\s+/).filter(Boolean),
-    actual: 0
-  }))
+  const anclas: Ancla[] = nodos.map((nodo) => {
+    const fotos = (nodo.dataset.burbuja ?? '').split(/\s+/).filter(Boolean)
+    const sigue = conCursor && nodo.dataset.burbujaSigue !== undefined
+    // La que sigue va vacía: sus fotos son para la de CSS y para quien no
+    // tiene ratón.
+    const vacia = sigue || fotos.length === 0
+    return { nodo, fotos: vacia ? [''] : fotos, actual: 0, vacia, sigue }
+  })
 
   // Dónde cae el sujeto de cada foto a lo ancho (`data-burbuja-foco`, en el
   // mismo orden que las fotos): el recorte cuadrado se centra ahí.
   const focos = new Map<string, number>()
-  anclas.forEach(({ nodo, fotos }) => {
+  nodos.forEach((nodo) => {
+    const fotos = (nodo.dataset.burbuja ?? '').split(/\s+/).filter(Boolean)
     const valores = (nodo.dataset.burbujaFoco ?? '').split(/\s+/).map(Number)
     fotos.forEach((src, i) => focos.set(src, Number.isFinite(valores[i]) ? valores[i] : 0.5))
   })
@@ -216,23 +363,27 @@ export function montarBurbuja(
     vista: u('uVista'),
     fotoA: u('uFotoA'),
     fotoB: u('uFotoB'),
+    texto: u('uTexto'),
     mezcla: u('uMezcla'),
+    vacia: u('uVacia'),
     tiempo: u('uTiempo'),
     velocidad: u('uVelocidad'),
     puntero: u('uPuntero'),
     cerca: u('uCerca'),
     pixel: u('uPixel'),
     lejania: u('uLejania'),
-    fundido: u('uFundido')
+    fundido: u('uFundido'),
+    ola: u('uOla')
   }
   gl.uniform1i(uni.fotoA, 0)
   gl.uniform1i(uni.fotoB, 1)
+  gl.uniform1i(uni.texto, 2)
   gl.uniform1f(uni.fundido, sinMovimiento ? 1 : 0)
 
   let destruida = false
 
-  // Las texturas: un gris oscuro mientras la foto carga, recortada a cuadrado
-  // al centro cuando llega.
+  // Las texturas de las fotos: un gris oscuro mientras cargan, recortadas a
+  // cuadrado alrededor de su foco cuando llegan.
   const texturas = new Map<string, Textura>()
   function textura(src: string): Textura {
     const ya = texturas.get(src)
@@ -240,6 +391,7 @@ export function montarBurbuja(
     const tex = gl.createTexture()
     const entrada: Textura = { tex, lista: false }
     texturas.set(src, entrada)
+    gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, tex)
     gl.texImage2D(
       gl.TEXTURE_2D,
@@ -252,6 +404,8 @@ export function montarBurbuja(
       gl.UNSIGNED_BYTE,
       new Uint8Array([26, 26, 26, 255])
     )
+    // La vacía no tiene foto: se queda con el gris de espera, que no se ve.
+    if (!src) return entrada
     cargar(src, (imagen) => {
       if (destruida) return
       const lado = document.createElement('canvas')
@@ -274,6 +428,7 @@ export function montarBurbuja(
         LADO_TEXTURA,
         LADO_TEXTURA
       )
+      gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, tex)
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, lado)
@@ -298,13 +453,142 @@ export function montarBurbuja(
 
   anclas.forEach((ancla) => ancla.fotos.forEach(textura))
 
+  // La textura del texto que se ve a través: del tamaño de la ventana, sin
+  // mipmaps (no es potencia de dos) y transparente hasta que se dibuja.
+  const lienzoTexto = document.createElement('canvas')
+  const texturaTexto = gl.createTexture()
+  gl.activeTexture(gl.TEXTURE2)
+  gl.bindTexture(gl.TEXTURE_2D, texturaTexto)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.RGBA,
+    1,
+    1,
+    0,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    new Uint8Array([0, 0, 0, 0])
+  )
+  let firmaTexto = ''
+  // La letra propia llega después del primer dibujo: entonces se rehace.
+  void document.fonts?.ready.then(() => (firmaTexto = ''))
+
+  /** ¿La burbuja, en `x`, `y` con radio `r`, toca algo de `lista`? */
+  function toca(lista: HTMLElement[], x: number, y: number, r: number): boolean {
+    const alcance = r * ALCANCE
+    return lista.some((raiz) => {
+      const caja = raiz.getBoundingClientRect()
+      return (
+        caja.width > 0 &&
+        x + alcance > caja.left &&
+        x - alcance < caja.right &&
+        y + alcance > caja.top &&
+        y - alcance < caja.bottom
+      )
+    })
+  }
+
+  /**
+   * Copia el texto de `refracta` a la textura, cada carácter en el sitio
+   * exacto en que lo pinta el navegador (`Range` por carácter): así, en el
+   * canto, la copia empalma con el original. Solo si algo cambió: el texto,
+   * su sitio, su opacidad o la ventana.
+   */
+  function actualizarTexto() {
+    const ppp = Math.min(window.devicePixelRatio || 1, 1.5)
+    const firma = [ancho, alto, ppp]
+    for (const raiz of refracta) {
+      const r = raiz.getBoundingClientRect()
+      firma.push(Math.round(r.left), Math.round(r.top), Math.round(r.width))
+      raiz
+        .querySelectorAll('*')
+        .forEach((hijo) => firma.push(Number(getComputedStyle(hijo).opacity)))
+    }
+    const clave = firma.join(',') + refracta.map((raiz) => raiz.textContent).join('|')
+    if (clave === firmaTexto) return
+    firmaTexto = clave
+
+    lienzoTexto.width = Math.max(1, Math.round(ancho * ppp))
+    lienzoTexto.height = Math.max(1, Math.round(alto * ppp))
+    const ctx = lienzoTexto.getContext('2d')
+    if (!ctx) return
+    ctx.setTransform(ppp, 0, 0, ppp, 0, 0)
+    ctx.clearRect(0, 0, ancho, alto)
+    const rango = document.createRange()
+    for (const raiz of refracta) {
+      const andador = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT)
+      for (let nodo = andador.nextNode(); nodo; nodo = andador.nextNode()) {
+        const texto = nodo as Text
+        const padre = texto.parentElement
+        // Lo que solo existe para el lector de pantalla no se ve: no se copia.
+        if (!padre || padre.closest('.sr-only')) continue
+        const estilo = getComputedStyle(padre)
+        let opacidad = 1
+        for (
+          let el: HTMLElement | null = padre;
+          el && el !== raiz.parentElement;
+          el = el.parentElement
+        )
+          opacidad *= Number(getComputedStyle(el).opacity)
+        if (opacidad === 0) continue
+        ctx.globalAlpha = opacidad
+        ctx.fillStyle = estilo.color
+        ctx.font = `${estilo.fontStyle} ${estilo.fontWeight} ${estilo.fontSize} ${estilo.fontFamily}`
+        const medida = ctx.measureText('Hg')
+        const sube = medida.fontBoundingBoxAscent
+        const baja = medida.fontBoundingBoxDescent
+        const mayusculas = estilo.textTransform === 'uppercase'
+        for (let i = 0; i < texto.length; i++) {
+          const letra = texto.data[i]
+          if (/\s/.test(letra)) continue
+          rango.setStart(texto, i)
+          rango.setEnd(texto, i + 1)
+          const caja = rango.getBoundingClientRect()
+          if (caja.width === 0) continue
+          const linea = caja.top + (caja.height - (sube + baja)) / 2 + sube
+          ctx.fillText(mayusculas ? letra.toUpperCase() : letra, caja.left, linea)
+        }
+      }
+    }
+    gl.activeTexture(gl.TEXTURE2)
+    gl.bindTexture(gl.TEXTURE_2D, texturaTexto)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, lienzoTexto)
+  }
+
+  /**
+   * ¿Tiene que ir el lienzo por encima de todo (`pub-lienzo-encima`)? Si la
+   * burbuja vacía toca texto, para enseñarlo a través del cristal; y si
+   * cualquiera toca la cabecera o el pie, para no quedar cortada por su fondo.
+   * El resto del tiempo va detrás y no tapa nada. Si va encima y está vacía,
+   * rehace la textura del texto.
+   */
+  function atenderTexto(x: number, y: number, r: number, vacia: number) {
+    const conTexto = vacia > 0.5 && toca(refracta, x, y, r)
+    const encima = conTexto || toca(bordes, x, y, r)
+    lienzo.classList.toggle('pub-lienzo-encima', encima)
+    if (encima && vacia > 0.5) actualizarTexto()
+  }
+
   // El estado del resorte, en píxeles CSS de la ventana.
   let pos = { x: 0, y: 0 }
   const vel = { x: 0, y: 0 }
+  // El agua de dentro: se queda atrás cuando la burbuja acelera y luego va y
+  // viene hasta calmarse, y arrastra el relieve, el claro y lo que se ve a
+  // través. En radios, con la y hacia arriba como en el sombreador.
+  const ola = { x: 0, y: 0 }
+  const velOla = { x: 0, y: 0 }
   let radio = 0
   let velRadio = 0
   let iniciada = false
   const puntero = { x: -1e4, y: -1e4 }
+  // Solo un ratón o un lápiz «pasean» la burbuja: un dedo no tiene cursor.
+  let hayCursor = false
 
   // El carrusel: cuándo cambió por última vez y desde qué foto.
   let relevoDesde = performance.now()
@@ -331,7 +615,8 @@ export function montarBurbuja(
   /**
    * A dónde va la burbuja ahora: entre el ancla que queda por encima del
    * centro de la pantalla y la que viene por debajo, según lo cerca que está
-   * cada una. Entre dos anclas se aparta hacia el centro, como si se alejara.
+   * cada una. Se queda posada el primer y el último tramo del camino, y en
+   * medio se aparta hacia el centro, como si se alejara.
    */
   function objetivo() {
     const visibles = anclas
@@ -344,14 +629,15 @@ export function montarBurbuja(
     const a = visibles[i]
     const b = visibles[Math.min(i + 1, visibles.length - 1)]
     let s = 0
-    if (a !== b && a.rect.y < mitad) s = suave((mitad - a.rect.y) / (b.rect.y - a.rect.y))
+    if (a !== b && a.rect.y < mitad)
+      s = suave(((mitad - a.rect.y) / (b.rect.y - a.rect.y) - 0.12) / 0.76)
     const arco = Math.sin(Math.PI * s)
     return {
       x: a.rect.x + (b.rect.x - a.rect.x) * s - arco * ancho * 0.22,
       y: a.rect.y + (b.rect.y - a.rect.y) * s,
       r: (a.rect.r + (b.rect.r - a.rect.r) * s) * (1 - 0.22 * arco),
-      a: a.ancla,
-      b: b.ancla,
+      anclaA: a,
+      anclaB: b,
       s,
       lejania: arco
     }
@@ -368,6 +654,7 @@ export function montarBurbuja(
     fotoA: string
     fotoB: string
     mezcla: number
+    vacia: number
     tiempo: number
     vx: number
     vy: number
@@ -375,6 +662,8 @@ export function montarBurbuja(
     py: number
     cerca: number
     lejania: number
+    /** Cuánto se ha corrido el agua de dentro, en radios (y hacia arriba). */
+    ola: { x: number; y: number }
   }
 
   function dibujar(t: Trazo) {
@@ -383,16 +672,20 @@ export function montarBurbuja(
     gl.bindTexture(gl.TEXTURE_2D, textura(t.fotoA).tex)
     gl.activeTexture(gl.TEXTURE1)
     gl.bindTexture(gl.TEXTURE_2D, textura(t.fotoB).tex)
+    gl.activeTexture(gl.TEXTURE2)
+    gl.bindTexture(gl.TEXTURE_2D, texturaTexto)
     gl.uniform2f(uni.centro, t.x, t.y)
     gl.uniform1f(uni.radio, t.r)
     gl.uniform2f(uni.vista, ancho, alto)
     gl.uniform1f(uni.mezcla, t.mezcla)
+    gl.uniform1f(uni.vacia, t.vacia)
     gl.uniform1f(uni.tiempo, t.tiempo)
     gl.uniform2f(uni.velocidad, t.vx, t.vy)
     gl.uniform2f(uni.puntero, t.px, t.py)
     gl.uniform1f(uni.cerca, t.cerca)
     gl.uniform1f(uni.pixel, 1 / t.r)
     gl.uniform1f(uni.lejania, t.lejania)
+    gl.uniform2f(uni.ola, t.ola.x, t.ola.y)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
   }
 
@@ -410,15 +703,60 @@ export function montarBurbuja(
   function pasoQuieto(ahora: number) {
     gl.clearColor(0, 0, 0, 0)
     gl.clear(gl.COLOR_BUFFER_BIT)
+    let encima = false
+    let conTexto = false
     for (const ancla of anclas) {
       const rect = rectDe(ancla.nodo)
       if (!rect) continue
+      if (ancla.vacia && toca(refracta, rect.x, rect.y, rect.r)) conTexto = true
+      if (toca(bordes, rect.x, rect.y, rect.r)) encima = true
       const fotos =
         ancla.fotos.length > 1
           ? relevo(ancla, ahora)
           : { fotoA: ancla.fotos[0], fotoB: ancla.fotos[0], mezcla: 1 }
-      dibujar({ ...rect, ...fotos, tiempo: 0, vx: 0, vy: 0, px: 0, py: 0, cerca: 0, lejania: 0 })
+      dibujar({
+        ...rect,
+        ...fotos,
+        vacia: ancla.vacia ? 1 : 0,
+        tiempo: 0,
+        vx: 0,
+        vy: 0,
+        px: 0,
+        py: 0,
+        cerca: 0,
+        lejania: 0,
+        ola: { x: 0, y: 0 }
+      })
     }
+    lienzo.classList.toggle('pub-lienzo-encima', encima || conTexto)
+    if (conTexto) actualizarTexto()
+  }
+
+  /**
+   * A dónde la lleva el cursor, si está posada en un ancla que sigue y nada
+   * se lo impide; `null` si debe quedarse en su sitio.
+   */
+  function trasCursor(r: number, ancla: Rect): { x: number; y: number } | null {
+    if (!hayCursor) return null
+    // El ancla tiene que verse: una vez fuera de pantalla, no hay a quién seguir.
+    if (ancla.y + ancla.r < 0 || ancla.y - ancla.r > alto) return null
+    let tope = ancho + r * 0.4
+    for (const { nodo, lado } of evita) {
+      if (nodo.contains(document.activeElement)) return null
+      const caja = nodo.getBoundingClientRect()
+      const holgura = 24
+      if (
+        puntero.x > caja.left - holgura &&
+        puntero.x < caja.right + holgura &&
+        puntero.y > caja.top - holgura &&
+        puntero.y < caja.bottom + holgura
+      )
+        return null
+      if (lado && caja.bottom > 0 && caja.top < alto) tope = Math.min(tope, caja.left - r * 1.08)
+    }
+    // Puede asomarse por los bordes de la ventana y subir sobre la cabecera,
+    // como la de ThoughtLab.
+    return { x: entre(puntero.x, -r * 0.4, tope), y: entre(puntero.y, r * 0.2, alto - r * 0.2) }
   }
 
   function paso(ahora: number) {
@@ -431,44 +769,73 @@ export function montarBurbuja(
     anterior = ahora
     const meta = objetivo()
     if (!meta) return
+    const a = meta.anclaA.ancla
+    const b = meta.anclaB.ancla
+    const posada = meta.s < 0.001 || a === b
 
-    // El puntero atrae un poco a la burbuja cuando pasa cerca.
     const dx = puntero.x - pos.x
     const dy = puntero.y - pos.y
     const distancia = Math.hypot(dx, dy) / Math.max(radio, 1)
     const cerca = 1 - suave((distancia - 0.9) / 1.4)
-    const mx = meta.x + dx * 0.05 * cerca
-    const my = meta.y + dy * 0.05 * cerca
+    // Por defecto, el puntero solo la atrae un poco cuando pasa cerca.
+    let mx = meta.x + dx * 0.05 * cerca
+    let my = meta.y + dy * 0.05 * cerca
+    const tras = posada && a.sigue ? trasCursor(meta.r, meta.anclaA.rect) : null
+    if (tras) {
+      mx = tras.x
+      my = tras.y
+    } else if (a.sigue && posada) {
+      mx = meta.x
+      my = meta.y
+    }
+    // Posada, flota en su sitio: un vaivén lento y pequeño, como algo que
+    // lleva agua dentro, que nunca la deja quieta del todo.
+    if (posada) {
+      const seg = (ahora - inicio) / 1000
+      mx += Math.sin(seg * 0.53) * meta.r * 0.03 + Math.sin(seg * 1.17 + 1.3) * meta.r * 0.01
+      my += Math.cos(seg * 0.41) * meta.r * 0.035
+    }
+    const rigidez = tras ? RIGIDEZ_CURSOR : RIGIDEZ
+    const amortiguacion = tras ? AMORTIGUACION_CURSOR : AMORTIGUACION
 
     if (!iniciada) {
       pos = { x: mx, y: my }
       radio = meta.r
       iniciada = true
     }
-    vel.x += (RIGIDEZ * (mx - pos.x) - AMORTIGUACION * vel.x) * dt
-    vel.y += (RIGIDEZ * (my - pos.y) - AMORTIGUACION * vel.y) * dt
+    vel.x += (rigidez * (mx - pos.x) - amortiguacion * vel.x) * dt
+    vel.y += (rigidez * (my - pos.y) - amortiguacion * vel.y) * dt
     pos.x += vel.x * dt
     pos.y += vel.y * dt
     velRadio += (RIGIDEZ * (meta.r - radio) - AMORTIGUACION * velRadio) * dt
     radio += velRadio * dt
 
+    // El chapoteo: el agua quiere correrse al revés de como se mueve la
+    // burbuja, y un resorte poco amortiguado la hace ir y venir.
+    const empujeX = (-vel.x / Math.max(radio, 1)) * 0.09
+    const empujeY = (vel.y / Math.max(radio, 1)) * 0.09
+    velOla.x += (RIGIDEZ_OLA * (empujeX - ola.x) - AMORTIGUACION_OLA * velOla.x) * dt
+    velOla.y += (RIGIDEZ_OLA * (empujeY - ola.y) - AMORTIGUACION_OLA * velOla.y) * dt
+    ola.x = entre(ola.x + velOla.x * dt, -0.5, 0.5)
+    ola.y = entre(ola.y + velOla.y * dt, -0.5, 0.5)
+
     // Qué fotos se mezclan: en viaje, la del ancla de arriba con la de abajo;
     // posada en un ancla con carrusel, la anterior con la actual.
-    const posada = meta.s < 0.001 || meta.a === meta.b
     let fotos: { fotoA: string; fotoB: string; mezcla: number }
+    let vacia: number
     if (posada) {
-      fotos = relevo(meta.a, ahora)
+      fotos = relevo(a, ahora)
+      vacia = a.vacia ? 1 : 0
     } else {
-      fotos = {
-        fotoA: meta.a.fotos[meta.a.actual],
-        fotoB: meta.b.fotos[meta.b.actual],
-        mezcla: suave((meta.s - 0.3) / 0.4)
-      }
+      const mezcla = suave((meta.s - 0.3) / 0.4)
+      fotos = { fotoA: a.fotos[a.actual], fotoB: b.fotos[b.actual], mezcla }
+      vacia = (a.vacia ? 1 : 0) * (1 - mezcla) + (b.vacia ? 1 : 0) * mezcla
       // Al volver a posarse no se repite un relevo que ya ocurrió.
       fotoAnterior = null
       relevoDesde = ahora - CAMBIO_MS
     }
 
+    atenderTexto(pos.x, pos.y, radio, vacia)
     gl.clearColor(0, 0, 0, 0)
     gl.clear(gl.COLOR_BUFFER_BIT)
     dibujar({
@@ -476,23 +843,27 @@ export function montarBurbuja(
       y: pos.y,
       r: radio,
       ...fotos,
+      vacia,
       tiempo: (ahora - inicio) / 1000,
       vx: vel.x / radio,
       vy: -vel.y / radio,
       px: dx / radio,
       py: -dy / radio,
       cerca,
-      lejania: meta.lejania
+      lejania: meta.lejania,
+      ola
     })
   }
 
   function alMover(evento: PointerEvent) {
     puntero.x = evento.clientX
     puntero.y = evento.clientY
+    hayCursor = evento.pointerType === 'mouse' || evento.pointerType === 'pen'
   }
   function alSalir() {
     puntero.x = -1e4
     puntero.y = -1e4
+    hayCursor = false
   }
   function alCambiarVisibilidad() {
     cancelAnimationFrame(cuadro)
@@ -517,12 +888,14 @@ export function montarBurbuja(
   return () => {
     destruida = true
     cancelAnimationFrame(cuadro)
+    lienzo.classList.remove('pub-lienzo-encima')
     window.removeEventListener('resize', medir)
     window.removeEventListener('pointermove', alMover)
     document.documentElement.removeEventListener('pointerleave', alSalir)
     document.removeEventListener('visibilitychange', alCambiarVisibilidad)
     lienzo.removeEventListener('webglcontextlost', alPerder)
     texturas.forEach(({ tex }) => gl.deleteTexture(tex))
+    gl.deleteTexture(texturaTexto)
     gl.deleteBuffer(bufer)
     gl.deleteProgram(programa)
   }

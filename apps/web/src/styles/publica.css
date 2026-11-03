@@ -283,8 +283,10 @@ html:has(.publica) {
    referencia. Es la única excepción del fichero: nada más lleva sombra ni
    degradado.
 
-   Nunca se posa sobre texto: los huecos están donde no hay nada. Entre uno y
-   otro sí cruza por detrás de alguno, y por eso viaja oscurecida. */
+   Con foto nunca se posa sobre texto: los huecos están donde no hay nada, y
+   entre uno y otro cruza por detrás, oscurecida. Vacía (la del primer
+   pantallazo y la del acceso, con ratón) sí pasa por encima del texto y lo
+   enseña a través del cristal. */
 
 .publica .pub-lienzo {
   position: fixed;
@@ -293,6 +295,27 @@ html:has(.publica) {
   width: 100%;
   height: 100%;
   pointer-events: none;
+}
+
+/* Mientras la burbuja vacía toca texto (el titular, la cabecera, el pie…) el
+   lienzo sube por encima de todo, cabecera incluida: detrás, el fondo de la
+   cabecera y del pie la cortaba en recto. Lo pone y lo quita `lib/burbuja.ts`.
+   No captura el ratón. */
+.publica .pub-lienzo.pub-lienzo-encima {
+  z-index: 20;
+}
+
+/* Con ratón, la del primer pantallazo es la de ThoughtLab: grande, arriba y
+   montada sobre el final del titular, que se ve a través del cristal. Solo
+   con WebGL (si no, una foto opaca taparía el titular) y en pantallas anchas;
+   en las demás se queda en su columna, con el carrusel. */
+@media (min-width: 961px) {
+  .publica .pub-con-cursor .pub-burbuja-portada {
+    position: absolute;
+    top: clamp(0.5rem, 3vw, 3rem);
+    right: var(--pub-margen);
+    width: clamp(22rem, 38vw, 40rem);
+  }
 }
 
 /* El contenido va por encima del lienzo: lo que tiene fondo propio tapa la
@@ -1014,6 +1037,209 @@ html:has(.publica) {
 .publica .pub-legal-nota {
   color: var(--pub-tenue);
   font-size: var(--pub-texto-nota);
+}
+
+/* ---------- Acceso ----------
+   A la izquierda el capítulo «Entra.» con su frase y la burbuja; a la derecha
+   el formulario, en un panel propio y sin sombra, como las puertas de la
+   portada. En el teléfono el panel sube justo bajo el título y la burbuja no
+   sale: ahí lo único que importa es entrar. */
+
+.publica .pub-acceso {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: clamp(2.5rem, 6vw, 6rem);
+  align-items: start;
+  padding-block: clamp(2.5rem, 6vw, 5rem) 0;
+}
+
+/* Como en la portada: el contenido por encima del lienzo, salvo mientras la
+   burbuja vacía toca texto (`pub-lienzo-encima`, arriba). Nunca entra en el
+   panel del formulario. */
+.publica .pub-acceso > :not(.pub-lienzo) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Más grande que la de los capítulos: aquí es la protagonista de la mitad
+   izquierda. */
+.publica .pub-acceso-portada .pub-burbuja-ancla {
+  justify-self: start;
+  width: clamp(18rem, 32vw, 34rem);
+  margin-top: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+/* El punto hace de cursor: ámbar, tras la última letra escrita, y parpadea
+   cuando el título está completo. A saltos y no en fundido, como un cursor. */
+.publica .pub-tecleado-punto {
+  color: var(--pub-acento);
+}
+
+.publica .pub-tecleado-espera {
+  animation: pub-parpadeo 1.06s steps(1, end) infinite;
+}
+
+@keyframes pub-parpadeo {
+  0% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .publica .pub-tecleado-espera {
+    animation: none;
+  }
+}
+
+.publica .pub-acceso-panel {
+  padding: clamp(1.75rem, 3.5vw, 3rem);
+  background: var(--pub-superficie);
+}
+
+.publica .pub-acceso-panel h2 {
+  font-size: var(--pub-texto-titulo);
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.publica .pub-acceso-texto {
+  margin: 1rem 0 1.75rem;
+}
+
+.publica .pub-formulario {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1.75rem;
+}
+
+.publica .pub-campo {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.publica .pub-campo label {
+  color: var(--pub-blanco);
+  font-size: var(--pub-texto-nota);
+  font-weight: 600;
+}
+
+/* El borde #6b6b6b da 3,3 contra la superficie: el mínimo de 3 que pide un
+   control para verse. El texto, blanco sobre el lienzo: 19,8. */
+.publica .pub-campo input {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0 1rem;
+  border: 1px solid #6b6b6b;
+  border-radius: 10px;
+  background: var(--pub-lienzo);
+  color: var(--pub-blanco);
+  font: inherit;
+  transition: border-color 160ms var(--pub-entrada);
+}
+
+.publica .pub-campo input::placeholder {
+  color: var(--pub-tenue);
+}
+
+.publica .pub-campo input:hover {
+  border-color: var(--pub-tenue);
+}
+
+.publica .pub-campo input:focus-visible {
+  border-color: var(--pub-acento);
+  outline-offset: 2px;
+}
+
+.publica .pub-campo input[aria-invalid='true'] {
+  border-color: #ff9d8f;
+}
+
+/* El botón de mostrar va dentro del campo, a la derecha, y el texto del
+   campo deja sitio para que no se meta debajo. */
+.publica .pub-campo-clave {
+  position: relative;
+}
+
+.publica .pub-campo-clave input {
+  padding-right: 6.5rem;
+}
+
+.publica .pub-campo-ver {
+  position: absolute;
+  top: 50%;
+  right: 0.375rem;
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pub-blanco);
+  font: inherit;
+  font-size: var(--pub-texto-nota);
+  font-weight: 600;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.publica .pub-campo-ver:hover {
+  background: rgb(255 255 255 / 9%);
+}
+
+/* Contraste: #ff9d8f sobre la superficie 8,8; el ámbar 8,5. */
+.publica .pub-campo-error {
+  color: #ff9d8f;
+  font-size: var(--pub-texto-nota);
+}
+
+.publica .pub-campo-nota {
+  color: var(--pub-acento);
+  font-size: var(--pub-texto-nota);
+}
+
+/* #ffc2b8 sobre #2b1513: 11,4. */
+.publica .pub-error {
+  padding: 0.875rem 1rem;
+  background: #2b1513;
+  color: #ffc2b8;
+}
+
+.publica .pub-acceso-entrar {
+  justify-self: start;
+  min-width: 10rem;
+}
+
+.publica .pub-boton:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* A tamaño de cuerpo y en tinta, no en gris pequeño: es lo que lee quien no
+   consigue entrar, y ese no es el momento de hacérselo difícil. */
+.publica .pub-acceso-ayuda {
+  margin-top: 1.75rem;
+}
+
+.publica .pub-acceso-ayuda a {
+  color: var(--pub-blanco);
+  text-decoration-color: var(--pub-acento);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+  .publica .pub-acceso {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+
+  .publica .pub-acceso-entrar {
+    justify-self: stretch;
+  }
 }
 
 /* ---------- Las otras dos páginas de la cáscara ----------

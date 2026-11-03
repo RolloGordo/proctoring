@@ -73,12 +73,23 @@ function Marca({ a }: { a: string }) {
   )
 }
 
-/** La portada, el acceso y las páginas que no existen. */
 /**
+ * La portada, el acceso y las páginas que no existen.
+ *
  * `creditos` es la línea de autoría de las fotos de la página, si las tiene:
- * va al pie, pequeña, que es donde se busca.
+ * va al pie, pequeña, que es donde se busca. `enAcceso` quita de la cabecera
+ * el botón de iniciar sesión, que en la propia pantalla de acceso llevaría a
+ * donde ya se está.
  */
-export function CapaPublica({ children, creditos }: { children: ReactNode; creditos?: ReactNode }) {
+export function CapaPublica({
+  children,
+  creditos,
+  enAcceso = false
+}: {
+  children: ReactNode
+  creditos?: ReactNode
+  enAcceso?: boolean
+}) {
   const { token, rol } = useAuth()
   const conSesion = authEnabled && token !== undefined
 
@@ -99,9 +110,11 @@ export function CapaPublica({ children, creditos }: { children: ReactNode; credi
             <a href="/#principios" className="oculta-movil">
               Principios
             </a>
-            <Link to={destino} className="boton boton-compacto">
-              {texto}
-            </Link>
+            {!enAcceso && (
+              <Link to={destino} className="boton boton-compacto">
+                {texto}
+              </Link>
+            )}
           </nav>
         </div>
       </header>
