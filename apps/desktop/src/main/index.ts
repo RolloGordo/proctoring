@@ -113,6 +113,9 @@ function createWindow(protocolSessionId?: string): BrowserWindow {
     width: 900,
     height: 670,
     show: false,
+    // El negro de la web: sin esto, cada recarga pinta un destello blanco
+    // antes de que la página oscura del examen termine de cargar.
+    backgroundColor: '#0a0a0a',
     autoHideMenuBar: true,
     // Modo kiosco solo fuera de desarrollo; para probarlo: PROCTORING_KIOSK=1
     kiosk: !is.dev || process.env['PROCTORING_KIOSK'] === '1',

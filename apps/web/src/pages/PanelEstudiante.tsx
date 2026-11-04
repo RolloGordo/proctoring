@@ -4,24 +4,31 @@ import { ChipEstado } from '../components/ChipEstado'
 import { FormularioCodigo } from '../components/FormularioCodigo'
 import { api, comoExamenUnido, type MyCourse, type MyExam } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
-import { cuandoEmpieza, estadoExamen, fechaLarga } from '../lib/formato'
+import { cuandoEmpieza, estadoExamen, fechaLarga, horaCorta } from '../lib/formato'
 
 /**
- * El panel del estudiante: lo que le toca hacer y lo que ya hizo.
+ * El panel del estudiante: **qué le toca rendir, y cuándo**.
  *
- * Sigue el patrón de los paneles de Canvas y Moodle —una lista de "por hacer"
- * con fechas y lo ya entregado con su nota— pero corto: con demasiados datos el
- * estudiante no sabe qué mirar, y con muy pocos se pierde.
+ * Lo primero es lo que tiene por rendir, con el que se puede abrir ya delante
+ * y la hora a la que se le cierra el ingreso: es lo que más importa en ese
+ * momento, y antes no estaba en ninguna parte. Debajo, lo entregado con su
+ * nota. Al lado, entrar con un código y sus clases, que son el complemento.
+ *
+ * Sigue el patrón de los paneles de Canvas y Moodle —«por hacer» con fechas y
+ * lo entregado con su nota— pero corto: con demasiados datos el estudiante no
+ * sabe qué mirar.
  */
 export function PanelEstudiante() {
-  const { token, email } = useAuth()
+  const { token } = useAuth()
   const [examenes, setExamenes] = useState<MyExam[]>()
   const [clases, setClases] = useState<MyCourse[]>([])
   const [error, setError] = useState<string>()
+  const [reintentos, setReintentos] = useState(0)
+  // El ingreso se cierra a una hora: un reloj cada 30 s basta.
   const [ahora, setAhora] = useState(() => Date.now())
 
   useEffect(() => {
-    const temporizador = setInterval(() => setAhora(Date.now()), 60_000)
+    const temporizador = setInterval(() => setAhora(Date.now()), 30_000)
     return () => clearInterval(temporizador)
   }, [])
 
@@ -34,7 +41,7 @@ export function PanelEstudiante() {
     return () => {
       cancelado = true
     }
-  }, [token])
+  }, [token, reintentos])
 
   // Las clases son un complemento: si fallan, el panel sigue sirviendo.
   useEffect(() => {
@@ -48,64 +55,80 @@ export function PanelEstudiante() {
     }
   }, [token])
 
-  const { porRendir, entregados } = useMemo(
-    () => ({
-      porRendir: (examenes ?? []).filter((e) => e.submitted_at === null),
-      entregados: (examenes ?? []).filter((e) => e.submitted_at !== null)
-    }),
-    [examenes]
-  )
+  const { porRendir, entregados } = useMemo(() => {
+    const pendientes = (examenes ?? []).filter((e) => e.submitted_at === null)
+    // Lo que se puede abrir ya, delante; después, por fecha.
+    pendientes.sort(
+      (a, b) =>
+        Number(b.can_enter_now) - Number(a.can_enter_now) ||
+        new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+    )
+    return {
+      porRendir: pendientes,
+      entregados: (examenes ?? [])
+        .filter((e) => e.submitted_at !== null)
+        .sort(
+          (a, b) =>
+            new Date(b.submitted_at ?? 0).getTime() - new Date(a.submitted_at ?? 0).getTime()
+        )
+    }
+  }, [examenes])
+
+  const abierto = porRendir.find((e) => e.can_enter_now && !e.cancelled)
+  const proximo = porRendir.find((e) => !e.cancelled && new Date(e.starts_at).getTime() > ahora)
+  const hallazgo = !examenes
+    ? undefined
+    : abierto
+      ? `Puedes entrar a ${abierto.title} ahora.`
+      : proximo
+        ? `Tu próximo examen empieza ${cuandoEmpieza(new Date(proximo.starts_at).getTime() - ahora)}.`
+        : 'No tienes exámenes pendientes.'
 
   return (
-    <>
-      <div className="encabezado-pagina">
+    <div className="inicio-estudiante">
+      <header className="encabezado-pagina">
         <div>
-          <h1>Mi panel</h1>
-          {email && <p className="subtitulo">{email}</p>}
+          <h1>Panel</h1>
+          {hallazgo && <p className="inicio-hallazgo">{hallazgo}</p>}
         </div>
-      </div>
+      </header>
 
-      <section className="bloque">
-        <div className="tarjeta">
-          <div className="tarjeta-cuerpo tarjeta-codigo">
-            <div>
-              <h2>Entrar a un examen</h2>
-              <p className="subtitulo">Escribe el código que te dio tu docente</p>
+      <div className="estudiante-columnas">
+        <div className="estudiante-principal">
+          {error && (
+            <div className="aviso" role="alert">
+              <p>No se pudieron cargar tus exámenes: {error}</p>
+              <button
+                type="button"
+                className="boton boton-secundario"
+                onClick={() => {
+                  setError(undefined)
+                  setReintentos((actual) => actual + 1)
+                }}
+              >
+                Reintentar
+              </button>
             </div>
-            <FormularioCodigo compacto />
-          </div>
-        </div>
-      </section>
+          )}
 
-      {clases.length > 0 && (
-        <section className="bloque">
-          <h2>Mis clases</h2>
-          <div className="rejilla-clases">
-            {clases.map((clase) => (
-              <TarjetaClase key={clase.id} clase={clase} ahora={ahora} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {error && <p className="aviso">{error}</p>}
-      {!examenes && !error && <p className="tenue">Cargando tus exámenes…</p>}
-
-      {examenes && (
-        <>
-          <section className="bloque">
-            <h2>Por rendir</h2>
-            {porRendir.length === 0 ? (
-              <div className="tarjeta">
-                <div className="vacio">
-                  <h3>No tienes exámenes pendientes</h3>
-                  <p className="subtitulo">
-                    Cuando tu docente te dé un código, escríbelo arriba y aparecerá aquí.
-                  </p>
-                </div>
+          <section className="tarjeta inicio-lista" aria-labelledby="por-rendir">
+            <div className="encabezado-seccion">
+              <h2 id="por-rendir">
+                Por rendir {examenes && <span className="inicio-cuenta">{porRendir.length}</span>}
+              </h2>
+            </div>
+            {!examenes && !error ? (
+              <div className="inicio-cargando-bloque" aria-busy="true">
+                <span className="barra-carga" style={{ width: '60%' }} />
+                <span className="barra-carga" style={{ width: '40%' }} />
               </div>
+            ) : porRendir.length === 0 ? (
+              <p className="inicio-vacio">
+                No tienes exámenes pendientes. Cuando tu docente te dé un código, escríbelo aquí al
+                lado y aparecerá en esta lista.
+              </p>
             ) : (
-              <ul className="lista-examenes">
+              <ul className="inicio-filas">
                 {porRendir.map((examen) => (
                   <FilaPorRendir key={examen.session_id} examen={examen} ahora={ahora} />
                 ))}
@@ -113,74 +136,84 @@ export function PanelEstudiante() {
             )}
           </section>
 
-          <section className="bloque">
-            <h2>Entregados</h2>
-            {entregados.length === 0 ? (
-              <div className="tarjeta">
-                <div className="vacio">
-                  <h3>Todavía no has entregado ningún examen</h3>
-                </div>
+          <section className="tarjeta inicio-lista" aria-labelledby="entregados">
+            <div className="encabezado-seccion">
+              <h2 id="entregados">Entregados</h2>
+            </div>
+            {!examenes && !error ? (
+              <div className="inicio-cargando-bloque" aria-busy="true">
+                <span className="barra-carga" style={{ width: '50%' }} />
               </div>
+            ) : entregados.length === 0 ? (
+              <p className="inicio-vacio">Todavía no has entregado ningún examen.</p>
             ) : (
-              <div className="tarjeta">
-                <table className="tabla">
-                  <thead>
-                    <tr>
-                      <th>Examen</th>
-                      <th>Entregado</th>
-                      <th className="numero">Nota</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {entregados.map((examen) => (
-                      <tr key={examen.session_id}>
-                        <td className="celda-titulo">
-                          <Link to={`/estudiante/examenes/${examen.session_id}`}>
-                            {examen.title}
-                          </Link>
-                          <span className="celda-detalle">Ver respuestas y señales</span>
-                        </td>
-                        <td className="hora">
-                          {examen.submitted_at ? fechaLarga(examen.submitted_at) : '—'}
-                        </td>
-                        <td className="numero">
-                          <Nota examen={examen} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ul className="inicio-filas">
+                {entregados.map((examen) => (
+                  <li key={examen.session_id}>
+                    <div className="inicio-fila-texto">
+                      <Link to={`/estudiante/examenes/${examen.session_id}`}>{examen.title}</Link>
+                      <span>
+                        Entregado el {fechaLarga(examen.submitted_at ?? examen.ends_at)} · Ver
+                        respuestas y señales
+                      </span>
+                    </div>
+                    <Nota examen={examen} />
+                  </li>
+                ))}
+              </ul>
             )}
           </section>
-        </>
-      )}
-    </>
+        </div>
+
+        <aside className="estudiante-lado">
+          <section className="tarjeta estudiante-codigo" aria-labelledby="con-codigo">
+            <h2 id="con-codigo">Entrar con un código</h2>
+            <p className="subtitulo">El que te dio tu docente. Da igual si va en minúsculas.</p>
+            <FormularioCodigo compacto principal={!abierto} />
+          </section>
+
+          {clases.length > 0 && (
+            <section className="tarjeta inicio-lista" aria-labelledby="mis-clases">
+              <div className="encabezado-seccion">
+                <h2 id="mis-clases">Mis clases</h2>
+              </div>
+              <ul className="inicio-filas">
+                {clases.map((clase) => (
+                  <FilaClase key={clase.id} clase={clase} ahora={ahora} />
+                ))}
+              </ul>
+            </section>
+          )}
+        </aside>
+      </div>
+    </div>
   )
 }
 
 function FilaPorRendir({ examen, ahora }: { examen: MyExam; ahora: number }) {
   const estado = estadoExamen(examen.starts_at, examen.duration_minutes, ahora, examen.cancelled)
-  const empiezaEn = new Date(examen.starts_at).getTime() - ahora
+  const inicio = new Date(examen.starts_at).getTime()
+  const cierraIngreso = inicio + examen.entry_tolerance_minutes * 60_000
 
   let detalle: string
   // Lo primero: un examen cancelado no "empieza en 3 horas".
   if (examen.cancelled) detalle = 'Tu docente canceló este examen'
-  else if (examen.can_enter_now) detalle = 'Puedes entrar ahora'
-  else if (estado === 'programado') detalle = `Empieza ${cuandoEmpieza(empiezaEn)}`
+  else if (examen.can_enter_now)
+    detalle = `Puedes entrar ahora · el ingreso cierra a las ${horaCorta(new Date(cierraIngreso).toISOString())}`
+  else if (estado === 'programado') detalle = `Empieza ${cuandoEmpieza(inicio - ahora)}`
   else if (estado === 'en_curso') detalle = 'El plazo de ingreso terminó'
   else detalle = 'No lo entregaste a tiempo'
 
   return (
-    <li className="tarjeta fila-examen">
-      <div>
-        <h3>{examen.title}</h3>
-        <p className="subtitulo">
+    <li className={examen.can_enter_now && !examen.cancelled ? 'estudiante-abierto' : undefined}>
+      <div className="inicio-fila-texto">
+        <strong>{examen.title}</strong>
+        <span>
           {fechaLarga(examen.starts_at)} · {examen.duration_minutes} min
-        </p>
-        <p className={examen.can_enter_now ? 'detalle-examen activo' : 'detalle-examen'}>
+        </span>
+        <span className={examen.can_enter_now ? 'estudiante-detalle activo' : 'estudiante-detalle'}>
           {detalle}
-        </p>
+        </span>
       </div>
       {examen.cancelled ? (
         // Sin enlace: no hay a dónde ir, y un botón que lleva a una pantalla de
@@ -212,52 +245,47 @@ function Nota({ examen }: { examen: MyExam }) {
   }
 
   return (
-    <>
+    <span className="estudiante-nota">
       <strong>
         {examen.score}
-        {examen.max_score !== null && ` de ${examen.max_score}`}
+        {examen.max_score !== null && <span className="tenue"> / {examen.max_score}</span>}
       </strong>
       {examen.pending_manual_review && (
-        <span className="chip chip-programado nota-aviso">Faltan desarrollos por calificar</span>
+        <span className="chip chip-programado">Faltan desarrollos por calificar</span>
       )}
-    </>
+    </span>
   )
 }
 
 /**
- * Una clase y lo que viene en ella.
+ * Una clase y lo próximo que viene en ella.
  *
  * Solo muestra cuándo es cada examen. Estar en la clase no da acceso al examen:
  * para rendirlo hace falta el código que reparte el docente.
  */
-function TarjetaClase({ clase, ahora }: { clase: MyCourse; ahora: number }) {
-  const proximos = clase.exams
+function FilaClase({ clase, ahora }: { clase: MyCourse; ahora: number }) {
+  const siguiente = clase.exams
     .filter((e) => new Date(e.starts_at).getTime() + e.duration_minutes * 60_000 >= ahora)
-    .slice(0, 3)
+    .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())[0]
 
   return (
-    <div className="tarjeta tarjeta-clase">
-      <h3>
-        <Link to={`/estudiante/cursos/${clase.id}`}>{clase.name}</Link>
-      </h3>
-      {clase.section && <p className="subtitulo">Sección {clase.section}</p>}
-      {proximos.length === 0 ? (
-        <p className="ayuda">No hay exámenes próximos.</p>
-      ) : (
-        <ul className="lista-clase">
-          {proximos.map((examen) => (
-            <li key={examen.session_id}>
-              <strong>{examen.title}</strong>
-              <span className="tenue">{fechaLarga(examen.starts_at)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {/* Las tarjetas solo muestran lo que viene; el curso entero, con lo ya
-          rendido y su nota, esta detras de este enlace. */}
-      <Link to={`/estudiante/cursos/${clase.id}`} className="boton boton-texto">
-        Ver el curso
-      </Link>
-    </div>
+    <li>
+      <div className="inicio-fila-texto">
+        <Link to={`/estudiante/cursos/${clase.id}`}>
+          {clase.name}
+          {clase.section && <span className="tenue"> · Sección {clase.section}</span>}
+        </Link>
+        <span>
+          {siguiente ? (
+            <>
+              {siguiente.title} ·{' '}
+              <span className="sin-corte">{fechaLarga(siguiente.starts_at)}</span>
+            </>
+          ) : (
+            'Sin exámenes próximos'
+          )}
+        </span>
+      </div>
+    </li>
   )
 }

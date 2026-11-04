@@ -190,9 +190,8 @@ export function CapaPanel({ rol, children }: { rol: Rol; children: ReactNode }) 
     : []
 
   return (
-    // El docente ya tiene el tema oscuro de la portada (`panel-oscuro.css`);
-    // el estudiante sigue claro hasta que le toque su rediseño.
-    <div className={rol === 'teacher' ? 'app tema-oscuro' : 'app'}>
+    // El tema oscuro de la portada (`panel-oscuro.css`), para los dos roles.
+    <div className="app tema-oscuro">
       <header className="app-movil">
         <Marca a={inicio} />
         <button
@@ -275,7 +274,8 @@ export function CapaPanel({ rol, children }: { rol: Rol; children: ReactNode }) 
 /** Quien está rindiendo: solo la marca y un recordatorio. Ni un enlace. */
 export function CapaExamen({ children }: { children: ReactNode }) {
   return (
-    <div className="examen-marco">
+    // También mientras rinde: la misma casa que el panel del que viene.
+    <div className="examen-marco tema-oscuro">
       <header className="examen-cabecera">
         <span className="marca">
           Proc<span>toring</span>
