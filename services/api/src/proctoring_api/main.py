@@ -520,6 +520,8 @@ def create_app(
         # uno: esas no tienen sesion propia, asi que sin esto se rechazaban
         # todas las senales de camara de un examen armado desde un banco.
         bank_repository if settings.event_repository == "supabase" else None,
+        # Para descartar lo que el docente no activo en un examen personalizado.
+        session_repository,
     )
     app.state.list_session_events = ListSessionEvents(event_repository, session_repository)
     app.state.list_session_alerts = ListSessionAlerts(alert_repository, session_repository)
@@ -685,7 +687,9 @@ def create_app(
         EvidenceKind.AUDIO: settings.supabase_audio_bucket,
         EvidenceKind.REFERENCE_FACE: settings.supabase_reference_faces_bucket,
     }
-    app.state.create_evidence_upload_url = CreateEvidenceUploadUrl(evidence_storage, buckets)
+    app.state.create_evidence_upload_url = CreateEvidenceUploadUrl(
+        evidence_storage, buckets, session_repository
+    )
     app.state.evidence_read_url = CreateEvidenceReadUrl(
         evidence_storage, buckets, session_repository
     )

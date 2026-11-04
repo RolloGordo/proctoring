@@ -16,9 +16,11 @@ de un error.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from proctoring_api.application.ports.clock import Clock
@@ -30,6 +32,7 @@ from proctoring_api.domain.errors import AuthorizationError, DomainError
 from proctoring_api.domain.exam_session import (
     ExamSession,
     InvalidExamSessionError,
+    SupervisionModule,
     SupervisionPreset,
 )
 from proctoring_api.domain.user import AuthenticatedUser
@@ -61,9 +64,43 @@ class ExamSessionChanges:
     shuffle_options: bool | None = None
     allow_back_navigation: bool | None = None
     reveal_code_at_start: bool | None = None
+    #: Los modulos elegidos a mano. Solo valen con el preset `custom`; los
+    #: umbrales que no se envien los completa el dominio.
+    modules: Mapping[SupervisionModule, Mapping[str, Any]] | None = None
     clear_description: bool = False
     clear_course: bool = False
     clear_pool_size: bool = False
+
+    def without_what_is_already_there(self, session: ExamSession) -> ExamSessionChanges:
+        """Los mismos cambios, sin los campos que ya tienen ese valor.
+
+        La pantalla de edicion manda el formulario entero, nivel de supervision
+        incluido. Sin esto, corregir solo el titulo de un examen con gente
+        dentro chocaba con "no se puede cambiar el nivel de supervision",
+        aunque nadie lo estuviera cambiando.
+        """
+        modulos_iguales = (
+            self.modules is not None
+            and set(self.modules) == set(session.modules)
+            and all(not ajustes for ajustes in self.modules.values())
+        )
+        return replace(
+            self,
+            preset=None if self.preset is session.preset else self.preset,
+            max_score=None
+            if self.max_score is not None and self.max_score == session.max_score
+            else self.max_score,
+            question_pool_size=None
+            if self.question_pool_size == session.question_pool_size
+            else self.question_pool_size,
+            shuffle_questions=None
+            if self.shuffle_questions == session.shuffle_questions
+            else self.shuffle_questions,
+            shuffle_options=None
+            if self.shuffle_options == session.shuffle_options
+            else self.shuffle_options,
+            modules=None if modulos_iguales else self.modules,
+        )
 
     def touches_the_exam_itself(self) -> bool:
         """Si cambia de qué va el examen, no solo cómo se presenta.
@@ -87,6 +124,7 @@ class ExamSessionChanges:
                     self.shuffle_questions,
                     self.shuffle_options,
                     self.preset,
+                    self.modules,
                 )
             )
             or self.clear_pool_size
@@ -131,6 +169,8 @@ class UpdateExamSession:
         if changes.course_id is not None and not changes.clear_course:
             self._check_course(changes.course_id, sesion.teacher_id)
 
+        changes = changes.without_what_is_already_there(sesion)
+
         if changes.touches_the_exam_itself() and self._anyone_inside(session_id):
             raise ExamInUseError(
                 "Ya hay estudiantes en este examen: no se puede cambiar la nota maxima, "
@@ -152,6 +192,7 @@ class UpdateExamSession:
             shuffle_options=changes.shuffle_options,
             allow_back_navigation=changes.allow_back_navigation,
             reveal_code_at_start=changes.reveal_code_at_start,
+            modules=changes.modules,
             clear_description=changes.clear_description,
             clear_course=changes.clear_course,
             clear_pool_size=changes.clear_pool_size,

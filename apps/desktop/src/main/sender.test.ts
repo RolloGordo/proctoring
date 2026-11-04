@@ -114,6 +114,12 @@ describe('event sender authentication', () => {
     // Storage real y el evento se guardara sin captura sin que nadie se entere.
     expect(requests.map((request) => request.method)).toEqual(['POST', 'PUT', 'POST'])
     expect(requests[0]?.url).toBe('http://localhost:8000/api/v1/evidence/upload-url')
+    // De qué señal es la captura: la API no da permiso para la de un módulo
+    // que el docente apagó (HU-031).
+    expect(JSON.parse(requests[0]?.body ?? '{}')).toMatchObject({
+      kind: 'image',
+      event_type: 'suspicious_process'
+    })
     expect(requests[1]?.url).toBe(
       'https://example.supabase.co/storage/v1/object/upload/sign/evidences/session/student/evidence.jpg?token=signed-upload-token'
     )

@@ -454,3 +454,78 @@ class TestPanelDelEstudiante:
             [mio] = client.get("/api/v1/me/exams", headers=bearer(STUDENT_TOKEN)).json()
 
         assert mio["max_score"] == 20.0
+
+
+class TestPersonalizado:
+    def test_se_crea_y_se_edita_modulo_a_modulo(self, authed_client: TestClient) -> None:
+        examen = crear_examen(
+            authed_client,
+            preset="custom",
+            modules={"focus_loss": {}, "multi_monitor": {}},
+        )
+        assert examen["preset"] == "custom"
+        assert examen["watched_modules"] == ["focus_loss", "multi_monitor"]
+
+        respuesta = authed_client.patch(
+            f"/api/v1/sessions/{examen['id']}",
+            json={"preset": "custom", "modules": {"gaze": {}, "face_verification": {}}},
+            headers=bearer(TEACHER_TOKEN),
+        )
+
+        assert respuesta.status_code == 200, respuesta.text
+        datos = respuesta.json()
+        assert datos["preset"] == "custom"
+        assert set(datos["modules"]) == {"gaze", "face_verification"}
+        # Los umbrales los pone la API.
+        assert datos["modules"]["gaze"]["yaw_degrees"] == 25
+
+    def test_un_preset_le_cuenta_al_estudiante_lo_de_escritorio(
+        self, authed_client: TestClient
+    ) -> None:
+        examen = crear_examen(authed_client, preset="basic")
+
+        assert "screen_capture" not in examen["modules"]
+        assert {"focus_loss", "multi_monitor", "screen_capture", "copy_paste_block"} <= set(
+            examen["watched_modules"]
+        )
+
+    def test_la_senal_de_un_modulo_apagado_se_rechaza(self, authed_client: TestClient) -> None:
+        examen = crear_examen(authed_client, preset="custom", modules={"focus_loss": {}})
+        evento = {
+            "session_id": examen["id"],
+            "student_id": str(CONTRACT_STUDENT_ID),
+            "question_id": None,
+            "event_type": "suspicious_process",
+            "started_at": NOW.isoformat(),
+            "duration_ms": 0,
+            "metadata": {"process_name": "AnyDesk.exe"},
+            "evidence_path": None,
+        }
+
+        rechazado = authed_client.post("/api/v1/events", json=evento, headers=bearer(STUDENT_TOKEN))
+        aceptado = authed_client.post(
+            "/api/v1/events",
+            json={**evento, "event_type": "focus_lost", "duration_ms": 6000, "metadata": {}},
+            headers=bearer(STUDENT_TOKEN),
+        )
+
+        assert rechazado.status_code == 400, rechazado.text
+        assert "no vigila" in rechazado.json()["detail"]
+        assert aceptado.status_code == 201, aceptado.text
+
+    def test_no_se_da_permiso_para_subir_la_captura(self, authed_client: TestClient) -> None:
+        examen = crear_examen(authed_client, preset="custom", modules={"focus_loss": {}})
+
+        respuesta = authed_client.post(
+            "/api/v1/evidence/upload-url",
+            json={
+                "session_id": examen["id"],
+                "student_id": str(CONTRACT_STUDENT_ID),
+                "kind": "image",
+                "extension": "jpg",
+                "event_type": "extra_display",
+            },
+            headers=bearer(STUDENT_TOKEN),
+        )
+
+        assert respuesta.status_code == 400, respuesta.text

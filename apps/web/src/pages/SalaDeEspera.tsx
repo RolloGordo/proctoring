@@ -8,29 +8,12 @@ import { cuandoEmpieza, fechaLarga } from '../lib/formato'
 import { VerificacionFacialEspera } from './VerificacionFacialEspera'
 import { PruebaMicrofono } from '../supervision/PruebaMicrofono'
 import { CalibracionMirada } from '../components/CalibracionMirada'
+import { agrupar, dispositivosQueUsa, modulosVigilados } from '../lib/modulos'
 
-/** Nombre legible de cada módulo de supervisión, para que el estudiante sepa
- *  qué se va a observar. Decírselo no es un trámite: es la base del
- *  consentimiento, y el sistema vigila, no espía. */
 /** Cada cuánto se vuelve a preguntar si el docente ya admitió al estudiante.
  *  Diez segundos: suficiente para que no se sienta colgado, y poco tráfico
  *  aunque haya treinta personas esperando a la vez. */
 const ESPERA_MS = 10_000
-
-const MODULOS: Record<string, string> = {
-  face_verification: 'Verificación de identidad por rostro',
-  face_reverification: 'Reverificación de identidad durante el examen',
-  focus_loss: 'Salidas de la ventana del examen',
-  copy_paste_block: 'Bloqueo de copiar y pegar',
-  multi_monitor: 'Monitores adicionales conectados',
-  gaze: 'Mirada fuera de la pantalla',
-  extra_person: 'Presencia de otra persona en cámara',
-  objects: 'Objetos no permitidos',
-  external_voices: 'Voces externas',
-  ai_voice: 'Consulta a un asistente de IA por voz',
-  live_monitoring: 'Supervisión en vivo por el docente',
-  screen_capture: 'Aplicaciones de captura o control remoto'
-}
 
 /**
  * Sala de espera y **consentimiento**.
@@ -162,7 +145,13 @@ export function SalaDeEspera() {
   }
 
   const empiezaEn = new Date(examen.starts_at).getTime() - ahora
-  const modulos = Object.keys(examen.modules).filter((m) => MODULOS[m])
+  // Lo que se vigila de verdad, no solo lo que enciende la web: en los niveles
+  // ya armados la app de escritorio vigila además la ventana, los monitores y
+  // los programas. Decírselo no es un trámite: es la base del consentimiento.
+  const vigilados = modulosVigilados(examen)
+  const grupos = agrupar(vigilados)
+  const usa = dispositivosQueUsa(vigilados)
+  const noUsa = [!usa.camara && 'tu cámara', !usa.microfono && 'tu micrófono'].filter(Boolean)
   const yaConsintio = matricula?.consent_at != null
   const yaEntrego = matricula?.submitted_at != null
   // Antes de la hora no se ofrece aceptar: pulsarlo daba un error, y encima uno
@@ -220,19 +209,29 @@ export function SalaDeEspera() {
         </div>
       </div>
 
-      {modulos.length > 0 && (
+      {grupos.length > 0 && (
         <div className="tarjeta">
           <div className="tarjeta-cuerpo">
             <h2>Qué se va a supervisar</h2>
             <p className="subtitulo">
-              Durante el examen se registran estas señales. No se graba video continuo: solo se
-              guardan los avisos puntuales y la evidencia asociada.
+              Durante el examen se registran estas señales y nada más. No se graba video continuo:
+              solo se guardan los avisos puntuales y la evidencia asociada.
             </p>
-            <ul className="lista-modulos">
-              {modulos.map((modulo) => (
-                <li key={modulo}>{MODULOS[modulo]}</li>
+            <div className="sala-modulos">
+              {grupos.map(({ grupo, modulos }) => (
+                <section key={grupo.id} aria-labelledby={`sala-grupo-${grupo.id}`}>
+                  <h3 id={`sala-grupo-${grupo.id}`}>{grupo.estudiante}</h3>
+                  <ul className="lista-modulos">
+                    {modulos.map((m) => (
+                      <li key={m.id}>{m.paraEstudiante}</li>
+                    ))}
+                  </ul>
+                </section>
               ))}
-            </ul>
+            </div>
+            {noUsa.length > 0 && (
+              <p className="sala-no-usa">Este examen no usa {noUsa.join(' ni ')}.</p>
+            )}
             <p className="ayuda">
               El sistema no decide nada por su cuenta. Si aparece un aviso, lo revisa tu docente y
               es él quien resuelve, con una justificación escrita.
@@ -254,7 +253,10 @@ export function SalaDeEspera() {
         </p>
       )}
 
-      {yaConsintio && matricula && !matricula.can_take_exam && !yaEntrego &&
+      {yaConsintio &&
+        matricula &&
+        !matricula.can_take_exam &&
+        !yaEntrego &&
         requiereVerificacionFacial && (
           <VerificacionFacialEspera
             sessionId={id}

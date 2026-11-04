@@ -54,6 +54,7 @@ def create_evidence_upload_url(
             student_id=payload.student_id,
             kind=payload.kind,
             extension=payload.extension,
+            event_type=payload.event_type,
         ),
         actor=current_user,
     )

@@ -25,6 +25,24 @@ export type Severity = 'low' | 'medium' | 'high'
 export type SessionStatus = 'draft' | 'scheduled' | 'in_progress' | 'finished' | 'cancelled'
 export type SupervisionPreset = 'basic' | 'standard' | 'strict' | 'custom'
 
+/** Los módulos de supervisión. Igual que `supervision_module` de PostgreSQL. */
+export type SupervisionModule =
+  | 'face_verification'
+  | 'face_reverification'
+  | 'focus_loss'
+  | 'copy_paste_block'
+  | 'multi_monitor'
+  | 'gaze'
+  | 'extra_person'
+  | 'objects'
+  | 'external_voices'
+  | 'ai_voice'
+  | 'live_monitoring'
+  | 'screen_capture'
+
+/** Lo que el docente elige en un examen personalizado. Los umbrales los pone la API. */
+export type ChosenModules = Partial<Record<SupervisionModule, Record<string, unknown>>>
+
 export interface ExamSessionSummary {
   id: string
   title: string
@@ -59,6 +77,12 @@ export interface ExamSession extends ExamSessionSummary {
   /** Cuándo lo canceló el docente. `null` mientras siga en pie. */
   cancelled_at: string | null
   modules: Record<string, Record<string, unknown>>
+  /**
+   * Todo lo que se registra: `modules` más lo que la app de escritorio vigila
+   * por su cuenta en los presets. Opcional porque la API (Render, de `develop`)
+   * y la web (Vercel, de `main`) se despliegan por separado.
+   */
+  watched_modules?: SupervisionModule[]
 }
 
 export interface ProctoringEvent {
@@ -108,15 +132,12 @@ export interface JoinedExam {
   entry_tolerance_minutes: number
   can_enter_now: boolean
   modules: Record<string, Record<string, unknown>>
+  /** Lo que se le enumera al estudiante antes de aceptar. Ver `ExamSession`. */
+  watched_modules?: SupervisionModule[]
 }
 
 export type QuestionType =
-  | 'multiple_choice'
-  | 'multiple_select'
-  | 'true_false'
-  | 'numeric'
-  | 'fill_blank'
-  | 'essay'
+  'multiple_choice' | 'multiple_select' | 'true_false' | 'numeric' | 'fill_blank' | 'essay'
 
 export type VerificationStatus =
   'pending' | 'verified' | 'failed' | 'manually_approved' | 'rejected'
@@ -220,6 +241,7 @@ export interface MyExam {
   entry_tolerance_minutes: number
   can_enter_now: boolean
   modules: Record<string, Record<string, unknown>>
+  watched_modules?: SupervisionModule[]
   /** Si se puede volver a una pregunta ya respondida. */
   allow_back_navigation: boolean
   verification_status: VerificationStatus
@@ -362,6 +384,8 @@ export interface NewExamSession {
   max_score?: string | number | null
   /** Guarda el código de acceso hasta la hora de inicio. */
   reveal_code_at_start?: boolean
+  /** Solo con `preset: 'custom'`: los módulos que eligió el docente. */
+  modules?: ChosenModules
 }
 
 /**
@@ -385,6 +409,8 @@ export interface ExamSessionChanges {
   shuffle_options?: boolean
   allow_back_navigation?: boolean
   reveal_code_at_start?: boolean
+  /** Solo con `preset: 'custom'`. */
+  modules?: ChosenModules
   clear_description?: boolean
   clear_course?: boolean
   clear_pool_size?: boolean
@@ -817,6 +843,7 @@ export function comoExamenUnido(examen: MyExam): JoinedExam {
     duration_minutes: examen.duration_minutes,
     entry_tolerance_minutes: examen.entry_tolerance_minutes,
     can_enter_now: examen.can_enter_now,
-    modules: examen.modules
+    modules: examen.modules,
+    watched_modules: examen.watched_modules
   }
 }

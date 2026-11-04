@@ -9,6 +9,7 @@ separe y no en la demo.
 from __future__ import annotations
 
 import secrets
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -16,7 +17,8 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
-from proctoring_api.domain.errors import DomainError
+from proctoring_api.domain.errors import DomainError, InvalidEventError
+from proctoring_api.domain.event import EventType
 
 MAX_TITLE_LENGTH = 200
 MAX_DESCRIPTION_LENGTH = 2000
@@ -29,6 +31,14 @@ HIGHEST_MAX_SCORE = Decimal(100)
 
 class InvalidExamSessionError(DomainError):
     """Una sesion de examen no cumple las reglas del dominio."""
+
+
+class UnwatchedSignalError(InvalidEventError):
+    """Llega una senal de algo que el docente decidio no vigilar.
+
+    Es un `InvalidEventError` a proposito: el cliente la recibe como un 4xx y
+    la descarta, que es lo correcto. Reintentarla no la volveria valida.
+    """
 
 
 class SessionStatus(StrEnum):
@@ -126,6 +136,60 @@ PRESET_MODULES: dict[SupervisionPreset, frozenset[SupervisionModule]] = {
     ),
     #: `custom` no activa nada por si mismo: el docente elige modulo a modulo.
     SupervisionPreset.CUSTOM: frozenset(),
+}
+
+
+#: Que modulo cubre cada senal.
+#:
+#: Es lo que permite que el preset `custom` cumpla lo que dice: si el docente
+#: apaga los monitores adicionales, un `extra_display` no se registra. Una senal
+#: con varios modulos se acepta si cualquiera de ellos esta activo (la voz la
+#: detecta el mismo detector para `ai_voice` y para `external_voices`).
+#:
+#: `face_absent` va con `gaze` porque lo detecta el mismo modelo sobre el mismo
+#: fotograma: no hay un modulo propio para el rostro ausente.
+EVENT_MODULES: dict[EventType, frozenset[SupervisionModule]] = {
+    EventType.FOCUS_LOST: frozenset({SupervisionModule.FOCUS_LOSS}),
+    EventType.COPY_ATTEMPT: frozenset({SupervisionModule.COPY_PASTE_BLOCK}),
+    EventType.GAZE_AWAY: frozenset({SupervisionModule.GAZE}),
+    EventType.FACE_ABSENT: frozenset({SupervisionModule.GAZE}),
+    EventType.EXTRA_PERSON: frozenset({SupervisionModule.EXTRA_PERSON}),
+    EventType.EXTRA_DISPLAY: frozenset({SupervisionModule.MULTI_MONITOR}),
+    EventType.SUSPICIOUS_PROCESS: frozenset({SupervisionModule.SCREEN_CAPTURE}),
+    EventType.SCREEN_SHARE: frozenset({SupervisionModule.SCREEN_CAPTURE}),
+    EventType.SPEECH_DETECTED: frozenset(
+        {SupervisionModule.AI_VOICE, SupervisionModule.EXTERNAL_VOICES}
+    ),
+    EventType.PROHIBITED_OBJECT: frozenset({SupervisionModule.OBJECTS}),
+    EventType.IDENTITY_CHECK: frozenset(
+        {SupervisionModule.FACE_VERIFICATION, SupervisionModule.FACE_REVERIFICATION}
+    ),
+}
+
+
+#: Lo que la app de escritorio vigila por su cuenta en los presets.
+#:
+#: El proceso principal de Electron reporta el foco, los monitores, los procesos
+#: y los atajos de copiar sin mirar el preset, y en `basic`, `standard` y
+#: `strict` esas senales se registran todas: es como funcionaba antes de existir
+#: `custom` y nada deja de detectarse. Pero el estudiante tiene que saberlo, asi
+#: que entran en `watched_modules` aunque el preset no los active.
+DESKTOP_MODULES: frozenset[SupervisionModule] = frozenset(
+    {
+        SupervisionModule.FOCUS_LOSS,
+        SupervisionModule.COPY_PASTE_BLOCK,
+        SupervisionModule.MULTI_MONITOR,
+        SupervisionModule.SCREEN_CAPTURE,
+    }
+)
+
+
+#: Modulos que no tienen sentido sin otro.
+#:
+#: Reverificar es comparar con el rostro de referencia que deja la verificacion
+#: inicial: sin ella no hay con que comparar.
+MODULE_REQUIRES: dict[SupervisionModule, SupervisionModule] = {
+    SupervisionModule.FACE_REVERIFICATION: SupervisionModule.FACE_VERIFICATION,
 }
 
 
@@ -248,7 +312,7 @@ class ExamSession:
         allow_back_navigation: bool = True,
         reveal_code_at_start: bool = False,
         max_score: Decimal = DEFAULT_MAX_SCORE,
-        modules: dict[SupervisionModule, dict[str, Any]] | None = None,
+        modules: Mapping[SupervisionModule, Mapping[str, Any] | None] | None = None,
         session_id: UUID | None = None,
     ) -> ExamSession:
         """Crea una sesion validada.
@@ -284,11 +348,7 @@ class ExamSession:
         # un preset con modulos que no le corresponden dejaria `preset` mintiendo
         # sobre lo que la sesion hace de verdad.
         if preset is SupervisionPreset.CUSTOM:
-            resolved = dict(modules or {})
-            if not resolved:
-                raise InvalidExamSessionError(
-                    "Un examen con preset 'custom' tiene que activar al menos un modulo"
-                )
+            resolved = _custom_modules(modules or {})
         else:
             resolved = modules_for(preset)
 
@@ -325,6 +385,41 @@ class ExamSession:
     @property
     def ends_at(self) -> datetime:
         return self.starts_at + timedelta(minutes=self.duration_minutes)
+
+    @property
+    def watched_modules(self) -> frozenset[SupervisionModule]:
+        """Todo lo que se va a registrar en este examen, para decirselo al estudiante.
+
+        No es lo mismo que `modules`: `modules` es lo que el cliente enciende,
+        con sus umbrales. En los presets, la app de escritorio vigila ademas la
+        ventana, los monitores, los programas y el copiar (`DESKTOP_MODULES`), y
+        un consentimiento que no lo nombra no es un consentimiento informado.
+        """
+        if self.preset is SupervisionPreset.CUSTOM:
+            return frozenset(self.modules)
+        return frozenset(self.modules) | DESKTOP_MODULES
+
+    def watches(self, event_type: EventType) -> bool:
+        """Si una senal de ese tipo se registra en este examen.
+
+        Solo el preset `custom` descarta senales. En los demas se registran
+        todas, como antes de que existiera: nada deja de detectarse en un
+        examen ya configurado por cambiar esto.
+        """
+        if self.preset is not SupervisionPreset.CUSTOM:
+            return True
+        return bool(EVENT_MODULES.get(event_type, frozenset()) & self.watched_modules)
+
+    def ensure_watches(self, event_type: EventType) -> None:
+        """Rechaza una senal de algo que el docente decidio no vigilar.
+
+        Raises:
+            UnwatchedSignalError: si ningun modulo activo cubre esa senal.
+        """
+        if not self.watches(event_type):
+            raise UnwatchedSignalError(
+                f"Este examen no vigila {event_type.value}: el docente no activo ese modulo"
+            )
 
     def entry_state_at(self, moment: datetime) -> EntryState:
         """En que punto esta la ventana de ingreso.
@@ -389,6 +484,7 @@ class ExamSession:
         shuffle_options: bool | None = None,
         allow_back_navigation: bool | None = None,
         reveal_code_at_start: bool | None = None,
+        modules: Mapping[SupervisionModule, Mapping[str, Any]] | None = None,
         clear_description: bool = False,
         clear_course: bool = False,
         clear_pool_size: bool = False,
@@ -412,10 +508,17 @@ class ExamSession:
             raise InvalidExamSessionError("Un examen cancelado ya no se edita")
 
         nuevo_preset = preset if preset is not None else self.preset
-        # Con `custom`, los modulos los eligio el docente y hay que conservarlos;
-        # con los demas, el preset los vuelve a resolver. Cambiar de `custom` a
-        # `strict` tiene que traer los modulos de `strict`, no los viejos.
-        modulos = self.modules if nuevo_preset is SupervisionPreset.CUSTOM else None
+        # Con `custom`, los modulos los eligio el docente: los nuevos si los
+        # manda, y si no los que ya tenia. Con los demas, el preset los vuelve a
+        # resolver: cambiar de `custom` a `strict` trae los de `strict`.
+        if nuevo_preset is SupervisionPreset.CUSTOM:
+            modulos = dict(modules) if modules is not None else self.modules
+        elif modules is not None:
+            raise InvalidExamSessionError(
+                "Los modulos solo se eligen a mano con el preset 'custom'"
+            )
+        else:
+            modulos = None
 
         return ExamSession.create(
             teacher_id=self.teacher_id,
@@ -469,6 +572,39 @@ class ExamSession:
             modules=modulos,
             session_id=self.id,
         )
+
+
+def _custom_modules(
+    chosen: Mapping[SupervisionModule, Mapping[str, Any] | None],
+) -> dict[SupervisionModule, dict[str, Any]]:
+    """Los modulos que eligio el docente, con los umbrales que no envio.
+
+    El docente elige *que* se vigila, no los umbrales: la pantalla manda cada
+    modulo vacio y aqui se completa con `DEFAULT_MODULE_SETTINGS`. Sin esto, un
+    examen personalizado llegaba al servicio de IA sin umbral de similitud y al
+    cliente sin los numeros que usan los presets. Lo que si se envia manda sobre
+    el valor por defecto.
+
+    Raises:
+        InvalidExamSessionError: si no se activa nada, o si un modulo necesita
+            otro que no esta.
+    """
+    if not chosen:
+        raise InvalidExamSessionError(
+            "Un examen con preset 'custom' tiene que activar al menos un modulo"
+        )
+
+    for module, needs in MODULE_REQUIRES.items():
+        if module in chosen and needs not in chosen:
+            raise InvalidExamSessionError(
+                f"El modulo {module.value} necesita {needs.value}: sin la verificacion "
+                "inicial no hay rostro con el que comparar"
+            )
+
+    return {
+        module: {**DEFAULT_MODULE_SETTINGS.get(module, {}), **(settings or {})}
+        for module, settings in sorted(chosen.items())
+    }
 
 
 def _validate_max_score(value: Decimal) -> None:

@@ -7,15 +7,19 @@ from uuid import uuid4
 
 import pytest
 
+from proctoring_api.domain.event import EventType
 from proctoring_api.domain.exam_session import (
     ACCESS_CODE_ALPHABET,
     ACCESS_CODE_LENGTH,
+    DEFAULT_MODULE_SETTINGS,
+    DESKTOP_MODULES,
     PRESET_MODULES,
     ExamSession,
     InvalidExamSessionError,
     SessionStatus,
     SupervisionModule,
     SupervisionPreset,
+    UnwatchedSignalError,
     generate_access_code,
     modules_for,
 )
@@ -139,7 +143,30 @@ class TestPresets:
             modules={SupervisionModule.GAZE: {"yaw_degrees": 30}},
         )
 
-        assert session.modules == {SupervisionModule.GAZE: {"yaw_degrees": 30}}
+        # Lo enviado manda; lo que falta lo pone el valor por defecto.
+        assert session.modules == {
+            SupervisionModule.GAZE: {"yaw_degrees": 30, "min_duration_ms": 3000}
+        }
+
+    def test_custom_fills_the_thresholds_it_was_not_sent(self) -> None:
+        # La pantalla del docente elige que se vigila, no los umbrales. Sin
+        # esto el servicio de IA recibia `ai_voice` sin umbral de similitud.
+        session = make(
+            preset=SupervisionPreset.CUSTOM,
+            modules={SupervisionModule.AI_VOICE: {}, SupervisionModule.FOCUS_LOSS: {}},
+        )
+
+        assert session.modules == {
+            SupervisionModule.AI_VOICE: DEFAULT_MODULE_SETTINGS[SupervisionModule.AI_VOICE],
+            SupervisionModule.FOCUS_LOSS: DEFAULT_MODULE_SETTINGS[SupervisionModule.FOCUS_LOSS],
+        }
+
+    def test_reverifying_needs_the_first_verification(self) -> None:
+        with pytest.raises(InvalidExamSessionError, match="face_verification"):
+            make(
+                preset=SupervisionPreset.CUSTOM,
+                modules={SupervisionModule.FACE_REVERIFICATION: {}},
+            )
 
     def test_custom_without_modules_is_rejected(self) -> None:
         # Un examen que no vigila nada no es un examen supervisado.
@@ -176,3 +203,80 @@ def test_a_new_session_is_scheduled() -> None:
 
 def test_each_session_gets_its_own_id() -> None:
     assert make().id != make().id
+
+
+class TestWhatIsWatched:
+    """Que se registra en cada examen, y que se le dice al estudiante."""
+
+    def custom(self, *modules: SupervisionModule) -> ExamSession:
+        return make(preset=SupervisionPreset.CUSTOM, modules={m: {} for m in modules})
+
+    def test_custom_drops_the_signals_of_what_was_turned_off(self) -> None:
+        session = self.custom(SupervisionModule.FOCUS_LOSS)
+
+        assert session.watches(EventType.FOCUS_LOST)
+        assert not session.watches(EventType.EXTRA_DISPLAY)
+        assert not session.watches(EventType.SUSPICIOUS_PROCESS)
+        with pytest.raises(UnwatchedSignalError, match="extra_display"):
+            session.ensure_watches(EventType.EXTRA_DISPLAY)
+
+    def test_either_voice_module_is_enough_for_speech(self) -> None:
+        # El mismo detector sirve a los dos modulos.
+        assert self.custom(SupervisionModule.EXTERNAL_VOICES).watches(EventType.SPEECH_DETECTED)
+        assert self.custom(SupervisionModule.AI_VOICE).watches(EventType.SPEECH_DETECTED)
+
+    def test_face_absent_goes_with_gaze(self) -> None:
+        assert self.custom(SupervisionModule.GAZE).watches(EventType.FACE_ABSENT)
+        assert not self.custom(SupervisionModule.EXTRA_PERSON).watches(EventType.FACE_ABSENT)
+
+    @pytest.mark.parametrize(
+        "preset",
+        [SupervisionPreset.BASIC, SupervisionPreset.STANDARD, SupervisionPreset.STRICT],
+    )
+    def test_presets_still_register_everything(self, preset: SupervisionPreset) -> None:
+        # Decision del 03/11: los presets siguen como estaban. Nada deja de
+        # detectarse en un examen ya configurado.
+        session = make(preset=preset)
+
+        assert all(session.watches(event_type) for event_type in EventType)
+
+    def test_presets_tell_the_student_what_the_desktop_app_watches(self) -> None:
+        # La app de escritorio vigila la ventana, los monitores y los programas
+        # aunque `basic` no los active: el estudiante tiene que saberlo.
+        session = make(preset=SupervisionPreset.BASIC)
+
+        assert session.watched_modules == PRESET_MODULES[SupervisionPreset.BASIC] | DESKTOP_MODULES
+
+    def test_custom_tells_exactly_what_was_chosen(self) -> None:
+        session = self.custom(SupervisionModule.GAZE, SupervisionModule.FACE_VERIFICATION)
+
+        assert session.watched_modules == {
+            SupervisionModule.GAZE,
+            SupervisionModule.FACE_VERIFICATION,
+        }
+
+
+class TestEditingModules:
+    def test_custom_takes_the_new_modules(self) -> None:
+        session = make(preset=SupervisionPreset.CUSTOM, modules={SupervisionModule.FOCUS_LOSS: {}})
+
+        edited = session.with_changes(modules={SupervisionModule.GAZE: {}})
+
+        assert set(edited.modules) == {SupervisionModule.GAZE}
+        assert edited.preset is SupervisionPreset.CUSTOM
+
+    def test_custom_keeps_its_modules_when_they_are_not_sent(self) -> None:
+        session = make(preset=SupervisionPreset.CUSTOM, modules={SupervisionModule.GAZE: {}})
+
+        assert session.with_changes(title="Otro titulo").modules == session.modules
+
+    def test_going_custom_from_a_preset(self) -> None:
+        edited = make(preset=SupervisionPreset.STRICT).with_changes(
+            preset=SupervisionPreset.CUSTOM, modules={SupervisionModule.OBJECTS: {}}
+        )
+
+        assert set(edited.modules) == {SupervisionModule.OBJECTS}
+
+    def test_modules_by_hand_only_with_custom(self) -> None:
+        with pytest.raises(InvalidExamSessionError, match="custom"):
+            make().with_changes(modules={SupervisionModule.GAZE: {}})

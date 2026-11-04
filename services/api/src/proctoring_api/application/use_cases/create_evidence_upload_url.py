@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from proctoring_api.application.ports.evidence_storage import EvidenceStorage, SignedUpload
+from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.domain.errors import AuthorizationError
+from proctoring_api.domain.event import EventType
 from proctoring_api.domain.evidence import (
     EvidenceKind,
     build_evidence_path,
@@ -21,6 +23,9 @@ class EvidenceUploadRequest:
     student_id: UUID
     kind: EvidenceKind
     extension: str
+    #: Para que senal es. Opcional porque los clientes anteriores no lo mandan;
+    #: con el, una captura de algo que el docente no activo ni se sube.
+    event_type: EventType | None = None
 
 
 class CreateEvidenceUploadUrl:
@@ -31,9 +36,15 @@ class CreateEvidenceUploadUrl:
     coste que ADR-0004 evita.
     """
 
-    def __init__(self, storage: EvidenceStorage, buckets: dict[EvidenceKind, str]) -> None:
+    def __init__(
+        self,
+        storage: EvidenceStorage,
+        buckets: dict[EvidenceKind, str],
+        sessions: ExamSessionRepository | None = None,
+    ) -> None:
         self._storage = storage
         self._buckets = buckets
+        self._sessions = sessions
 
     def execute(
         self, request: EvidenceUploadRequest, *, actor: AuthenticatedUser | None = None
@@ -44,9 +55,20 @@ class CreateEvidenceUploadUrl:
             AuthorizationError: si el actor no puede subir evidencia de ese
                 estudiante.
             InvalidEventError: si la extension no esta permitida para ese tipo.
+            UnwatchedSignalError: si la captura es de una senal que el examen
+                no vigila.
         """
         if actor is not None:
             self._authorize(request, actor)
+
+        # La captura de pantalla se toma *antes* de mandar el evento. Si solo se
+        # rechazara el evento, la imagen de la pantalla del estudiante quedaria
+        # guardada en Storage sin evento que la explique, y de algo que el
+        # docente decidio no vigilar.
+        if request.event_type is not None and self._sessions is not None:
+            sesion = self._sessions.find_by_id(request.session_id)
+            if sesion is not None:
+                sesion.ensure_watches(request.event_type)
 
         # Valida la extension antes de construir nada: una URL firmada para un
         # tipo que el bucket rechaza haria fallar la subida lejos de su causa.

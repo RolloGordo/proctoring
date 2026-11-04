@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
 from proctoring_api.adapters.outbound.memory.alert_repository import InMemoryAlertRepository
 from proctoring_api.adapters.outbound.memory.event_repository import InMemoryEventRepository
+from proctoring_api.adapters.outbound.memory.exam_session_repository import (
+    InMemoryExamSessionRepository,
+)
 from proctoring_api.adapters.outbound.memory.job_queue import InMemoryJobQueue
 from proctoring_api.application.use_cases.register_event import (
     RegisterEvent,
@@ -16,6 +19,12 @@ from proctoring_api.application.use_cases.register_event import (
 )
 from proctoring_api.domain.errors import InvalidEventError
 from proctoring_api.domain.event import EventType
+from proctoring_api.domain.exam_session import (
+    ExamSession,
+    SupervisionModule,
+    SupervisionPreset,
+    UnwatchedSignalError,
+)
 from proctoring_api.domain.severity import Severity
 
 from tests.conftest import NOW, FixedClock
@@ -175,3 +184,112 @@ def test_normalises_started_at_to_utc(
 
     stored = event_repository.list_by_session(SESSION)[0]
     assert stored.started_at.utcoffset() == timedelta(0)
+
+
+class CountingSessions(InMemoryExamSessionRepository):
+    """Cuenta las lecturas, para comprobar la memoria de un minuto."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.reads = 0
+
+    def find_by_id(self, session_id: UUID) -> ExamSession | None:
+        self.reads += 1
+        return super().find_by_id(session_id)
+
+
+class TestWhatTheTeacherTurnedOff:
+    """Un examen personalizado no registra lo que el docente no activo."""
+
+    @pytest.fixture
+    def sessions(self) -> CountingSessions:
+        return CountingSessions()
+
+    @pytest.fixture
+    def guarded(
+        self,
+        event_repository: InMemoryEventRepository,
+        job_queue: InMemoryJobQueue,
+        clock: FixedClock,
+        alert_repository: InMemoryAlertRepository,
+        sessions: CountingSessions,
+    ) -> RegisterEvent:
+        return RegisterEvent(
+            event_repository, job_queue, clock, alert_repository, sessions=sessions
+        )
+
+    @staticmethod
+    def a_session(
+        sessions: InMemoryExamSessionRepository,
+        preset: SupervisionPreset,
+        modules: dict[SupervisionModule, dict[str, object]] | None = None,
+    ) -> ExamSession:
+        session = ExamSession.create(
+            teacher_id=uuid4(),
+            title="Parcial",
+            starts_at=NOW,
+            duration_minutes=60,
+            preset=preset,
+            modules=modules,
+        )
+        sessions.save(session)
+        return session
+
+    def test_a_signal_of_a_module_turned_off_is_not_stored(
+        self,
+        guarded: RegisterEvent,
+        sessions: CountingSessions,
+        event_repository: InMemoryEventRepository,
+        alert_repository: InMemoryAlertRepository,
+    ) -> None:
+        session = self.a_session(
+            sessions, SupervisionPreset.CUSTOM, {SupervisionModule.FOCUS_LOSS: {}}
+        )
+
+        with pytest.raises(UnwatchedSignalError):
+            guarded.execute(
+                an_input(session_id=session.id, event_type=EventType.SUSPICIOUS_PROCESS)
+            )
+
+        assert list(event_repository.list_by_session(session.id)) == []
+        assert list(alert_repository.list_by_session(session.id)) == []
+
+    def test_a_signal_of_a_module_turned_on_is_stored(
+        self,
+        guarded: RegisterEvent,
+        sessions: CountingSessions,
+        event_repository: InMemoryEventRepository,
+    ) -> None:
+        session = self.a_session(
+            sessions, SupervisionPreset.CUSTOM, {SupervisionModule.FOCUS_LOSS: {}}
+        )
+
+        guarded.execute(an_input(session_id=session.id, duration_ms=8_000))
+
+        assert len(event_repository.list_by_session(session.id)) == 1
+
+    def test_presets_keep_registering_the_desktop_signals(
+        self,
+        guarded: RegisterEvent,
+        sessions: CountingSessions,
+        event_repository: InMemoryEventRepository,
+    ) -> None:
+        # `standard` no tiene `screen_capture` y aun asi tiene que avisar de
+        # AnyDesk, como antes.
+        session = self.a_session(sessions, SupervisionPreset.STANDARD)
+
+        guarded.execute(an_input(session_id=session.id, event_type=EventType.SUSPICIOUS_PROCESS))
+
+        assert len(event_repository.list_by_session(session.id)) == 1
+
+    def test_the_session_is_read_once_a_minute_at_most(
+        self, guarded: RegisterEvent, sessions: CountingSessions
+    ) -> None:
+        session = self.a_session(
+            sessions, SupervisionPreset.CUSTOM, {SupervisionModule.FOCUS_LOSS: {}}
+        )
+
+        for _ in range(5):
+            guarded.execute(an_input(session_id=session.id))
+
+        assert sessions.reads == 1

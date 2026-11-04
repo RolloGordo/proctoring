@@ -155,7 +155,10 @@ async function uploadEventEvidence(
         session_id: event.session_id,
         student_id: event.student_id,
         kind: 'image',
-        extension: 'jpg'
+        extension: 'jpg',
+        // Con esto la API no da permiso para subir la captura de algo que el
+        // docente apagó en un examen personalizado (HU-031).
+        event_type: event.event_type
       }),
       signal: AbortSignal.timeout(5_000)
     })
