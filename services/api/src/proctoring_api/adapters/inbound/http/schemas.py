@@ -172,6 +172,10 @@ class EvidenceUploadRequestBody(BaseModel):
     student_id: UUID
     kind: EvidenceKind
     extension: str = Field(max_length=8, examples=["jpg", "webm"])
+    #: Para que senal es la captura. Opcional: los instaladores anteriores no lo
+    #: mandan. Con el, la API no da permiso para subir la captura de algo que el
+    #: docente no activo.
+    event_type: EventType | None = None
 
 
 class EvidenceUploadResponse(BaseModel):
@@ -274,6 +278,10 @@ class ExamSessionResponse(BaseModel):
     max_score: Decimal
     cancelled_at: datetime | None
     modules: dict[SupervisionModule, dict[str, Any]]
+    #: Todo lo que se registra en el examen: `modules` mas lo que la app de
+    #: escritorio vigila por su cuenta en los presets. Es lo que se le dice al
+    #: estudiante, y lo que el docente tiene que ver que se le dice.
+    watched_modules: list[SupervisionModule]
 
     @classmethod
     def from_entity(cls, session: ExamSession, now: datetime) -> ExamSessionResponse:
@@ -299,6 +307,7 @@ class ExamSessionResponse(BaseModel):
             max_score=session.max_score,
             cancelled_at=session.cancelled_at,
             modules=session.modules,
+            watched_modules=sorted(session.watched_modules),
         )
 
 
@@ -326,6 +335,9 @@ class JoinExamResponse(BaseModel):
     entry_tolerance_minutes: int
     can_enter_now: bool
     modules: dict[SupervisionModule, dict[str, Any]]
+    #: Todo lo que se registra: `modules` mas lo que vigila la app de escritorio
+    #: en los presets. Es lo que la sala de espera le enumera al estudiante.
+    watched_modules: list[SupervisionModule]
 
 
 class QuestionOptionRequest(BaseModel):
@@ -592,6 +604,8 @@ class MyExamResponse(BaseModel):
     #: Que se va a supervisar: la sala de espera lo muestra antes de que el
     #: estudiante entre, igual que `JoinExamResponse`.
     modules: dict[SupervisionModule, dict[str, Any]]
+    #: Todo lo que se registra, incluido lo que vigila la app de escritorio.
+    watched_modules: list[SupervisionModule]
     #: Si se puede volver a una pregunta ya respondida.
     #:
     #: Lo necesita la pantalla del examen para no ofrecer un "Anterior" que la
@@ -625,6 +639,7 @@ class MyExamResponse(BaseModel):
             entry_tolerance_minutes=exam.session.entry_tolerance_minutes,
             can_enter_now=exam.can_enter_now,
             modules=exam.session.modules,
+            watched_modules=sorted(exam.session.watched_modules),
             allow_back_navigation=exam.session.allow_back_navigation,
             verification_status=exam.participant.verification_status,
             can_take_exam=exam.participant.can_take_exam,
@@ -1133,6 +1148,9 @@ class UpdateExamSessionRequest(BaseModel):
     shuffle_options: bool | None = None
     allow_back_navigation: bool | None = None
     reveal_code_at_start: bool | None = None
+    #: Los modulos elegidos a mano. Solo con `preset = custom`; los umbrales que
+    #: no se envien los pone la API.
+    modules: dict[SupervisionModule, dict[str, Any]] | None = None
     clear_description: bool = False
     clear_course: bool = False
     #: Vuelve a "todas las preguntas del banco".
@@ -1153,6 +1171,7 @@ class UpdateExamSessionRequest(BaseModel):
             shuffle_options=self.shuffle_options,
             allow_back_navigation=self.allow_back_navigation,
             reveal_code_at_start=self.reveal_code_at_start,
+            modules=self.modules,
             clear_description=self.clear_description,
             clear_course=self.clear_course,
             clear_pool_size=self.clear_pool_size,

@@ -2,17 +2,28 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
 
 from proctoring_api.adapters.outbound.memory.evidence_storage import InMemoryEvidenceStorage
+from proctoring_api.adapters.outbound.memory.exam_session_repository import (
+    InMemoryExamSessionRepository,
+)
 from proctoring_api.application.use_cases.create_evidence_upload_url import (
     CreateEvidenceUploadUrl,
     EvidenceUploadRequest,
 )
 from proctoring_api.domain.errors import AuthorizationError, InvalidEventError
+from proctoring_api.domain.event import EventType
 from proctoring_api.domain.evidence import EvidenceKind
+from proctoring_api.domain.exam_session import (
+    ExamSession,
+    SupervisionModule,
+    SupervisionPreset,
+    UnwatchedSignalError,
+)
 from proctoring_api.domain.user import AuthenticatedUser, UserRole
 
 SESSION = uuid4()
@@ -143,3 +154,55 @@ class TestAuthorization:
 
     def test_without_actor_nothing_is_checked(self, use_case: CreateEvidenceUploadUrl) -> None:
         assert use_case.execute(a_request(student_id=LUIS.id), actor=None).path
+
+
+class TestCapturesOfWhatIsNotWatched:
+    """La captura de pantalla se pide antes que el evento: hay que pararla aqui."""
+
+    @staticmethod
+    def a_custom_session(sessions: InMemoryExamSessionRepository) -> ExamSession:
+        session = ExamSession.create(
+            teacher_id=DOCENTE.id,
+            title="Personalizado",
+            starts_at=datetime(2026, 11, 3, 14, 0, tzinfo=UTC),
+            duration_minutes=60,
+            preset=SupervisionPreset.CUSTOM,
+            modules={SupervisionModule.FOCUS_LOSS: {}},
+        )
+        sessions.save(session)
+        return session
+
+    def test_no_upload_for_a_module_turned_off(self, storage: InMemoryEvidenceStorage) -> None:
+        sessions = InMemoryExamSessionRepository()
+        session = self.a_custom_session(sessions)
+        use_case = CreateEvidenceUploadUrl(storage, BUCKETS, sessions)
+
+        with pytest.raises(UnwatchedSignalError):
+            use_case.execute(
+                EvidenceUploadRequest(
+                    session_id=session.id,
+                    student_id=ANA.id,
+                    kind=EvidenceKind.IMAGE,
+                    extension="jpg",
+                    event_type=EventType.EXTRA_DISPLAY,
+                ),
+                actor=ANA,
+            )
+
+    def test_an_older_client_without_event_type_still_uploads(
+        self, storage: InMemoryEvidenceStorage
+    ) -> None:
+        # Los instaladores ya repartidos no mandan `event_type`. Su evento se
+        # rechaza igual en `RegisterEvent`; aqui no se les rompe la subida.
+        sessions = InMemoryExamSessionRepository()
+        session = self.a_custom_session(sessions)
+        use_case = CreateEvidenceUploadUrl(storage, BUCKETS, sessions)
+
+        upload = use_case.execute(
+            EvidenceUploadRequest(
+                session_id=session.id, student_id=ANA.id, kind=EvidenceKind.IMAGE, extension="jpg"
+            ),
+            actor=ANA,
+        )
+
+        assert upload.path.startswith(str(session.id))

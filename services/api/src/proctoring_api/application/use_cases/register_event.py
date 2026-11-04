@@ -11,12 +11,14 @@ from uuid import UUID
 from proctoring_api.application.ports.alert_repository import AlertRepository
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.event_repository import EventRepository
+from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.job_queue import JobQueue
 from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.domain.alert import Alert, should_alert
 from proctoring_api.domain.errors import AuthorizationError, InvalidEventError
 from proctoring_api.domain.event import EventType, ProctoringEvent
+from proctoring_api.domain.exam_session import ExamSession
 from proctoring_api.domain.severity import Severity, default_severity
 from proctoring_api.domain.user import AuthenticatedUser
 
@@ -28,6 +30,14 @@ from proctoring_api.domain.user import AuthenticatedUser
 #: romperia el orden cronologico de la evidencia, que es justo lo que el docente
 #: revisa.
 FUTURE_TOLERANCE = timedelta(minutes=5)
+
+#: Cuanto se recuerda que vigila un examen.
+#:
+#: Saberlo cuesta dos consultas (la sesion y sus modulos), y llegan varias senales
+#: por minuto por estudiante. Lo que vigila un examen deja de poder cambiarse en
+#: cuanto entra alguien (ver `UpdateExamSession`), que es justo cuando empiezan a
+#: llegar senales, asi que un minuto de memoria no deja pasar nada que no deba.
+SESSION_CACHE_TTL = timedelta(seconds=60)
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +76,7 @@ class RegisterEvent:
         alerts: AlertRepository,
         questions: QuestionRepository | None = None,
         banks: QuestionBankRepository | None = None,
+        sessions: ExamSessionRepository | None = None,
     ) -> None:
         self._events = events
         self._job_queue = job_queue
@@ -78,6 +89,10 @@ class RegisterEvent:
         # sesion propia, y decidir si valen para este examen es mirar si el
         # banco esta asociado a el.
         self._banks = banks
+        # Para descartar las senales de lo que el docente no activo. `None`
+        # acepta todo, como antes de existir el preset `custom`.
+        self._sessions = sessions
+        self._session_cache: dict[UUID, tuple[datetime, ExamSession | None]] = {}
 
     def execute(
         self, data: RegisterEventInput, *, actor: AuthenticatedUser | None = None
@@ -92,11 +107,13 @@ class RegisterEvent:
         Raises:
             AuthorizationError: si el actor no puede registrar este evento.
             InvalidEventError: si el evento viola una regla de dominio.
+            UnwatchedSignalError: si el examen no vigila ese tipo de senal.
         """
         if actor is not None:
             self._authorize(data, actor)
 
         self._reject_if_from_the_future(data.started_at)
+        self._reject_if_not_watched(data.session_id, data.event_type)
         self._reject_if_question_is_from_another_session(data)
 
         event = ProctoringEvent.create(
@@ -146,6 +163,36 @@ class RegisterEvent:
 
         if actor.id != data.student_id:
             raise AuthorizationError("No puedes registrar eventos a nombre de otro estudiante")
+
+    def _reject_if_not_watched(self, session_id: UUID, event_type: EventType) -> None:
+        """Descarta la senal de un modulo que el docente apago.
+
+        La app de escritorio vigila la ventana, los monitores y los programas
+        sin saber que eligio el docente. Si el examen es personalizado y no
+        incluye eso, aqui se para: lo que no se le dijo al estudiante que se iba
+        a vigilar no puede acabar en su expediente.
+
+        Una sesion que no se encuentra no se bloquea: de eso ya se ocupan la
+        autorizacion y la clave ajena de `events`, y perder una senal valida por
+        un fallo de lectura seria peor.
+
+        Raises:
+            UnwatchedSignalError: si el examen no vigila ese tipo de senal.
+        """
+        sesion = self._session(session_id)
+        if sesion is not None:
+            sesion.ensure_watches(event_type)
+
+    def _session(self, session_id: UUID) -> ExamSession | None:
+        if self._sessions is None:
+            return None
+        ahora = self._clock.now()
+        guardada = self._session_cache.get(session_id)
+        if guardada is not None and guardada[0] > ahora:
+            return guardada[1]
+        sesion = self._sessions.find_by_id(session_id)
+        self._session_cache[session_id] = (ahora + SESSION_CACHE_TTL, sesion)
+        return sesion
 
     def _reject_if_question_is_from_another_session(self, data: RegisterEventInput) -> None:
         """La pregunta tiene que ser de esta sesion.

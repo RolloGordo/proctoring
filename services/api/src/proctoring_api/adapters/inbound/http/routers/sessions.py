@@ -161,6 +161,7 @@ def join_exam_session(
         entry_tolerance_minutes=sesion.entry_tolerance_minutes,
         can_enter_now=resultado.can_enter_now,
         modules=sesion.modules,
+        watched_modules=sorted(sesion.watched_modules),
     )
 
 

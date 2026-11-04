@@ -32,6 +32,7 @@ from proctoring_api.domain.exam_session import (
     ExamSession,
     InvalidExamSessionError,
     SessionStatus,
+    SupervisionModule,
     SupervisionPreset,
 )
 from proctoring_api.domain.participant import SessionParticipant
@@ -292,6 +293,78 @@ class TestConEstudiantesDentro:
 
         assert corregida.title == "Parcial — corregido"
         assert corregida.description == "Sin calculadora"
+
+
+class TestPersonalizado:
+    """El preset `custom`: el docente elige los modulos uno por uno."""
+
+    def test_se_pasa_a_personalizado_con_sus_modulos(
+        self, sessions: InMemoryExamSessionRepository, sesion: ExamSession
+    ) -> None:
+        corregida = UpdateExamSession(sessions).execute(
+            sesion.id,
+            ExamSessionChanges(
+                preset=SupervisionPreset.CUSTOM,
+                modules={SupervisionModule.FOCUS_LOSS: {}, SupervisionModule.GAZE: {}},
+            ),
+            actor=DOCENTE,
+        )
+
+        assert corregida.preset is SupervisionPreset.CUSTOM
+        assert set(corregida.modules) == {SupervisionModule.FOCUS_LOSS, SupervisionModule.GAZE}
+        # Y sigue siendolo al volver a abrirlo: antes la pantalla lo convertia en
+        # estandar al cargarlo.
+        guardada = sessions.find_by_id(sesion.id)
+        assert guardada is not None
+        assert guardada.preset is SupervisionPreset.CUSTOM
+
+    def test_con_gente_dentro_no_se_cambian_los_modulos(
+        self,
+        sessions: InMemoryExamSessionRepository,
+        participants: InMemoryParticipantRepository,
+    ) -> None:
+        sesion = ExamSession.create(
+            teacher_id=DOCENTE.id,
+            title="Personalizado",
+            starts_at=NOW + timedelta(days=1),
+            duration_minutes=60,
+            preset=SupervisionPreset.CUSTOM,
+            modules={SupervisionModule.FOCUS_LOSS: {}},
+        )
+        sessions.save(sesion)
+        con_un_estudiante(participants, sesion)
+
+        with pytest.raises(ExamInUseError, match="nivel de supervision"):
+            UpdateExamSession(sessions, participants).execute(
+                sesion.id,
+                ExamSessionChanges(modules={SupervisionModule.GAZE: {}}),
+                actor=DOCENTE,
+            )
+
+    def test_reenviar_lo_mismo_no_cuenta_como_cambio(
+        self,
+        sessions: InMemoryExamSessionRepository,
+        participants: InMemoryParticipantRepository,
+        sesion: ExamSession,
+    ) -> None:
+        """La pantalla manda el formulario entero: nivel y nota incluidos.
+
+        Corregir el titulo con gente dentro chocaba con "no se puede cambiar el
+        nivel de supervision" aunque nadie lo cambiara.
+        """
+        con_un_estudiante(participants, sesion)
+
+        corregida = UpdateExamSession(sessions, participants).execute(
+            sesion.id,
+            ExamSessionChanges(
+                title="Parcial corregido",
+                preset=sesion.preset,
+                max_score=sesion.max_score,
+            ),
+            actor=DOCENTE,
+        )
+
+        assert corregida.title == "Parcial corregido"
 
 
 class TestCancelar:

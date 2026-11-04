@@ -1,13 +1,35 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, type ExamSession, type SupervisionPreset } from '../lib/api'
+import {
+  api,
+  type ExamSession,
+  type ExamSessionChanges,
+  type SupervisionModule,
+  type SupervisionPreset
+} from '../lib/api'
 import { useAuth } from '../lib/auth-context'
+import { MODULOS_DE_PRESET, comoModulosElegidos, modulo } from '../lib/modulos'
+import { SelectorModulos } from '../components/SelectorModulos'
 
 const PRESETS: Array<{ valor: SupervisionPreset; nombre: string }> = [
   { valor: 'basic', nombre: 'Básica' },
   { valor: 'standard', nombre: 'Estándar' },
-  { valor: 'strict', nombre: 'Estricta' }
+  { valor: 'strict', nombre: 'Estricta' },
+  { valor: 'custom', nombre: 'Personalizada' }
 ]
+
+/** Los módulos que tiene guardados un examen, solo los que se conocen. */
+function modulosDe(sesion: ExamSession): Set<SupervisionModule> {
+  return new Set(
+    Object.keys(sesion.modules)
+      .filter((id) => modulo(id))
+      .map((id) => id as SupervisionModule)
+  )
+}
+
+function mismos(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  return a.size === b.size && [...a].every((x) => b.has(x))
+}
 
 /**
  * Corregir un examen ya creado, cancelarlo o borrarlo.
@@ -32,6 +54,7 @@ export function EditarSesion() {
   const [duracion, setDuracion] = useState(90)
   const [tolerancia, setTolerancia] = useState(10)
   const [preset, setPreset] = useState<SupervisionPreset>('standard')
+  const [modulos, setModulos] = useState<Set<SupervisionModule>>(new Set())
   const [notaMaxima, setNotaMaxima] = useState('20')
   const [descripcion, setDescripcion] = useState('')
   const [guardarCodigo, setGuardarCodigo] = useState(false)
@@ -57,7 +80,10 @@ export function EditarSesion() {
         setHora(inicio.hora)
         setDuracion(datos.duration_minutes)
         setTolerancia(datos.entry_tolerance_minutes)
-        setPreset(datos.preset === 'custom' ? 'standard' : datos.preset)
+        // Antes un examen personalizado se cargaba como «estándar», y al guardar
+        // cualquier otra cosa se quedaba estándar sin que nadie lo pidiera.
+        setPreset(datos.preset)
+        setModulos(modulosDe(datos))
         setNotaMaxima(String(Number(datos.max_score)))
         setDescripcion(datos.description ?? '')
         setGuardarCodigo(datos.reveal_code_at_start)
@@ -69,6 +95,18 @@ export function EditarSesion() {
     evento.preventDefault()
     setError(undefined)
     setAviso(undefined)
+    if (preset === 'custom' && modulos.size === 0) {
+      setError('Elige al menos un módulo de supervisión, o un nivel ya armado.')
+      return
+    }
+    // Lo que vigila el examen solo viaja si cambió: con estudiantes dentro la
+    // API lo rechaza, y reenviar lo mismo no tiene por qué contar como cambio.
+    const supervision: ExamSessionChanges = {}
+    if (sesion && preset !== sesion.preset) supervision.preset = preset
+    if (preset === 'custom' && (!sesion || !mismos(modulos, modulosDe(sesion)))) {
+      supervision.preset = 'custom'
+      supervision.modules = comoModulosElegidos(modulos)
+    }
     setGuardando(true)
     try {
       const actualizada = await api.updateSession(
@@ -78,7 +116,7 @@ export function EditarSesion() {
           starts_at: new Date(`${fecha}T${hora}`).toISOString(),
           duration_minutes: duracion,
           entry_tolerance_minutes: tolerancia,
-          preset,
+          ...supervision,
           max_score: notaMaxima,
           reveal_code_at_start: guardarCodigo,
           // Vaciar la descripción necesita el `clear_`: con `undefined` el
@@ -90,6 +128,7 @@ export function EditarSesion() {
         token
       )
       setSesion(actualizada)
+      setModulos(modulosDe(actualizada))
       setAviso('Cambios guardados.')
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudieron guardar los cambios')
@@ -258,7 +297,13 @@ export function EditarSesion() {
                 <select
                   value={preset}
                   disabled={hayEstudiantes}
-                  onChange={(e) => setPreset(e.target.value as SupervisionPreset)}
+                  onChange={(e) => {
+                    const nuevo = e.target.value as SupervisionPreset
+                    if (nuevo === 'custom' && preset !== 'custom') {
+                      setModulos(new Set(MODULOS_DE_PRESET[preset]))
+                    }
+                    setPreset(nuevo)
+                  }}
                 >
                   {PRESETS.map((p) => (
                     <option key={p.valor} value={p.valor}>
@@ -274,6 +319,14 @@ export function EditarSesion() {
                   </span>
                 )}
               </label>
+
+              {preset === 'custom' && (
+                <SelectorModulos
+                  elegidos={modulos}
+                  onChange={setModulos}
+                  deshabilitado={hayEstudiantes}
+                />
+              )}
 
               <label className="campo">
                 <span>Indicaciones para el estudiante (opcional)</span>
