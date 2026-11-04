@@ -12,8 +12,17 @@ import { useAuth } from '../lib/auth-context'
  * El código se envía tal como se escribe; la API lo normaliza (mayúsculas, sin
  * espacios ni guiones), porque se lee de una pizarra o de un chat y hacerle
  * perder el examen a alguien por un espacio sería absurdo.
+ *
+ * `principal` en falso deja el botón como secundario: en el panel, cuando ya
+ * hay un examen abierto, la acción principal es entrar a ese.
  */
-export function FormularioCodigo({ compacto = false }: { compacto?: boolean }) {
+export function FormularioCodigo({
+  compacto = false,
+  principal = true
+}: {
+  compacto?: boolean
+  principal?: boolean
+}) {
   const { token } = useAuth()
   const navegar = useNavigate()
   const [codigo, setCodigo] = useState('')
@@ -55,7 +64,11 @@ export function FormularioCodigo({ compacto = false }: { compacto?: boolean }) {
         )}
       </label>
 
-      <button type="submit" className="boton" disabled={buscando || !codigo.trim()}>
+      <button
+        type="submit"
+        className={principal ? 'boton' : 'boton boton-secundario'}
+        disabled={buscando || !codigo.trim()}
+      >
         {buscando ? 'Buscando…' : 'Buscar examen'}
       </button>
     </form>

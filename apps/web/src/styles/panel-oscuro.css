@@ -1,10 +1,11 @@
 /* ===========================================================================
-   El panel del docente, en oscuro
+   El panel, en oscuro: el del docente, el del estudiante y el examen
    ===========================================================================
 
    La misma casa que la portada y el acceso: lienzo casi negro, Archivo y el
    ámbar de la marca. Pero esto **no es una portada**: es la herramienta que un
-   docente mira una hora seguida mientras vigila un examen. Por eso aquí manda
+   docente mira una hora seguida mientras vigila un examen, y donde un
+   estudiante rinde durante otra hora. Por eso aquí manda
    lo que se aprendió de los paneles de trabajo (`design-taste-frontend`,
    «app screens»):
 
@@ -17,18 +18,19 @@
      menú ni los chips. Las mayúsculas gritan y se leen más despacio.
    - Las cifras con dígitos de ancho fijo, para que no bailen al actualizarse.
 
-   **Se aplica redefiniendo las variables de `tokens.css` dentro del marco**,
-   como `.publica` hace con la portada: todas las pantallas del docente cambian
-   a la vez sin tocarlas una por una, y el panel del estudiante sigue claro
-   hasta su turno.
+   **Se aplica redefiniendo las variables de `tokens.css` dentro del marco**
+   (`.tema-oscuro`, en el del panel y en el del examen), como `.publica` hace
+   con la portada: todas las pantallas cambian a la vez sin tocarlas una por
+   una.
 
    Contraste medido sobre la superficie #141414 (AA pide 4,5 en texto):
-     tinta    #f2f2f2  17,1      media  #c4c4c4  11,3      suave  #9a9a9a  6,6
-     ámbar    #e8a700   8,9      (y #141414 sobre el ámbar del botón: 8,9)
-     alta     #ff9b8d   8,6      media  #ffb36b   9,6      éxito  #5ad394  9,7
+     tinta    #f2f2f2  16,5      media  #c4c4c4  10,6      suave  #9a9a9a  6,6
+     ámbar    #e8a700   8,7      (y #141414 sobre el ámbar del botón: 8,7)
+     alta     #ff9b8d   9,1      media  #ffb36b  10,5      éxito  #5ad394  9,8
+   Y cada severidad sobre su propio fondo: alta 8,6, media 9,5, en curso 11,2.
    =========================================================================== */
 
-.app.tema-oscuro {
+.tema-oscuro {
   --amarillo: #e8a700;
   --amarillo-oscuro: #ffbb1f;
   --amarillo-tenue: #2a2109;
@@ -85,8 +87,8 @@
 }
 
 /* Que el rebote del scroll no enseñe el gris claro de fuera del marco. */
-html:has(.app.tema-oscuro),
-html:has(.app.tema-oscuro) body {
+html:has(.tema-oscuro),
+html:has(.tema-oscuro) body {
   background: #0a0a0a;
 }
 
@@ -252,6 +254,11 @@ html:has(.app.tema-oscuro) body {
     transform 120ms ease-out;
 }
 
+/* Una píldora no se parte en dos líneas: «Ver / detalles» en el teléfono. */
+.tema-oscuro .boton {
+  white-space: nowrap;
+}
+
 .tema-oscuro .boton:active:not(:disabled) {
   transform: scale(0.97);
 }
@@ -406,6 +413,14 @@ html:has(.app.tema-oscuro) body {
   color: var(--alta);
 }
 
+/* Algo que salió bien («tu docente te admitió»): verde. `.tema-oscuro
+   .aviso` es más específica y lo pintaba de rojo, como un error. */
+.tema-oscuro .aviso-exito {
+  border-color: #1f5a3c;
+  background: var(--exito-fondo);
+  color: var(--exito);
+}
+
 .tema-oscuro .aviso-neutro {
   border-color: var(--linea);
   background: var(--papel);
@@ -461,6 +476,62 @@ html:has(.app.tema-oscuro) body {
 .tema-oscuro select:focus-visible {
   outline: 2px solid var(--amarillo);
   outline-offset: 2px;
+}
+
+/* ---------- El marco del examen ----------
+   Sin navegación, como siempre. La cabecera usaba `var(--tinta)` de fondo
+   para quedar oscura sobre el tema claro: aquí la tinta es casi blanca, así
+   que va sobre el negro de la página con una línea, como la barra lateral. */
+
+.examen-marco.tema-oscuro {
+  background: var(--papel-gris);
+}
+
+.tema-oscuro .examen-cabecera {
+  background: var(--papel-gris);
+  border-bottom: 1px solid #1c1c1c;
+}
+
+.tema-oscuro .examen-cabecera .marca {
+  color: var(--tinta);
+}
+
+.tema-oscuro .examen-aviso {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tinta-media);
+}
+
+/* El enunciado es lo primero que hay que leer: el texto más grande de la
+   pregunta, en tinta plena. */
+.tema-oscuro .enunciado {
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--tinta);
+}
+
+/* Los avisos de la supervisión flotan sobre el examen: son de lo poco que
+   lleva sombra, porque flotan de verdad. Traían blanco y azul marino fijos. */
+.tema-oscuro .aviso-supervision-flotante {
+  border-color: var(--linea-fuerte);
+  background: #1a1a1a;
+  color: var(--tinta);
+  box-shadow: var(--sombra-alta); /* taste-skill-ignore: flota sobre el examen */
+}
+
+.tema-oscuro .aviso-supervision-icono {
+  background: var(--amarillo-tenue);
+  color: #ffd27a;
+}
+
+.tema-oscuro .indicador-camara-examen {
+  border: 1px solid var(--linea-fuerte);
+  background: var(--papel);
+  color: var(--tinta-media);
+  box-shadow: var(--sombra-alta); /* taste-skill-ignore: flota sobre el examen */
 }
 
 /* ---------- Panel de inicio ----------
@@ -638,8 +709,16 @@ html:has(.app.tema-oscuro) body {
 
 .tema-oscuro .inicio-fila-texto {
   display: grid;
+  flex: 1 1 14rem;
   gap: 2px;
   min-width: 0;
+}
+
+/* Si al lado no cabe lo que acompaña a la fila (una nota con su aviso, un
+   botón), baja a su propia línea en vez de aplastar el texto en una columna
+   de una palabra. */
+.tema-oscuro .inicio-filas li {
+  flex-wrap: wrap;
 }
 
 .tema-oscuro .inicio-fila-texto a {
@@ -729,6 +808,73 @@ html:has(.app.tema-oscuro) body {
 
   .tema-oscuro .en-curso-cabeza .codigo-bloque {
     text-align: left;
+  }
+}
+
+/* ---------- Panel del estudiante ----------
+   Lo que le toca rendir manda: la columna ancha es suya, con lo entregado
+   debajo; al lado, entrar con un código y sus clases. */
+
+.tema-oscuro .estudiante-columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 22rem);
+  gap: var(--e4);
+  align-items: start;
+}
+
+.tema-oscuro .estudiante-principal,
+.tema-oscuro .estudiante-lado {
+  display: grid;
+  gap: var(--e4);
+  min-width: 0;
+}
+
+.tema-oscuro .estudiante-principal > .tarjeta + .tarjeta,
+.tema-oscuro .estudiante-lado > .tarjeta + .tarjeta {
+  margin-top: 0;
+}
+
+.tema-oscuro .estudiante-codigo {
+  padding: var(--e5);
+}
+
+.tema-oscuro .estudiante-codigo .subtitulo {
+  margin-bottom: var(--e4);
+  font-size: 0.875rem;
+}
+
+.tema-oscuro .estudiante-detalle {
+  color: var(--tinta-suave);
+}
+
+/* «Puedes entrar ahora»: en verde, que es lo que significa. */
+.tema-oscuro .estudiante-detalle.activo {
+  color: var(--exito);
+  font-weight: 500;
+}
+
+.tema-oscuro .inicio-fila-texto > strong {
+  font-weight: 550;
+}
+
+/* Una fecha no se parte: «06:35 p.» en una línea y «m.» en la siguiente. */
+.tema-oscuro .sin-corte {
+  white-space: nowrap;
+}
+
+.tema-oscuro .estudiante-nota {
+  display: inline-flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--e2);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 960px) {
+  .tema-oscuro .estudiante-columnas {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
