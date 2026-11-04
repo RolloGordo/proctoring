@@ -451,6 +451,172 @@
   color: var(--tinta-suave);
 }
 
+/* Supervisión personalizada (HU-031): los módulos agrupados por con qué se
+ * observan. Dos columnas en escritorio y una en el teléfono; cada grupo es una
+ * lista de casillas con su explicación debajo, como los bancos de arriba. */
+.selector-modulos {
+  margin: 0 0 var(--e5);
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.selector-modulos-partir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e2);
+  margin-bottom: var(--e4);
+}
+
+.selector-modulos-partir .ayuda {
+  margin: 0 var(--e1) 0 0;
+}
+
+.selector-modulos-grupos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--e4) var(--e5);
+}
+
+.selector-modulos-grupo h3 {
+  margin: 0 0 var(--e2);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tinta-media);
+}
+
+.selector-modulos-grupo ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+}
+
+.selector-modulos-grupo li + li {
+  border-top: 1px solid var(--linea);
+}
+
+.selector-modulos-grupo label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--e3);
+  padding: var(--e3);
+  margin: 0;
+  cursor: pointer;
+}
+
+.selector-modulos-grupo input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  accent-color: var(--accion, var(--tinta));
+}
+
+.selector-modulos-texto {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.selector-modulos-texto strong {
+  font-weight: 500;
+}
+
+.selector-modulos-texto .ayuda {
+  margin: 0;
+}
+
+.selector-modulos[disabled] label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.selector-modulos-resumen {
+  margin: var(--e4) 0 0;
+  font-size: 0.875rem;
+  color: var(--tinta-media);
+  font-variant-numeric: tabular-nums;
+}
+
+.selector-modulos-resumen strong {
+  color: var(--tinta);
+}
+
+/* La sala de espera dice qué se vigila agrupado por dispositivo: es lo que
+ * el estudiante necesita para saber qué va a encender. */
+.sala-modulos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--e5);
+  margin: var(--e4) 0;
+}
+
+.sala-modulos h3 {
+  margin: var(--e3) 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tinta-media);
+}
+
+.sala-modulos .lista-modulos {
+  margin: var(--e1) 0 0;
+}
+
+.sala-no-usa {
+  margin: 0 0 var(--e3);
+  font-size: 0.9375rem;
+}
+
+/* «Qué se vigila» en la cabecera del examen del docente. */
+.sesion-vigila {
+  margin-top: var(--e2);
+  font-size: 0.875rem;
+}
+
+.sesion-vigila summary {
+  cursor: pointer;
+  color: var(--tinta-media);
+  width: fit-content;
+}
+
+.sesion-vigila summary:hover {
+  color: var(--tinta);
+}
+
+.sesion-vigila dl {
+  display: grid;
+  gap: var(--e1);
+  margin: var(--e2) 0 0;
+}
+
+.sesion-vigila dl > div {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr);
+  gap: var(--e3);
+}
+
+.sesion-vigila dt {
+  color: var(--tinta-suave);
+}
+
+.sesion-vigila dd {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .sesion-vigila dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .selector-modulos-grupos,
+  .sala-modulos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .ayuda-formatos {
   margin: var(--e3) 0;
   padding: var(--e3);

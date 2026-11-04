@@ -1,7 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { api, type Course, type QuestionBank, type SupervisionPreset } from '../lib/api'
+import {
+  api,
+  type Course,
+  type QuestionBank,
+  type SupervisionModule,
+  type SupervisionPreset
+} from '../lib/api'
 import { useAuth } from '../lib/auth-context'
+import { MODULOS_DE_PRESET, comoModulosElegidos } from '../lib/modulos'
+import { SelectorModulos } from '../components/SelectorModulos'
 
 /**
  * Qué vigila cada nivel. El texto sale de `PRESET_MODULES` en el dominio de la
@@ -23,6 +31,11 @@ const PRESETS: Array<{ valor: SupervisionPreset; nombre: string; detalle: string
     nombre: 'Estricta',
     detalle:
       'Añade reverificación de identidad, voces externas, consulta a IA por voz, captura de pantalla y monitoreo en vivo.'
+  },
+  {
+    valor: 'custom',
+    nombre: 'Personalizada',
+    detalle: 'Eliges tú los módulos, uno por uno.'
   }
 ]
 
@@ -37,6 +50,11 @@ export function NuevaSesion() {
   const [tolerancia, setTolerancia] = useState(10)
   const [guardarCodigo, setGuardarCodigo] = useState(false)
   const [preset, setPreset] = useState<SupervisionPreset>('standard')
+  // Lo que se elige con «Personalizada». Empieza con lo del nivel que estaba
+  // marcado: casi siempre se quiere ajustar uno, no partir de cero.
+  const [modulos, setModulos] = useState<Set<SupervisionModule>>(
+    () => new Set(MODULOS_DE_PRESET.standard)
+  )
   const [descripcion, setDescripcion] = useState('')
   const [cursos, setCursos] = useState<Course[]>([])
   const [cargandoCursos, setCargandoCursos] = useState(true)
@@ -109,6 +127,10 @@ export function NuevaSesion() {
       setError('Escribe el título del examen.')
       return
     }
+    if (preset === 'custom' && modulos.size === 0) {
+      setError('Elige al menos un módulo de supervisión, o un nivel ya armado.')
+      return
+    }
     setEnviando(true)
     try {
       const sesion = await api.createSession(
@@ -119,6 +141,7 @@ export function NuevaSesion() {
           duration_minutes: duracion,
           entry_tolerance_minutes: tolerancia,
           preset,
+          ...(preset === 'custom' ? { modules: comoModulosElegidos(modulos) } : {}),
           description: descripcion.trim() || null,
           course_id: cursoId || null,
           // Vacío significa "todas las del banco".
@@ -440,7 +463,13 @@ export function NuevaSesion() {
               <span>Nivel de supervisión</span>
               <select
                 value={preset}
-                onChange={(e) => setPreset(e.target.value as SupervisionPreset)}
+                onChange={(e) => {
+                  const nuevo = e.target.value as SupervisionPreset
+                  if (nuevo === 'custom' && preset !== 'custom') {
+                    setModulos(new Set(MODULOS_DE_PRESET[preset]))
+                  }
+                  setPreset(nuevo)
+                }}
               >
                 {PRESETS.map((p) => (
                   <option key={p.valor} value={p.valor}>
@@ -450,6 +479,8 @@ export function NuevaSesion() {
               </select>
               {elegido && <span className="ayuda">{elegido.detalle}</span>}
             </label>
+
+            {preset === 'custom' && <SelectorModulos elegidos={modulos} onChange={setModulos} />}
 
             <label className="campo">
               <span>Indicaciones para el estudiante (opcional)</span>

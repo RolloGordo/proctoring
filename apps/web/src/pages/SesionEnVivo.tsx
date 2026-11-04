@@ -23,6 +23,7 @@ import {
 import { CodigoAcceso } from '../components/CodigoAcceso'
 import { mergeAlerts } from '../lib/live-alerts'
 import { mergeEvents } from '../lib/live-events'
+import { agrupar, modulosVigilados } from '../lib/modulos'
 
 const CAMARAS_POR_PAGINA = 6
 
@@ -294,6 +295,7 @@ export function SesionEnVivo() {
             {fechaLarga(sesion.starts_at)} · {sesion.duration_minutes} min · supervisión{' '}
             {nombrePreset(sesion.preset).toLowerCase()}
           </p>
+          <QueSeVigila sesion={sesion} />
         </div>
         <div className="acciones-sesion">
           <button
@@ -538,5 +540,32 @@ function Dato({
       <p className={tono ? `cifra cifra-${tono}` : 'cifra'}>{valor}</p>
       <p className="etiqueta">{etiqueta}</p>
     </div>
+  )
+}
+
+/**
+ * Lo mismo que lee el estudiante en la sala de espera, contado al docente.
+ *
+ * Plegado: se consulta al preparar el examen y estorba mientras se vigila. Pero
+ * tiene que estar, sobre todo en un examen personalizado, donde el nombre del
+ * nivel no dice nada de lo que se eligió.
+ */
+function QueSeVigila({ sesion }: { sesion: ExamSession }) {
+  const grupos = agrupar(modulosVigilados(sesion))
+  if (grupos.length === 0) return null
+  const total = grupos.reduce((suma, g) => suma + g.modulos.length, 0)
+
+  return (
+    <details className="sesion-vigila">
+      <summary>Qué se vigila ({total})</summary>
+      <dl>
+        {grupos.map(({ grupo, modulos }) => (
+          <div key={grupo.id}>
+            <dt>{grupo.docente}</dt>
+            <dd>{modulos.map((m) => m.nombre).join(' · ')}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   )
 }

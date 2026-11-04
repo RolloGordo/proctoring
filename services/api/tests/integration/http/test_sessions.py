@@ -57,7 +57,9 @@ class TestCreate:
             json=a_body(preset="custom", modules={"gaze": {"yaw_degrees": 30}}),
         ).json()
 
-        assert body["modules"] == {"gaze": {"yaw_degrees": 30}}
+        assert body["modules"] == {"gaze": {"yaw_degrees": 30, "min_duration_ms": 3000}}
+        assert body["preset"] == "custom"
+        assert body["watched_modules"] == ["gaze"]
 
     def test_400_on_custom_without_modules(self, client: TestClient) -> None:
         response = client.post("/api/v1/sessions", json=a_body(preset="custom"))
