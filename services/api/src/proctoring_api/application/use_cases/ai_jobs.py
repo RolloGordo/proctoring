@@ -43,6 +43,7 @@ from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.audio_analysis import AiVoiceThresholds, AudioAnalysis
 from proctoring_api.domain.errors import AuthorizationError, DomainError
 from proctoring_api.domain.event import EventType, ProctoringEvent
+from proctoring_api.domain.evidence import path_belongs_to
 from proctoring_api.domain.exam_session import SupervisionModule
 from proctoring_api.domain.identity import IdentityCheck, threshold_from_settings
 from proctoring_api.domain.participant import SessionParticipant
@@ -344,11 +345,22 @@ class RecordIdentityCheck:
             inconclusive=measurement.inconclusive,
         )
 
+        # Si la referencia se cambió después de haberse usado, una coincidencia
+        # no basta: coincidir con una cara que el propio estudiante acaba de
+        # poner no demuestra nada. Queda esperando y decide el docente, como
+        # con una verificación fallida.
+        referencia = self._faces.find(student_id)
+        por_revisar = referencia is not None and referencia.needs_review
         ahora = self._clock.now()
         actualizado = (
-            participante.verified(ahora) if check.verified else participante.verification_failed()
+            participante.verified(ahora)
+            if check.verified and not por_revisar
+            else participante.verification_failed()
         )
         self._participants.save(actualizado)
+        metadata = check.as_metadata()
+        if por_revisar:
+            metadata["reference_replaced"] = True
 
         # El resultado queda como evidencia, pase o falle: es lo que después
         # sostiene el informe de accuracy y de FAR/FRR.
@@ -360,23 +372,22 @@ class RecordIdentityCheck:
                 event_type=EventType.IDENTITY_CHECK,
                 started_at=ahora,
                 duration_ms=measurement.latency_ms or 0,
-                metadata=check.as_metadata(),
+                metadata=metadata,
             )
         )
 
         # Guardar el embedding ahorra recalcularlo en el siguiente examen.
-        if measurement.reference_embedding is not None:
-            referencia = self._faces.find(student_id)
-            if referencia is not None:
-                self._faces.save(
-                    ReferenceFace(
-                        student_id=referencia.student_id,
-                        storage_path=referencia.storage_path,
-                        embedding=measurement.reference_embedding,
-                        model_version=measurement.model_version,
-                        registered_at=referencia.registered_at,
-                    )
+        if measurement.reference_embedding is not None and referencia is not None:
+            self._faces.save(
+                ReferenceFace(
+                    student_id=referencia.student_id,
+                    storage_path=referencia.storage_path,
+                    embedding=measurement.reference_embedding,
+                    model_version=measurement.model_version,
+                    registered_at=referencia.registered_at,
+                    needs_review=referencia.needs_review,
                 )
+            )
 
         return IdentityOutcome(participant=actualizado, check=check)
 
@@ -414,14 +425,26 @@ class RegisterReferenceFace:
             raise AuthorizationError("La cara de referencia la registra el propio estudiante")
 
         quien = actor.id if actor is not None else self._dev_student_id
+        # La ruta llega en el cuerpo: sin esto, un estudiante podía registrar
+        # como suya la foto de otro, que el worker descarga con la clave de
+        # servicio. Tiene que ser una que la API le dio a él para subir.
+        if not path_belongs_to(storage_path, student_id=quien):
+            raise AuthorizationError("Esa foto no es tuya: súbela con la URL que te dio la API")
         # Registrar otra vez **reemplaza**: si alguien cambia de aspecto o la
-        # primera foto salió mal, tiene que poder rehacerla.
+        # primera foto salió mal, tiene que poder rehacerla. Pero si la anterior
+        # ya se usó para verificar, el cambio lo tiene que ver un docente: es
+        # lo primero que haría quien rinde por otro con su cuenta.
+        anterior = self._faces.find(quien)
+        por_revisar = anterior is not None and (
+            anterior.needs_review or anterior.embedding is not None
+        )
         face = ReferenceFace(
             student_id=quien,
             storage_path=storage_path,
             embedding=None,
             model_version=None,
             registered_at=self._clock.now(),
+            needs_review=por_revisar,
         )
         self._faces.save(face)
         return face
@@ -462,6 +485,12 @@ class RequestIdentityCheck:
             raise AuthorizationError("No estas matriculado en este examen")
         if not participante.has_consented:
             raise AuthorizationError("Tienes que aceptar la supervision antes de verificarte")
+
+        # La captura tiene que ser de este examen y de este estudiante. Sin esto
+        # se podía mandar una captura buena de otro examen, o una foto de otra
+        # persona, y el worker la comparaba igual.
+        if not path_belongs_to(capture_path, student_id=quien, session_id=session_id):
+            raise AuthorizationError("Esa captura no es de este examen: tómala de nuevo")
 
         if self._faces.find(quien) is None:
             raise ReferenceFaceMissingError(

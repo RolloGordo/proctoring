@@ -17,6 +17,8 @@ si algún día hay más, esto tiene que pasar a Redis, que ya está desplegado.
 
 from __future__ import annotations
 
+import base64
+import json
 import threading
 import time
 from collections import defaultdict, deque
@@ -153,17 +155,41 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 def _identificar(request: Request) -> str:
     """Identifica al cliente.
 
-    Se prefiere el token sobre la IP: detrás de la red de una universidad todos
+    Se prefiere la persona sobre la IP: detrás de la red de una universidad todos
     los estudiantes comparten IP de salida, y limitar por IP los castigaría a
-    todos por culpa de uno. El token identifica a la persona.
+    todos por culpa de uno.
 
-    Sin token se cae a la IP, que es lo único que hay.
+    **La persona es el `sub` del token, no el token.** Antes la clave eran los
+    últimos 32 caracteres del Bearer, sin mirarlo (SEC-05): mandar un token
+    basura distinto en cada petición daba una ventana nueva cada vez, y quien
+    tenía cuenta podía renovar la sesión para estrenar token y saltarse los
+    diez intentos por minuto del código de acceso. El `sub` es el mismo en todos
+    los tokens de una persona, así que renovar ya no sirve.
+
+    El token no se verifica aquí (eso lo hace la autenticación, después): un
+    token sin `sub` legible cuenta como anónimo y cae en la ventana de su IP,
+    que comparte con toda la basura que llegue por ahí.
     """
     autorizacion = request.headers.get("Authorization", "")
     if autorizacion.startswith("Bearer "):
-        token = autorizacion[7:]
-        # Solo el final del token: suficiente para distinguir clientes y no se
-        # guarda la credencial entera en memoria.
-        return f"t:{token[-32:]}"
+        sujeto = _sujeto(autorizacion[7:])
+        if sujeto is not None:
+            return f"u:{sujeto}"
 
     return f"ip:{request.client.host if request.client else 'desconocido'}"
+
+
+def _sujeto(token: str) -> str | None:
+    """El `sub` de un JWT, leído sin verificar la firma; `None` si no se puede."""
+    partes = token.split(".")
+    if len(partes) != 3:
+        return None
+    carga = partes[1] + "=" * (-len(partes[1]) % 4)
+    try:
+        datos = json.loads(base64.urlsafe_b64decode(carga))
+    except (ValueError, TypeError):
+        return None
+    sujeto = datos.get("sub") if isinstance(datos, dict) else None
+    if not isinstance(sujeto, str) or not 0 < len(sujeto) <= 64:
+        return None
+    return sujeto

@@ -248,3 +248,24 @@ class TestCors:
         )
 
         assert app is not None
+
+
+class TestLaDocumentacionNoSePublicaEnProduccion:
+    """SEC-04: `/docs`, `/redoc` y `/openapi.json` daban el mapa entero de la API."""
+
+    @pytest.mark.parametrize("ruta", ["/docs", "/redoc", "/openapi.json"])
+    def test_en_produccion_no_existe(self, identify_user: Any, ruta: str) -> None:
+        from proctoring_api.main import create_app
+
+        from tests.conftest import INTERNAL_TOKEN, _settings
+
+        app = create_app(
+            _settings(env="production", auth_enabled=True, internal_api_token=INTERNAL_TOKEN),
+            identify_user=identify_user,
+        )
+
+        with TestClient(app) as cliente:
+            assert cliente.get(ruta).status_code == 404
+
+    def test_en_local_sigue_disponible(self, client: TestClient) -> None:
+        assert client.get("/openapi.json").status_code == 200

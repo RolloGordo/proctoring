@@ -88,6 +88,10 @@ class ImportQtiIntoBank:
             AuthorizationError: si el banco no es de ese docente.
             InvalidQuestionError: si alguna pregunta viola una regla del dominio.
         """
+        # SEC-11: primero de quién es el banco, después el archivo. Antes se
+        # analizaba el XML de cualquiera (hasta 1 MB) y solo al guardar se veía
+        # que el banco era ajeno; y con `dry_run` ni siquiera se llegaba a ver.
+        self._add_questions.ensure_can_add(bank_id, actor)
         try:
             analizado = self._parse(xml)
         except ValueError as error:

@@ -12,6 +12,7 @@ sistema, que es justo el POST de eventos).
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -29,6 +30,8 @@ ALLOWED_ALGORITHMS = ["ES256", "RS256"]
 
 #: Claim `aud` que pone Supabase para un usuario que inicio sesion.
 AUDIENCE = "authenticated"
+
+logger = logging.getLogger(__name__)
 
 #: Cuanto se cachea el JWKS antes de volver a pedirlo.
 JWKS_LIFESPAN_SECONDS = 600
@@ -61,9 +64,19 @@ class SupabaseTokenVerifier:
             )
         except jwt.ExpiredSignatureError as exc:
             raise AuthenticationError("La sesion expiro; vuelve a iniciar sesion") from exc
-        except jwt.InvalidTokenError as exc:
-            raise AuthenticationError(f"Token invalido: {exc}") from exc
-        except Exception as exc:  # fallo de red al traer el JWKS, por ejemplo
+        except jwt.PyJWKClientConnectionError as exc:
+            # De verdad no se pudo: el JWKS de Supabase no respondió.
+            logger.warning("No se pudo traer el JWKS de Supabase: %s", exc)
+            raise AuthenticationError("No se pudo verificar el token en este momento") from exc
+        except (jwt.InvalidTokenError, jwt.PyJWKClientError) as exc:
+            # SEC-07: el detalle va al log, no a la respuesta. Antes se devolvía
+            # tal cual («Invalid header string: 'utf-8' codec can't decode…»),
+            # y un token falsificado sin `kid` contestaba «no se pudo verificar
+            # en este momento», como si fuera un fallo pasajero.
+            logger.info("Token rechazado: %s", exc)
+            raise AuthenticationError("Sesion invalida; vuelve a iniciar sesion") from exc
+        except Exception as exc:
+            logger.warning("Fallo inesperado al verificar un token: %s", exc)
             raise AuthenticationError("No se pudo verificar el token en este momento") from exc
 
         try:
