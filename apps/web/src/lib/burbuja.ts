@@ -33,6 +33,8 @@
 const RELEVO_MS = 6500
 /** Cuánto dura el cambio de una foto a la siguiente. */
 const CAMBIO_MS = 1400
+/** Tras la última tecla en un campo que evita, cuánto se la considera escribiendo. */
+const ESCRIBIENDO_MS = 2500
 /** Lado de la textura: potencia de dos, para tener mipmaps también en WebGL 1. */
 const LADO_TEXTURA = 1024
 /** El cuadrado dibujado mide esto por el radio: deja sitio al estiramiento. */
@@ -75,6 +77,7 @@ uniform float uPixel;
 uniform float uLejania;
 uniform float uFundido;
 uniform vec2 uOla;
+uniform float uOpacidad;
 
 float azar(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -230,7 +233,9 @@ void main() {
   );
   color = mix(color, vec3(1.0), filo * 0.55);
 
-  float alfa = 1.0 - smoothstep(1.0 - uPixel * 1.5, 1.0, rr);
+  // uOpacidad la desvanece entera (alfa premultiplicado: color y alfa a la vez)
+  // cuando entra en la franja de la cabecera o del pie mientras viaja.
+  float alfa = (1.0 - smoothstep(1.0 - uPixel * 1.5, 1.0, rr)) * uOpacidad;
   gl_FragColor = vec4(color * alfa, alfa);
 }
 `
@@ -250,12 +255,27 @@ type Ancla = {
 
 type Textura = { tex: WebGLTexture; lista: boolean }
 
-/** Resorte con algo de rebote: sigue al objetivo con retraso y se pasa un poco. */
-const RIGIDEZ = 120
-const AMORTIGUACION = 2 * 0.72 * Math.sqrt(RIGIDEZ)
-/** Detrás del cursor va más suelta, como si flotara: tarda más y rebota menos. */
-const RIGIDEZ_CURSOR = 45
-const AMORTIGUACION_CURSOR = 2 * 0.85 * Math.sqrt(RIGIDEZ_CURSOR)
+/**
+ * Un resorte dicho como lo dice Apple: amortiguación (1 = sin rebote) y
+ * respuesta (cuánto tarda en llegar, en segundos), no rigidez a secas. Así se
+ * leen y se comparan con los valores de referencia de *Designing Fluid
+ * Interfaces*: mover algo de sitio es amortiguación 1 y respuesta 0,4.
+ */
+function resorte(amortiguacion: number, respuesta: number) {
+  const rigidez = ((2 * Math.PI) / respuesta) ** 2
+  return { rigidez, amortiguacion: 2 * amortiguacion * Math.sqrt(rigidez) }
+}
+
+/**
+ * Viajando con el scroll: sin rebote. El scroll ya trae su propia inercia, y
+ * pasarse del ancla y volver se veía como un tirón a cada parada.
+ */
+const VIAJE = resorte(1, 0.45)
+/**
+ * Detrás del cursor, también sin rebote y algo más suelta, como si flotara.
+ * Antes tardaba casi un segundo (respuesta 0,94) y el cursor la dejaba atrás.
+ */
+const CURSOR = resorte(1, 0.5)
 /** El agua de dentro: blanda y poco amortiguada, para que vaya y venga. */
 const RIGIDEZ_OLA = 22
 const AMORTIGUACION_OLA = 2 * 0.18 * Math.sqrt(RIGIDEZ_OLA)
@@ -284,8 +304,9 @@ export type OpcionesBurbuja = {
   refracta?: HTMLElement[]
   /**
    * Lo que tiene fondo propio en los bordes de la página (la cabecera, el
-   * pie): la burbuja, vacía o con foto, pasa siempre por encima de ellos y no
-   * por detrás, donde su fondo la cortaba en recto.
+   * aviso, el pie). La vacía posada pasa por encima y enseña su texto; la que
+   * lleva foto o va de viaje pasa por detrás y se desvanece al entrar en su
+   * franja, para que su fondo no la corte en recto ni ella tape sus enlaces.
    */
   bordes?: HTMLElement[]
 }
@@ -373,7 +394,8 @@ export function montarBurbuja(
     pixel: u('uPixel'),
     lejania: u('uLejania'),
     fundido: u('uFundido'),
-    ola: u('uOla')
+    ola: u('uOla'),
+    opacidad: u('uOpacidad')
   }
   gl.uniform1i(uni.fotoA, 0)
   gl.uniform1i(uni.fotoB, 1)
@@ -562,17 +584,42 @@ export function montarBurbuja(
   }
 
   /**
-   * ¿Tiene que ir el lienzo por encima de todo (`pub-lienzo-encima`)? Si la
-   * burbuja vacía toca texto, para enseñarlo a través del cristal; y si
-   * cualquiera toca la cabecera o el pie, para no quedar cortada por su fondo.
-   * El resto del tiempo va detrás y no tapa nada. Si va encima y está vacía,
-   * rehace la textura del texto.
+   * ¿Tiene que ir el lienzo por encima de todo (`pub-lienzo-encima`)? Solo si
+   * la burbuja está vacía y posada (la que sigue al cursor) y toca texto, para
+   * enseñarlo a través del cristal; entonces rehace la textura del texto.
+   *
+   * La que lleva foto o va de viaje se queda siempre detrás. Antes subía
+   * encima en cuanto rozaba la cabecera, para que su fondo no la cortara en
+   * recto, y durante casi un tercio del recorrido tapaba los enlaces de la
+   * cabecera y el texto que cruzaba. Ahora se desvanece al entrar en esa
+   * franja (`visibilidad`).
    */
-  function atenderTexto(x: number, y: number, r: number, vacia: number) {
-    const conTexto = vacia > 0.5 && toca(refracta, x, y, r)
-    const encima = conTexto || toca(bordes, x, y, r)
+  function atenderTexto(x: number, y: number, r: number, vacia: number, posada: boolean) {
+    const encima = posada && vacia > 0.5 && (toca(refracta, x, y, r) || toca(bordes, x, y, r))
     lienzo.classList.toggle('pub-lienzo-encima', encima)
-    if (encima && vacia > 0.5) actualizarTexto()
+    if (encima) actualizarTexto()
+    return encima
+  }
+
+  /**
+   * Cuánto se ve la burbuja que pasa por detrás de la cabecera o del pie: se
+   * desvanece a medida que entra en su franja, en vez de quedar cortada en
+   * recto por su fondo. Es lo que pide Apple para lo grande que se mueve: que
+   * se atenúe mientras se recoloca y vuelva a verse al posarse.
+   */
+  function visibilidad(x: number, y: number, r: number): number {
+    const alcance = r * ALCANCE
+    let opacidad = 1
+    for (const borde of bordes) {
+      const caja = borde.getBoundingClientRect()
+      if (caja.width === 0 || x + alcance < caja.left || x - alcance > caja.right) continue
+      // Lo que el disco se mete en la franja, entrando por arriba o por abajo.
+      // Empieza a desvanecerse un poco antes de tocarla: si esperara al
+      // contacto, el primer trozo que entra se vería cortado en recto.
+      const dentro = Math.min(y + alcance - caja.top, caja.bottom - (y - alcance)) + alcance * 0.3
+      if (dentro > 0) opacidad = Math.min(opacidad, 1 - suave(dentro / (alcance * 0.7)))
+    }
+    return opacidad
   }
 
   // El estado del resorte, en píxeles CSS de la ventana.
@@ -589,6 +636,8 @@ export function montarBurbuja(
   const puntero = { x: -1e4, y: -1e4 }
   // Solo un ratón o un lápiz «pasean» la burbuja: un dedo no tiene cursor.
   let hayCursor = false
+  // Cuándo se escribió por última vez en algo que la burbuja evita.
+  let ultimaEscritura = -Infinity
 
   // El carrusel: cuándo cambió por última vez y desde qué foto.
   let relevoDesde = performance.now()
@@ -628,9 +677,15 @@ export function montarBurbuja(
     while (i < visibles.length - 1 && visibles[i + 1].rect.y < mitad) i++
     const a = visibles[i]
     const b = visibles[Math.min(i + 1, visibles.length - 1)]
+    // El tramo empieza a contar cuando el ancla de arriba cruza la mitad de la
+    // pantalla. La primera ya puede estar por encima de la mitad sin haber
+    // hecho scroll (en una pantalla alta, o con la burbuja del primer
+    // pantallazo arriba): entonces cuenta desde donde está al cargar, o la
+    // daba por «de viaje» con la página quieta y no seguía al cursor.
+    const linea = i === 0 ? Math.min(mitad, a.rect.y + window.scrollY) : mitad
     let s = 0
-    if (a !== b && a.rect.y < mitad)
-      s = suave(((mitad - a.rect.y) / (b.rect.y - a.rect.y) - 0.12) / 0.76)
+    if (a !== b && a.rect.y < linea)
+      s = suave(((linea - a.rect.y) / (b.rect.y - a.rect.y) - 0.12) / 0.76)
     const arco = Math.sin(Math.PI * s)
     return {
       x: a.rect.x + (b.rect.x - a.rect.x) * s - arco * ancho * 0.22,
@@ -664,10 +719,13 @@ export function montarBurbuja(
     lejania: number
     /** Cuánto se ha corrido el agua de dentro, en radios (y hacia arriba). */
     ola: { x: number; y: number }
+    /** 1 se ve entera; 0, desvanecida del todo (ver `visibilidad`). */
+    opacidad: number
   }
 
   function dibujar(t: Trazo) {
-    if (t.y + t.r * MARGEN < 0 || t.y - t.r * MARGEN > alto || t.r < 2) return
+    if (t.y + t.r * MARGEN < 0 || t.y - t.r * MARGEN > alto || t.r < 2 || t.opacidad <= 0.001)
+      return
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, textura(t.fotoA).tex)
     gl.activeTexture(gl.TEXTURE1)
@@ -686,6 +744,7 @@ export function montarBurbuja(
     gl.uniform1f(uni.pixel, 1 / t.r)
     gl.uniform1f(uni.lejania, t.lejania)
     gl.uniform2f(uni.ola, t.ola.x, t.ola.y)
+    gl.uniform1f(uni.opacidad, t.opacidad)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
   }
 
@@ -703,13 +762,16 @@ export function montarBurbuja(
   function pasoQuieto(ahora: number) {
     gl.clearColor(0, 0, 0, 0)
     gl.clear(gl.COLOR_BUFFER_BIT)
-    let encima = false
+    // Quieta, la vacía enseña el texto que toca; las de foto se quedan detrás
+    // y se desvanecen al pasar bajo la cabecera o el pie, como en movimiento.
     let conTexto = false
     for (const ancla of anclas) {
       const rect = rectDe(ancla.nodo)
       if (!rect) continue
-      if (ancla.vacia && toca(refracta, rect.x, rect.y, rect.r)) conTexto = true
-      if (toca(bordes, rect.x, rect.y, rect.r)) encima = true
+      const vaciaConTexto =
+        ancla.vacia &&
+        (toca(refracta, rect.x, rect.y, rect.r) || toca(bordes, rect.x, rect.y, rect.r))
+      if (vaciaConTexto) conTexto = true
       const fotos =
         ancla.fotos.length > 1
           ? relevo(ancla, ahora)
@@ -725,10 +787,11 @@ export function montarBurbuja(
         py: 0,
         cerca: 0,
         lejania: 0,
-        ola: { x: 0, y: 0 }
+        ola: { x: 0, y: 0 },
+        opacidad: vaciaConTexto ? 1 : visibilidad(rect.x, rect.y, rect.r)
       })
     }
-    lienzo.classList.toggle('pub-lienzo-encima', encima || conTexto)
+    lienzo.classList.toggle('pub-lienzo-encima', conTexto)
     if (conTexto) actualizarTexto()
   }
 
@@ -741,8 +804,16 @@ export function montarBurbuja(
     // El ancla tiene que verse: una vez fuera de pantalla, no hay a quién seguir.
     if (ancla.y + ancla.r < 0 || ancla.y - ancla.r > alto) return null
     let tope = ancho + r * 0.4
+    const activo = document.activeElement
     for (const { nodo, lado } of evita) {
-      if (nodo.contains(document.activeElement)) return null
+      // Con el foco en un botón o enlace de lo que evita, vuelve a su sitio:
+      // no tapa lo que el teclado está a punto de pulsar. Con el foco en un
+      // campo, solo mientras se escribe: el acceso pone el foco en el correo
+      // al entrar, y si no la burbuja no se movería nunca.
+      if (activo && nodo.contains(activo)) {
+        const esCampo = activo instanceof HTMLInputElement || activo instanceof HTMLTextAreaElement
+        if (!esCampo || performance.now() - ultimaEscritura < ESCRIBIENDO_MS) return null
+      }
       const caja = nodo.getBoundingClientRect()
       const holgura = 24
       if (
@@ -756,7 +827,34 @@ export function montarBurbuja(
     }
     // Puede asomarse por los bordes de la ventana y subir sobre la cabecera,
     // como la de ThoughtLab.
-    return { x: entre(puntero.x, -r * 0.4, tope), y: entre(puntero.y, r * 0.2, alto - r * 0.2) }
+    let x = entre(puntero.x, -r * 0.4, tope)
+    let y = entre(puntero.y, r * 0.2, alto - r * 0.2)
+    // Lo que evita lo evita el disco entero, no solo el cursor: con el cursor
+    // cerca de «Iniciar sesión», la burbuja se le montaba encima y tapaba el
+    // botón justo antes de pulsarlo. Si el centro cae a menos de un radio de la
+    // caja, se empuja hasta el borde más cercano; el resorte suaviza el empuje,
+    // así que se nota como una pared blanda y no como un tope.
+    const distancia = r * ALCANCE
+    for (const { nodo, lado } of evita) {
+      if (lado) continue
+      const caja = nodo.getBoundingClientRect()
+      if (caja.width === 0) continue
+      const izquierda = caja.left - distancia
+      const derecha = caja.right + distancia
+      const arriba = caja.top - distancia
+      const abajo = caja.bottom + distancia
+      if (x <= izquierda || x >= derecha || y <= arriba || y >= abajo) continue
+      const salidas = [
+        { d: x - izquierda, x: izquierda, y },
+        { d: derecha - x, x: derecha, y },
+        { d: y - arriba, x, y: arriba },
+        { d: abajo - y, x, y: abajo }
+      ]
+      const salida = salidas.reduce((mejor, otra) => (otra.d < mejor.d ? otra : mejor))
+      x = salida.x
+      y = salida.y
+    }
+    return { x, y }
   }
 
   function paso(ahora: number) {
@@ -789,14 +887,15 @@ export function montarBurbuja(
       my = meta.y
     }
     // Posada, flota en su sitio: un vaivén lento y pequeño, como algo que
-    // lleva agua dentro, que nunca la deja quieta del todo.
+    // lleva agua dentro, que nunca la deja quieta del todo. Dos ondas de 12 y
+    // 15 s; la tercera, de 5,4 s (0,19 Hz), se quitó: Apple pide evitar las
+    // oscilaciones lentas cerca de 0,2 Hz, que son las que marean.
     if (posada) {
       const seg = (ahora - inicio) / 1000
-      mx += Math.sin(seg * 0.53) * meta.r * 0.03 + Math.sin(seg * 1.17 + 1.3) * meta.r * 0.01
+      mx += Math.sin(seg * 0.53) * meta.r * 0.03
       my += Math.cos(seg * 0.41) * meta.r * 0.035
     }
-    const rigidez = tras ? RIGIDEZ_CURSOR : RIGIDEZ
-    const amortiguacion = tras ? AMORTIGUACION_CURSOR : AMORTIGUACION
+    const { rigidez, amortiguacion } = tras ? CURSOR : VIAJE
 
     if (!iniciada) {
       pos = { x: mx, y: my }
@@ -807,7 +906,7 @@ export function montarBurbuja(
     vel.y += (rigidez * (my - pos.y) - amortiguacion * vel.y) * dt
     pos.x += vel.x * dt
     pos.y += vel.y * dt
-    velRadio += (RIGIDEZ * (meta.r - radio) - AMORTIGUACION * velRadio) * dt
+    velRadio += (VIAJE.rigidez * (meta.r - radio) - VIAJE.amortiguacion * velRadio) * dt
     radio += velRadio * dt
 
     // El chapoteo: el agua quiere correrse al revés de como se mueve la
@@ -835,7 +934,7 @@ export function montarBurbuja(
       relevoDesde = ahora - CAMBIO_MS
     }
 
-    atenderTexto(pos.x, pos.y, radio, vacia)
+    const encima = atenderTexto(pos.x, pos.y, radio, vacia, posada)
     gl.clearColor(0, 0, 0, 0)
     gl.clear(gl.COLOR_BUFFER_BIT)
     dibujar({
@@ -851,7 +950,8 @@ export function montarBurbuja(
       py: -dy / radio,
       cerca,
       lejania: meta.lejania,
-      ola
+      ola,
+      opacidad: encima ? 1 : visibilidad(pos.x, pos.y, radio)
     })
   }
 
@@ -859,6 +959,11 @@ export function montarBurbuja(
     puntero.x = evento.clientX
     puntero.y = evento.clientY
     hayCursor = evento.pointerType === 'mouse' || evento.pointerType === 'pen'
+  }
+  function alEscribir(evento: Event) {
+    const objetivo = evento.target
+    if (objetivo instanceof Node && evita.some(({ nodo }) => nodo.contains(objetivo)))
+      ultimaEscritura = performance.now()
   }
   function alSalir() {
     puntero.x = -1e4
@@ -880,6 +985,7 @@ export function montarBurbuja(
 
   window.addEventListener('resize', medir)
   window.addEventListener('pointermove', alMover, { passive: true })
+  document.addEventListener('keydown', alEscribir, true)
   document.documentElement.addEventListener('pointerleave', alSalir)
   document.addEventListener('visibilitychange', alCambiarVisibilidad)
   lienzo.addEventListener('webglcontextlost', alPerder)
@@ -891,6 +997,7 @@ export function montarBurbuja(
     lienzo.classList.remove('pub-lienzo-encima')
     window.removeEventListener('resize', medir)
     window.removeEventListener('pointermove', alMover)
+    document.removeEventListener('keydown', alEscribir, true)
     document.documentElement.removeEventListener('pointerleave', alSalir)
     document.removeEventListener('visibilitychange', alCambiarVisibilidad)
     lienzo.removeEventListener('webglcontextlost', alPerder)

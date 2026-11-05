@@ -19,4 +19,9 @@ describe('exam progress helpers', () => {
     expect(pageTitle('/sesiones/nueva')).toBe('Proctoring — Crear examen')
     expect(pageTitle('/docente')).toBe('Proctoring — Panel del docente')
   })
+
+  it('names the sign-in tab, which used to read just «Proctoring»', () => {
+    expect(pageTitle('/login')).toBe('Proctoring — Iniciar sesión')
+    expect(pageTitle('/')).toBe('Proctoring')
+  })
 })

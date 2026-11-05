@@ -305,16 +305,27 @@ html:has(.publica) {
   z-index: 20;
 }
 
-/* Con ratón, la del primer pantallazo es la de ThoughtLab: grande, arriba y
-   montada sobre el final del titular, que se ve a través del cristal. Solo
-   con WebGL (si no, una foto opaca taparía el titular) y en pantallas anchas;
-   en las demás se queda en su columna, con el carrusel. */
+/* Con ratón, la del primer pantallazo es la de ThoughtLab: arriba, a la
+   altura del titular, y sigue al cursor; al pasar sobre el titular lo enseña a
+   través del cristal. Solo con WebGL (si no, una foto opaca taparía el
+   titular) y en pantallas anchas; en las demás se queda en su columna, con el
+   carrusel.
+
+   **En reposo no pisa el titular.** Antes medía 38vw y se montaba sobre «EL» y
+   el punto de «DOCENTE.», así que el primer fotograma enseñaba la frase que
+   resume el proyecto deformada. Ahora mide el hueco que deja el titular a su
+   derecha: el titular ocupa 5,53 veces su tamaño de letra (medido de 961 a
+   2560 px), y la burbuja se queda con lo que sobra hasta el margen. */
 @media (min-width: 961px) {
   .publica .pub-con-cursor .pub-burbuja-portada {
     position: absolute;
-    top: clamp(0.5rem, 3vw, 3rem);
+    top: clamp(1.5rem, 4vw, 4.5rem);
     right: var(--pub-margen);
-    width: clamp(22rem, 38vw, 40rem);
+    width: clamp(
+      10rem,
+      calc(100vw - 2 * var(--pub-margen) - 5.53 * var(--pub-texto-portada) - 3rem),
+      36rem
+    );
   }
 }
 
@@ -1078,8 +1089,15 @@ html:has(.publica) {
   color: var(--pub-acento);
 }
 
+/* Parpadea unas pocas veces y se queda encendido: un cursor que no para,
+   junto al formulario, distrae justo de lo que hay que hacer. Y deja de
+   parpadear en cuanto se empieza a escribir (`data-escribiendo`). */
 .publica .pub-tecleado-espera {
-  animation: pub-parpadeo 1.06s steps(1, end) infinite;
+  animation: pub-parpadeo 1.06s steps(1, end) 4;
+}
+
+.publica .pub-acceso[data-escribiendo] .pub-tecleado-espera {
+  animation: none;
 }
 
 @keyframes pub-parpadeo {
@@ -1172,11 +1190,13 @@ html:has(.publica) {
   padding-right: 6.5rem;
 }
 
+/* 44 px de alto, el mínimo de un control que se toca con el dedo; el campo
+   mide 52, así que cabe con 4 de aire arriba y abajo. */
 .publica .pub-campo-ver {
   position: absolute;
   top: 50%;
-  right: 0.375rem;
-  min-height: 2.5rem;
+  right: 0.25rem;
+  min-height: 2.75rem;
   padding: 0 0.875rem;
   border: 0;
   border-radius: 999px;
@@ -1285,16 +1305,20 @@ html:has(.publica) {
 
 /* ---------- Movimiento ----------
    Cada parte entra cuando su sección aparece: el titular, luego el texto,
-   luego la imagen. Solo se esconde si el script que la va a enseñar ya está
-   corriendo (`pub-js`): sin él, todo está a la vista desde el principio. */
+   luego la imagen, **una sola vez** (`Portada.tsx`). Solo se esconde si el
+   script que la va a enseñar ya está corriendo (`pub-js`): sin él, todo está
+   a la vista desde el principio.
+
+   450 ms y 16 px, no 700 y 24: a velocidad normal de scroll el texto pasaba
+   media pantalla a medio aparecer, y se leía gris. */
 
 .pub-js .publica [data-aparece] {
   opacity: 0;
-  transform: translateY(24px);
+  transform: translateY(16px);
   transition:
-    opacity 700ms var(--pub-entrada),
-    transform 700ms var(--pub-entrada);
-  transition-delay: calc(var(--orden, 0) * 80ms);
+    opacity 450ms var(--pub-entrada),
+    transform 450ms var(--pub-entrada);
+  transition-delay: calc(var(--orden, 0) * 60ms);
 }
 
 .pub-js .publica [data-aparece].visto {
@@ -1302,10 +1326,22 @@ html:has(.publica) {
   transform: none;
 }
 
+/* Los enlaces de la cabecera («Cómo funciona», «Principios») llevan a su
+   sección deslizando, no de un salto: así se ve de dónde se viene y adónde se
+   va. Con menos movimiento, el salto de siempre. */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.publica) {
+    scroll-behavior: smooth;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* Menos movimiento no es esperar a que algo aparezca: todo está a la vista
+     desde el principio, sin fundido. */
   .pub-js .publica [data-aparece] {
+    opacity: 1;
     transform: none;
-    transition: opacity 300ms linear;
+    transition: none;
   }
 
   /* Menos movimiento no es ninguna escena: siguen relevándose, sin el zoom.

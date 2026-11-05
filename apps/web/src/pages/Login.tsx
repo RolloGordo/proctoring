@@ -41,6 +41,15 @@ export function Login() {
 
   useBurbuja(raiz, lienzo)
 
+  // En escritorio el foco empieza en el correo: aquí solo se viene a entrar, y
+  // así se puede escribir sin buscar el campo. En el teléfono no, porque abrir
+  // el teclado de golpe tapa media pantalla antes de que se lea nada.
+  useEffect(() => {
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      campoCorreo.current?.focus({ preventScroll: true })
+    }
+  }, [])
+
   // Sin Supabase configurado no hay a quien pedirle credenciales.
   if (!authEnabled) return <Navigate to="/" replace />
   if (!cargando && token && rol) return <Navigate to={inicioSegunRol(rol)} replace />
@@ -72,6 +81,15 @@ export function Login() {
     }
   }
 
+  // Al salir del correo se avisa si está mal escrito, no al final: el error
+  // aparece junto al campo mientras aún se tiene en la cabeza. Un campo vacío
+  // no se marca al salir: eso es regañar antes de que se haya escrito nada.
+  function revisarCorreo(): void {
+    if (!email.trim()) return
+    const { correo } = revisarAcceso(email, 'x')
+    setErrores((antes) => ({ ...antes, correo }))
+  }
+
   const describeClave =
     [errores.clave && 'acceso-clave-error', mayusculas && 'acceso-clave-mayus']
       .filter(Boolean)
@@ -79,7 +97,14 @@ export function Login() {
 
   return (
     <CapaPublica enAcceso>
-      <div ref={raiz} className="pub-acceso pub-marco">
+      {/* Un atributo y no una clase: `useBurbuja` añade sus clases a esta raíz
+       * a mano, y si React reescribiera `className` al escribir las borraría
+       * (volvía a verse la burbuja de respaldo, con foto). */}
+      <div
+        ref={raiz}
+        className="pub-acceso pub-marco"
+        data-escribiendo={email || password ? '' : undefined}
+      >
         <canvas ref={lienzo} className="pub-lienzo" aria-hidden="true" />
 
         <div className="pub-acceso-portada">
@@ -140,6 +165,7 @@ export function Login() {
                       setEmail(e.target.value)
                       setErrores((antes) => ({ ...antes, correo: undefined }))
                     }}
+                    onBlur={revisarCorreo}
                     placeholder="nombre@upao.edu.pe"
                     aria-invalid={errores.correo ? true : undefined}
                     aria-describedby={errores.correo ? 'acceso-correo-error' : undefined}
@@ -207,14 +233,19 @@ export function Login() {
   )
 }
 
-/** Cuánto tarda cada letra del título y cuánto espera antes de la primera. */
-const LETRA_MS = 130
-const ANTES_MS = 450
+/**
+ * Cuánto tarda cada letra del título y cuánto espera antes de la primera.
+ * «Entra» queda escrito en poco más de medio segundo: antes tardaba 1,1 s, y
+ * en una pantalla a la que se viene a hacer una cosa eso es esperar.
+ */
+const LETRA_MS = 80
+const ANTES_MS = 150
 
 /**
  * El título se teclea letra a letra cada vez que se entra, y el punto hace de
- * cursor: va tras la última letra escrita y, al terminar, se queda
- * parpadeando, como si esperara a que escribas tú.
+ * cursor: va tras la última letra escrita y, al terminar, parpadea unas pocas
+ * veces, como si esperara a que escribas tú, y se queda encendido. En cuanto
+ * escribes deja de parpadear.
  *
  * El lector de pantalla oye el título entero desde el principio (`sr-only`);
  * lo que se teclea va oculto para él, que si no lo leería letra a letra. Con el

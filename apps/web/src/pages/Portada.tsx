@@ -202,8 +202,11 @@ export function Portada() {
                 <Link to={entrar} className="pub-boton">
                   {textoEntrar}
                 </Link>
+                {/* «Cómo» y no «Rendir un examen» a secas: lleva a la sección
+                 * que explica que se rinde en la app de escritorio, no a un
+                 * examen. Quien lo pulsaba esperaba poder empezar ya. */}
                 <a href="#empieza" className="pub-enlace">
-                  Rendir un examen
+                  Cómo rendir un examen
                 </a>
               </div>
             </div>
@@ -454,17 +457,17 @@ export function Portada() {
 type Estilo = CSSProperties & Record<'--orden', number>
 
 /**
- * Enseña cada `[data-aparece]` cuando entra en pantalla, **cada vez**.
+ * Enseña cada `[data-aparece]` cuando entra en pantalla, **una sola vez**.
  *
- * Al salir del todo de la pantalla se vuelve a esconder, así que al volver a
- * pasar por él aparece otra vez: la página no se queda «ya cargada» después
- * del primer recorrido. Son dos observadores porque el que enseña espera a que
- * la pieza suba un poco (el margen de abajo), y ese margen no sirve para
- * esconder: la pieza desaparecería mientras todavía se ve en el borde.
+ * Antes se volvía a esconder al salir de la pantalla, para aparecer otra vez
+ * en cada pasada. Era movimiento sin propósito: quien sube a releer algo lo
+ * encontraba a medio aparecer, y quien busca en la página («Ctrl+F») caía en
+ * texto invisible. Una vez visto, se queda.
  *
  * La clase `pub-js` va en `<html>` y es la que esconde lo que todavía no se ha
  * visto: sin este script nada se esconde, y si el navegador no tiene
  * `IntersectionObserver`, todo se enseña de golpe en vez de quedarse oculto.
+ * Con el movimiento reducido el CSS no esconde nada.
  */
 function useAparecer(raiz: RefObject<HTMLDivElement | null>) {
   useEffect(() => {
@@ -479,26 +482,19 @@ function useAparecer(raiz: RefObject<HTMLDivElement | null>) {
 
     document.documentElement.classList.add('pub-js')
     const ensena = new IntersectionObserver(
-      (entradas) => {
+      (entradas, observador) => {
         for (const entrada of entradas) {
-          if (entrada.isIntersecting) entrada.target.classList.add('visto')
+          if (!entrada.isIntersecting) continue
+          entrada.target.classList.add('visto')
+          observador.unobserve(entrada.target)
         }
       },
       { rootMargin: '0px 0px -10% 0px', threshold: 0.12 }
     )
-    const esconde = new IntersectionObserver((entradas) => {
-      for (const entrada of entradas) {
-        if (!entrada.isIntersecting) entrada.target.classList.remove('visto')
-      }
-    })
-    piezas.forEach((pieza) => {
-      ensena.observe(pieza)
-      esconde.observe(pieza)
-    })
+    piezas.forEach((pieza) => ensena.observe(pieza))
 
     return () => {
       ensena.disconnect()
-      esconde.disconnect()
       document.documentElement.classList.remove('pub-js')
     }
   }, [raiz])

@@ -14,9 +14,9 @@ import { RESPALDOS } from './fotos-portada'
  * Entonces importan dos marcas más dentro de `raiz`: `data-burbuja-evita` (lo
  * que no pisa; con el valor `lado`, tampoco pasa de su borde izquierdo) y
  * `data-burbuja-refracta` (el texto que se ve a través de ella). A ese texto
- * se suman la cabecera, el aviso y el pie, y por encima de ellos pasa
- * cualquier burbuja, vacía o con foto, como la de ThoughtLab: por detrás, su
- * fondo la cortaba en recto.
+ * se suman la cabecera, el aviso y el pie: la vacía posada pasa por encima de
+ * ellos, como la de ThoughtLab, y la de foto pasa por detrás y se desvanece al
+ * entrar en su franja.
  */
 export function useBurbuja(
   raiz: RefObject<HTMLDivElement | null>,
