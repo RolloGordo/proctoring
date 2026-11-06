@@ -7,6 +7,7 @@ import {
   type EventType,
   type ProctoringEvent
 } from '../lib/api'
+import { NotaDestacada } from '../components/NotaDestacada'
 import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
 import {
@@ -92,6 +93,7 @@ export function RevisionCaso() {
   const { token } = useAuth()
 
   const [caso, setCaso] = useState<CaseFile>()
+  const [escala, setEscala] = useState<{ maxScore: number; conDesarrollos: boolean }>()
   const [error, setError] = useState<string>()
   const [decision, setDecision] = useState<DecisionType>()
   const [justificacion, setJustificacion] = useState('')
@@ -141,6 +143,24 @@ export function RevisionCaso() {
       cancelado = true
     }
   }, [id, estudianteId, token])
+
+  // Sobre cuánto es la nota y si puede ser parcial: del examen, no del caso.
+  // Aparte para que, si falla, la revisión siga sirviendo (la cifra sale igual).
+  useEffect(() => {
+    let cancelado = false
+    Promise.all([api.getSession(id, token), api.listQuestions(id, token)])
+      .then(([sesion, preguntas]) => {
+        if (cancelado) return
+        setEscala({
+          maxScore: Number(sesion.max_score),
+          conDesarrollos: preguntas.some((p) => p.question_type === 'essay')
+        })
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelado = true
+    }
+  }, [id, token])
 
   async function decidir(evento: FormEvent): Promise<void> {
     evento.preventDefault()
@@ -200,6 +220,22 @@ export function RevisionCaso() {
           Volver a la sala de espera
         </Link>
       </div>
+
+      <section className="bloque" aria-labelledby="nota-del-examen">
+        <div className="encabezado-seccion">
+          <h2 id="nota-del-examen">Nota</h2>
+        </div>
+        <div className="tarjeta">
+          <div className="tarjeta-cuerpo">
+            <NotaDestacada
+              score={participant.score}
+              maxScore={escala?.maxScore ?? null}
+              submittedAt={participant.submitted_at}
+              parcial={escala?.conDesarrollos ?? false}
+            />
+          </div>
+        </div>
+      </section>
 
       <section className="bloque">
         <div className="encabezado-seccion">

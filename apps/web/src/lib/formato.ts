@@ -254,3 +254,8 @@ export function detalleEvento(metadatos: Record<string, unknown>): string {
   }
   return ''
 }
+
+/** Una nota con hasta dos decimales, con el punto decimal de es-PE: «15», «12.5», «17.25». */
+export function formatearNota(score: number): string {
+  return new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(score)
+}

@@ -339,7 +339,12 @@ export interface Course {
   section: string | null
   created_at: string
   student_count: number
+  /** URL firmada de la portada, válida una hora; `null` si el curso no tiene imagen. */
+  cover_url: string | null
 }
+
+/** Formatos de portada que acepta la API (y el bucket `course-covers`). */
+export type CoverContentType = 'image/webp' | 'image/jpeg' | 'image/png'
 
 /** Un estudiante matriculado en un curso. */
 export interface CourseMember {
@@ -365,6 +370,8 @@ export interface MyCourse {
   name: string
   section: string | null
   exams: MyCourseExam[]
+  /** URL firmada de la portada que puso el docente, válida una hora; `null` si no tiene. */
+  cover_url: string | null
 }
 
 export interface NewExamSession {
@@ -743,6 +750,29 @@ export const api = {
 
   deleteCourse: (id: string, token?: string): Promise<void> =>
     request(`/api/v1/courses/${id}`, { method: 'DELETE' }, token),
+
+  /** Permiso para subir la portada directo a Storage, sin pasar por la API. */
+  courseCoverUpload: (
+    id: string,
+    contentType: CoverContentType,
+    token?: string
+  ): Promise<IdentityPhotoUpload> =>
+    request(
+      `/api/v1/courses/${id}/cover/upload-url`,
+      { method: 'POST', body: JSON.stringify({ content_type: contentType }) },
+      token
+    ),
+
+  /** Fija como portada la imagen ya subida. La anterior se borra del bucket. */
+  setCourseCover: (id: string, path: string, token?: string): Promise<Course> =>
+    request(
+      `/api/v1/courses/${id}/cover`,
+      { method: 'PUT', body: JSON.stringify({ path }) },
+      token
+    ),
+
+  removeCourseCover: (id: string, token?: string): Promise<Course> =>
+    request(`/api/v1/courses/${id}/cover`, { method: 'DELETE' }, token),
 
   listCourseMembers: (id: string, token?: string): Promise<CourseMember[]> =>
     request(`/api/v1/courses/${id}/students`, undefined, token),

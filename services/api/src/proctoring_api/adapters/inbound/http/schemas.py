@@ -689,6 +689,8 @@ class CourseResponse(BaseModel):
     section: str | None
     created_at: datetime
     student_count: int
+    #: URL firmada de la portada, válida una hora; `None` si no tiene imagen.
+    cover_url: str | None = None
 
     @classmethod
     def from_entity(cls, item: TeacherCourse) -> CourseResponse:
@@ -698,7 +700,20 @@ class CourseResponse(BaseModel):
             section=item.course.section,
             created_at=item.course.created_at,
             student_count=item.student_count,
+            cover_url=item.cover_url,
         )
+
+
+class CourseCoverUploadRequest(BaseModel):
+    """Cuerpo de `POST /api/v1/courses/{id}/cover/upload-url`."""
+
+    content_type: Literal["image/webp", "image/jpeg", "image/png"]
+
+
+class SetCourseCoverRequest(BaseModel):
+    """Cuerpo de `PUT /api/v1/courses/{id}/cover`: la ruta que devolvió la subida."""
+
+    path: str = Field(min_length=1, max_length=200)
 
 
 class EnrollStudentRequest(BaseModel):
@@ -762,6 +777,8 @@ class MyCourseResponse(BaseModel):
     name: str
     section: str | None
     exams: list[MyCourseExamResponse]
+    #: URL firmada de la portada, válida una hora; `None` si no tiene imagen.
+    cover_url: str | None = None
 
     @classmethod
     def from_entity(cls, item: MyCourse) -> MyCourseResponse:
@@ -769,6 +786,7 @@ class MyCourseResponse(BaseModel):
             id=item.course.id,
             name=item.course.name,
             section=item.course.section,
+            cover_url=item.cover_url,
             exams=[
                 MyCourseExamResponse(
                     session_id=e.id,

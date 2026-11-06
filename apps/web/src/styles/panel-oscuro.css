@@ -175,28 +175,52 @@ html:has(.tema-oscuro) body {
   font-weight: 550;
 }
 
+/* El pie sin relleno lateral: así sus filas ocupan el mismo ancho que los
+   enlaces del menú y el texto cae en la misma vertical. */
 .tema-oscuro .lateral-pie {
-  padding: var(--e4) var(--e3) 0;
+  padding: var(--e4) 0 0;
   border-top: 1px solid #1c1c1c;
 }
 
 .tema-oscuro .lateral-correo {
+  padding: 0 var(--e3);
   font-size: 0.8125rem;
   color: var(--tinta-suave);
 }
 
-.tema-oscuro .lateral .boton-texto {
-  padding-left: 0;
+/* «Cerrar sesión» es una fila más del menú: la misma píldora, el mismo ancho
+   y el mismo relleno. Antes tenía `padding-left: 0` y un fondo redondeado al
+   pasar el cursor, así que el texto quedaba pegado al borde izquierdo de la
+   píldora y con aire a la derecha: se veía corrido. */
+.tema-oscuro .lateral-pie .boton-texto,
+.tema-oscuro .lateral-cambio {
+  display: flex;
+  width: 100%;
+  min-height: 2.25rem;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0 var(--e3);
+  /* Sin el borde transparente de `.boton`: con él, el texto caía 1 px a la
+     derecha del de los enlaces. */
+  border: 0;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 450;
   color: var(--tinta-media);
+  text-decoration: none;
+  transition:
+    color 120ms ease-out,
+    background-color 120ms ease-out;
 }
 
-.tema-oscuro .lateral .boton-texto:hover:not(:disabled) {
+.tema-oscuro .lateral-pie .boton-texto:hover:not(:disabled),
+.tema-oscuro .lateral-cambio:hover {
+  background: #151515;
   color: var(--tinta);
 }
 
 .tema-oscuro .lateral-cambio {
-  font-size: 0.8125rem;
-  font-weight: 500;
+  color: var(--amarillo);
 }
 
 /* ---------- El lienzo ---------- */
@@ -901,4 +925,309 @@ html:has(.tema-oscuro) body {
   .tema-oscuro .lateral-nav a {
     transition: none;
   }
+}
+
+/* ---------- Cursos: tarjetas con portada ----------
+   Como el tablero de un aula virtual, en la casa de este panel: la portada
+   arriba (la imagen del docente o, si no hay, un campo de color con la sigla
+   del curso) y debajo el nombre y quiénes están. Plana, con su línea de 1 px y
+   sin sombra; al pasar el cursor solo se aclara el borde y la imagen se acerca
+   un poco. Toda la tarjeta es un enlace. */
+
+.tema-oscuro .rejilla-cursos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: var(--e4);
+}
+
+.tema-oscuro .tarjeta-curso {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-grande);
+  transition: border-color 120ms ease-out;
+}
+
+.tema-oscuro .tarjeta-curso:hover {
+  border-color: var(--linea-fuerte);
+}
+
+/* El foco del teclado se ve en la tarjeta entera, no en el texto del enlace. */
+.tema-oscuro .tarjeta-curso:has(.tarjeta-curso-enlace:focus-visible) {
+  outline: 2px solid var(--amarillo);
+  outline-offset: 2px;
+}
+
+.tema-oscuro .tarjeta-curso-enlace:focus-visible {
+  outline: none;
+}
+
+.tema-oscuro .portada-curso {
+  position: relative;
+  overflow: hidden;
+  /* El tono sale del id del curso (`tonoDeCurso`): oscuro y poco saturado,
+     para que varias tarjetas juntas se distingan sin hacer ruido. */
+  background: hsl(var(--tono) 24% 15%);
+}
+
+.tema-oscuro .tarjeta-curso .portada-curso {
+  aspect-ratio: 16 / 7;
+  border-bottom: 1px solid var(--linea);
+}
+
+.tema-oscuro .portada-curso img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tema-oscuro .portada-curso-reserva {
+  display: flex;
+  align-items: flex-end;
+  padding: var(--e4) var(--e5);
+}
+
+.tema-oscuro .portada-curso-sigla {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: hsl(var(--tono) 42% 70%);
+}
+
+.tema-oscuro .tarjeta-curso-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e1);
+  padding: var(--e4) var(--e5) var(--e5);
+}
+
+.tema-oscuro .tarjeta-curso-nombre {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  /* Un nombre largo ocupa dos líneas como mucho: todas las tarjetas de una
+     fila quedan de la misma altura y el nombre entero queda en el `title` del enlace. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.tema-oscuro .tarjeta-curso-enlace {
+  color: var(--tinta);
+  text-decoration: none;
+}
+
+/* El enlace se estira sobre toda la tarjeta. */
+.tema-oscuro .tarjeta-curso-enlace::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.tema-oscuro .tarjeta-curso-datos {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tema-oscuro .tarjeta-curso .portada-curso img {
+    transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .tema-oscuro .tarjeta-curso:hover .portada-curso img {
+    transform: scale(1.03);
+  }
+}
+
+/* En el teléfono, una tarjeta a lo ancho medía 240 px de alto y cuatro
+   cursos llenaban tres pantallas. Aquí la tarjeta es una fila: la portada en
+   miniatura cuadrada a la izquierda y el nombre al lado. */
+@media (max-width: 560px) {
+  .tema-oscuro .rejilla-cursos {
+    gap: var(--e2);
+  }
+
+  /* Estirada (no centrada): si el nombre ocupa dos líneas, la miniatura
+     crece con la fila en vez de quedar flotando con aire arriba y abajo. */
+  .tema-oscuro .tarjeta-curso {
+    flex-direction: row;
+  }
+
+  .tema-oscuro .tarjeta-curso-cuerpo {
+    justify-content: center;
+  }
+
+  .tema-oscuro .tarjeta-curso .portada-curso {
+    flex: none;
+    width: 4.5rem;
+    aspect-ratio: 1;
+    border-bottom: 0;
+    border-right: 1px solid var(--linea);
+  }
+
+  .tema-oscuro .tarjeta-curso .portada-curso-reserva {
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+  }
+
+  .tema-oscuro .tarjeta-curso .portada-curso-sigla {
+    font-size: 1.125rem;
+    letter-spacing: -0.01em;
+  }
+
+  .tema-oscuro .tarjeta-curso-cuerpo {
+    min-width: 0;
+    padding: var(--e3) var(--e4);
+  }
+}
+
+/* La portada grande, arriba de la página del curso. */
+.tema-oscuro .portada-editor {
+  margin-bottom: var(--e5);
+}
+
+.tema-oscuro .portada-editor-marco {
+  position: relative;
+}
+
+.tema-oscuro .portada-curso-grande {
+  aspect-ratio: 5 / 1;
+  min-height: 8.5rem;
+  max-height: 13.75rem;
+  width: 100%;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-grande);
+}
+
+.tema-oscuro .portada-curso-grande.portada-curso-reserva {
+  padding: var(--e5) var(--e6);
+}
+
+.tema-oscuro .portada-curso-grande .portada-curso-sigla {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+}
+
+.tema-oscuro .portada-editor-acciones {
+  position: absolute;
+  right: var(--e4);
+  bottom: var(--e4);
+  display: flex;
+  gap: var(--e2);
+}
+
+/* Sobre una foto, el secundario transparente se perdería: aquí lleva un fondo
+   casi opaco, con el desenfoque justo para que el borde no corte la imagen. */
+.tema-oscuro .portada-editor-acciones .boton-secundario {
+  background: rgb(14 14 14 / 82%);
+  border-color: rgb(255 255 255 / 18%);
+  backdrop-filter: blur(8px);
+}
+
+.tema-oscuro .portada-editor-acciones .boton-secundario:hover:not(:disabled) {
+  background: rgb(30 30 30 / 92%);
+}
+
+.tema-oscuro .boton-chico {
+  min-height: 2rem;
+  padding: 0 var(--e3);
+  font-size: 0.8125rem;
+}
+
+.tema-oscuro .portada-editor-error {
+  margin-top: var(--e3);
+}
+
+/* En el panel, los cursos van debajo de los exámenes: lo que tiene hora manda. */
+.tema-oscuro .inicio-cursos {
+  margin-top: var(--e6);
+}
+
+.tema-oscuro .inicio-cursos .encabezado-seccion a {
+  font-size: 0.875rem;
+}
+
+/* ---------- La nota, en grande ----------
+   La cifra a tamaño de titular y en la tinta principal, no en ámbar: el ámbar
+   es para lo que hay que hacer, y una nota no se pulsa. El total va al lado,
+   más chico y apagado, para que «15» se lea antes que «/ 20». */
+
+.tema-oscuro .nota-destacada {
+  display: grid;
+  gap: var(--e2);
+  justify-items: start;
+}
+
+.tema-oscuro .nota-destacada-cifra {
+  display: flex;
+  align-items: baseline;
+  gap: var(--e2);
+  margin: 0;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.tema-oscuro .nota-destacada-cifra strong {
+  font-size: clamp(2.75rem, 6vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--tinta);
+}
+
+.tema-oscuro .nota-destacada-total {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--tinta-suave);
+}
+
+.tema-oscuro .nota-destacada-estado {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--tinta-media);
+}
+
+.tema-oscuro .nota-destacada-pie {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--tinta-suave);
+}
+
+.tema-oscuro .nota-destacada-parcial {
+  margin: var(--e1) 0 0;
+}
+
+/* En la tabla de resultados la nota pesa más que el resto de la fila. */
+.tema-oscuro .resultados-nota {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--e1) var(--e2);
+  font-variant-numeric: tabular-nums;
+}
+
+.tema-oscuro .resultados-nota strong {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--tinta);
+}
+
+.tema-oscuro .resultados-nombre {
+  font-weight: 600;
+  color: var(--tinta);
 }
