@@ -1,0 +1,51 @@
+From bd2dfbcd42d076f41f5f85465caddb1ccd4dfc4a Mon Sep 17 00:00:00 2001
+From: Pierreluiggi Zevallos Bocanegra <pierzevallosbocanegra3@gmail.com>
+Date: Fri, 6 Nov 2026 10:31:49 -0500
+Subject: [PATCH 3/4] feat(ai): add cgroup memory check and runtime info to
+ /health
+
+---
+ services/ai/salud.py | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/services/ai/salud.py b/services/ai/salud.py
+index 8cad343..21c9691 100644
+--- a/services/ai/salud.py
++++ b/services/ai/salud.py
+@@ -69,6 +69,24 @@ def _handler(estado: Callable[[], dict[str, Any]]) -> type[BaseHTTPRequestHandle
+     return Salud
+ 
+ 
++def avisos_configuracion_asr() -> list[str]:
++    """Devuelve avisos no fatales sobre el respaldo ASR y memoria sin exponer ningún secreto."""
++    from audio_runtime import asr_fallback_provider, check_memory_budget
++
++    avisos: list[str] = []
++    fallback = asr_fallback_provider()
++    tiene_clave = bool(os.environ.get("DEEPGRAM_API_KEY", "").strip())
++    if fallback == "deepgram" and not tiene_clave:
++        avisos.append("ASR_FALLBACK_PROVIDER=deepgram configured without DEEPGRAM_API_KEY")
++    try:
++        mem_status = check_memory_budget()
++        if not mem_status["memory_sufficient"] and mem_status.get("warning"):
++            avisos.append(str(mem_status["warning"]))
++    except ValueError as exc:
++        avisos.append(f"Invalid ASR/similarity configuration: {exc}")
++    return avisos
++
++
+ def servir_salud(
+     estado: Callable[[], dict[str, Any]], puerto: int | None = None
+ ) -> ThreadingHTTPServer | None:
+@@ -78,6 +96,8 @@ def servir_salud(
+     trabajo del worker es la cola, y quedarse sin procesar audio porque el
+     puerto estaba ocupado seria peor que no tener prueba de vida.
+     """
++    for aviso in avisos_configuracion_asr():
++        logger.warning("Aviso de configuración ASR: %s", aviso)
+     elegido = puerto if puerto is not None else int(os.environ.get("PORT", PUERTO_POR_DEFECTO))
+     try:
+         servidor = _Servidor(("0.0.0.0", elegido), _handler(estado))  # noqa: S104
+-- 
+2.43.0
+

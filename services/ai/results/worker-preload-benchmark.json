@@ -1,0 +1,749 @@
+{
+  "created_at": "2026-11-05T06:15:23.195604+00:00",
+  "audio_sample": "sample15s.wav (15.0s, 16kHz mono PCM, pregunta Q01)",
+  "container_memory_limit": "2g (--memory=2g --memory-swap=2g)",
+  "fork_reload_diagnosis": {
+    "does_rq_fork_reload_models_without_preload": true,
+    "ctranslate2_fork_finding": "WhisperModel (CTranslate2) crea un hilo C++ en su constructor (ctranslate2::ReplicaPool, aumentando Threads de 8 a 9). POSIX os.fork() no clona hilos secundarios al proceso hijo, por lo que invocar en el hijo una instancia de WhisperModel creada en el padre bloquea indefinidamente esperando al hilo de ReplicaPool inexistente. SimilarityModel (PyTorch) con OMP_NUM_THREADS=1 sí es seguro tras os.fork().",
+    "solution_implemented": "En modo rq.Worker (os.fork()), precargar_modelos() precarga SimilarityModel en el proceso padre (heredado vía Copy-on-Write con sim_cache_hits_at_start=1) y deja que el hijo inicialice WhisperModel limpiamente (con salvaguarda os.register_at_fork en audio_runtime.py). En modo SimpleWorker (WORKER_USE_SIMPLE_WORKER=true, sin os.fork()), se precargan ambos modelos (asr_cache_hits_at_start=1 y sim_cache_hits_at_start=1)."
+  },
+  "comparison_summary": [
+    {
+      "provider": "faster-whisper",
+      "cpus": "1",
+      "fork_no_preload_mean_job_seconds": 24.189,
+      "fork_preload_similarity_mean_job_seconds": 18.5028,
+      "fork_preload_savings_per_job_seconds": 5.6862,
+      "fork_no_preload_cgroup_peak_mib": 2048.0,
+      "fork_preload_similarity_cgroup_peak_mib": 2048.0,
+      "simple_worker_preload_both_mean_job_seconds": 14.1136,
+      "simple_worker_savings_per_job_seconds": 10.0754,
+      "simple_worker_cgroup_peak_mib": 2040.97
+    },
+    {
+      "provider": "faster-whisper",
+      "cpus": "unlimited_host",
+      "fork_no_preload_mean_job_seconds": 9.1127,
+      "fork_preload_similarity_mean_job_seconds": 4.3616,
+      "fork_preload_savings_per_job_seconds": 4.7511,
+      "fork_no_preload_cgroup_peak_mib": 1623.97,
+      "fork_preload_similarity_cgroup_peak_mib": 2048.0,
+      "simple_worker_preload_both_mean_job_seconds": 4.7397,
+      "simple_worker_savings_per_job_seconds": 4.373,
+      "simple_worker_cgroup_peak_mib": 1541.53
+    },
+    {
+      "provider": "deepgram",
+      "cpus": "1",
+      "fork_no_preload_mean_job_seconds": 8.9366,
+      "fork_preload_similarity_mean_job_seconds": 2.1477,
+      "fork_preload_savings_per_job_seconds": 6.7889,
+      "fork_no_preload_cgroup_peak_mib": 1337.75,
+      "fork_preload_similarity_cgroup_peak_mib": 980.98
+    },
+    {
+      "provider": "deepgram",
+      "cpus": "unlimited_host",
+      "fork_no_preload_mean_job_seconds": 7.2317,
+      "fork_preload_similarity_mean_job_seconds": 2.0144,
+      "fork_preload_savings_per_job_seconds": 5.2173,
+      "fork_no_preload_cgroup_peak_mib": 991.86,
+      "fork_preload_similarity_cgroup_peak_mib": 981.61
+    }
+  ],
+  "runs": [
+    {
+      "mode": "fork_no_preload",
+      "parent_setup_seconds": 0.0,
+      "preload_details": null,
+      "parent_ru_maxrss_mib": 40.23,
+      "cgroup_peak_mib": 2048.0,
+      "jobs": [
+        {
+          "job": 1,
+          "child_pid": 7,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 28.8397,
+          "child_ru_maxrss_mib": 1595.11,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 28.9205,
+          "exit_status": 0
+        },
+        {
+          "job": 2,
+          "child_pid": 134,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 22.7571,
+          "child_ru_maxrss_mib": 1591.88,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 22.8413,
+          "exit_status": 0
+        },
+        {
+          "job": 3,
+          "child_pid": 250,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 20.9702,
+          "child_ru_maxrss_mib": 1591.84,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 21.0529,
+          "exit_status": 0
+        }
+      ],
+      "mean_job_seconds": 24.189,
+      "provider": "faster-whisper",
+      "cpus": "1",
+      "container_wall_seconds": 74.3024
+    },
+    {
+      "mode": "fork_preload_similarity",
+      "parent_setup_seconds": 6.3179,
+      "preload_details": {
+        "fork_worker": true,
+        "asr_preloaded": false,
+        "similarity_preloaded": true,
+        "asr_load_seconds": 0.0,
+        "similarity_load_seconds": 6.3177
+      },
+      "parent_ru_maxrss_mib": 1056.38,
+      "cgroup_peak_mib": 2048.0,
+      "jobs": [
+        {
+          "job": 1,
+          "child_pid": 19,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 18.6886,
+          "child_ru_maxrss_mib": 1704.84,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 18.7778,
+          "exit_status": 0
+        },
+        {
+          "job": 2,
+          "child_pid": 69,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 17.9165,
+          "child_ru_maxrss_mib": 1705.32,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 18.0113,
+          "exit_status": 0
+        },
+        {
+          "job": 3,
+          "child_pid": 105,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 18.9032,
+          "child_ru_maxrss_mib": 1705.26,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 19.0021,
+          "exit_status": 0
+        }
+      ],
+      "mean_job_seconds": 18.5028,
+      "provider": "faster-whisper",
+      "cpus": "1",
+      "container_wall_seconds": 64.017
+    },
+    {
+      "mode": "simple_worker_preload_both",
+      "parent_setup_seconds": 10.9681,
+      "preload_details": {
+        "fork_worker": false,
+        "asr_preloaded": true,
+        "similarity_preloaded": true,
+        "asr_load_seconds": 4.8123,
+        "similarity_load_seconds": 6.1553
+      },
+      "parent_ru_maxrss_mib": 1680.64,
+      "cgroup_peak_mib": 2040.97,
+      "jobs": [
+        {
+          "job": 1,
+          "worker_pid": 1,
+          "asr_cache_hits_at_start": 1,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 15.3454,
+          "fork_plus_job_seconds": 15.3454,
+          "process_ru_maxrss_mib": 1577.38,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "exit_status": 0
+        },
+        {
+          "job": 2,
+          "worker_pid": 1,
+          "asr_cache_hits_at_start": 1,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 12.2783,
+          "fork_plus_job_seconds": 12.2783,
+          "process_ru_maxrss_mib": 1680.41,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "exit_status": 0
+        },
+        {
+          "job": 3,
+          "worker_pid": 1,
+          "asr_cache_hits_at_start": 1,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 14.7172,
+          "fork_plus_job_seconds": 14.7172,
+          "process_ru_maxrss_mib": 1680.64,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "exit_status": 0
+        }
+      ],
+      "mean_job_seconds": 14.1136,
+      "provider": "faster-whisper",
+      "cpus": "1",
+      "container_wall_seconds": 55.2512
+    },
+    {
+      "mode": "fork_no_preload",
+      "parent_setup_seconds": 0.0,
+      "preload_details": null,
+      "parent_ru_maxrss_mib": 40.27,
+      "cgroup_peak_mib": 1623.97,
+      "jobs": [
+        {
+          "job": 1,
+          "child_pid": 7,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 8.601,
+          "child_ru_maxrss_mib": 1591.13,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 8.6941,
+          "exit_status": 0
+        },
+        {
+          "job": 2,
+          "child_pid": 124,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 8.8106,
+          "child_ru_maxrss_mib": 1588.38,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 8.9187,
+          "exit_status": 0
+        },
+        {
+          "job": 3,
+          "child_pid": 248,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 9.9264,
+          "child_ru_maxrss_mib": 1587.64,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 10.0229,
+          "exit_status": 0
+        }
+      ],
+      "mean_job_seconds": 9.1127,
+      "provider": "faster-whisper",
+      "cpus": "unlimited_host",
+      "container_wall_seconds": 28.6038
+    },
+    {
+      "mode": "fork_preload_similarity",
+      "parent_setup_seconds": 5.807,
+      "preload_details": {
+        "fork_worker": true,
+        "asr_preloaded": false,
+        "similarity_preloaded": true,
+        "asr_load_seconds": 0.0,
+        "similarity_load_seconds": 5.8068
+      },
+      "parent_ru_maxrss_mib": 1056.72,
+      "cgroup_peak_mib": 2048.0,
+      "jobs": [
+        {
+          "job": 1,
+          "child_pid": 19,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 4.5307,
+          "child_ru_maxrss_mib": 1698.54,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 4.6253,
+          "exit_status": 0
+        },
+        {
+          "job": 2,
+          "child_pid": 56,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 4.3872,
+          "child_ru_maxrss_mib": 1698.92,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 4.4807,
+          "exit_status": 0
+        },
+        {
+          "job": 3,
+          "child_pid": 93,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 4.1669,
+          "child_ru_maxrss_mib": 1698.45,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 4.2617,
+          "exit_status": 0
+        }
+      ],
+      "mean_job_seconds": 4.3616,
+      "provider": "faster-whisper",
+      "cpus": "unlimited_host",
+      "container_wall_seconds": 21.3868
+    },
+    {
+      "mode": "simple_worker_preload_both",
+      "parent_setup_seconds": 7.1475,
+      "preload_details": {
+        "fork_worker": false,
+        "asr_preloaded": true,
+        "similarity_preloaded": true,
+        "asr_load_seconds": 1.042,
+        "similarity_load_seconds": 6.1052
+      },
+      "parent_ru_maxrss_mib": 1680.37,
+      "cgroup_peak_mib": 1541.53,
+      "jobs": [
+        {
+          "job": 1,
+          "worker_pid": 1,
+          "asr_cache_hits_at_start": 1,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 4.3428,
+          "fork_plus_job_seconds": 4.3428,
+          "process_ru_maxrss_mib": 1575.21,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "exit_status": 0
+        },
+        {
+          "job": 2,
+          "worker_pid": 1,
+          "asr_cache_hits_at_start": 1,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 5.1997,
+          "fork_plus_job_seconds": 5.1997,
+          "process_ru_maxrss_mib": 1678.52,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "exit_status": 0
+        },
+        {
+          "job": 3,
+          "worker_pid": 1,
+          "asr_cache_hits_at_start": 1,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 4.6765,
+          "fork_plus_job_seconds": 4.6765,
+          "process_ru_maxrss_mib": 1680.37,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "exit_status": 0
+        }
+      ],
+      "mean_job_seconds": 4.7397,
+      "provider": "faster-whisper",
+      "cpus": "unlimited_host",
+      "container_wall_seconds": 24.5709
+    },
+    {
+      "mode": "fork_no_preload",
+      "parent_setup_seconds": 0.0,
+      "preload_details": null,
+      "parent_ru_maxrss_mib": 40.05,
+      "cgroup_peak_mib": 1337.75,
+      "jobs": [
+        {
+          "job": 1,
+          "child_pid": 7,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 11.2309,
+          "child_ru_maxrss_mib": 1121.71,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 11.3005,
+          "exit_status": 0
+        },
+        {
+          "job": 2,
+          "child_pid": 53,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 8.1321,
+          "child_ru_maxrss_mib": 1121.25,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 8.1961,
+          "exit_status": 0
+        },
+        {
+          "job": 3,
+          "child_pid": 93,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 7.4469,
+          "child_ru_maxrss_mib": 1121.3,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 7.5134,
+          "exit_status": 0
+        }
+      ],
+      "mean_job_seconds": 8.9366,
+      "provider": "deepgram",
+      "cpus": "1",
+      "container_wall_seconds": 28.8324
+    },
+    {
+      "mode": "fork_preload_similarity",
+      "parent_setup_seconds": 6.1099,
+      "preload_details": {
+        "fork_worker": true,
+        "asr_preloaded": false,
+        "similarity_preloaded": true,
+        "asr_load_seconds": 0.0,
+        "similarity_load_seconds": 6.1096
+      },
+      "parent_ru_maxrss_mib": 1056.71,
+      "cgroup_peak_mib": 980.98,
+      "jobs": [
+        {
+          "job": 1,
+          "child_pid": 19,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 1.7975,
+          "child_ru_maxrss_mib": 1034.92,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 1.8439,
+          "exit_status": 0
+        },
+        {
+          "job": 2,
+          "child_pid": 29,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 1.8115,
+          "child_ru_maxrss_mib": 1034.98,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 1.8588,
+          "exit_status": 0
+        },
+        {
+          "job": 3,
+          "child_pid": 39,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 2.8341,
+          "child_ru_maxrss_mib": 1035.04,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 2.8812,
+          "exit_status": 0
+        }
+      ],
+      "mean_job_seconds": 2.1477,
+      "provider": "deepgram",
+      "cpus": "1",
+      "container_wall_seconds": 14.8493
+    },
+    {
+      "mode": "fork_no_preload",
+      "parent_setup_seconds": 0.0,
+      "preload_details": null,
+      "parent_ru_maxrss_mib": 40.18,
+      "cgroup_peak_mib": 991.86,
+      "jobs": [
+        {
+          "job": 1,
+          "child_pid": 7,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 7.3506,
+          "child_ru_maxrss_mib": 1121.83,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 7.4096,
+          "exit_status": 0
+        },
+        {
+          "job": 2,
+          "child_pid": 54,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 7.2153,
+          "child_ru_maxrss_mib": 1120.52,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 7.2815,
+          "exit_status": 0
+        },
+        {
+          "job": 3,
+          "child_pid": 108,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 0,
+          "job_seconds": 7.1293,
+          "child_ru_maxrss_mib": 1120.88,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 7.1859,
+          "exit_status": 0
+        }
+      ],
+      "mean_job_seconds": 7.2317,
+      "provider": "deepgram",
+      "cpus": "unlimited_host",
+      "container_wall_seconds": 22.9066
+    },
+    {
+      "mode": "fork_preload_similarity",
+      "parent_setup_seconds": 5.9209,
+      "preload_details": {
+        "fork_worker": true,
+        "asr_preloaded": false,
+        "similarity_preloaded": true,
+        "asr_load_seconds": 0.0,
+        "similarity_load_seconds": 5.9207
+      },
+      "parent_ru_maxrss_mib": 1056.38,
+      "cgroup_peak_mib": 981.61,
+      "jobs": [
+        {
+          "job": 1,
+          "child_pid": 19,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 1.9702,
+          "child_ru_maxrss_mib": 1034.76,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 2.015,
+          "exit_status": 0
+        },
+        {
+          "job": 2,
+          "child_pid": 29,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 2.1524,
+          "child_ru_maxrss_mib": 1034.73,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 2.1983,
+          "exit_status": 0
+        },
+        {
+          "job": 3,
+          "child_pid": 45,
+          "asr_cache_hits_at_start": 0,
+          "sim_cache_hits_at_start": 1,
+          "job_seconds": 1.9205,
+          "child_ru_maxrss_mib": 1034.96,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          },
+          "fork_plus_job_seconds": 1.9685,
+          "exit_status": 0
+        }
+      ],
+      "mean_job_seconds": 2.0144,
+      "provider": "deepgram",
+      "cpus": "unlimited_host",
+      "container_wall_seconds": 16.7609
+    }
+  ],
+  "startup_memory_fast_fail_checks": [
+    {
+      "memory_limit": "512m",
+      "asr_provider": "faster-whisper",
+      "asr_local_model": "small",
+      "expected_memory_pass": false,
+      "exit_code": 1,
+      "failed_fast_on_memory": true,
+      "log_excerpt": "2026-11-05 06:15:18,445  ERROR    worker  Fallo de comprobación previa al arranque: Insufficient container memory: detected cgroup limit 512.0 MiB is below the required 1800.0 MiB for ASR_PROVIDER=faster-whisper (small) + SimilarityModel (measured peak ~1698 MiB RSS). Failing fast to prevent kernel OOM kill (exit 137)."
+    },
+    {
+      "memory_limit": "1g",
+      "asr_provider": "faster-whisper",
+      "asr_local_model": "small",
+      "expected_memory_pass": false,
+      "exit_code": 1,
+      "failed_fast_on_memory": true,
+      "log_excerpt": "2026-11-05 06:15:19,360  ERROR    worker  Fallo de comprobación previa al arranque: Insufficient container memory: detected cgroup limit 1024.0 MiB is below the required 1800.0 MiB for ASR_PROVIDER=faster-whisper (small) + SimilarityModel (measured peak ~1698 MiB RSS). Failing fast to prevent kernel OOM kill (exit 137)."
+    },
+    {
+      "memory_limit": "2g",
+      "asr_provider": "faster-whisper",
+      "asr_local_model": "small",
+      "expected_memory_pass": true,
+      "exit_code": 1,
+      "failed_fast_on_memory": false,
+      "log_excerpt": "2026-11-05 06:15:20,225  ERROR    worker  No se pudo conectar a Redis en redis://localhost:6379/0: Error 111 connecting to localhost:6379. Connection refused."
+    },
+    {
+      "memory_limit": "1g",
+      "asr_provider": "deepgram",
+      "asr_local_model": "small",
+      "expected_memory_pass": false,
+      "exit_code": 1,
+      "failed_fast_on_memory": true,
+      "log_excerpt": "2026-11-05 06:15:21,096  ERROR    worker  Fallo de comprobación previa al arranque: Insufficient container memory: detected cgroup limit 1024.0 MiB is below the required 1280.0 MiB for ASR_PROVIDER=deepgram + SimilarityModel (measured peak ~1124 MiB RSS). Failing fast to prevent kernel OOM kill (exit 137)."
+    },
+    {
+      "memory_limit": "2g",
+      "asr_provider": "deepgram",
+      "asr_local_model": "small",
+      "expected_memory_pass": true,
+      "exit_code": 1,
+      "failed_fast_on_memory": false,
+      "log_excerpt": "2026-11-05 06:15:23,041  ERROR    worker  No se pudo conectar a Redis en redis://localhost:6379/0: Error 111 connecting to localhost:6379. Connection refused."
+    }
+  ]
+}
