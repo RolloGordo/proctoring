@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -60,11 +60,11 @@ def test_rejects_a_user_without_profile(use_case: IdentifyUser) -> None:
 class CuentaLecturas(InMemoryProfileRepository):
     """Cuenta cuántas veces se lee `profiles`: lo que la caché tiene que ahorrar."""
 
-    def __init__(self, roles: dict) -> None:  # type: ignore[type-arg]
+    def __init__(self, roles: dict[UUID, UserRole]) -> None:
         super().__init__(roles)
         self.lecturas = 0
 
-    def get_role(self, user_id):  # type: ignore[no-untyped-def]
+    def get_role(self, user_id: UUID) -> UserRole | None:
         self.lecturas += 1
         return super().get_role(user_id)
 
@@ -80,7 +80,7 @@ class Reloj:
 class TestRolRecordado:
     """ADR-0011: el rol se recuerda un minuto; la firma se verifica siempre."""
 
-    def armar(self, **kw):  # type: ignore[no-untyped-def]
+    def armar(self, **kw: float) -> tuple[IdentifyUser, CuentaLecturas, Reloj]:
         perfiles = CuentaLecturas({STUDENT: UserRole.STUDENT, TEACHER: UserRole.TEACHER})
         reloj = Reloj()
         verifier = StubTokenVerifier({"t-student": STUDENT, "t-sin-perfil": SIN_PERFIL})
