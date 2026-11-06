@@ -1,0 +1,75 @@
+name: Carga
+
+# Puerta de rendimiento (ADR-0011): un examen de 60 estudiantes contra la API
+# con dos réplicas detrás del balanceador, sobre Supabase local. Falla si se
+# rompe un presupuesto (p95 por endpoint, errores).
+#
+# Tarda unos minutos (levantar Supabase local), así que no corre en cada push:
+# en los PR a main que tocan la API o las pruebas de carga, y a mano.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/api/**"
+      - "loadtests/**"
+      - "supabase/migrations/**"
+      - ".github/workflows/carga.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  examen60:
+    name: Examen de 60 con 2 réplicas
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_CLI: supabase
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: loadtests/uv.lock
+
+      - name: Dependencias de la prueba
+        working-directory: loadtests
+        run: uv sync --locked
+
+      # La clave ES256 de pruebas no está en el repo: se genera en cada corrida.
+      - name: Supabase local
+        working-directory: loadtests
+        run: |
+          uv run python preparar.py clave
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit,postgres-meta
+
+      - name: Pila (balanceador + 2 réplicas + Redis)
+        working-directory: loadtests
+        run: |
+          uv run python preparar.py env
+          docker compose -f docker-compose.carga.yml -p carga up -d --build --scale api=2
+
+      - name: Examen de 60
+        working-directory: loadtests
+        run: >
+          uv run python correr.py --nombre ci-examen60 --examenes 1 --por-examen 60
+          --docentes 1 --replicas 2 --duracion-examen 90 --margen-entrega 20
+
+      - name: Resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: carga-examen60
+          path: loadtests/resultados/
+          retention-days: 14

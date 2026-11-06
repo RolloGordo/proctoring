@@ -75,3 +75,32 @@ def test_las_conexiones_ociosas_se_descartan_pronto() -> None:
     with http.cliente_resistente() as cliente:
         assert isinstance(cliente, httpx.Client)
     assert http.KEEPALIVE_SEGUNDOS <= 10
+
+
+@pytest.mark.parametrize("fallo", [httpx.ConnectTimeout, httpx.ConnectError])
+@pytest.mark.parametrize("metodo", ["GET", "POST", "PATCH"])
+def test_si_la_conexion_no_llego_a_abrirse_se_reintenta_hasta_un_post(
+    monkeypatch: pytest.MonkeyPatch, fallo: type[Exception], metodo: str
+) -> None:
+    # ADR-0011: con mil estudiantes aparecieron `ConnectTimeout` y 500 al guardar
+    # respuestas. Sin conexion no salio ningun byte: repetir no duplica nada.
+    monkeypatch.setattr(_time, "sleep", lambda _s: None)
+    intentos: list[int] = []
+
+    def falso(self: object, request: httpx.Request) -> httpx.Response:
+        intentos.append(len(intentos))
+        if len(intentos) == 1:
+            raise fallo("timed out", request=request)  # type: ignore[call-arg]
+        return httpx.Response(201, request=request)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", falso)
+
+    assert http._TransporteConReintento().handle_request(_peticion(metodo)).status_code == 201
+    assert len(intentos) == 2
+
+
+def test_abrir_la_conexion_tiene_su_propio_plazo_corto() -> None:
+    with http.cliente_resistente() as cliente:
+        assert cliente.timeout.connect == http.CONEXION_SEGUNDOS
+        assert cliente.timeout.read == 20.0
+    assert http.CONEXION_SEGUNDOS <= 5
