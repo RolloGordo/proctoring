@@ -4,7 +4,7 @@ import { EditorPregunta, ListaPreguntas } from '../components/EditorPregunta'
 import { api, type NewQuestion, type Question, type QuestionBank } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 
-export function Preguntas() {
+export function Preguntas({ enLienzo = false }: { enLienzo?: boolean } = {}) {
   const { id = '' } = useParams()
   const location = useLocation()
   const { token } = useAuth()
@@ -98,7 +98,7 @@ export function Preguntas() {
       )}
       {error && <p className="aviso">{error}</p>}
 
-      {bancos.length > 0 && (
+      {!enLienzo && bancos.length > 0 && (
         <div className="tarjeta" style={{ marginBottom: 'var(--e4)' }}>
           <div className="tarjeta-cuerpo">
             <h4>
@@ -109,9 +109,11 @@ export function Preguntas() {
               de {bancos.map((b) => b.name).join(', ')}. Las que añadas aquí abajo{' '}
               <strong>no se usarán</strong> mientras haya bancos atados.
             </p>
-            <Link to={`/sesiones/${id}`} className="boton boton-texto">
-              Gestionar los bancos del examen
-            </Link>
+            {!enLienzo && (
+              <Link to={`/sesiones/${id}`} className="boton boton-texto">
+                Gestionar los bancos del examen
+              </Link>
+            )}
           </div>
         </div>
       )}
@@ -121,7 +123,7 @@ export function Preguntas() {
         * La API lo rechaza desde el 30/10, pero si la pantalla sigue ofreciendo
         * el botón, el docente se lleva un error donde antes no lo había y no
         * entiende por qué. Mejor explicarlo antes de que lo intente. */}
-      {entregados > 0 && (
+      {!enLienzo && entregados > 0 && (
         <p className="aviso aviso-neutro">
           {entregados === 1
             ? 'Un estudiante ya entregó este examen'
@@ -135,7 +137,7 @@ export function Preguntas() {
       <section className="bloque">
         <div className="encabezado-seccion">
           <h2>Preguntas del examen</h2>
-          {entregados === 0 && (
+          {!enLienzo && entregados === 0 && (
             <button
               type="button"
               className="boton boton-secundario"
@@ -165,7 +167,7 @@ export function Preguntas() {
               <p className="subtitulo">
                 Un examen sin preguntas no se puede rendir. Añade una pregunta o asocia un banco.
               </p>
-              {!mostrarEditor && entregados === 0 && (
+              {!enLienzo && !mostrarEditor && entregados === 0 && (
                 <button type="button" className="boton" onClick={() => setMostrarEditor(true)}>
                   Añadir pregunta
                 </button>

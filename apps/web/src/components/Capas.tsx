@@ -122,37 +122,14 @@ export function CapaPanel({ rol, children }: { rol: Rol; children: ReactNode }) 
   const [abierto, setAbierto] = useState(false)
   const inicio = inicioSegunRol(rol)
   const otro: Rol = rol === 'teacher' ? 'student' : 'teacher'
-  const segmento = pathname.match(/^\/sesiones\/([^/]+)(?:\/|$)/)
-  const idExamen = segmento?.[1] && segmento[1] !== 'nueva' ? segmento[1] : undefined
-  const navegacionExamen: Enlace[] = idExamen
-    ? [
-        {
-          a: `/sesiones/${idExamen}`,
-          texto: 'Resumen y alertas',
-          activo: (r) => r === `/sesiones/${idExamen}`
-        },
-        {
-          a: `/sesiones/${idExamen}/participantes`,
-          texto: 'Participantes',
-          activo: (r) => r.endsWith('/participantes')
-        },
-        {
-          a: `/sesiones/${idExamen}/preguntas`,
-          texto: 'Preguntas',
-          activo: (r) => r.endsWith('/preguntas')
-        },
-        {
-          a: `/sesiones/${idExamen}/resultados`,
-          texto: 'Resultados',
-          activo: (r) => r.endsWith('/resultados') || /\/estudiantes\/[^/]+$/.test(r)
-        },
-        {
-          a: `/sesiones/${idExamen}/editar`,
-          texto: 'Configuración',
-          activo: (r) => r.endsWith('/editar')
-        }
-      ]
-    : []
+  const dentroDeExamen = /^\/sesiones\/[^/]+(?:\/|$)/.test(pathname) && pathname !== '/sesiones/nueva'
+  const grupos = dentroDeExamen && rol === 'teacher'
+    ? ENLACES[rol].map((grupo) => ({
+        ...grupo,
+        enlaces: grupo.enlaces.filter((enlace) => enlace.a !== '/sesiones/nueva')
+      }))
+    : ENLACES[rol]
+
 
   return (
     <div className="app">
@@ -174,7 +151,7 @@ export function CapaPanel({ rol, children }: { rol: Rol; children: ReactNode }) 
         <p className="lateral-rol">{NOMBRE_ROL[rol]}</p>
 
         <nav className="lateral-nav" aria-label={`Menú del ${NOMBRE_ROL[rol].toLowerCase()}`}>
-          {ENLACES[rol].map((grupo) => (
+          {grupos.map((grupo) => (
             <div className="lateral-grupo" key={grupo.titulo}>
               <p className="lateral-grupo-titulo">{grupo.titulo}</p>
               {grupo.enlaces.map((enlace) => (
@@ -189,21 +166,7 @@ export function CapaPanel({ rol, children }: { rol: Rol; children: ReactNode }) 
               ))}
             </div>
           ))}
-          {navegacionExamen.length > 0 && (
-            <div className="lateral-grupo lateral-grupo-examen">
-              <p className="lateral-grupo-titulo">Este examen</p>
-              {navegacionExamen.map((enlace) => (
-                <NavLink
-                  key={enlace.a}
-                  to={enlace.a}
-                  className={enlace.activo(pathname) ? 'activo' : ''}
-                  onClick={() => setAbierto(false)}
-                >
-                  {enlace.texto}
-                </NavLink>
-              ))}
-            </div>
-          )}
+
         </nav>
 
         <div className="lateral-pie">

@@ -35,7 +35,7 @@ const CAMARAS_POR_PAGINA = 6
  * Realtime solo trae lo que ocurre a partir de la suscripción, así que primero
  * se carga lo ya ocurrido por la API y después se escucha.
  */
-export function SesionEnVivo() {
+export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) {
   const { id = '' } = useParams()
   const { token, userId } = useAuth()
   const location = useLocation()
@@ -286,7 +286,18 @@ export function SesionEnVivo() {
           {error}
         </p>
       )}
-      <div className="encabezado-pagina">
+      {enLienzo ? (
+        <div className="fila actividad-acciones" style={{ justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            className="boton boton-secundario"
+            onClick={actualizarDatos}
+            disabled={actualizando}
+          >
+            {actualizando ? 'Actualizando…' : 'Actualizar actividad'}
+          </button>
+        </div>
+      ) : <div className="encabezado-pagina">
         <div>
           <h1>{sesion.title}</h1>
           <p className="subtitulo">
@@ -311,7 +322,7 @@ export function SesionEnVivo() {
               Preguntas
             </Link>
             <Link to={`/sesiones/${id}/editar`} className="boton boton-secundario">
-              Editar
+              Contenido
             </Link>
             <Link to={`/sesiones/${id}/participantes`} className="boton boton-secundario">
               Participantes
@@ -321,7 +332,7 @@ export function SesionEnVivo() {
             </Link>
           </div>
         </div>
-      </div>
+      </div>}
 
       <div className="panel-resumen">
         <Dato valor={resumen.high} etiqueta="Alertas altas" tono="high" />
@@ -330,9 +341,9 @@ export function SesionEnVivo() {
         <Dato valor={resumen.estudiantes} etiqueta="Estudiantes con actividad" />
       </div>
 
-      <BancosDelExamen sessionId={id} />
+      {!enLienzo && <BancosDelExamen sessionId={id} />}
 
-      {'live_monitoring' in sesion.modules && (
+      {!enLienzo && 'live_monitoring' in sesion.modules && (
         <section className="bloque">
           <div className="encabezado-seccion">
             <h2>Cámaras en vivo</h2>

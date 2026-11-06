@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, type ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { CapaExamen, CapaPanel, CapaPublica } from './components/Capas'
 import { RequireDesktopExam } from './components/RequireDesktopExam'
 import { ProveedorAuth } from './lib/auth'
@@ -10,7 +10,7 @@ import { AccesoExamen } from './pages/AccesoExamen'
 import { Banco } from './pages/Banco'
 import { Bancos } from './pages/Bancos'
 import { Curso } from './pages/Curso'
-import { EditarSesion } from './pages/EditarSesion'
+import { EditorExamen } from './pages/EditorExamen'
 import { Cursos } from './pages/Cursos'
 import { Login } from './pages/Login'
 import { NuevaSesion } from './pages/NuevaSesion'
@@ -18,13 +18,9 @@ import { PanelDocente } from './pages/PanelDocente'
 import { PanelEstudiante } from './pages/PanelEstudiante'
 import { DetalleExamenEstudiante } from './pages/DetalleExamenEstudiante'
 import { CursoEstudiante } from './pages/CursoEstudiante'
-import { Participantes } from './pages/Participantes'
 import { Portada } from './pages/Portada'
 import { RevisionCaso } from './pages/RevisionCaso'
-import { Resultados } from './pages/Resultados'
-import { Preguntas } from './pages/Preguntas'
 import { SalaDeEspera } from './pages/SalaDeEspera'
-import { SesionEnVivo } from './pages/SesionEnVivo'
 import { Sesiones } from './pages/Sesiones'
 import { pageTitle } from './lib/exam-progress'
 
@@ -118,6 +114,11 @@ function TituloRuta() {
   return null
 }
 
+function RedirigirSeccionExamen({ vista }: { vista: 'contenido' | 'participantes' | 'entregas' | 'actividad' | 'ajustes' }) {
+  const { id = '' } = useParams()
+  return <Navigate to={`/sesiones/${id}/editar?vista=${vista}`} replace />
+}
+
 function Aplicacion() {
   return (
     <BrowserRouter>
@@ -188,7 +189,7 @@ function Aplicacion() {
           path="/sesiones/:id"
           element={
             <Docente>
-              <SesionEnVivo />
+              <RedirigirSeccionExamen vista="actividad" />
             </Docente>
           }
         />
@@ -196,7 +197,15 @@ function Aplicacion() {
           path="/sesiones/:id/editar"
           element={
             <Docente>
-              <EditarSesion />
+              <EditorExamen />
+            </Docente>
+          }
+        />
+        <Route
+          path="/sesiones/:id/ajustes"
+          element={
+            <Docente>
+              <RedirigirSeccionExamen vista="ajustes" />
             </Docente>
           }
         />
@@ -204,7 +213,7 @@ function Aplicacion() {
           path="/sesiones/:id/preguntas"
           element={
             <Docente>
-              <Preguntas />
+              <RedirigirSeccionExamen vista="contenido" />
             </Docente>
           }
         />
@@ -212,7 +221,7 @@ function Aplicacion() {
           path="/sesiones/:id/participantes"
           element={
             <Docente>
-              <Participantes />
+              <RedirigirSeccionExamen vista="participantes" />
             </Docente>
           }
         />
@@ -220,7 +229,7 @@ function Aplicacion() {
           path="/sesiones/:id/resultados"
           element={
             <Docente>
-              <Resultados />
+              <RedirigirSeccionExamen vista="entregas" />
             </Docente>
           }
         />

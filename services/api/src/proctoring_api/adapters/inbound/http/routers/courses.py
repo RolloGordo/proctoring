@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
 
 from proctoring_api.adapters.inbound.http.dependencies import (
     CreateCourseDep,
     CurrentUserDep,
+    DeleteCourseDep,
     EnrollStudentDep,
     GetCourseDep,
     ListCourseMembersDep,
@@ -76,6 +77,23 @@ def get_course(
 ) -> CourseResponse:
     """Un curso inexistente y uno ajeno responden lo mismo."""
     return CourseResponse.from_entity(use_case.execute(course_id, actor=current_user))
+
+
+@router.delete(
+    "/courses/{course_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar un curso vacío (solo su docente)",
+    responses={
+        **AUTH_RESPONSES,
+        400: {"model": ErrorResponse, "description": "El curso tiene contenido asociado"},
+    },
+)
+def delete_course(
+    course_id: UUID, use_case: DeleteCourseDep, current_user: CurrentUserDep
+) -> Response:
+    """Elimina un curso sin matrículas, exámenes ni bancos asociados."""
+    use_case.execute(course_id, actor=current_user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

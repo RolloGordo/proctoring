@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass, field
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from uuid import UUID
 
@@ -51,6 +51,96 @@ class NewQuestion:
     numeric_tolerance: Decimal | None = None
     correct_text_answer: str | None = None
     source_format: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class BankQuestionSelection:
+    question: Question
+    bank_name: str
+    included: bool
+
+
+class SessionBankQuestionSelection:
+    """Lee y guarda qué preguntas de los bancos usa un examen."""
+
+    def __init__(
+        self,
+        questions: QuestionRepository,
+        sessions: ExamSessionRepository,
+        banks: QuestionBankRepository,
+        participants: ParticipantRepository | None = None,
+    ) -> None:
+        self._questions = questions
+        self._sessions = sessions
+        self._banks = banks
+        self._participants = participants
+
+    def list(
+        self, session_id: UUID, *, actor: AuthenticatedUser | None = None
+    ) -> Sequence[BankQuestionSelection]:
+        if actor is not None and not actor.is_teacher:
+            raise AuthorizationError("Solo el docente puede revisar las preguntas del examen")
+        ensure_teacher_owns_session(self._sessions, session_id, actor)
+        bancos = self._banks.list_session_banks(session_id)
+        preguntas = self._questions.list_by_banks([banco.id for banco in bancos])
+        excluidas = self._banks.list_excluded_questions(session_id)
+        puntajes = self._banks.list_question_points(session_id)
+        nombre_por_id = {banco.id: banco.name for banco in bancos}
+        orden_bancos = {banco.id: indice for indice, banco in enumerate(bancos)}
+        preguntas_ordenadas = sorted(
+            preguntas,
+            key=lambda pregunta: (
+                orden_bancos.get(pregunta.bank_id, len(bancos)),
+                pregunta.position,
+                str(pregunta.id),
+            ),
+        )
+        return [
+            BankQuestionSelection(
+                question=(replace(pregunta, points=puntajes[pregunta.id]) if pregunta.id in puntajes else pregunta),
+                bank_name=nombre_por_id.get(pregunta.bank_id, "Banco"),
+                included=pregunta.id not in excluidas,
+            )
+            for pregunta in preguntas_ordenadas
+        ]
+
+    def save(
+        self,
+        session_id: UUID,
+        excluded_question_ids: Sequence[UUID],
+        *,
+        question_points: Mapping[UUID, Decimal] | None = None,
+        actor: AuthenticatedUser | None = None,
+    ) -> Sequence[BankQuestionSelection]:
+        if actor is not None and not actor.is_teacher:
+            raise AuthorizationError("Solo el docente puede cambiar las preguntas del examen")
+        ensure_teacher_owns_session(self._sessions, session_id, actor)
+        if self._participants is not None and self._participants.list_by_session(session_id):
+            raise ExamInUseError(
+                "Este examen ya tiene participantes; no se puede cambiar qué preguntas contiene."
+            )
+
+        disponibles = self.list(session_id, actor=actor)
+        ids_disponibles = {seleccion.question.id for seleccion in disponibles}
+        excluidas = set(excluded_question_ids)
+        if not ids_disponibles:
+            raise InvalidQuestionError("Asocia primero un banco que tenga preguntas.")
+        if not excluidas <= ids_disponibles:
+            raise InvalidQuestionError(
+                "La selección contiene preguntas que no pertenecen a los bancos de este examen."
+            )
+        if ids_disponibles <= excluidas:
+            raise InvalidQuestionError("Deja al menos una pregunta incluida en el examen.")
+
+        puntajes = dict(question_points or {})
+        if not puntajes.keys() <= ids_disponibles:
+            raise InvalidQuestionError("Los puntajes incluyen preguntas que no pertenecen a este examen.")
+        if any(not Decimal(0) <= puntos <= Decimal(100) for puntos in puntajes.values()):
+            raise InvalidQuestionError("Cada pregunta debe valer entre 0 y 100 puntos.")
+
+        self._banks.replace_excluded_questions(session_id, sorted(excluidas, key=str))
+        self._banks.replace_question_points(session_id, puntajes)
+        return self.list(session_id, actor=actor)
 
 
 class AddQuestions:
@@ -251,7 +341,8 @@ class GetExamQuestions:
             bancos = self._banks.list_session_banks(sesion.id) if self._banks is not None else []
             if not bancos:
                 return self._questions.list_by_session(sesion.id)
-            return self._questions.list_by_banks([b.id for b in bancos])
+            estudiante_id = actor.id if actor is not None else self._dev_student_id
+            return questions_for(sesion, estudiante_id, self._questions, self._banks)
 
         return questions_for(sesion, participante.id, self._questions, self._banks)
 

@@ -346,14 +346,18 @@ export function Bancos() {
                           >
                             Ver y añadir preguntas
                           </Link>
-                          <button
-                            type="button"
-                            className="boton boton-peligro"
-                            disabled={eliminando !== undefined}
-                            onClick={() => void eliminar(banco)}
-                          >
-                            {eliminando === banco.id ? 'Eliminando…' : 'Eliminar banco'}
-                          </button>
+                          {banco.attached_to_exam ? (
+                            <span className="chip chip-programado">Vinculado a un examen; se conserva</span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="boton boton-peligro"
+                              disabled={eliminando !== undefined}
+                              onClick={() => void eliminar(banco)}
+                            >
+                              {eliminando === banco.id ? 'Eliminando…' : 'Eliminar banco'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </li>

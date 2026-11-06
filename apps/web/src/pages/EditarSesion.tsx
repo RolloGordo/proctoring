@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, type ExamSession, type SupervisionPreset } from '../lib/api'
+import { api, type ExamSession, type ExamSessionChanges, type SupervisionPreset } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 
 const PRESETS: Array<{ valor: SupervisionPreset; nombre: string }> = [
@@ -16,7 +16,7 @@ const PRESETS: Array<{ valor: SupervisionPreset; nombre: string }> = [
  * solo funciona si nadie entró, y en cuanto hay un estudiante lo que corresponde
  * es cancelar, que conserva la evidencia.
  */
-export function EditarSesion() {
+export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
   const { id = '' } = useParams()
   const { token } = useAuth()
   const navegar = useNavigate()
@@ -33,6 +33,8 @@ export function EditarSesion() {
   const [tolerancia, setTolerancia] = useState(10)
   const [preset, setPreset] = useState<SupervisionPreset>('standard')
   const [notaMaxima, setNotaMaxima] = useState('20')
+  const [cantidadPreguntas, setCantidadPreguntas] = useState('')
+  const [cantidadBancos, setCantidadBancos] = useState(0)
   const [descripcion, setDescripcion] = useState('')
   const [guardarCodigo, setGuardarCodigo] = useState(false)
   /** Si ya entró alguien, el nivel de supervisión deja de poderse cambiar. */
@@ -59,10 +61,17 @@ export function EditarSesion() {
         setTolerancia(datos.entry_tolerance_minutes)
         setPreset(datos.preset === 'custom' ? 'standard' : datos.preset)
         setNotaMaxima(String(Number(datos.max_score)))
+        setCantidadPreguntas(datos.question_pool_size === null ? '' : String(datos.question_pool_size))
         setDescripcion(datos.description ?? '')
         setGuardarCodigo(datos.reveal_code_at_start)
       })
       .catch((fallo: Error) => setError(fallo.message))
+  }, [id, token])
+
+  useEffect(() => {
+    api.listSessionBanks(id, token)
+      .then((bancos) => setCantidadBancos(bancos.length))
+      .catch(() => setCantidadBancos(0))
   }, [id, token])
 
   async function guardar(evento: FormEvent): Promise<void> {
@@ -71,24 +80,28 @@ export function EditarSesion() {
     setAviso(undefined)
     setGuardando(true)
     try {
-      const actualizada = await api.updateSession(
-        id,
-        {
-          title: titulo,
-          starts_at: new Date(`${fecha}T${hora}`).toISOString(),
-          duration_minutes: duracion,
-          entry_tolerance_minutes: tolerancia,
-          preset,
-          max_score: notaMaxima,
-          reveal_code_at_start: guardarCodigo,
-          // Vaciar la descripción necesita el `clear_`: con `undefined` el
-          // backend entiende "no lo cambies".
-          ...(descripcion.trim()
-            ? { description: descripcion.trim() }
-            : { clear_description: true })
-        },
-        token
-      )
+      const cambios: ExamSessionChanges = {
+        ...(enPanel ? {} : { title: titulo }),
+        starts_at: new Date(`${fecha}T${hora}`).toISOString(),
+        duration_minutes: duracion,
+        entry_tolerance_minutes: tolerancia,
+        reveal_code_at_start: guardarCodigo,
+        // Vaciar la descripción necesita el `clear_`: con `undefined` el
+        // backend entiende "no lo cambies".
+        ...(descripcion.trim()
+          ? { description: descripcion.trim() }
+          : { clear_description: true }),
+        ...(sesion && preset !== sesion.preset && !hayEstudiantes ? { preset } : {}),
+        ...(sesion && Number(notaMaxima) !== Number(sesion.max_score) && !hayEstudiantes
+          ? { max_score: notaMaxima }
+          : {}),
+        ...(sesion && cantidadPreguntas !== (sesion.question_pool_size === null ? '' : String(sesion.question_pool_size)) && !hayEstudiantes
+          ? cantidadPreguntas.trim()
+            ? { question_pool_size: Number(cantidadPreguntas) }
+            : { clear_pool_size: true }
+          : {})
+      }
+      const actualizada = await api.updateSession(id, cambios, token)
       setSesion(actualizada)
       setAviso('Cambios guardados.')
     } catch (fallo) {
@@ -133,8 +146,8 @@ export function EditarSesion() {
   const cancelado = sesion.status === 'cancelled'
 
   return (
-    <>
-      <div className="encabezado-pagina">
+    <div className={enPanel ? 'configuracion-examen-panel' : 'configuracion-examen-pagina'}>
+      {!enPanel && <div className="encabezado-pagina">
         <div>
           <h1>Editar examen</h1>
           <p className="subtitulo">
@@ -151,7 +164,7 @@ export function EditarSesion() {
         <Link to={`/sesiones/${id}`} className="boton boton-secundario">
           Volver al examen
         </Link>
-      </div>
+      </div>}
 
       {error && <p className="aviso">{error}</p>}
       {aviso && <p className="aviso aviso-neutro">{aviso}</p>}
@@ -162,11 +175,11 @@ export function EditarSesion() {
         </p>
       )}
 
-      <div className="tarjeta" style={{ maxWidth: '760px' }}>
+      <div className="tarjeta configuracion-examen-tarjeta">
         <div className="tarjeta-cuerpo">
           <form onSubmit={(e) => void guardar(e)} noValidate>
             <fieldset disabled={cancelado} style={{ border: 0, padding: 0, margin: 0 }}>
-              <label className="campo">
+              {!enPanel && <label className="campo">
                 <span>Título del examen</span>
                 <input
                   value={titulo}
@@ -174,7 +187,7 @@ export function EditarSesion() {
                   maxLength={200}
                   required
                 />
-              </label>
+              </label>}
 
               <div className="rejilla-campos rejilla-horario">
                 <label className="campo">
@@ -228,10 +241,29 @@ export function EditarSesion() {
                     max={100}
                     step="0.5"
                     value={notaMaxima}
+                    disabled={hayEstudiantes}
                     onChange={(e) => setNotaMaxima(e.target.value)}
                   />
                 </label>
               </div>
+
+              {(cantidadBancos > 0 || sesion.question_pool_size !== null) && (
+                <label className="campo">
+                  <span>Cantidad de preguntas para cada estudiante</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={cantidadPreguntas}
+                    disabled={hayEstudiantes}
+                    onChange={(e) => setCantidadPreguntas(e.target.value)}
+                    placeholder="Todas las preguntas disponibles"
+                  />
+                  <span className="ayuda">
+                    Se sortean de los {cantidadBancos} banco{cantidadBancos === 1 ? '' : 's'} asociados en conjunto. Déjalo vacío para usar todas. Máximo 500.
+                  </span>
+                </label>
+              )}
 
               <p className="ayuda" style={{ marginTop: 'calc(-1 * var(--e3))' }}>
                 Los puntos de cada pregunta se reparten sobre esta nota. Puedes poner 2 puntos a una
@@ -293,7 +325,7 @@ export function EditarSesion() {
         </div>
       </div>
 
-      <div className="tarjeta zona-peligro" style={{ maxWidth: '760px' }}>
+      {!enPanel && <div className="tarjeta zona-peligro configuracion-examen-tarjeta">
         <div className="tarjeta-cuerpo">
           <h3>Retirar este examen</h3>
 
@@ -322,8 +354,8 @@ export function EditarSesion() {
             Borrar examen
           </button>
         </div>
-      </div>
-    </>
+      </div>}
+    </div>
   )
 }
 

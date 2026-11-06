@@ -10,6 +10,7 @@ segundo reproduzca exactamente lo que mostró el primero, sin guardar nada.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 from uuid import UUID
 
 from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
@@ -38,6 +39,13 @@ def questions_for(
         return questions.list_by_session(session.id)
 
     disponibles = questions.list_by_banks([banco.id for banco in atados])
+    excluidas = banks.list_excluded_questions(session.id)
+    disponibles = [pregunta for pregunta in disponibles if pregunta.id not in excluidas]
+    puntajes = banks.list_question_points(session.id)
+    disponibles = [
+        replace(pregunta, points=puntajes[pregunta.id]) if pregunta.id in puntajes else pregunta
+        for pregunta in disponibles
+    ]
     return draw_questions(
         disponibles,
         session_id=session.id,

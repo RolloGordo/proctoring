@@ -1,8 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { api, type Course, type CourseMember } from '../lib/api'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { api, type Course, type CourseMember, type QuestionBank } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { fechaLarga } from '../lib/formato'
+import { CrearBancoCurso } from '../components/CrearBancoCurso'
+import { NuevaSesion } from './NuevaSesion'
 
 /**
  * Un curso: sus estudiantes, y cómo matricular más.
@@ -13,6 +15,7 @@ import { fechaLarga } from '../lib/formato'
  */
 export function Curso() {
   const { id = '' } = useParams()
+  const navigate = useNavigate()
   const { token } = useAuth()
   const [curso, setCurso] = useState<Course>()
   const [miembrosData, setMiembrosData] = useState<{
@@ -25,9 +28,14 @@ export function Curso() {
     message: string
   }>()
   const [errorAccion, setErrorAccion] = useState<string>()
+  const [errorEliminarCurso, setErrorEliminarCurso] = useState<string>()
   const [aviso, setAviso] = useState<string>()
   const [correo, setCorreo] = useState('')
   const [matriculando, setMatriculando] = useState(false)
+  const [abrirCrearExamen, setAbrirCrearExamen] = useState(false)
+  const [abrirCrearBanco, setAbrirCrearBanco] = useState(false)
+  const [bancoCreado, setBancoCreado] = useState<QuestionBank>()
+  const [eliminandoCurso, setEliminandoCurso] = useState(false)
   const [reintentoMiembros, setReintentoMiembros] = useState(0)
 
   useEffect(() => {
@@ -85,6 +93,27 @@ export function Curso() {
   const miembros = miembrosData?.courseId === id ? miembrosData.miembros : undefined
   const errorCurso = errorCursoCarga?.courseId === id ? errorCursoCarga.message : undefined
   const errorMiembros = errorMiembrosCarga?.courseId === id ? errorMiembrosCarga.message : undefined
+  const cerrarCrearExamen = useCallback(() => setAbrirCrearExamen(false), [])
+  const cerrarCrearBanco = useCallback(() => setAbrirCrearBanco(false), [])
+
+  async function eliminarCurso(): Promise<void> {
+    if (
+      !cursoActual ||
+      !confirm(
+        `¿Eliminar el curso "${cursoActual.name}"? Solo se puede borrar si no tiene estudiantes, exámenes ni bancos asociados.`
+      )
+    ) return
+    setErrorEliminarCurso(undefined)
+    setEliminandoCurso(true)
+    try {
+      await api.deleteCourse(id, token)
+      navigate('/cursos', { replace: true })
+    } catch (fallo) {
+      setErrorEliminarCurso(fallo instanceof Error ? fallo.message : 'No se pudo eliminar el curso')
+    } finally {
+      setEliminandoCurso(false)
+    }
+  }
 
   if (errorCurso && !cursoActual) {
     return (
@@ -113,9 +142,19 @@ export function Curso() {
             {(miembros?.length ?? cursoActual.student_count) === 1 ? 'estudiante' : 'estudiantes'}
           </p>
         </div>
-        <Link to="/cursos" className="boton boton-secundario">
-          Volver a mis cursos
-        </Link>
+        <div className="fila">
+          <button
+            type="button"
+            className="boton boton-peligro"
+            disabled={eliminandoCurso}
+            onClick={() => void eliminarCurso()}
+          >
+            {eliminandoCurso ? 'Eliminando…' : 'Eliminar curso vacío'}
+          </button>
+          <Link to="/cursos" className="boton boton-secundario">
+            Volver a mis cursos
+          </Link>
+        </div>
       </div>
 
       <section className="bloque tarjeta">
@@ -126,15 +165,40 @@ export function Curso() {
             para reutilizarlas. También puedes crear el examen y añadir preguntas después.
           </p>
           <div className="fila">
-            <Link to={`/bancos?curso=${encodeURIComponent(id)}`} className="boton boton-secundario">
-              1. Preparar preguntas
-            </Link>
-            <Link to={`/sesiones/nueva?curso=${encodeURIComponent(id)}`} className="boton">
-              2. Crear examen para este curso
+            <button type="button" className="boton" onClick={() => setAbrirCrearExamen(true)}>
+              Crear examen para este curso
+            </button>
+            <button type="button" className="boton boton-secundario" onClick={() => setAbrirCrearBanco(true)}>
+              Crear banco de preguntas
+            </button>
+            <Link to={`/bancos?curso=${encodeURIComponent(id)}`} className="boton boton-texto">
+              Ver bancos del curso
             </Link>
           </div>
         </div>
       </section>
+
+      {abrirCrearExamen && (
+        <NuevaSesion comoPanel cursoInicialId={id} onCerrar={cerrarCrearExamen} />
+      )}
+
+      {abrirCrearBanco && (
+        <CrearBancoCurso
+          courseId={id}
+          courseName={cursoActual.name}
+          onClose={cerrarCrearBanco}
+          onCreated={setBancoCreado}
+        />
+      )}
+
+      {bancoCreado && (
+        <p className="aviso aviso-exito" role="status">
+          Banco creado: <strong>{bancoCreado.name}</strong>.{' '}
+          <Link to={`/bancos/${bancoCreado.id}`}>Agregar preguntas</Link>
+        </p>
+      )}
+
+      {errorEliminarCurso && <p className="aviso" role="alert">{errorEliminarCurso}</p>}
 
       <section className="bloque">
         <div className="tarjeta">

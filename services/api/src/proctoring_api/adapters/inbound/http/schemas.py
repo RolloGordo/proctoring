@@ -429,6 +429,26 @@ class QuestionResponse(BaseModel):
         )
 
 
+class SessionBankQuestionResponse(BaseModel):
+    question: QuestionResponse
+    bank_name: str
+    included: bool
+
+
+class BankQuestionPointsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question_id: UUID
+    points: Decimal = Field(ge=0, le=100, max_digits=5, decimal_places=2)
+
+
+class SaveBankQuestionSelectionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    excluded_question_ids: list[UUID] = Field(default_factory=list, max_length=5000)
+    question_points: list[BankQuestionPointsRequest] = Field(default_factory=list, max_length=5000)
+
+
 class ExamOptionResponse(BaseModel):
     """Alternativa como la ve el estudiante. **Sin `is_correct`.**"""
 
@@ -1073,6 +1093,18 @@ class CreateQuestionBankRequest(BaseModel):
     description: str | None = Field(default=None, max_length=1000)
 
 
+class UpdateQuestionBankRequest(BaseModel):
+    """Cuerpo de `PATCH /api/v1/question-banks/{id}`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=1000)
+    course_id: UUID | None = None
+    clear_course: bool = False
+    clear_description: bool = False
+
+
 class QuestionBankResponse(BaseModel):
     """Un banco con cuantas preguntas tiene."""
 
@@ -1082,6 +1114,7 @@ class QuestionBankResponse(BaseModel):
     description: str | None
     created_at: datetime
     question_count: int
+    attached_to_exam: bool
 
     @classmethod
     def from_entity(cls, item: BankSummary) -> QuestionBankResponse:
@@ -1092,6 +1125,7 @@ class QuestionBankResponse(BaseModel):
             description=item.bank.description,
             created_at=item.bank.created_at,
             question_count=item.question_count,
+            attached_to_exam=item.attached_to_exam,
         )
 
 
