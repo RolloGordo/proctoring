@@ -237,3 +237,48 @@ Verás el `event_id` que devolvió la API aparecer en los logs del worker. Lo ú
 La API encola por **nombre** (`tasks.analyze_audio`), no importando la función, para no tener que
 instalar tus modelos en su imagen. Si mueves la función, avísame: la constante está en
 `services/api/src/proctoring_api/adapters/outbound/redis_queue/job_queue.py`.
+
+---
+
+## Configuración del motor ASR, puerta de calidad y cascada (Etapa 2A)
+
+El módulo de audio (`audio_runtime.py`) soporta dos motores de transcripción y una cascada opcional controlada íntegramente por variables de entorno:
+
+| Variable | Por defecto | Valores permitidos / Descripción |
+|---|---|---|
+| `ASR_PROVIDER` | `faster-whisper` | `faster-whisper` \| `deepgram`. Motor de transcripción primario (leído en cada llamada). |
+| `ASR_LOCAL_MODEL` | `small` | `tiny` \| `base` \| `small`. Tamaño del modelo CTranslate2 (`int8`, CPU). |
+| `ASR_FALLBACK_PROVIDER` | `deepgram` | `deepgram` \| `none`. Con `deepgram`, pasa a Deepgram Nova-3 solo si Whisper falla o no supera la puerta de calidad. Con `none`, el procesamiento es **100 % local**. |
+| `ASR_FALLBACK_ON_EMPTY` | `true` | `true` \| `false`. Si `true`, una salida vacía de Whisper dispara el respaldo (cuando está activo). |
+| `ASR_LOCAL_VAD_FILTER` | `true` | `true` \| `false`. Activa el filtro Silero VAD integrado en `faster-whisper`. |
+| `ASR_LOCAL_VAD_THRESHOLD` | `0.3` | Flotante en `(0, 1)`. Umbral de probabilidad de voz del VAD local. |
+| `ASR_MIN_WORDS_PER_SECOND` | `0.50` | Palabras por segundo mínimas aceptables en transcripciones no vacías. |
+| `ASR_MAX_NO_SPEECH_PROB` | `0.60` | `no_speech_prob` máxima permitida en cualquier segmento de Whisper. |
+| `ASR_MIN_AVG_LOGPROB` | `-0.60` | `avg_logprob` mínima permitida en cualquier segmento de Whisper. |
+| `ASR_MAX_COMPRESSION_RATIO` | `1.85` | `compression_ratio` máxima permitida por segmento (atrapa bucles repetitivos). |
+| `ASR_HALLUCINATION_PHRASES` | *(lista por defecto)* | Frases típicas de alucinación separadas por coma (`suscríbete`, `más información en www`, `amara.org`, `gracias por ver`, etc.). |
+| `ASR_LATENCY_BUDGET_SECONDS` | `10.0` | Presupuesto total de latencia para calcular el timeout restante del respaldo: `min(4.5, 10.0 - t_gastado - 1.5)`. Si no queda presupuesto (`<= 0`), se omite Deepgram y el evento se reporta sin análisis (`transcript=""`, `similarity=None`). |
+| `ASR_FALLBACK_MAX_TIMEOUT_SECONDS` | `4.5` | Timeout máximo por solicitud a Deepgram cuando actúa como respaldo. |
+| `ASR_POST_ASR_RESERVE_SECONDS` | `1.5` | Margen reservado tras el ASR para `SimilarityModel` y publicación del resultado. |
+| `SIMILARITY_BACKEND` | `torch` | `torch` \| `onnx-int8` \| `onnx-fp32`. Backend para `paraphrase-multilingual-MiniLM-L12-v2` (`SimilarityModel` con PyTorch o `OnnxSimilarityModel` con `onnxruntime` + `tokenizers`). |
+| `SIMILARITY_ONNX_VOCAB` | `es_en` | `es_en` \| `full`. Modo de vocabulario para `OnnxSimilarityModel` (`es_en` recorta a 90 525 tokens ES/EN manteniendo paridad 1,000000 y bajando el pico de RAM a ~221 MiB). |
+| `ASR_ENFORCE_MEMORY_BUDGET` | `false` | `false` \| `true`. Con `false` (por defecto), un límite de memoria de contenedor (`memory.max`) inferior al mínimo requerido por `(SIMILARITY_BACKEND, ASR_PROVIDER)` solo emite un aviso (`logger.warning` y `/health`). Con `true`, aborta el arranque con código de salida `1`. |
+
+### Trazabilidad en `model_versions["asr"]` y `model_versions["sim"]`
+
+- Motor local aceptado: `faster-whisper-small-cpu-int8`.
+- Respaldo ejecutado en Deepgram: `deepgram-nova-3-es;fallback_from=faster-whisper-small-cpu-int8;reason=<motivo>`.
+- Respaldo omitido por presupuesto agotado: `faster-whisper-small-cpu-int8;fallback_skipped=budget_exhausted;reason=<motivo>`.
+- Puerta de calidad activada con `ASR_FALLBACK_PROVIDER=none`: `faster-whisper-small-cpu-int8;quality_gate=<motivo>;fallback=none`.
+- Similitud: `multilingual-MiniLM-L12-v2@<SIM_REVISION>` (con `torch`) o `multilingual-MiniLM-L12-v2@<SIM_REVISION>;backend=onnx-int8` / `onnx-fp32`.
+
+### Nota de privacidad y limitaciones conocidas
+
+- **Privacidad**: Con `ASR_PROVIDER=faster-whisper` y `ASR_FALLBACK_PROVIDER=none`, ningún fragmento de audio sale del servidor. Con `ASR_FALLBACK_PROVIDER=deepgram` (o `ASR_PROVIDER=deepgram`), los fragmentos de audio que requieran respaldo (o todos en modo `deepgram`) son procesados por la API externa de Deepgram Nova-3. **El enunciado de la pregunta del examen nunca se envía a Deepgram**; la comparación semántica (`SimilarityModel` / `OnnxSimilarityModel`) se ejecuta siempre en local.
+- **Calibración en muestra**: Los umbrales de la puerta de calidad se calibraron sobre **28 audios en muestra** (8 de MediaSpeech y 20 grabaciones de una sola voz `P01` en 5 condiciones), sin validación independiente (véase `results/quality-gate-calibration.json`).
+- **Limitación conocida (susurro / voz muy baja)**: Las grabaciones en susurro (`voz baja`) presentan un WER de `100 %` en `faster-whisper small` y de `79,81 %` en Deepgram Nova-3 (`results/asr-comparison.json`). El susurro extremo no es transcribible de manera fiable por ninguno de los dos motores.
+- **Requisitos de memoria y CPU (Etapa 0 y 2B, `results/stage0-docker-limits.json` y `results/onnx-minilm-experiment.json`)**:
+  - Con `SIMILARITY_BACKEND=torch`: `faster-whisper small` alcanza un pico de `1.698,42 MiB` de RSS en Docker (mínimo requerido `1.800 MiB`), y Deepgram alcanza `1.124,38 MiB` (mínimo requerido `1.280 MiB`), por lo que requieren al menos **2 GB de RAM**.
+  - Con `SIMILARITY_BACKEND=onnx-int8` (`SIMILARITY_ONNX_VOCAB=es_en`): Deepgram baja a `~225 MiB` de RSS (cabe en **512 MB**), `faster-whisper tiny` a `~435 MiB` (cabe en **512 MB**), `base` a `~545 MiB` (cabe en **1 GB**) y `small` a `~980 MiB` (cabe en **2 GB**).
+  - Al arrancar, `worker_stub.py` lee `/sys/fs/cgroup/memory.max` y compara contra el mínimo según `(SIMILARITY_BACKEND, ASR_PROVIDER)`: por defecto emite un aviso en logs y en `/health`, y solo aborta el arranque si `ASR_ENFORCE_MEMORY_BUDGET=true`.
+
