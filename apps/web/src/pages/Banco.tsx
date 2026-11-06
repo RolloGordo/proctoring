@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { EditorPregunta, ListaPreguntas } from '../components/EditorPregunta'
 import { ImportarPreguntas } from '../components/ImportarPreguntas'
-import { api, type NewQuestion, type Question, type QuestionBank } from '../lib/api'
+import { api, type Course, type NewQuestion, type Question, type QuestionBank } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 
 /** Las preguntas de un banco, con sus respuestas correctas. */
@@ -12,6 +12,12 @@ export function Banco() {
   const { token } = useAuth()
 
   const [banco, setBanco] = useState<QuestionBank>()
+  const [cursos, setCursos] = useState<Course[]>([])
+  const [vista, setVista] = useState<'preguntas' | 'configuracion'>('preguntas')
+  const [nombre, setNombre] = useState('')
+  const [descripcion, setDescripcion] = useState('')
+  const [cursoId, setCursoId] = useState('')
+  const [guardandoConfiguracion, setGuardandoConfiguracion] = useState(false)
   const [preguntas, setPreguntas] = useState<Question[]>()
   const [error, setError] = useState<string>()
   const [mostrarEditor, setMostrarEditor] = useState(false)
@@ -38,13 +44,51 @@ export function Banco() {
     // es la que trae el conteo.
     api
       .listBanks(token)
-      .then((todos) => setBanco(todos.find((b) => b.id === id)))
+      .then((todos) => {
+        const actual = todos.find((b) => b.id === id)
+        setBanco(actual)
+        if (actual) {
+          setNombre(actual.name)
+          setDescripcion(actual.description ?? '')
+          setCursoId(actual.course_id ?? '')
+        }
+      })
       .catch(() => undefined)
+    api.listCourses(token).then(setCursos).catch(() => undefined)
     api
       .listBankQuestions(id, token)
       .then(setPreguntas)
       .catch((fallo: Error) => setError(fallo.message))
   }, [id, token])
+
+  async function guardarConfiguracion(evento: FormEvent): Promise<void> {
+    evento.preventDefault()
+    if (!banco || !nombre.trim()) return
+    setError(undefined)
+    setGuardandoConfiguracion(true)
+    try {
+      const cambios = await api.updateBank(
+        id,
+        {
+          name: nombre.trim(),
+          ...(descripcion.trim()
+            ? { description: descripcion.trim() }
+            : { clear_description: true }),
+          ...(cursoId ? { course_id: cursoId } : { clear_course: true })
+        },
+        token
+      )
+      setBanco(cambios)
+      setNombre(cambios.name)
+      setDescripcion(cambios.description ?? '')
+      setCursoId(cambios.course_id ?? '')
+      setAvisoImportacion('Configuración guardada. El banco conserva sus preguntas y vínculos.')
+    } catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : 'No se pudo guardar la configuración')
+    } finally {
+      setGuardandoConfiguracion(false)
+    }
+  }
 
   useEffect(() => {
     if (!desplazarALista.current || !preguntas) return
@@ -96,9 +140,9 @@ export function Banco() {
   }
 
   const cuantas = preguntas?.length ?? 0
-  const cursoId = banco?.course_id ?? searchParams.get('curso')
+  const cursoParaExamen = banco?.course_id ?? searchParams.get('curso')
   const parametrosExamen = new URLSearchParams({ banco: id })
-  if (cursoId) parametrosExamen.set('curso', cursoId)
+  if (cursoParaExamen) parametrosExamen.set('curso', cursoParaExamen)
   const rutaBancos = searchParams.toString() ? `/bancos?${searchParams.toString()}` : '/bancos'
 
   return (
@@ -123,8 +167,24 @@ export function Banco() {
       </div>
 
       {error && <p className="aviso">{error}</p>}
+      {avisoImportacion && (
+        <p className="aviso aviso-exito" role="status">
+          {avisoImportacion}
+        </p>
+      )}
 
-      <section className="bloque" ref={listaRef}>
+      {banco && (
+        <nav className="banco-pestanas" role="tablist" aria-label="Secciones del banco">
+          <button type="button" role="tab" aria-selected={vista === 'preguntas'} onClick={() => setVista('preguntas')}>
+            Preguntas
+          </button>
+          <button type="button" role="tab" aria-selected={vista === 'configuracion'} onClick={() => setVista('configuracion')}>
+            Configuración
+          </button>
+        </nav>
+      )}
+
+      {vista === 'preguntas' ? <section className="bloque" ref={listaRef}>
         <div className="encabezado-seccion">
           <h2>Preguntas del banco</h2>
           <button
@@ -154,12 +214,6 @@ export function Banco() {
           </div>
         )}
 
-        {avisoImportacion && (
-          <p className="aviso aviso-exito" role="status">
-            {avisoImportacion}
-          </p>
-        )}
-
         {!preguntas ? (
           <p className="tenue">Cargando preguntas…</p>
         ) : preguntas.length === 0 ? (
@@ -180,7 +234,48 @@ export function Banco() {
         ) : (
           <ListaPreguntas preguntas={preguntas} onCambiarPuntos={cambiarPuntos} onBorrar={borrar} />
         )}
-      </section>
+      </section> : banco ? (
+        <section className="bloque banco-configuracion">
+          {banco.attached_to_exam && (
+            <p className="aviso aviso-neutro">
+              Este banco está vinculado a uno o más exámenes. Se conserva y no se puede eliminar mientras siga vinculado. Cambiar sus datos no altera las preguntas ni los exámenes.
+            </p>
+          )}
+          <div className="tarjeta">
+            <div className="tarjeta-cuerpo">
+              <h2>Configuración del banco</h2>
+              <form onSubmit={(evento) => void guardarConfiguracion(evento)}>
+                <label className="campo">
+                  <span>Nombre</span>
+                  <input value={nombre} onChange={(evento) => setNombre(evento.target.value)} maxLength={120} required />
+                </label>
+                <label className="campo">
+                  <span>Descripción</span>
+                  <textarea value={descripcion} onChange={(evento) => setDescripcion(evento.target.value)} maxLength={1000} rows={3} />
+                </label>
+                <label className="campo">
+                  <span>Curso asociado</span>
+                  <select value={cursoId} onChange={(evento) => setCursoId(evento.target.value)}>
+                    <option value="">Sin curso: disponible para todos tus cursos</option>
+                    {cursoId && !cursos.some((curso) => curso.id === cursoId) && (
+                      <option value={cursoId}>Curso asociado</option>
+                    )}
+                    {cursos.map((curso) => (
+                      <option key={curso.id} value={curso.id}>
+                        {curso.name}{curso.section ? ` · ${curso.section}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="ayuda">La asociación organiza el banco; no quita exámenes que ya lo usan.</span>
+                </label>
+                <button type="submit" className="boton" disabled={guardandoConfiguracion || !nombre.trim()}>
+                  {guardandoConfiguracion ? 'Guardando…' : 'Guardar configuración'}
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
+      ) : null}
     </>
   )
 }

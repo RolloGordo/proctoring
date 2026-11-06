@@ -8,6 +8,7 @@ from uuid import UUID
 
 from proctoring_api.application.ports.answer_repository import AnswerRepository
 from proctoring_api.application.ports.clock import Clock
+from proctoring_api.application.ports.course_repository import CourseRepository
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
@@ -33,6 +34,7 @@ class BankSummary:
 
     bank: QuestionBank
     question_count: int
+    attached_to_exam: bool = False
 
 
 def ensure_teacher_owns_bank(
@@ -63,10 +65,12 @@ class CreateQuestionBank:
         banks: QuestionBankRepository,
         clock: Clock,
         dev_teacher_id: UUID = DEFAULT_DEV_TEACHER_ID,
+        courses: CourseRepository | None = None,
     ) -> None:
         self._banks = banks
         self._clock = clock
         self._dev_teacher_id = dev_teacher_id
+        self._courses = courses
 
     def execute(
         self,
@@ -79,8 +83,16 @@ class CreateQuestionBank:
         if actor is not None and not actor.is_teacher:
             raise AuthorizationError("Solo un docente puede crear un banco de preguntas")
 
+        docente = actor.id if actor is not None else self._dev_teacher_id
+        # SEC-06: igual que un examen, un banco solo cuelga de un curso propio.
+        # Antes se aceptaba el curso de otro docente y la relación quedaba rota.
+        if course_id is not None and self._courses is not None:
+            curso = self._courses.find_by_id(course_id)
+            if curso is None or curso.teacher_id != docente:
+                raise AuthorizationError("No tienes acceso a ese curso")
+
         bank = QuestionBank.create(
-            teacher_id=actor.id if actor is not None else self._dev_teacher_id,
+            teacher_id=docente,
             name=name,
             course_id=course_id,
             description=description,
@@ -109,7 +121,67 @@ class ListQuestionBanks:
         bancos = self._banks.list_by_teacher(teacher_id)
         # El conteo llega en una consulta para todos, no una por banco.
         conteo = self._banks.count_questions([b.id for b in bancos])
-        return [BankSummary(bank=b, question_count=conteo.get(b.id, 0)) for b in bancos]
+        vinculados = self._banks.attached_to_sessions([b.id for b in bancos])
+        return [
+            BankSummary(
+                bank=b,
+                question_count=conteo.get(b.id, 0),
+                attached_to_exam=b.id in vinculados,
+            )
+            for b in bancos
+        ]
+
+
+@dataclass(frozen=True, slots=True)
+class BankChanges:
+    name: str | None = None
+    description: str | None = None
+    course_id: UUID | None = None
+    clear_description: bool = False
+    clear_course: bool = False
+
+
+class UpdateQuestionBank:
+    """Edita los datos del banco sin alterar preguntas ni exámenes vinculados."""
+
+    def __init__(self, banks: QuestionBankRepository, courses: CourseRepository) -> None:
+        self._banks = banks
+        self._courses = courses
+
+    def execute(
+        self,
+        bank_id: UUID,
+        changes: BankChanges,
+        *,
+        actor: AuthenticatedUser | None = None,
+    ) -> BankSummary:
+        bank = ensure_teacher_owns_bank(self._banks, bank_id, actor)
+        course_id = None if changes.clear_course else changes.course_id or bank.course_id
+        if course_id is not None:
+            course = self._courses.find_by_id(course_id)
+            if course is None or course.teacher_id != bank.teacher_id:
+                raise AuthorizationError("No tienes acceso a ese curso")
+
+        updated = QuestionBank.create(
+            teacher_id=bank.teacher_id,
+            name=changes.name if changes.name is not None else bank.name,
+            course_id=course_id,
+            description=(
+                None
+                if changes.clear_description
+                else changes.description
+                if changes.description is not None
+                else bank.description
+            ),
+            created_at=bank.created_at,
+            bank_id=bank.id,
+        )
+        self._banks.update(updated)
+        return BankSummary(
+            bank=updated,
+            question_count=self._banks.count_questions([bank_id]).get(bank_id, 0),
+            attached_to_exam=self._banks.is_attached_to_session(bank_id),
+        )
 
 
 class DeleteQuestionBank:
@@ -163,6 +235,12 @@ class AddQuestionsToBank:
     def __init__(self, banks: QuestionBankRepository, questions: QuestionRepository) -> None:
         self._banks = banks
         self._questions = questions
+
+    def ensure_can_add(self, bank_id: UUID, actor: AuthenticatedUser | None) -> None:
+        """Raises:
+        AuthorizationError: si el banco no es del docente.
+        """
+        ensure_teacher_owns_bank(self._banks, bank_id, actor)
 
     def execute(
         self,
@@ -281,7 +359,10 @@ class ListSessionBanks:
 
         bancos = self._banks.list_session_banks(session_id)
         conteo = self._banks.count_questions([b.id for b in bancos])
-        return [BankSummary(bank=b, question_count=conteo.get(b.id, 0)) for b in bancos]
+        return [
+            BankSummary(bank=b, question_count=conteo.get(b.id, 0), attached_to_exam=True)
+            for b in bancos
+        ]
 
 
 __all__ = [

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChipEstado } from '../components/ChipEstado'
 import { FormularioCodigo } from '../components/FormularioCodigo'
+import { RejillaTarjetas, TarjetaCurso } from '../components/TarjetaCurso'
 import { api, comoExamenUnido, type MyCourse, type MyExam } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { cuandoEmpieza, estadoExamen, fechaLarga, horaCorta } from '../lib/formato'
@@ -17,6 +18,11 @@ import { cuandoEmpieza, estadoExamen, fechaLarga, horaCorta } from '../lib/forma
  * Sigue el patrón de los paneles de Canvas y Moodle —«por hacer» con fechas y
  * lo entregado con su nota— pero corto: con demasiados datos el estudiante no
  * sabe qué mirar.
+ *
+ * Sus cursos van al final, a lo ancho, con la portada que puso el docente: son
+ * las mismas tarjetas que ve él, pero en vez de cuántos estudiantes hay dicen
+ * cuál es el próximo examen. Debajo de lo que tiene por rendir, porque eso es
+ * lo que tiene hora.
  */
 export function PanelEstudiante() {
   const { token } = useAuth()
@@ -73,6 +79,12 @@ export function PanelEstudiante() {
         )
     }
   }, [examenes])
+
+  // Un examen ya entregado no es «el próximo» de su curso, aunque siga en hora.
+  const yaEntregados = useMemo(
+    () => new Set(entregados.map((examen) => examen.session_id)),
+    [entregados]
+  )
 
   const abierto = porRendir.find((e) => e.can_enter_now && !e.cancelled)
   const proximo = porRendir.find((e) => !e.cancelled && new Date(e.starts_at).getTime() > ahora)
@@ -171,21 +183,29 @@ export function PanelEstudiante() {
             <p className="subtitulo">El que te dio tu docente. Da igual si va en minúsculas.</p>
             <FormularioCodigo compacto principal={!abierto} />
           </section>
-
-          {clases.length > 0 && (
-            <section className="tarjeta inicio-lista" aria-labelledby="mis-clases">
-              <div className="encabezado-seccion">
-                <h2 id="mis-clases">Mis clases</h2>
-              </div>
-              <ul className="inicio-filas">
-                {clases.map((clase) => (
-                  <FilaClase key={clase.id} clase={clase} ahora={ahora} />
-                ))}
-              </ul>
-            </section>
-          )}
         </aside>
       </div>
+
+      {clases.length > 0 && (
+        <section className="inicio-cursos" aria-labelledby="mis-cursos">
+          <div className="encabezado-seccion">
+            <h2 id="mis-cursos">
+              Tus cursos <span className="inicio-cuenta">{clases.length}</span>
+            </h2>
+          </div>
+          <RejillaTarjetas>
+            {clases.map((clase) => (
+              <li key={clase.id}>
+                <TarjetaCurso
+                  curso={clase}
+                  destino={`/estudiante/cursos/${clase.id}`}
+                  datos={<DatosClase clase={clase} ahora={ahora} entregados={yaEntregados} />}
+                />
+              </li>
+            ))}
+          </RejillaTarjetas>
+        </section>
+      )}
     </div>
   )
 }
@@ -258,34 +278,39 @@ function Nota({ examen }: { examen: MyExam }) {
 }
 
 /**
- * Una clase y lo próximo que viene en ella.
+ * Lo próximo que viene en una clase: la sección y el siguiente examen.
  *
- * Solo muestra cuándo es cada examen. Estar en la clase no da acceso al examen:
- * para rendirlo hace falta el código que reparte el docente.
+ * Solo dice cuándo es. Estar en la clase no da acceso al examen: para rendirlo
+ * hace falta el código que reparte el docente.
  */
-function FilaClase({ clase, ahora }: { clase: MyCourse; ahora: number }) {
+function DatosClase({
+  clase,
+  ahora,
+  entregados
+}: {
+  clase: MyCourse
+  ahora: number
+  entregados: Set<string>
+}) {
   const siguiente = clase.exams
-    .filter((e) => new Date(e.starts_at).getTime() + e.duration_minutes * 60_000 >= ahora)
+    .filter(
+      (e) =>
+        !entregados.has(e.session_id) &&
+        new Date(e.starts_at).getTime() + e.duration_minutes * 60_000 >= ahora
+    )
     .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())[0]
 
   return (
-    <li>
-      <div className="inicio-fila-texto">
-        <Link to={`/estudiante/cursos/${clase.id}`}>
-          {clase.name}
-          {clase.section && <span className="tenue"> · Sección {clase.section}</span>}
-        </Link>
-        <span>
-          {siguiente ? (
-            <>
-              {siguiente.title} ·{' '}
-              <span className="sin-corte">{fechaLarga(siguiente.starts_at)}</span>
-            </>
-          ) : (
-            'Sin exámenes próximos'
-          )}
-        </span>
-      </div>
-    </li>
+    <>
+      {clase.section && <>Sección {clase.section} · </>}
+      {siguiente ? (
+        <>
+          Próximo: {siguiente.title} ·{' '}
+          <span className="sin-corte">{fechaLarga(siguiente.starts_at)}</span>
+        </>
+      ) : (
+        'Sin exámenes próximos'
+      )}
+    </>
   )
 }

@@ -10,6 +10,7 @@ import {
 } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { detalleEvento, duracion, fechaLarga, nombreEvento, nombreSeveridad } from '../lib/formato'
+import { NotaDestacada } from '../components/NotaDestacada'
 
 interface Detalle {
   exam: MyExam
@@ -107,19 +108,12 @@ export function DetalleExamenEstudiante() {
         <h2>Resultado</h2>
         <div className="tarjeta">
           <div className="tarjeta-cuerpo">
-            {detalle.exam.score === null ? (
-              <p>Pendiente de calificación.</p>
-            ) : (
-              <p>
-                Nota: <strong>{detalle.exam.score}</strong>
-                {detalle.exam.max_score !== null && <> de {detalle.exam.max_score}</>}
-              </p>
-            )}
-            {detalle.exam.pending_manual_review && (
-              <p className="ayuda">
-                La nota es parcial: todavía hay respuestas de desarrollo pendientes de revisión.
-              </p>
-            )}
+            <NotaDestacada
+              score={detalle.exam.score}
+              maxScore={detalle.exam.max_score}
+              submittedAt={detalle.exam.submitted_at}
+              parcial={detalle.exam.pending_manual_review}
+            />
           </div>
         </div>
       </section>

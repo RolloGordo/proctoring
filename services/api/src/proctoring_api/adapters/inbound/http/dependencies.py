@@ -22,6 +22,10 @@ from proctoring_api.application.use_cases.ai_jobs import (
     RegisterReferenceFace,
     RequestIdentityCheck,
 )
+from proctoring_api.application.use_cases.course_cover import (
+    RequestCourseCoverUpload,
+    SetCourseCover,
+)
 from proctoring_api.application.use_cases.create_evidence_upload_url import (
     CreateEvidenceUploadUrl,
 )
@@ -55,9 +59,11 @@ from proctoring_api.application.use_cases.manage_banks import (
     ListBankQuestions,
     ListQuestionBanks,
     ListSessionBanks,
+    UpdateQuestionBank,
 )
 from proctoring_api.application.use_cases.manage_courses import (
     CreateCourse,
+    DeleteEmptyCourse,
     EnrollStudentInCourse,
     GetCourse,
     ListCourseMembers,
@@ -75,6 +81,7 @@ from proctoring_api.application.use_cases.manage_questions import (
     GetExamQuestions,
     GetSubmittedExamQuestions,
     ListSessionQuestions,
+    SessionBankQuestionSelection,
 )
 from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
 from proctoring_api.application.use_cases.register_event import RegisterEvent
@@ -153,6 +160,11 @@ def get_list_session_questions(request: Request) -> ListSessionQuestions:
     return use_case
 
 
+def get_bank_question_selection(request: Request) -> SessionBankQuestionSelection:
+    use_case: SessionBankQuestionSelection = request.app.state.bank_question_selection
+    return use_case
+
+
 def get_submitted_exam_questions(request: Request) -> GetSubmittedExamQuestions:
     use_case: GetSubmittedExamQuestions = request.app.state.get_submitted_exam_questions
     return use_case
@@ -203,6 +215,11 @@ def get_create_course(request: Request) -> CreateCourse:
     return use_case
 
 
+def get_delete_course(request: Request) -> DeleteEmptyCourse:
+    use_case: DeleteEmptyCourse = request.app.state.delete_course
+    return use_case
+
+
 def get_list_teacher_courses(request: Request) -> ListTeacherCourses:
     use_case: ListTeacherCourses = request.app.state.list_teacher_courses
     return use_case
@@ -210,6 +227,16 @@ def get_list_teacher_courses(request: Request) -> ListTeacherCourses:
 
 def get_get_course(request: Request) -> GetCourse:
     use_case: GetCourse = request.app.state.get_course
+    return use_case
+
+
+def get_request_course_cover_upload(request: Request) -> RequestCourseCoverUpload:
+    use_case: RequestCourseCoverUpload = request.app.state.request_course_cover_upload
+    return use_case
+
+
+def get_set_course_cover(request: Request) -> SetCourseCover:
+    use_case: SetCourseCover = request.app.state.set_course_cover
     return use_case
 
 
@@ -280,6 +307,11 @@ def get_request_identity_check(request: Request) -> RequestIdentityCheck:
 
 def get_create_bank(request: Request) -> CreateQuestionBank:
     use_case: CreateQuestionBank = request.app.state.create_bank
+    return use_case
+
+
+def get_update_bank(request: Request) -> UpdateQuestionBank:
+    use_case: UpdateQuestionBank = request.app.state.update_bank
     return use_case
 
 
@@ -392,6 +424,9 @@ GetExamSessionDep = Annotated[GetExamSession, Depends(get_exam_session)]
 JoinExamSessionDep = Annotated[JoinExamSession, Depends(get_join_exam_session)]
 AddQuestionsDep = Annotated[AddQuestions, Depends(get_add_questions)]
 ListSessionQuestionsDep = Annotated[ListSessionQuestions, Depends(get_list_session_questions)]
+BankQuestionSelectionDep = Annotated[
+    SessionBankQuestionSelection, Depends(get_bank_question_selection)
+]
 GetExamQuestionsDep = Annotated[GetExamQuestions, Depends(get_exam_questions)]
 GetSubmittedExamQuestionsDep = Annotated[
     GetSubmittedExamQuestions, Depends(get_submitted_exam_questions)
@@ -407,8 +442,13 @@ CreateEvidenceUploadUrlDep = Annotated[
     CreateEvidenceUploadUrl, Depends(get_create_evidence_upload_url)
 ]
 CreateCourseDep = Annotated[CreateCourse, Depends(get_create_course)]
+DeleteCourseDep = Annotated[DeleteEmptyCourse, Depends(get_delete_course)]
 ListTeacherCoursesDep = Annotated[ListTeacherCourses, Depends(get_list_teacher_courses)]
 GetCourseDep = Annotated[GetCourse, Depends(get_get_course)]
+RequestCourseCoverUploadDep = Annotated[
+    RequestCourseCoverUpload, Depends(get_request_course_cover_upload)
+]
+SetCourseCoverDep = Annotated[SetCourseCover, Depends(get_set_course_cover)]
 EnrollStudentDep = Annotated[EnrollStudentInCourse, Depends(get_enroll_student)]
 ListCourseMembersDep = Annotated[ListCourseMembers, Depends(get_list_course_members)]
 ListMyCoursesDep = Annotated[ListMyCourses, Depends(get_list_my_courses)]
@@ -423,6 +463,7 @@ RecordIdentityCheckDep = Annotated[RecordIdentityCheck, Depends(get_record_ident
 RegisterReferenceFaceDep = Annotated[RegisterReferenceFace, Depends(get_register_reference_face)]
 RequestIdentityCheckDep = Annotated[RequestIdentityCheck, Depends(get_request_identity_check)]
 CreateBankDep = Annotated[CreateQuestionBank, Depends(get_create_bank)]
+UpdateBankDep = Annotated[UpdateQuestionBank, Depends(get_update_bank)]
 DeleteBankDep = Annotated[DeleteQuestionBank, Depends(get_delete_bank)]
 ListBanksDep = Annotated[ListQuestionBanks, Depends(get_list_banks)]
 ListBankQuestionsDep = Annotated[ListBankQuestions, Depends(get_list_bank_questions)]

@@ -14,6 +14,10 @@ from proctoring_api.application.ports.participant_repository import ParticipantR
 from proctoring_api.application.ports.profile_repository import ProfileRepository
 from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
+from proctoring_api.application.ports.reference_face_repository import (
+    ReferenceFace,
+    ReferenceFaceRepository,
+)
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.application.use_cases.create_exam_session import DEFAULT_DEV_TEACHER_ID
 from proctoring_api.domain.errors import AuthorizationError, DomainError
@@ -207,6 +211,9 @@ class ReviewParticipantIdentity:
 
     Existe porque un reconocimiento que falla con mala luz no puede costarle el
     examen a nadie. Queda registrado quién lo admitió.
+
+    Admitirlo también da por buena su cara de referencia si estaba pendiente de
+    revisión (`ReferenceFace.needs_review`): el docente acaba de mirarlo.
     """
 
     def __init__(
@@ -215,11 +222,13 @@ class ReviewParticipantIdentity:
         sessions: ExamSessionRepository | None,
         clock: Clock,
         dev_teacher_id: UUID = DEFAULT_DEV_TEACHER_ID,
+        faces: ReferenceFaceRepository | None = None,
     ) -> None:
         self._participants = participants
         self._sessions = sessions
         self._clock = clock
         self._dev_teacher_id = dev_teacher_id
+        self._faces = faces
 
     def execute(
         self,
@@ -248,7 +257,25 @@ class ReviewParticipantIdentity:
             else participante.rejected_by_teacher(revisor)
         )
         self._participants.save(actualizado)
+
+        if approve and self._faces is not None:
+            self._trust_reference(self._faces, student_id)
         return actualizado
+
+    @staticmethod
+    def _trust_reference(faces: ReferenceFaceRepository, student_id: UUID) -> None:
+        referencia = faces.find(student_id)
+        if referencia is not None and referencia.needs_review:
+            faces.save(
+                ReferenceFace(
+                    student_id=referencia.student_id,
+                    storage_path=referencia.storage_path,
+                    embedding=referencia.embedding,
+                    model_version=referencia.model_version,
+                    registered_at=referencia.registered_at,
+                    needs_review=False,
+                )
+            )
 
 
 class SubmitExam:

@@ -56,6 +56,7 @@ from proctoring_api.adapters.outbound.memory.question_repository import (
 from proctoring_api.adapters.outbound.memory.reference_face_repository import (
     InMemoryReferenceFaceRepository,
 )
+from proctoring_api.application.course_covers import CourseCovers
 from proctoring_api.application.ports.alert_repository import AlertRepository
 from proctoring_api.application.ports.answer_repository import AnswerRepository
 from proctoring_api.application.ports.audio_analysis_repository import AudioAnalysisRepository
@@ -78,6 +79,10 @@ from proctoring_api.application.use_cases.ai_jobs import (
     RecordIdentityCheck,
     RegisterReferenceFace,
     RequestIdentityCheck,
+)
+from proctoring_api.application.use_cases.course_cover import (
+    RequestCourseCoverUpload,
+    SetCourseCover,
 )
 from proctoring_api.application.use_cases.create_evidence_upload_url import (
     CreateEvidenceUploadUrl,
@@ -112,9 +117,11 @@ from proctoring_api.application.use_cases.manage_banks import (
     ListBankQuestions,
     ListQuestionBanks,
     ListSessionBanks,
+    UpdateQuestionBank,
 )
 from proctoring_api.application.use_cases.manage_courses import (
     CreateCourse,
+    DeleteEmptyCourse,
     EnrollStudentInCourse,
     GetCourse,
     ListCourseMembers,
@@ -132,6 +139,7 @@ from proctoring_api.application.use_cases.manage_questions import (
     GetExamQuestions,
     GetSubmittedExamQuestions,
     ListSessionQuestions,
+    SessionBankQuestionSelection,
 )
 from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
 from proctoring_api.application.use_cases.register_event import RegisterEvent
@@ -427,10 +435,18 @@ def create_app(
     """
     settings = settings or Settings()
 
+    # SEC-04: en producción no se publica la documentación. `/docs`, `/redoc` y
+    # `/openapi.json` entregaban a cualquiera el mapa completo de la API,
+    # internos incluidos. En local y en pruebas sigue disponible.
+    con_documentacion = settings.env != "production"
+
     app = FastAPI(
         title="Proctoring API",
         description=DESCRIPTION,
         version=__version__,
+        docs_url="/docs" if con_documentacion else None,
+        redoc_url="/redoc" if con_documentacion else None,
+        openapi_url="/openapi.json" if con_documentacion else None,
         openapi_tags=[
             {"name": "health", "description": "Estado del servicio"},
             {"name": "events", "description": "Senales detectadas durante un examen"},
@@ -589,12 +605,22 @@ def create_app(
         decision_repository, participant_repository, settings.dev_student_id
     )
     app.state.create_course = CreateCourse(course_repository, clock, settings.dev_teacher_id)
-    app.state.list_teacher_courses = ListTeacherCourses(course_repository, settings.dev_teacher_id)
-    app.state.get_course = GetCourse(course_repository)
+    course_covers = CourseCovers(evidence_storage, settings.supabase_course_covers_bucket)
+    app.state.delete_course = DeleteEmptyCourse(
+        course_repository, session_repository, bank_repository, course_covers
+    )
+    app.state.list_teacher_courses = ListTeacherCourses(
+        course_repository, settings.dev_teacher_id, course_covers
+    )
+    app.state.get_course = GetCourse(course_repository, course_covers)
+    app.state.request_course_cover_upload = RequestCourseCoverUpload(
+        course_repository, course_covers
+    )
+    app.state.set_course_cover = SetCourseCover(course_repository, course_covers)
     app.state.enroll_student = EnrollStudentInCourse(course_repository, profile_repository, clock)
     app.state.list_course_members = ListCourseMembers(course_repository, profile_repository)
     app.state.list_my_courses = ListMyCourses(
-        course_repository, session_repository, settings.dev_student_id
+        course_repository, session_repository, settings.dev_student_id, course_covers
     )
     app.state.list_teacher_sessions = ListTeacherSessions(
         session_repository, settings.dev_teacher_id
@@ -605,6 +631,9 @@ def create_app(
         question_repository, session_repository, participant_repository
     )
     app.state.list_session_questions = ListSessionQuestions(question_repository, session_repository)
+    app.state.bank_question_selection = SessionBankQuestionSelection(
+        question_repository, session_repository, bank_repository, participant_repository
+    )
     app.state.get_exam_questions = GetExamQuestions(
         question_repository,
         session_repository,
@@ -632,7 +661,10 @@ def create_app(
     app.state.delete_question = DeleteQuestion(
         question_repository, session_repository, bank_repository, answer_repository
     )
-    app.state.create_bank = CreateQuestionBank(bank_repository, clock, settings.dev_teacher_id)
+    app.state.create_bank = CreateQuestionBank(
+        bank_repository, clock, settings.dev_teacher_id, courses=course_repository
+    )
+    app.state.update_bank = UpdateQuestionBank(bank_repository, course_repository)
     app.state.delete_bank = DeleteQuestionBank(
         bank_repository, question_repository, answer_repository
     )
@@ -652,7 +684,11 @@ def create_app(
         participant_repository, session_repository, profile_repository
     )
     app.state.review_identity = ReviewParticipantIdentity(
-        participant_repository, session_repository, clock, settings.dev_teacher_id
+        participant_repository,
+        session_repository,
+        clock,
+        settings.dev_teacher_id,
+        faces=reference_face_repository,
     )
     app.state.submit_exam = SubmitExam(
         participant_repository,

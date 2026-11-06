@@ -176,7 +176,8 @@ export interface QuestionOption extends ExamOption {
 
 /** Pregunta con su respuesta correcta. Solo llega al docente. */
 export interface Question extends Omit<ExamQuestion, 'options'> {
-  session_id: string
+  session_id: string | null
+  bank_id?: string | null
   options: QuestionOption[]
   correct_numeric_answer: string | null
   numeric_tolerance: string | null
@@ -338,7 +339,12 @@ export interface Course {
   section: string | null
   created_at: string
   student_count: number
+  /** URL firmada de la portada, válida una hora; `null` si el curso no tiene imagen. */
+  cover_url: string | null
 }
+
+/** Formatos de portada que acepta la API (y el bucket `course-covers`). */
+export type CoverContentType = 'image/webp' | 'image/jpeg' | 'image/png'
 
 /** Un estudiante matriculado en un curso. */
 export interface CourseMember {
@@ -364,6 +370,8 @@ export interface MyCourse {
   name: string
   section: string | null
   exams: MyCourseExam[]
+  /** URL firmada de la portada que puso el docente, válida una hora; `null` si no tiene. */
+  cover_url: string | null
 }
 
 export interface NewExamSession {
@@ -434,6 +442,7 @@ export interface QuestionBank {
   description: string | null
   created_at: string
   question_count: number
+  attached_to_exam?: boolean
 }
 
 /** Un ítem que no entró, o que se califica distinto aquí que en el origen. */
@@ -456,6 +465,25 @@ export interface NewQuestionBank {
   name: string
   course_id?: string | null
   description?: string | null
+}
+
+export interface QuestionBankChanges {
+  name?: string
+  description?: string
+  course_id?: string
+  clear_course?: boolean
+  clear_description?: boolean
+}
+
+export interface SessionBankQuestion {
+  question: Question
+  bank_name: string
+  included: boolean
+}
+
+export interface BankQuestionPoint {
+  question_id: string
+  points: string
 }
 
 /** Error de la API con su código, para poder distinguir 401 de 403 de 400. */
@@ -642,6 +670,9 @@ export const api = {
   createBank: (data: NewQuestionBank, token?: string): Promise<QuestionBank> =>
     request('/api/v1/question-banks', { method: 'POST', body: JSON.stringify(data) }, token),
 
+  updateBank: (id: string, changes: QuestionBankChanges, token?: string): Promise<QuestionBank> =>
+    request(`/api/v1/question-banks/${id}`, { method: 'PATCH', body: JSON.stringify(changes) }, token),
+
   deleteBank: (bankId: string, token?: string): Promise<void> =>
     request(`/api/v1/question-banks/${bankId}`, { method: 'DELETE' }, token),
 
@@ -693,11 +724,55 @@ export const api = {
   detachBank: (sessionId: string, bankId: string, token?: string): Promise<void> =>
     request(`/api/v1/sessions/${sessionId}/banks/${bankId}`, { method: 'DELETE' }, token),
 
+  listSessionBankQuestions: (sessionId: string, token?: string): Promise<SessionBankQuestion[]> =>
+    request(`/api/v1/sessions/${sessionId}/bank-questions`, undefined, token),
+
+  saveSessionBankQuestionSelection: (
+    sessionId: string,
+    excludedQuestionIds: string[],
+    questionPoints: BankQuestionPoint[],
+    token?: string
+  ): Promise<SessionBankQuestion[]> =>
+    request(
+      `/api/v1/sessions/${sessionId}/bank-question-selection`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ excluded_question_ids: excludedQuestionIds, question_points: questionPoints })
+      },
+      token
+    ),
+
   getCourse: (id: string, token?: string): Promise<Course> =>
     request(`/api/v1/courses/${id}`, undefined, token),
 
   createCourse: (name: string, section: string | null, token?: string): Promise<Course> =>
     request('/api/v1/courses', { method: 'POST', body: JSON.stringify({ name, section }) }, token),
+
+  deleteCourse: (id: string, token?: string): Promise<void> =>
+    request(`/api/v1/courses/${id}`, { method: 'DELETE' }, token),
+
+  /** Permiso para subir la portada directo a Storage, sin pasar por la API. */
+  courseCoverUpload: (
+    id: string,
+    contentType: CoverContentType,
+    token?: string
+  ): Promise<IdentityPhotoUpload> =>
+    request(
+      `/api/v1/courses/${id}/cover/upload-url`,
+      { method: 'POST', body: JSON.stringify({ content_type: contentType }) },
+      token
+    ),
+
+  /** Fija como portada la imagen ya subida. La anterior se borra del bucket. */
+  setCourseCover: (id: string, path: string, token?: string): Promise<Course> =>
+    request(
+      `/api/v1/courses/${id}/cover`,
+      { method: 'PUT', body: JSON.stringify({ path }) },
+      token
+    ),
+
+  removeCourseCover: (id: string, token?: string): Promise<Course> =>
+    request(`/api/v1/courses/${id}/cover`, { method: 'DELETE' }, token),
 
   listCourseMembers: (id: string, token?: string): Promise<CourseMember[]> =>
     request(`/api/v1/courses/${id}/students`, undefined, token),

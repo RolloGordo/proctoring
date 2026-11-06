@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from proctoring_api.adapters.inbound.http.dependencies import (
     AddQuestionsToBankDep,
     AttachBankDep,
+    BankQuestionSelectionDep,
     CreateBankDep,
     CurrentUserDep,
     DeleteBankDep,
@@ -17,6 +18,7 @@ from proctoring_api.adapters.inbound.http.dependencies import (
     ListBankQuestionsDep,
     ListBanksDep,
     ListSessionBanksDep,
+    UpdateBankDep,
 )
 from proctoring_api.adapters.inbound.http.schemas import (
     AddQuestionsRequest,
@@ -27,8 +29,11 @@ from proctoring_api.adapters.inbound.http.schemas import (
     QtiImportResponse,
     QuestionBankResponse,
     QuestionResponse,
+    SaveBankQuestionSelectionRequest,
+    SessionBankQuestionResponse,
+    UpdateQuestionBankRequest,
 )
-from proctoring_api.application.use_cases.manage_banks import BankSummary
+from proctoring_api.application.use_cases.manage_banks import BankChanges, BankSummary
 
 router = APIRouter(prefix="/api/v1", tags=["question-banks"])
 
@@ -73,6 +78,36 @@ def list_banks(use_case: ListBanksDep, current_user: CurrentUserDep) -> list[Que
     El docente sale del token: no hay parametro con el que pedir los de otro.
     """
     return [QuestionBankResponse.from_entity(b) for b in use_case.execute(actor=current_user)]
+
+
+@router.patch(
+    "/question-banks/{bank_id}",
+    response_model=QuestionBankResponse,
+    summary="Editar un banco de preguntas (solo su docente)",
+    responses={
+        **AUTH_RESPONSES,
+        400: {"model": ErrorResponse, "description": "Los datos del banco no son válidos"},
+    },
+)
+def update_bank(
+    bank_id: UUID,
+    payload: UpdateQuestionBankRequest,
+    use_case: UpdateBankDep,
+    current_user: CurrentUserDep,
+) -> QuestionBankResponse:
+    """Edita nombre, descripción y curso; mantiene preguntas y vínculos al examen."""
+    actualizado = use_case.execute(
+        bank_id,
+        BankChanges(
+            name=payload.name,
+            description=payload.description,
+            course_id=payload.course_id,
+            clear_description=payload.clear_description,
+            clear_course=payload.clear_course,
+        ),
+        actor=current_user,
+    )
+    return QuestionBankResponse.from_entity(actualizado)
 
 
 @router.delete(
@@ -181,6 +216,57 @@ def detach_bank(
     """Quita el banco del examen. **Las preguntas del banco no se tocan.**"""
     use_case.execute(session_id, bank_id, actor=current_user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/sessions/{session_id}/bank-questions",
+    response_model=list[SessionBankQuestionResponse],
+    summary="Revisar preguntas de los bancos asociados a un examen",
+    responses=AUTH_RESPONSES,
+)
+def list_session_bank_questions(
+    session_id: UUID,
+    use_case: BankQuestionSelectionDep,
+    current_user: CurrentUserDep,
+) -> list[SessionBankQuestionResponse]:
+    return [
+        SessionBankQuestionResponse(
+            question=QuestionResponse.from_entity(item.question),
+            bank_name=item.bank_name,
+            included=item.included,
+        )
+        for item in use_case.list(session_id, actor=current_user)
+    ]
+
+
+@router.put(
+    "/sessions/{session_id}/bank-question-selection",
+    response_model=list[SessionBankQuestionResponse],
+    summary="Guardar preguntas incluidas desde los bancos",
+    responses={
+        **AUTH_RESPONSES,
+        400: {"model": ErrorResponse, "description": "Selección inválida o examen ya iniciado"},
+    },
+)
+def save_session_bank_question_selection(
+    session_id: UUID,
+    payload: SaveBankQuestionSelectionRequest,
+    use_case: BankQuestionSelectionDep,
+    current_user: CurrentUserDep,
+) -> list[SessionBankQuestionResponse]:
+    return [
+        SessionBankQuestionResponse(
+            question=QuestionResponse.from_entity(item.question),
+            bank_name=item.bank_name,
+            included=item.included,
+        )
+        for item in use_case.save(
+            session_id,
+            payload.excluded_question_ids,
+            question_points={item.question_id: item.points for item in payload.question_points},
+            actor=current_user,
+        )
+    ]
 
 
 #: Tope del archivo subido. El importador aplica el mismo limite, pero aqui se

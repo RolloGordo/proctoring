@@ -21,6 +21,11 @@ class ReferenceFace:
     embedding: list[float] | None
     model_version: str | None
     registered_at: datetime
+    #: La referencia se cambió después de haberse usado en una verificación.
+    #: Hasta que un docente admita a mano al estudiante, una coincidencia con
+    #: esta cara no basta para entrar: quien rinde por otro con su cuenta lo
+    #: primero que haría es poner su propia cara.
+    needs_review: bool = False
 
 
 class ReferenceFaceRepository(Protocol):

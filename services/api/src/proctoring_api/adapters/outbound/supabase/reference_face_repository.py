@@ -11,7 +11,7 @@ from supabase import Client
 from proctoring_api.application.ports.reference_face_repository import ReferenceFace
 
 TABLE = "reference_faces"
-COLUMNS = "student_id, storage_path, embedding, model_version, registered_at"
+COLUMNS = "student_id, storage_path, embedding, model_version, registered_at, needs_review"
 
 
 class SupabaseReferenceFaceRepository:
@@ -42,6 +42,7 @@ def _to_row(face: ReferenceFace) -> dict[str, Any]:
         "embedding": face.embedding,
         "model_version": face.model_version,
         "registered_at": face.registered_at.isoformat(),
+        "needs_review": face.needs_review,
     }
 
 
@@ -52,4 +53,5 @@ def _to_entity(row: dict[str, Any]) -> ReferenceFace:
         embedding=row.get("embedding"),
         model_version=row.get("model_version"),
         registered_at=datetime.fromisoformat(row["registered_at"]),
+        needs_review=bool(row.get("needs_review", False)),
     )

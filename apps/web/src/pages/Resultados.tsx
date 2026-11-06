@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, type Decision, type ExamSession, type Participant, type Question } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
-import { fechaLarga, nombreDecision, soloHora } from '../lib/formato'
+import { fechaLarga, formatearNota, nombreDecision, soloHora } from '../lib/formato'
 import { latestDecisionByStudent, summarizeResults } from '../lib/resultados'
 
 export function Resultados() {
@@ -92,8 +92,8 @@ export function Resultados() {
             <thead>
               <tr>
                 <th>Estudiante</th>
+                <th className="numero">Nota</th>
                 <th>Entregado</th>
-                <th>Nota</th>
                 <th>Revisión</th>
                 <th aria-label="Acciones" />
               </tr>
@@ -106,7 +106,13 @@ export function Resultados() {
                     <td>
                       {participante.student_name ? (
                         <>
-                          <strong>{participante.student_name}</strong>
+                          {/* El nombre lleva a su revisión, donde la nota va en grande. */}
+                          <Link
+                            to={`/sesiones/${id}/estudiantes/${participante.student_id}`}
+                            className="resultados-nombre"
+                          >
+                            {participante.student_name}
+                          </Link>
                           {participante.student_email && (
                             <p className="ayuda">{participante.student_email}</p>
                           )}
@@ -115,15 +121,15 @@ export function Resultados() {
                         <span className="mono">{participante.student_id.slice(0, 8)}</span>
                       )}
                     </td>
-                    <td className="hora">
-                      {participante.submitted_at ? soloHora(participante.submitted_at) : '—'}
-                    </td>
-                    <td>
+                    <td className="numero">
                       <Nota
                         participant={participante}
                         maxScore={maxScore}
                         hasManualQuestions={hayDesarrollos}
                       />
+                    </td>
+                    <td className="hora">
+                      {participante.submitted_at ? soloHora(participante.submitted_at) : '—'}
                     </td>
                     <td>
                       <span className="chip chip-programado">
@@ -187,17 +193,12 @@ function Nota({
   }
 
   return (
-    <>
-      <strong>
-        {formatearNota(participant.score)} de {formatearNota(maxScore)}
-      </strong>
+    <span className="resultados-nota">
+      <strong>{formatearNota(participant.score)}</strong>
+      <span className="tenue"> / {formatearNota(maxScore)}</span>
       {hasManualQuestions && (
         <span className="chip chip-programado nota-aviso">Parcial · faltan desarrollos</span>
       )}
-    </>
+    </span>
   )
-}
-
-function formatearNota(score: number): string {
-  return new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(score)
 }

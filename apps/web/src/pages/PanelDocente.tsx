@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { ChipEstado } from '../components/ChipEstado'
 import { CodigoAcceso } from '../components/CodigoAcceso'
-import { api, type Alert, type ExamSessionSummary, type Severity } from '../lib/api'
+import { RejillaCursos } from '../components/TarjetaCurso'
+import { api, type Alert, type Course, type ExamSessionSummary, type Severity } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { cuandoEmpieza, estadoExamen, fechaLarga, horaCorta, nombrePreset } from '../lib/formato'
 import { haceCuanto, lineaExamen } from '../lib/linea-examen'
@@ -11,6 +12,8 @@ import { haceCuanto, lineaExamen } from '../lib/linea-examen'
 const MAX_CON_ALERTAS = 3
 /** Filas de las dos listas de abajo: las mismas en las dos, para que acaben a la par. */
 const FILAS = 4
+/** Cursos en el panel: una fila. El resto, en «Mis cursos». */
+const CURSOS_EN_PANEL = 4
 
 /**
  * El panel del docente: **qué pide su atención ahora**.
@@ -24,6 +27,12 @@ const FILAS = 4
  * Sin cifras en tarjetas: los totales ya están en la línea de debajo del
  * título y en las cabeceras de cada lista, y repetirlos en tres cajas no
  * añadía nada.
+ *
+ * Al final, sus cursos con su portada: es la segunda puerta más usada (abrir un
+ * curso para matricular o preparar su examen) y el docente que viene de un
+ * aula virtual la busca ahí. Van **debajo** de los exámenes y no en su lugar:
+ * en un sistema de supervisión lo que tiene hora manda, y con un examen en
+ * marcha «Ver en vivo» tiene que quedar a un clic, arriba.
  */
 export function PanelDocente() {
   const { token } = useAuth()
@@ -31,6 +40,7 @@ export function PanelDocente() {
   const [alertas, setAlertas] = useState<Record<string, Alert[]>>({})
   const [error, setError] = useState<string>()
   const [reintentos, setReintentos] = useState(0)
+  const [cursos, setCursos] = useState<Course[]>()
   // La línea de un examen en curso avanza sola: un reloj cada 30 s basta.
   const [ahora, setAhora] = useState(() => Date.now())
 
@@ -45,6 +55,19 @@ export function PanelDocente() {
       .listSessions(token)
       .then((datos) => !cancelado && setSesiones(datos))
       .catch((fallo: Error) => !cancelado && setError(fallo.message))
+    return () => {
+      cancelado = true
+    }
+  }, [token, reintentos])
+
+  // Los cursos aparte: si fallan, el panel de exámenes sigue sirviendo y la
+  // sección de cursos simplemente no aparece (están a un clic en el menú).
+  useEffect(() => {
+    let cancelado = false
+    api
+      .listCourses(token)
+      .then((datos) => !cancelado && setCursos(datos))
+      .catch(() => undefined)
     return () => {
       cancelado = true
     }
@@ -238,6 +261,20 @@ export function PanelDocente() {
             </section>
           </div>
         </>
+      )}
+
+      {cursos && cursos.length > 0 && (
+        <section className="inicio-cursos" aria-labelledby="tus-cursos">
+          <div className="encabezado-seccion">
+            <h2 id="tus-cursos">
+              Tus cursos <span className="inicio-cuenta">{cursos.length}</span>
+            </h2>
+            <Link to="/cursos">
+              {cursos.length > CURSOS_EN_PANEL ? `Ver los ${cursos.length}` : 'Ver todos'}
+            </Link>
+          </div>
+          <RejillaCursos cursos={cursos.slice(0, CURSOS_EN_PANEL)} />
+        </section>
       )}
     </div>
   )

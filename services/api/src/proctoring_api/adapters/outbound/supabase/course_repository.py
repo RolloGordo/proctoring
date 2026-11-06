@@ -14,7 +14,7 @@ from proctoring_api.domain.course import Course, CourseEnrollment
 
 COURSES_TABLE = "courses"
 ENROLLMENTS_TABLE = "course_enrollments"
-COLUMNS = "id, teacher_id, name, section, created_at"
+COLUMNS = "id, teacher_id, name, section, created_at, cover_path"
 
 
 class SupabaseCourseRepository:
@@ -32,6 +32,14 @@ class SupabaseCourseRepository:
                 "section": course.section,
                 "created_at": course.created_at.isoformat(),
             }
+        ).execute()
+
+    def delete(self, course_id: UUID) -> None:
+        self._client.table(COURSES_TABLE).delete().eq("id", str(course_id)).execute()
+
+    def set_cover(self, course_id: UUID, cover_path: str | None) -> None:
+        self._client.table(COURSES_TABLE).update({"cover_path": cover_path}).eq(
+            "id", str(course_id)
         ).execute()
 
     def find_by_id(self, course_id: UUID) -> Course | None:
@@ -136,4 +144,5 @@ def _to_course(row: dict[str, Any]) -> Course:
         name=row["name"],
         section=row.get("section"),
         created_at=datetime.fromisoformat(row["created_at"]),
+        cover_path=row.get("cover_path"),
     )

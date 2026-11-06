@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from datetime import datetime
 from uuid import UUID
 
@@ -23,6 +24,18 @@ class InMemoryCourseRepository:
     def save(self, course: Course) -> None:
         with self._lock:
             self._courses[course.id] = course
+
+    def delete(self, course_id: UUID) -> None:
+        with self._lock:
+            self._courses.pop(course_id, None)
+            for key in [key for key in self._enrollments if key[0] == course_id]:
+                self._enrollments.pop(key, None)
+
+    def set_cover(self, course_id: UUID, cover_path: str | None) -> None:
+        with self._lock:
+            course = self._courses.get(course_id)
+            if course is not None:
+                self._courses[course_id] = replace(course, cover_path=cover_path)
 
     def find_by_id(self, course_id: UUID) -> Course | None:
         with self._lock:
