@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Informe de carga y escalabilidad · Proctoring</title>
+<style>
+  @page {{ size: A4; margin: 18mm 16mm 18mm 16mm; }}
+  :root {{ color-scheme: light; --tinta:#0b0b0b; --tinta2:#52514e; --tinta3:#8a8984; --linea:#e4e3df;
+          --papel:#ffffff; --suave:#f6f5f2; --azul:#2a78d6; --naranja:#eb6834; --rojo:#b42318; --verde:#166534; }}
+  * {{ box-sizing: border-box; }}
+  body {{ margin:0; background:var(--papel); color:var(--tinta); font: 10.2pt/1.5 "Segoe UI", system-ui, sans-serif; }}
+  h1 {{ font-size: 22pt; line-height:1.15; margin: 0 0 4mm; letter-spacing:-0.01em; }}
+  h2 {{ font-size: 13.5pt; margin: 8mm 0 2.5mm; padding-top: 2mm; border-top: 1px solid var(--linea); break-after: avoid; }}
+  h3 {{ font-size: 11pt; margin: 5mm 0 1.5mm; break-after: avoid; }}
+  p, li {{ margin: 0 0 2mm; }}
+  ul {{ padding-left: 5mm; margin: 0 0 3mm; }}
+  .portada {{ padding: 8mm 0 4mm; border-bottom: 2px solid var(--tinta); margin-bottom: 4mm; }}
+  .meta {{ color: var(--tinta2); font-size: 9.5pt; }}
+  .veredicto {{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin: 4mm 0; }}
+  .veredicto div {{ background: var(--suave); border-radius: 3px; padding: 3mm; break-inside: avoid; }}
+  .veredicto b {{ display:block; font-size: 15pt; line-height:1.1; margin-bottom: 1mm; }}
+  .veredicto span {{ color: var(--tinta2); font-size: 9pt; }}
+  .nota {{ background: var(--suave); border-left: 3px solid var(--tinta); padding: 2.5mm 3.5mm; margin: 3mm 0; break-inside: avoid; }}
+  .nota.alerta {{ border-left-color: var(--rojo); }}
+  .nota.bien {{ border-left-color: var(--verde); }}
+  table {{ width:100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 9pt; break-inside: avoid; }}
+  th {{ text-align:left; font-weight:600; color: var(--tinta2); border-bottom: 1px solid var(--tinta3); padding: 1.2mm 1.5mm; }}
+  td {{ border-bottom: 1px solid var(--linea); padding: 1.2mm 1.5mm; font-variant-numeric: tabular-nums; vertical-align: top; }}
+  figure {{ margin: 3mm 0 4mm; break-inside: avoid; }}
+  figcaption {{ font-size: 9pt; color: var(--tinta2); margin-top: 1mm; }}
+  .grafico {{ width: 100%; height: auto; font-family: "Segoe UI", system-ui, sans-serif; }}
+  .grafico .cat {{ font-size: 10px; fill: var(--tinta); }}
+  .grafico .val {{ font-size: 9px; fill: var(--tinta2); font-variant-numeric: tabular-nums; }}
+  .grafico .umbral {{ font-size: 9px; fill: var(--rojo); }}
+  .leyenda {{ font-size: 9pt; color: var(--tinta2); margin: 0 0 1mm; }}
+  .leyenda span {{ margin-right: 5mm; }}
+  .leyenda i {{ display:inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 1.5mm; vertical-align: -1px; }}
+  code {{ font-family: Consolas, "Cascadia Mono", monospace; font-size: 8.8pt; background: var(--suave); padding: 0 1mm; border-radius: 2px; }}
+  .dos {{ display:grid; grid-template-columns: 1fr 1fr; gap: 5mm; }}
+  .fuente {{ font-size: 8.5pt; color: var(--tinta2); }}
+  .salto {{ break-before: page; }}
+  a {{ color: var(--azul); text-decoration: none; }}
+</style>
+</head>
+<body>
+
+<section class="portada">
+  <p class="meta">Taller Integrador 1 · Universidad Privada Antenor Orrego · Sistema Proctoring</p>
+  <h1>Carga y escalabilidad de la API</h1>
+  <p class="meta">Pruebas con Locust sobre 1, 2 y 4 réplicas detrás de un balanceador · {hoy} · ADR-0011</p>
+</section>
+
+<h2 style="border-top:0;margin-top:0">Resumen</h2>
+<p>El profesor pidió que el sistema funcione con cargas fuertes —un examen de 60 estudiantes, mil
+rindiendo a la vez en varios cursos— y que eso esté <b>probado y justificado</b>. Se adaptó la API
+para escalar en horizontal (varias copias detrás de un balanceador) y se midió con exámenes completos
+simulados: ingreso, sala de espera, respuestas, señales de supervisión y entrega.</p>
+
+<div class="veredicto">
+  <div><b>{p95_1} → {p95_4}</b><span>p95 con mil estudiantes, de 1 a 4 réplicas ({mejora}× menos)</span></div>
+  <div><b>{err_4}</b><span>errores con mil estudiantes y 4 réplicas</span></div>
+  <div><b>{render60_resp}</b><span>guardar una respuesta en el plan gratuito de Render, con solo 60</span></div>
+</div>
+
+<div class="nota bien"><b>La arquitectura escala en horizontal.</b> Con la misma carga de mil estudiantes,
+pasar de una a cuatro réplicas bajó la mediana de {p50_1} a {p50_4} y el p95 de {p95_1} a {p95_4}. El
+cuello de botella era la CPU de la réplica (al {api_cpu_1} % de su núcleo con una sola), no la base de datos
+(Postgres al {pg_cpu_1} %): justo el caso en que añadir réplicas funciona.</div>
+
+<div class="nota alerta"><b>Producción, tal como está, no lo soporta.</b> La API corre en el plan
+gratuito de Render: 0,1 CPU y una sola instancia. Con esa CPU, un solo examen de 60 estudiantes tuvo
+un p95 de {render60_p95}: {render60_ingreso} para entrar y {render60_resp} para guardar una respuesta. No
+falla ({r60_err} de errores), pero no se puede usar, y la alerta al docente no puede llegar en menos de
+5 s si la petición que la dispara tarda más que eso. Se recomienda trasladar la API (sección 8).</div>
+
+<h2>1. Qué se probó y cómo</h2>
+<p><b>Herramienta:</b> <a href="https://locust.io">Locust</a> 2.47, en Python como el resto del backend; cada
+prueba es código en <code>loadtests/</code>, revisable en un PR y repetible con un comando.</p>
+<p><b>Entorno:</b> la pila completa en Docker (12 CPU, 8 GB), contra <b>Supabase local</b> con las
+46 migraciones del proyecto: nunca contra la base de la nube, para no llenarla de mil usuarios de
+prueba ni medir contra sus cuotas. Cada réplica con un techo de <b>1 CPU y 512 MB</b>, como una instancia
+pequeña; sin techo, una sola réplica usaría los 12 núcleos y la prueba no diría nada de escalar. Tokens
+ES256 firmados con la clave local y verificados por JWKS, como en producción.</p>
+
+<h3>El comportamiento de cada usuario virtual copia al cliente real</h3>
+{tabla_modelo}
+<p><b>Escenarios.</b> <i>Examen de 60:</i> un curso, un docente. <i>Mil a la vez:</i> 17 exámenes de 60
+(1 020 estudiantes y 17 docentes) que empiezan juntos: entran mil personas en 20 segundos y entregan casi
+todas en el mismo minuto. Son los dos picos reales de un examen. Cada estudiante es una persona distinta
+en la base, con su token y su examen.</p>
+<p><b>Presupuestos</b> (la corrida falla si se rompen, y así sirve de puerta en el CI): p95 &lt; 500 ms por
+endpoint, p95 de la entrega &lt; 1,5 s, errores &lt; 1 %.</p>
+
+<h2>2. Qué se cambió para poder escalar</h2>
+<p>Escalar en horizontal exige que la API no guarde estado propio entre peticiones. La prueba encontró
+dónde lo hacía, y cada cambio está probado (1 032 pruebas de la API y 238 de la web, en verde):</p>
+<table><thead><tr><th>Problema encontrado</th><th>Cambio</th></tr></thead><tbody>
+<tr><td>El límite de peticiones contaba en la memoria de cada réplica: con 4, el límite real era 4 veces el escrito.</td><td>Ventana deslizante en <b>Redis</b>, compartida, atómica (Lua) y con el reloj de Redis. Si Redis cae, cuenta por réplica sin bloquear a nadie.</td></tr>
+<tr><td>Detrás del balanceador, todos los anónimos tenían la IP del balanceador.</td><td>Se usa la IP de <code>X-Forwarded-For</code>, pero <b>solo</b> si viene de un proxy de confianza, y la última que añadió nuestro proxy: no se puede falsificar.</td></tr>
+<tr><td>Cada petición leía <code>profiles</code> para saber el rol: la primera de 4 consultas seguidas.</td><td>El rol se recuerda 60 s por proceso. La firma del token se verifica siempre; un usuario sin perfil no se recuerda.</td></tr>
+<tr><td>Solo 20 conexiones reutilizables para 40 hilos: conexiones nuevas en cada consulta.</td><td>40 conexiones vivas, una por hilo.</td></tr>
+<tr><td><code>ConnectTimeout</code> contra Supabase y un 500 al guardar respuestas.</td><td>Plazo de conexión de 3 s y reintento <b>también de un POST</b> si la conexión no llegó a abrirse: no salió ningún byte, no se duplica nada.</td></tr>
+<tr><td>La sala de espera consultaba cada 10 s exactos: los que entraban juntos preguntaban juntos.</td><td>Cada consulta sortea su espera en ±20 % y se desfasan solas.</td></tr>
+<tr><td>Realtime filtraba por examen: cada cambio se evaluaba contra las políticas de los 60 suscritos.</td><td>Cada estudiante escucha solo su fila.</td></tr>
+</tbody></table>
+<p>La API se configura por variables, sin tocar código: <code>RATE_LIMIT_BACKEND=redis</code>,
+<code>TRUSTED_PROXIES</code>, <code>WEB_CONCURRENCY</code> (procesos por réplica) y el número de réplicas en el orquestador.</p>
+
+<h2 class="salto">3. Escalado horizontal: mil estudiantes con 1, 2 y 4 réplicas</h2>
+{leyenda_p}
+<figure>{escalado}<figcaption>Latencia de todas las peticiones con mil estudiantes. Misma carga, mismo código; solo cambia el número de réplicas.</figcaption></figure>
+{tabla_escalado}
+<p>Las peticiones por segundo suben con las réplicas porque el modelo es de usuarios reales: cada uno
+espera la respuesta antes de pensar y seguir. Con respuestas más rápidas, el mismo grupo hace más en el
+mismo tiempo, y la latencia es la medida que importa.</p>
+
+<h3>Dónde se gastaba el tiempo</h3>
+{leyenda_cpu}
+<figure>{cpu_svg}<figcaption>CPU con 4 réplicas, en % de un núcleo, sumando réplicas en cada instante. La base de datos tiene margen.</figcaption></figure>
+
+<h2>4. Cada endpoint, con 4 réplicas</h2>
+<figure>{por_endpoint}<figcaption>p95 por endpoint con mil estudiantes y 4 réplicas.</figcaption></figure>
+{tabla_endpoint}
+<p>Durante el examen todo está holgado: guardar respuestas {f_resp}, señales {f_senal}, entrega {f_entrega}.
+Lo único que roza o pasa el presupuesto es el <b>ingreso</b> ({f_ingreso}) y la sala de espera
+({f_sala}): mil personas en 20 segundos. Es un pico de un minuto al empezar, no el régimen del examen.</p>
+
+<h3>Antes y después de los cambios de la sección 2 (4 réplicas)</h3>
+{leyenda_ad}
+<figure>{optim}<figcaption>p95 por endpoint con mil estudiantes y 4 réplicas, antes y después de optimizar.</figcaption></figure>
+<div class="nota"><b>El límite compartido funciona.</b> En la corrida «antes», el 4,9 % de los errores fueron 429 al
+admitir: un docente que admitía 30 estudiantes cada 5 s en tres exámenes chocó con el límite de 120
+escrituras por minuto y persona, ahora contado entre todas las réplicas. El modelo era irreal (la web
+admite de a uno con un clic); se corrigió a un docente por sección y a ritmo humano. La lección queda para
+una futura «admitir a todos»: tiene que ser una sola petición.</div>
+
+<h2 class="salto">5. ¿Qué aguanta el plan gratuito de Render?</h2>
+<p>La API de producción corre en el plan gratuito de Render: <b>512 MB y 0,1 CPU</b>, una sola instancia,
+y se duerme tras 15 minutos sin tráfico (despertar tarda de 30 a 60 s). Se repitió el examen con la réplica
+limitada a 0,1 CPU.</p>
+{leyenda_r}
+<figure>{render_svg}<figcaption>Examen de 60 estudiantes: 1 CPU frente a 0,1 CPU.</figcaption></figure>
+{tabla_render}
+<p>Con 0,1 CPU no hay errores, pero nada cumple el presupuesto: con 60 estudiantes, guardar una respuesta
+tarda {render60_resp} (p95) y entregar {render60_entrega}; con 20, {render20_resp}. El plan gratuito sirve para
+desarrollar y para demostraciones pequeñas, no para un examen real.</p>
+
+<h2>6. Límites de los servicios gratuitos que se usan</h2>
+<table><thead><tr><th>Servicio</th><th>Límite relevante</th><th>Efecto</th></tr></thead><tbody>
+<tr><td>Vercel (web)</td><td>CDN estático</td><td>No es cuello: la web y la app de escritorio cargan archivos estáticos.</td></tr>
+<tr><td>Render (API)</td><td>0,1 CPU, 1 instancia, se duerme a los 15 min</td><td><b>El cuello medido</b> (sección 5). No hay réplicas en el plan gratuito.</td></tr>
+<tr><td>Supabase Realtime</td><td>200 conexiones simultáneas, 100 mensajes/s</td><td>Con más de 200 personas, Realtime rechaza conexiones; la sala de espera sigue funcionando porque además consulta cada ~10 s.</td></tr>
+<tr><td>Supabase Postgres</td><td>Instancia compartida del plan gratuito</td><td>No medida: en la prueba la base tuvo la máquina entera. Es el siguiente riesgo con mil estudiantes.</td></tr>
+</tbody></table>
+<p class="fuente">Fuentes: <a href="https://supabase.com/docs/guides/realtime/limits">Supabase, Realtime limits</a> ·
+<a href="https://render.com/docs/free">Render, free instances</a>.</p>
+
+<h2>7. Lo que esta prueba no cubre</h2>
+<ul>
+<li><b>La latencia de internet.</b> Todo corrió en una máquina; en producción, Render y Supabase están en regiones distintas y cada consulta suma su viaje.</li>
+<li><b>La base de datos gratuita de Supabase.</b> Ver sección 6.</li>
+<li><b>El análisis de audio.</b> El worker de IA es otro servicio (otro informe): mide unos 14 s por fragmento con 1 CPU, y escala con más procesos consumiendo la misma cola Redis.</li>
+<li><b>Las conexiones Realtime de mil clientes.</b> No se simularon; el límite de 200 está documentado.</li>
+</ul>
+
+<h2 class="salto">8. ¿Conviene trasladar la API a un servicio gratuito más potente?</h2>
+<p><b>Sí, para usarlo en un examen real.</b> El alcance del proyecto son exámenes de un curso, del orden de
+decenas de estudiantes a la vez, con la evaluación como prueba de fuego. Render gratuito no los sostiene
+(sección 5) y además se duerme: el primero en entrar espera hasta un minuto. Vercel y Supabase pueden
+quedarse; lo que hay que mover es la API (y, por lo mismo, el worker de IA).</p>
+{tabla_opciones}
+<p><b>Recomendación.</b> Oracle Cloud Always Free es la única opción gratuita sin coste por uso que da CPU
+de sobra y permite desplegar <b>la misma arquitectura probada</b>: el <code>docker-compose</code> de esta
+prueba (nginx + réplicas + Redis) en una máquina. Así la escalabilidad horizontal deja de ser una
+demostración local y pasa a producción. Render se mantiene como respaldo, gratis. Si el equipo no acepta
+verificar la cuenta con tarjeta, se queda en Render con dos medidas: despertar la API antes de cada
+examen y declarar el límite medido (grupos pequeños).</p>
+<div class="nota alerta"><b>Hugging Face Spaces ya no sirve como estaba planeado.</b> El ADR-0009 ponía el servicio de IA ahí, pero
+la documentación oficial dice ahora que los Spaces con Docker requieren un plan de pago. Conviene
+confirmarlo en la cuenta del equipo; el traslado a Oracle lo resolvería también.</div>
+<p class="fuente">Fuentes: <a href="https://docs.oracle.com/en-us/iaas/Content/FreeTier/resourceref.htm">Oracle, Always Free Resources</a> ·
+<a href="https://cloud.google.com/run/pricing">Google Cloud Run, precios</a> ·
+<a href="https://huggingface.co/docs/hub/spaces-overview">Hugging Face, Spaces</a>.
+Varias fuentes de 2026 dicen que Oracle redujo el cupo ARM gratuito de 4 a 2 núcleos; confirmar en la consola al crear la cuenta.</p>
+
+<h2>9. Cómo repetirlo</h2>
+<p>Instrucciones en <code>loadtests/README.md</code>. Una corrida es un comando:</p>
+<p><code>uv run python correr.py --nombre mil-4r --examenes 17 --por-examen 60 --replicas 4</code></p>
+<p>Escala las réplicas, siembra un escenario nuevo, mide la CPU de cada contenedor, corre Locust y deja
+los CSV y el HTML en <code>loadtests/resultados/</code>. Este informe se genera desde esos CSV
+(<code>informe.py</code>). El CI corre el examen de 60 con 2 réplicas en cada PR a <code>main</code> que toque la API
+(<code>.github/workflows/carga.yml</code>).</p>
+
+</body>
+</html>

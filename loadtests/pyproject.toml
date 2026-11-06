@@ -1,0 +1,17 @@
+[project]
+name = "proctoring-loadtests"
+version = "0.1.0"
+description = "Pruebas de carga de la API con Locust (ADR-0011)"
+requires-python = ">=3.12"
+dependencies = [
+    "locust>=2.32,<3",
+    "httpx>=0.27",
+    "pyjwt[crypto]>=2.9",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

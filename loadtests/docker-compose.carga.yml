@@ -1,0 +1,75 @@
+# Pila para la prueba de carga: balanceador + N réplicas de la API + Redis,
+# contra Supabase local (`supabase start`). Ver loadtests/README.md y ADR-0011.
+#
+#   docker compose -f loadtests/docker-compose.carga.yml -p carga up -d --build --scale api=4
+#
+# No usa el docker-compose.yml de desarrollo a propósito: ese fija
+# `container_name` y el puerto 8000 en la API, y un servicio con nombre fijo no
+# se puede escalar.
+
+name: carga
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../services/api
+    # Sin container_name ni ports: así `--scale api=N` puede crear N copias.
+    env_file:
+      - .datos/api.env
+    environment:
+      ENV: production
+      AUTH_ENABLED: "true"
+      EVENT_REPOSITORY: supabase
+      EVIDENCE_STORAGE: supabase
+      JOB_QUEUE: redis
+      REDIS_URL: redis://redis:6379/0
+      # Con varias réplicas el límite tiene que ser uno solo, en Redis.
+      RATE_LIMIT_BACKEND: redis
+      # La red de Docker: el balanceador es el único proxy de confianza.
+      TRUSTED_PROXIES: 172.16.0.0/12
+      FORWARDED_ALLOW_IPS: "*"
+      # Procesos de uvicorn por réplica. 1 a propósito: así cada réplica es
+      # comparable a una instancia pequeña y el efecto de añadir réplicas se ve.
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+      CORS_ORIGINS: http://localhost:5173
+    # Directo a Kong por la red de Supabase local. Por `host.docker.internal`
+    # cada conexión cruzaba el puente de puertos del equipo, que bajo el pico de
+    # ingreso las dejaba sin abrir (ConnectTimeout): falseaba la medida con un
+    # salto que en producción no existe.
+    networks:
+      - default
+      - supabase
+    # Cada réplica con el techo de una instancia pequeña: 1 CPU y 512 MB. Sin
+    # techo, una sola réplica se comería los 12 núcleos del equipo y la prueba
+    # no diría nada de escalar en horizontal.
+    deploy:
+      resources:
+        limits:
+          cpus: "${API_CPUS:-1.0}"
+          memory: 512M
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  lb:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+networks:
+  supabase:
+    name: supabase_network_proctoring
+    external: true

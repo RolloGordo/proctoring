@@ -9,10 +9,12 @@ import { VerificacionFacialEspera } from './VerificacionFacialEspera'
 import { PruebaMicrofono } from '../supervision/PruebaMicrofono'
 import { CalibracionMirada } from '../components/CalibracionMirada'
 import { agrupar, dispositivosQueUsa, modulosVigilados } from '../lib/modulos'
+import { sondear } from '../lib/sondeo'
 
 /** Cada cuánto se vuelve a preguntar si el docente ya admitió al estudiante.
- *  Diez segundos: suficiente para que no se sienta colgado, y poco tráfico
- *  aunque haya treinta personas esperando a la vez. */
+ *  Diez segundos de media, con un margen al azar (`sondear`): suficiente para
+ *  que no se sienta colgado, y sin que los que entraron juntos pregunten juntos
+ *  cada diez segundos (ADR-0011). */
 const ESPERA_MS = 10_000
 
 /**
@@ -24,7 +26,7 @@ const ESPERA_MS = 10_000
  */
 export function SalaDeEspera() {
   const { id = '' } = useParams()
-  const { token } = useAuth()
+  const { token, userId } = useAuth()
   const navegar = useNavigate()
 
   // Viene de la pantalla del código. Si el estudiante recarga, el estado de
@@ -77,8 +79,7 @@ export function SalaDeEspera() {
         .catch(() => undefined)
     }
 
-    consultar()
-    const temporizador = setInterval(consultar, ESPERA_MS)
+    const parar = sondear(consultar, ESPERA_MS)
 
     const cliente = supabase
     const canal = cliente
@@ -89,21 +90,26 @@ export function SalaDeEspera() {
           event: 'UPDATE',
           schema: 'public',
           table: 'session_participants',
-          filter: `session_id=eq.${id}`
+          // Solo mi fila. Filtrando por examen, cada cambio de cualquier
+          // participante se evaluaba contra las políticas de los sesenta
+          // suscritos de ese examen: trabajo cuadrático en la base para
+          // entregarle a cada uno solo lo suyo (ADR-0011).
+          filter: userId ? `student_id=eq.${userId}` : `session_id=eq.${id}`
         },
-        // Llega la fila cambiada, pero se vuelve a preguntar a la API: la fila
-        // puede ser de otro estudiante de la misma sesión, y quién soy yo lo
-        // decide el token, no un mensaje que llega por el canal.
+        // Llega la fila cambiada, pero se vuelve a preguntar a la API: el
+        // aviso solo dice «algo cambió»; qué me toca lo decide el token, no un
+        // mensaje que llega por el canal (y sin `userId` el filtro es del
+        // examen entero).
         () => consultar()
       )
       .subscribe()
 
     return () => {
       cancelado = true
-      clearInterval(temporizador)
+      parar()
       if (cliente && canal) void cliente.removeChannel(canal)
     }
-  }, [id, token])
+  }, [id, token, userId])
 
   // Un reloj por minuto basta: la cuenta atrás se mide en minutos, no en
   // segundos, y refrescar cada segundo solo gasta batería.
