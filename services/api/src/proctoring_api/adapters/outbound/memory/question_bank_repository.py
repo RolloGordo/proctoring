@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Mapping, Sequence
+from decimal import Decimal
 from uuid import UUID
 
 from proctoring_api.application.ports.question_repository import QuestionRepository
@@ -17,6 +18,8 @@ class InMemoryQuestionBankRepository:
         self._banks: dict[UUID, QuestionBank] = {}
         #: session_id -> bancos atados, en el orden en que se ataron.
         self._attached: dict[UUID, list[UUID]] = {}
+        self._excluded_questions: dict[UUID, set[UUID]] = {}
+        self._question_points: dict[UUID, dict[UUID, Decimal]] = {}
         #: Para contar preguntas hace falta mirar el repositorio de preguntas.
         #: Sin el, `count_questions` devuelve vacio y quien lo use ve ceros.
         self._questions = questions
@@ -25,6 +28,9 @@ class InMemoryQuestionBankRepository:
     def save(self, bank: QuestionBank) -> None:
         with self._lock:
             self._banks[bank.id] = bank
+
+    def update(self, bank: QuestionBank) -> None:
+        self.save(bank)
 
     def delete(self, bank_id: UUID) -> None:
         with self._lock:
@@ -43,6 +49,16 @@ class InMemoryQuestionBankRepository:
     def is_attached_to_session(self, bank_id: UUID) -> bool:
         with self._lock:
             return any(bank_id in atados for atados in self._attached.values())
+
+    def attached_to_sessions(self, bank_ids: Sequence[UUID]) -> set[UUID]:
+        wanted = set(bank_ids)
+        with self._lock:
+            return {
+                bank_id
+                for atados in self._attached.values()
+                for bank_id in atados
+                if bank_id in wanted
+            }
 
     def list_by_teacher(self, teacher_id: UUID) -> Sequence[QuestionBank]:
         with self._lock:
@@ -77,3 +93,22 @@ class InMemoryQuestionBankRepository:
         with self._lock:
             ids = list(self._attached.get(session_id, []))
             return [self._banks[i] for i in ids if i in self._banks]
+
+    def list_excluded_questions(self, session_id: UUID) -> set[UUID]:
+        with self._lock:
+            return set(self._excluded_questions.get(session_id, set()))
+
+    def replace_excluded_questions(self, session_id: UUID, question_ids: Sequence[UUID]) -> None:
+        with self._lock:
+            if question_ids:
+                self._excluded_questions[session_id] = set(question_ids)
+            else:
+                self._excluded_questions.pop(session_id, None)
+
+    def list_question_points(self, session_id: UUID) -> Mapping[UUID, Decimal]:
+        with self._lock:
+            return dict(self._question_points.get(session_id, {}))
+
+    def replace_question_points(self, session_id: UUID, points: Mapping[UUID, Decimal]) -> None:
+        with self._lock:
+            self._question_points[session_id] = dict(points)

@@ -24,6 +24,12 @@ class InMemoryCourseRepository:
         with self._lock:
             self._courses[course.id] = course
 
+    def delete(self, course_id: UUID) -> None:
+        with self._lock:
+            self._courses.pop(course_id, None)
+            for key in [key for key in self._enrollments if key[0] == course_id]:
+                self._enrollments.pop(key, None)
+
     def find_by_id(self, course_id: UUID) -> Course | None:
         with self._lock:
             return self._courses.get(course_id)
