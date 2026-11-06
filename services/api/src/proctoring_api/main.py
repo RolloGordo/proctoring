@@ -620,7 +620,7 @@ def create_app(
     app.state.enroll_student = EnrollStudentInCourse(course_repository, profile_repository, clock)
     app.state.list_course_members = ListCourseMembers(course_repository, profile_repository)
     app.state.list_my_courses = ListMyCourses(
-        course_repository, session_repository, settings.dev_student_id
+        course_repository, session_repository, settings.dev_student_id, course_covers
     )
     app.state.list_teacher_sessions = ListTeacherSessions(
         session_repository, settings.dev_teacher_id

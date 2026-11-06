@@ -4,6 +4,7 @@ import { api, type MyCourse, type MyCourseExam, type MyExam } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { estadoExamen, fechaLarga } from '../lib/formato'
 import { ChipEstado } from '../components/ChipEstado'
+import { PortadaCurso } from '../components/TarjetaCurso'
 
 /**
  * Un curso del estudiante, con **todos** sus exámenes.
@@ -59,6 +60,10 @@ export function CursoEstudiante() {
 
   return (
     <>
+      <div className="portada-editor">
+        <PortadaCurso curso={curso} className="portada-curso-grande" />
+      </div>
+
       <div className="encabezado-pagina">
         <div>
           <h1>{curso.name}</h1>
@@ -92,7 +97,11 @@ export function CursoEstudiante() {
             </thead>
             <tbody>
               {porFecha.map((examen) => (
-                <FilaExamen key={examen.session_id} examen={examen} mio={mio.get(examen.session_id)} />
+                <FilaExamen
+                  key={examen.session_id}
+                  examen={examen}
+                  mio={mio.get(examen.session_id)}
+                />
               ))}
             </tbody>
           </table>
@@ -104,12 +113,7 @@ export function CursoEstudiante() {
 
 function FilaExamen({ examen, mio }: { examen: MyCourseExam; mio: MyExam | undefined }) {
   const entregado = mio?.submitted_at != null
-  const estado = estadoExamen(
-    examen.starts_at,
-    examen.duration_minutes,
-    undefined,
-    mio?.cancelled
-  )
+  const estado = estadoExamen(examen.starts_at, examen.duration_minutes, undefined, mio?.cancelled)
 
   return (
     <tr>

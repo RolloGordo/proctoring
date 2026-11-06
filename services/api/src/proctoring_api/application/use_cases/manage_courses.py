@@ -62,6 +62,8 @@ class MyCourse:
 
     course: Course
     exams: Sequence[ExamSession]
+    #: URL firmada y temporal de la portada que puso su docente, o `None`.
+    cover_url: str | None = None
 
 
 class CreateCourse:
@@ -253,10 +255,12 @@ class ListMyCourses:
         courses: CourseRepository,
         sessions: ExamSessionRepository,
         dev_student_id: UUID = DEFAULT_DEV_STUDENT_ID,
+        covers: CourseCovers | None = None,
     ) -> None:
         self._courses = courses
         self._sessions = sessions
         self._dev_student_id = dev_student_id
+        self._covers = covers
 
     def execute(self, *, actor: AuthenticatedUser | None = None) -> Sequence[MyCourse]:
         if actor is not None and actor.is_teacher:
@@ -274,4 +278,9 @@ class ListMyCourses:
             if sesion.course_id in por_curso and sesion.status is not SessionStatus.DRAFT:
                 por_curso[sesion.course_id].append(sesion)
 
-        return [MyCourse(course=c, exams=por_curso[c.id]) for c in cursos]
+        # La portada la ve también el estudiante: solo de sus cursos, y con la
+        # misma URL firmada que caduca en una hora.
+        portadas = self._covers.urls(cursos) if self._covers else {}
+        return [
+            MyCourse(course=c, exams=por_curso[c.id], cover_url=portadas.get(c.id)) for c in cursos
+        ]

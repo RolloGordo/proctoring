@@ -370,6 +370,8 @@ export interface MyCourse {
   name: string
   section: string | null
   exams: MyCourseExam[]
+  /** URL firmada de la portada que puso el docente, válida una hora; `null` si no tiene. */
+  cover_url: string | null
 }
 
 export interface NewExamSession {

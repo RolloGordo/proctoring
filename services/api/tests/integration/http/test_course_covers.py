@@ -90,3 +90,36 @@ def test_nadie_mas_toca_la_portada(authed_client: TestClient, token: str) -> Non
     assert (
         authed_client.delete(f"/api/v1/courses/{course_id}/cover", headers=ajeno).status_code == 403
     )
+
+
+def test_el_estudiante_matriculado_ve_la_portada(authed_app: Any) -> None:
+    from tests.integration.http.test_courses import CORREO_ESTUDIANTE, registrar_perfiles
+
+    registrar_perfiles(authed_app)
+    with TestClient(authed_app) as client:
+        course_id = crear_curso(client)
+        ruta = pedir_subida(client, course_id).json()["path"]
+        client.put(f"/api/v1/courses/{course_id}/cover", json={"path": ruta}, headers=A)
+        client.post(
+            f"/api/v1/courses/{course_id}/students", json={"email": CORREO_ESTUDIANTE}, headers=A
+        )
+
+        [clase] = client.get("/api/v1/me/courses", headers=bearer(STUDENT_TOKEN)).json()
+
+    assert clase["id"] == course_id
+    assert ruta in clase["cover_url"]
+
+
+def test_el_estudiante_sin_portada_recibe_null(authed_app: Any) -> None:
+    from tests.integration.http.test_courses import CORREO_ESTUDIANTE, registrar_perfiles
+
+    registrar_perfiles(authed_app)
+    with TestClient(authed_app) as client:
+        course_id = crear_curso(client)
+        client.post(
+            f"/api/v1/courses/{course_id}/students", json={"email": CORREO_ESTUDIANTE}, headers=A
+        )
+
+        [clase] = client.get("/api/v1/me/courses", headers=bearer(STUDENT_TOKEN)).json()
+
+    assert clase["cover_url"] is None

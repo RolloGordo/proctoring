@@ -1160,3 +1160,74 @@ html:has(.tema-oscuro) body {
 .tema-oscuro .inicio-cursos .encabezado-seccion a {
   font-size: 0.875rem;
 }
+
+/* ---------- La nota, en grande ----------
+   La cifra a tamaño de titular y en la tinta principal, no en ámbar: el ámbar
+   es para lo que hay que hacer, y una nota no se pulsa. El total va al lado,
+   más chico y apagado, para que «15» se lea antes que «/ 20». */
+
+.tema-oscuro .nota-destacada {
+  display: grid;
+  gap: var(--e2);
+  justify-items: start;
+}
+
+.tema-oscuro .nota-destacada-cifra {
+  display: flex;
+  align-items: baseline;
+  gap: var(--e2);
+  margin: 0;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.tema-oscuro .nota-destacada-cifra strong {
+  font-size: clamp(2.75rem, 6vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--tinta);
+}
+
+.tema-oscuro .nota-destacada-total {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--tinta-suave);
+}
+
+.tema-oscuro .nota-destacada-estado {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--tinta-media);
+}
+
+.tema-oscuro .nota-destacada-pie {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--tinta-suave);
+}
+
+.tema-oscuro .nota-destacada-parcial {
+  margin: var(--e1) 0 0;
+}
+
+/* En la tabla de resultados la nota pesa más que el resto de la fila. */
+.tema-oscuro .resultados-nota {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--e1) var(--e2);
+  font-variant-numeric: tabular-nums;
+}
+
+.tema-oscuro .resultados-nota strong {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--tinta);
+}
+
+.tema-oscuro .resultados-nombre {
+  font-weight: 600;
+  color: var(--tinta);
+}

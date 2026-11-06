@@ -777,6 +777,8 @@ class MyCourseResponse(BaseModel):
     name: str
     section: str | None
     exams: list[MyCourseExamResponse]
+    #: URL firmada de la portada, válida una hora; `None` si no tiene imagen.
+    cover_url: str | None = None
 
     @classmethod
     def from_entity(cls, item: MyCourse) -> MyCourseResponse:
@@ -784,6 +786,7 @@ class MyCourseResponse(BaseModel):
             id=item.course.id,
             name=item.course.name,
             section=item.course.section,
+            cover_url=item.cover_url,
             exams=[
                 MyCourseExamResponse(
                     session_id=e.id,
