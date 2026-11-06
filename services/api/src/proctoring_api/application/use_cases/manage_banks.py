@@ -8,6 +8,7 @@ from uuid import UUID
 
 from proctoring_api.application.ports.answer_repository import AnswerRepository
 from proctoring_api.application.ports.clock import Clock
+from proctoring_api.application.ports.course_repository import CourseRepository
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
@@ -63,10 +64,12 @@ class CreateQuestionBank:
         banks: QuestionBankRepository,
         clock: Clock,
         dev_teacher_id: UUID = DEFAULT_DEV_TEACHER_ID,
+        courses: CourseRepository | None = None,
     ) -> None:
         self._banks = banks
         self._clock = clock
         self._dev_teacher_id = dev_teacher_id
+        self._courses = courses
 
     def execute(
         self,
@@ -79,8 +82,16 @@ class CreateQuestionBank:
         if actor is not None and not actor.is_teacher:
             raise AuthorizationError("Solo un docente puede crear un banco de preguntas")
 
+        docente = actor.id if actor is not None else self._dev_teacher_id
+        # SEC-06: igual que un examen, un banco solo cuelga de un curso propio.
+        # Antes se aceptaba el curso de otro docente y la relación quedaba rota.
+        if course_id is not None and self._courses is not None:
+            curso = self._courses.find_by_id(course_id)
+            if curso is None or curso.teacher_id != docente:
+                raise AuthorizationError("No tienes acceso a ese curso")
+
         bank = QuestionBank.create(
-            teacher_id=actor.id if actor is not None else self._dev_teacher_id,
+            teacher_id=docente,
             name=name,
             course_id=course_id,
             description=description,
@@ -163,6 +174,12 @@ class AddQuestionsToBank:
     def __init__(self, banks: QuestionBankRepository, questions: QuestionRepository) -> None:
         self._banks = banks
         self._questions = questions
+
+    def ensure_can_add(self, bank_id: UUID, actor: AuthenticatedUser | None) -> None:
+        """Raises:
+        AuthorizationError: si el banco no es del docente.
+        """
+        ensure_teacher_owns_bank(self._banks, bank_id, actor)
 
     def execute(
         self,

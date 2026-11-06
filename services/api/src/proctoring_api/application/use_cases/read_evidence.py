@@ -17,7 +17,7 @@ from proctoring_api.application.ports.evidence_storage import EvidenceStorage
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.domain.errors import AuthorizationError
-from proctoring_api.domain.evidence import EvidenceKind
+from proctoring_api.domain.evidence import EvidenceKind, path_belongs_to
 from proctoring_api.domain.user import AuthenticatedUser
 
 #: Cuánto vive el enlace. Suficiente para mirar un caso entero sin recargar, y
@@ -65,23 +65,12 @@ class CreateEvidenceReadUrl:
 def _ensure_path_belongs(path: str, session_id: UUID, student_id: UUID) -> None:
     """La ruta tiene que ser de ese estudiante en ese examen.
 
-    `build_evidence_path` escribe `{session_id}/{student_id}/{uuid}.{ext}`, así
-    que el prefijo dice de quién es el archivo y se puede comprobar sin ir a la
-    base de datos.
-
     Sin esta comprobación, un docente con un examen propio podría pedir la URL
     de **cualquier** ruta del bucket, incluida la de un estudiante de otro
     profesor, con solo cambiar el cuerpo de la petición. La firma la pone el
     servidor con la clave de servicio: aquí no hay otra cosa que impida leerla.
     """
-    partes = path.split("/")
-    if len(partes) != 3 or partes[0] != str(session_id) or partes[1] != str(student_id):
-        raise AuthorizationError("Esa evidencia no es de este caso")
-
-    # Una ruta con `..` no deberia poder existir —la escribe el servidor— pero
-    # comprobarlo cuesta una linea y el dia que alguien acepte una ruta de fuera
-    # esto ya esta puesto.
-    if ".." in partes or not partes[2]:
+    if not path_belongs_to(path, student_id=student_id, session_id=session_id):
         raise AuthorizationError("Esa evidencia no es de este caso")
 
 

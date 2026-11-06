@@ -84,3 +84,27 @@ def build_evidence_path(
     """
     normalised = extension.lower().lstrip(".")
     return f"{session_id}/{student_id}/{name or uuid4()}.{normalised}"
+
+
+def path_belongs_to(path: str, *, student_id: UUID, session_id: UUID | None = None) -> bool:
+    """¿La ruta es de ese estudiante (y, si se da, de ese examen)?
+
+    Toda ruta que escribe `build_evidence_path` tiene la forma
+    `{session_id}/{student_id}/{nombre}`, así que el prefijo dice de quién es el
+    archivo sin ir a la base de datos. Es lo que se comprueba antes de firmar
+    una URL de lectura o de mandarle una ruta al worker de IA: las rutas llegan
+    en el cuerpo de la petición y el cliente puede escribir cualquier cosa.
+
+    Sin `session_id` solo se exige que sea del estudiante: la cara de
+    referencia se sube durante un examen, pero vale para todos.
+    """
+    partes = path.split("/")
+    if len(partes) != 3 or ".." in partes or not partes[2]:
+        return False
+    try:
+        UUID(partes[0])
+    except ValueError:
+        return False
+    if partes[1] != str(student_id):
+        return False
+    return session_id is None or partes[0] == str(session_id)

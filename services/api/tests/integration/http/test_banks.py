@@ -485,3 +485,33 @@ def _banco_del_examen(client: TestClient, session_id: str) -> str:
     assert atados.status_code == 200, atados.text
     bank_id: str = atados.json()[0]["id"]
     return bank_id
+
+
+def test_no_se_crea_un_banco_en_el_curso_de_otro_docente(authed_client: TestClient) -> None:
+    """SEC-06: el examen ya lo comprobaba; el banco no."""
+    curso = authed_client.post(
+        "/api/v1/courses", json={"name": "Curso ajeno"}, headers=bearer(TEACHER_TOKEN)
+    ).json()
+
+    respuesta = authed_client.post(
+        "/api/v1/question-banks",
+        json={"name": "Intruso", "course_id": curso["id"]},
+        headers=bearer(OTHER_TEACHER_TOKEN),
+    )
+
+    assert respuesta.status_code == 403
+
+
+def test_en_su_propio_curso_si(authed_client: TestClient) -> None:
+    curso = authed_client.post(
+        "/api/v1/courses", json={"name": "Curso propio"}, headers=bearer(TEACHER_TOKEN)
+    ).json()
+
+    respuesta = authed_client.post(
+        "/api/v1/question-banks",
+        json={"name": "Banco", "course_id": curso["id"]},
+        headers=bearer(TEACHER_TOKEN),
+    )
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["course_id"] == curso["id"]

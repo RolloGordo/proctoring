@@ -247,6 +247,22 @@ class TestPermisos:
 
         assert respuesta.status_code == 403
 
+    def test_un_banco_ajeno_se_rechaza_antes_de_leer_el_archivo(
+        self, authed_client: TestClient
+    ) -> None:
+        """SEC-11: antes se analizaba el XML y el 403 llegaba al guardar."""
+        bank_id = crear_banco(authed_client)
+
+        basura = importar(authed_client, bank_id, b"esto no es xml", token=OTHER_TEACHER_TOKEN)
+        prueba = importar(
+            authed_client, bank_id, fixture("essay"), token=OTHER_TEACHER_TOKEN, dry_run=True
+        )
+
+        # Con el archivo roto, un 403 y no un 400 que cuente qué falla en él; y
+        # el ensayo sin guardar (`dry_run`) tampoco se le hace a un banco ajeno.
+        assert basura.status_code == 403
+        assert prueba.status_code == 403
+
     def test_un_banco_inexistente_responde_igual_que_uno_ajeno(
         self, authed_client: TestClient
     ) -> None:

@@ -7,6 +7,8 @@ mismo cliente y chocaría con el límite sin estar probando nada de eso.
 
 from __future__ import annotations
 
+import base64
+import json
 from collections.abc import Iterator
 
 import pytest
@@ -19,6 +21,13 @@ from proctoring_api.main import create_app
 from tests.conftest import NOW, FixedClock
 
 pytestmark = pytest.mark.integration
+
+
+def jwt_de(sujeto: str, firma: str = "firma") -> str:
+    """Un JWT con ese `sub`. El límite no verifica la firma; la autenticación sí."""
+    cabecera = base64.urlsafe_b64encode(b'{"alg":"ES256"}').rstrip(b"=").decode()
+    carga = base64.urlsafe_b64encode(json.dumps({"sub": sujeto}).encode()).rstrip(b"=").decode()
+    return f"{cabecera}.{carga}.{firma}"
 
 
 def app_limitada(general: Limite, estrictas: dict[str, Limite] | None = None) -> TestClient:
@@ -114,8 +123,8 @@ class TestIdentificacionDelCliente:
         """
         cuerpo = {"title": "Examen", "starts_at": "2026-10-03T10:00:00Z", "duration_minutes": 60}
         with app_limitada(Limite(peticiones=2, ventana_segundos=60)) as cliente:
-            ana = {"Authorization": "Bearer " + "a" * 40}
-            luis = {"Authorization": "Bearer " + "b" * 40}
+            ana = {"Authorization": "Bearer " + jwt_de("ana")}
+            luis = {"Authorization": "Bearer " + jwt_de("luis")}
 
             for _ in range(2):
                 cliente.post("/api/v1/sessions", json=cuerpo, headers=ana)
@@ -125,6 +134,40 @@ class TestIdentificacionDelCliente:
 
         assert de_ana.status_code == 429
         assert de_luis.status_code == 201
+
+    def test_renovar_la_sesion_no_da_cupo_nuevo(self) -> None:
+        """SEC-05: cada renovación trae un token distinto, pero es la misma persona.
+
+        Antes la clave era el final del token, y renovar la sesión estrenaba
+        cupo: con una cuenta se podía probar códigos de acceso sin el límite de
+        diez por minuto.
+        """
+        cuerpo = {"access_code": "ABC123"}
+        estricto = {"/api/v1/sessions/join": Limite(peticiones=2, ventana_segundos=60)}
+        with app_limitada(Limite(peticiones=100, ventana_segundos=60), estricto) as cliente:
+            codigos = [
+                cliente.post(
+                    "/api/v1/sessions/join",
+                    json=cuerpo,
+                    headers={"Authorization": "Bearer " + jwt_de("ana", firma=f"firma{i}")},
+                ).status_code
+                for i in range(3)
+            ]
+
+        assert codigos[-1] == 429
+
+    def test_tokens_basura_distintos_comparten_la_ventana_de_la_ip(self) -> None:
+        """Sin `sub` legible no hay persona: cuenta como anónimo, por IP."""
+        cuerpo = {"title": "Examen", "starts_at": "2026-10-03T10:00:00Z", "duration_minutes": 60}
+        with app_limitada(Limite(peticiones=2, ventana_segundos=60)) as cliente:
+            codigos = [
+                cliente.post(
+                    "/api/v1/sessions", json=cuerpo, headers={"Authorization": f"Bearer basura{i}"}
+                ).status_code
+                for i in range(3)
+            ]
+
+        assert codigos[-1] == 429
 
 
 class TestVentanaDeslizante:

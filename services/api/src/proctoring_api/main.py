@@ -427,10 +427,18 @@ def create_app(
     """
     settings = settings or Settings()
 
+    # SEC-04: en producción no se publica la documentación. `/docs`, `/redoc` y
+    # `/openapi.json` entregaban a cualquiera el mapa completo de la API,
+    # internos incluidos. En local y en pruebas sigue disponible.
+    con_documentacion = settings.env != "production"
+
     app = FastAPI(
         title="Proctoring API",
         description=DESCRIPTION,
         version=__version__,
+        docs_url="/docs" if con_documentacion else None,
+        redoc_url="/redoc" if con_documentacion else None,
+        openapi_url="/openapi.json" if con_documentacion else None,
         openapi_tags=[
             {"name": "health", "description": "Estado del servicio"},
             {"name": "events", "description": "Senales detectadas durante un examen"},
@@ -632,7 +640,9 @@ def create_app(
     app.state.delete_question = DeleteQuestion(
         question_repository, session_repository, bank_repository, answer_repository
     )
-    app.state.create_bank = CreateQuestionBank(bank_repository, clock, settings.dev_teacher_id)
+    app.state.create_bank = CreateQuestionBank(
+        bank_repository, clock, settings.dev_teacher_id, courses=course_repository
+    )
     app.state.delete_bank = DeleteQuestionBank(
         bank_repository, question_repository, answer_repository
     )
@@ -652,7 +662,11 @@ def create_app(
         participant_repository, session_repository, profile_repository
     )
     app.state.review_identity = ReviewParticipantIdentity(
-        participant_repository, session_repository, clock, settings.dev_teacher_id
+        participant_repository,
+        session_repository,
+        clock,
+        settings.dev_teacher_id,
+        faces=reference_face_repository,
     )
     app.state.submit_exam = SubmitExam(
         participant_repository,

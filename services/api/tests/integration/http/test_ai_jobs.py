@@ -308,10 +308,18 @@ class TestElSecretoInterno:
         assert respuesta.status_code == 200
 
 
+def ruta(sesion_id: Any, estudiante_id: Any, nombre: str) -> str:
+    """Una ruta como las que escribe la API: `{sesion}/{estudiante}/{nombre}`."""
+    return f"{sesion_id}/{estudiante_id}/{nombre}"
+
+
 class TestVerificacionDeIdentidad:
     def preparar(self, client: TestClient, app: Any) -> dict[str, Any]:
         datos = examen_con_habla(app)
-        client.post("/api/v1/me/reference-face", json={"storage_path": "caras/ana.jpg"})
+        sesion = datos["sesion"].id
+        datos["referencia"] = ruta(sesion, DEFAULT_DEV_STUDENT_ID, "ana.jpg")
+        datos["captura"] = ruta(sesion, DEFAULT_DEV_STUDENT_ID, "ahora.jpg")
+        client.post("/api/v1/me/reference-face", json={"storage_path": datos["referencia"]})
         return datos
 
     def test_el_estudiante_registra_su_rostro_y_pide_verificarse(
@@ -321,7 +329,7 @@ class TestVerificacionDeIdentidad:
 
         respuesta = client.post(
             f"/api/v1/exam/{datos['sesion'].id}/identity/check",
-            json={"capture_path": "capturas/ahora.jpg"},
+            json={"capture_path": datos["captura"]},
         )
 
         # 202: la verificacion todavia no ocurrio, solo se encolo.
@@ -332,10 +340,11 @@ class TestVerificacionDeIdentidad:
         self, client: TestClient, app: Any
     ) -> None:
         datos = examen_con_habla(app)
+        sesion = datos["sesion"].id
 
         respuesta = client.post(
-            f"/api/v1/exam/{datos['sesion'].id}/identity/check",
-            json={"capture_path": "capturas/ahora.jpg"},
+            f"/api/v1/exam/{sesion}/identity/check",
+            json={"capture_path": ruta(sesion, DEFAULT_DEV_STUDENT_ID, "ahora.jpg")},
         )
 
         assert respuesta.status_code == 400
@@ -345,7 +354,7 @@ class TestVerificacionDeIdentidad:
         datos = self.preparar(client, app)
         client.post(
             f"/api/v1/exam/{datos['sesion'].id}/identity/check",
-            json={"capture_path": "capturas/ahora.jpg"},
+            json={"capture_path": datos["captura"]},
         )
         participante_id, captura = app.state.job_queue.face_verification_jobs[0]
 
@@ -355,8 +364,8 @@ class TestVerificacionDeIdentidad:
 
         assert respuesta.status_code == 200, respuesta.text
         cuerpo = respuesta.json()
-        assert cuerpo["reference_path"] == "caras/ana.jpg"
-        assert cuerpo["capture_path"] == "capturas/ahora.jpg"
+        assert cuerpo["reference_path"] == datos["referencia"]
+        assert cuerpo["capture_path"] == datos["captura"]
         assert cuerpo["similarity_threshold"] == 0.45
 
     def test_una_coincidencia_deja_al_estudiante_listo(self, client: TestClient, app: Any) -> None:
@@ -457,19 +466,163 @@ class TestVerificacionDeIdentidad:
     ) -> None:
         # El estudiante sale del token: no hay parametro con el que suplantar.
         datos = examen_con_habla(authed_app, student_id=CONTRACT_STUDENT_ID)
+        sesion = datos["sesion"].id
         authed_client.post(
             "/api/v1/me/reference-face",
-            json={"storage_path": "caras/ana.jpg"},
+            json={"storage_path": ruta(sesion, CONTRACT_STUDENT_ID, "ana.jpg")},
             headers=bearer(STUDENT_TOKEN),
         )
 
         respuesta = authed_client.post(
-            f"/api/v1/exam/{datos['sesion'].id}/identity/check",
-            json={"capture_path": "capturas/ahora.jpg"},
+            f"/api/v1/exam/{sesion}/identity/check",
+            json={"capture_path": ruta(sesion, CONTRACT_STUDENT_ID, "ahora.jpg")},
             headers=bearer(STUDENT_TOKEN),
         )
 
         assert respuesta.status_code == 202
+
+
+class TestLaIdentidadNoLaPoneElEstudiante:
+    """SEC-01: el estudiante controlaba las dos piezas de la comparación.
+
+    Podía registrar como suya la foto de otro, mandar una captura de otro
+    examen, y cambiar su referencia justo antes de entrar. Cada prueba es uno de
+    los ataques que se reprodujeron en la auditoría del 5/11/2026.
+    """
+
+    def entrar(self, client: TestClient, app: Any) -> dict[str, Any]:
+        datos = examen_con_habla(app)
+        datos["id"] = datos["sesion"].id
+        return datos
+
+    def resultado(self, client: TestClient, sesion: Any, similitud: float) -> Any:
+        return client.post(
+            f"/api/v1/internal/sessions/{sesion}/students/{DEFAULT_DEV_STUDENT_ID}/identity-result",
+            json={"similarity": similitud},
+        ).json()
+
+    def test_no_registra_como_suya_la_foto_de_otro(self, client: TestClient, app: Any) -> None:
+        datos = self.entrar(client, app)
+
+        respuesta = client.post(
+            "/api/v1/me/reference-face",
+            json={"storage_path": ruta(datos["id"], uuid4(), "cara-de-otro.jpg")},
+        )
+
+        assert respuesta.status_code == 403
+
+    @pytest.mark.parametrize(
+        "ruta_rara",
+        ["caras/ana.jpg", "../x/y.jpg", "no-es-uuid/{yo}/a.jpg", "{s}/{yo}/", "{s}/{yo}/a/b.jpg"],
+    )
+    def test_una_ruta_que_no_escribio_la_api_no_vale(
+        self, client: TestClient, app: Any, ruta_rara: str
+    ) -> None:
+        datos = self.entrar(client, app)
+        valor = ruta_rara.format(s=datos["id"], yo=DEFAULT_DEV_STUDENT_ID)
+
+        respuesta = client.post("/api/v1/me/reference-face", json={"storage_path": valor})
+
+        assert respuesta.status_code == 403
+
+    def test_no_se_verifica_con_una_captura_de_otro_examen(
+        self, client: TestClient, app: Any
+    ) -> None:
+        # Una captura buena del estudiante real, de un examen anterior: el
+        # ataque de repetición de quien rinde por otro.
+        datos = self.entrar(client, app)
+        client.post(
+            "/api/v1/me/reference-face",
+            json={"storage_path": ruta(datos["id"], DEFAULT_DEV_STUDENT_ID, "ref.jpg")},
+        )
+
+        respuesta = client.post(
+            f"/api/v1/exam/{datos['id']}/identity/check",
+            json={"capture_path": ruta(uuid4(), DEFAULT_DEV_STUDENT_ID, "vieja.jpg")},
+        )
+
+        assert respuesta.status_code == 403
+        assert not app.state.job_queue.face_verification_jobs
+
+    def test_no_se_verifica_con_la_foto_de_otro_estudiante(
+        self, client: TestClient, app: Any
+    ) -> None:
+        datos = self.entrar(client, app)
+        client.post(
+            "/api/v1/me/reference-face",
+            json={"storage_path": ruta(datos["id"], DEFAULT_DEV_STUDENT_ID, "ref.jpg")},
+        )
+
+        respuesta = client.post(
+            f"/api/v1/exam/{datos['id']}/identity/check",
+            json={"capture_path": ruta(datos["id"], uuid4(), "otra-persona.jpg")},
+        )
+
+        assert respuesta.status_code == 403
+
+    def test_la_primera_referencia_no_necesita_revision(self, client: TestClient, app: Any) -> None:
+        datos = self.entrar(client, app)
+        client.post(
+            "/api/v1/me/reference-face",
+            json={"storage_path": ruta(datos["id"], DEFAULT_DEV_STUDENT_ID, "ref.jpg")},
+        )
+
+        assert self.resultado(client, datos["id"], 0.9)["can_take_exam"] is True
+
+    def test_rehacer_una_foto_que_nunca_se_uso_tampoco(self, client: TestClient, app: Any) -> None:
+        # La primera salió mal y se repite en la misma sala de espera: no hay
+        # nada que suplantar todavía.
+        datos = self.entrar(client, app)
+        for nombre in ("mala.jpg", "buena.jpg"):
+            client.post(
+                "/api/v1/me/reference-face",
+                json={"storage_path": ruta(datos["id"], DEFAULT_DEV_STUDENT_ID, nombre)},
+            )
+
+        assert self.resultado(client, datos["id"], 0.9)["can_take_exam"] is True
+
+    def test_cambiar_una_referencia_ya_usada_lo_deja_para_el_docente(
+        self, client: TestClient, app: Any
+    ) -> None:
+        datos = self.entrar(client, app)
+        faces = app.state.reference_face_repository
+        client.post(
+            "/api/v1/me/reference-face",
+            json={"storage_path": ruta(datos["id"], DEFAULT_DEV_STUDENT_ID, "real.jpg")},
+        )
+        # Ya se usó: el worker guardó su embedding.
+        usada = faces.find(DEFAULT_DEV_STUDENT_ID)
+        faces.save(
+            type(usada)(
+                student_id=usada.student_id,
+                storage_path=usada.storage_path,
+                embedding=[0.1, 0.2],
+                model_version="arcface-1",
+                registered_at=usada.registered_at,
+            )
+        )
+        # Quien rinde por otro pone su propia cara.
+        client.post(
+            "/api/v1/me/reference-face",
+            json={"storage_path": ruta(datos["id"], DEFAULT_DEV_STUDENT_ID, "impostor.jpg")},
+        )
+
+        cuerpo = self.resultado(client, datos["id"], 0.95)
+
+        # Coincide con la cara nueva, pero eso no demuestra nada: decide el docente.
+        assert cuerpo["result"] == "match"
+        assert cuerpo["can_take_exam"] is False
+        eventos = app.state.event_repository.list_by_session(datos["id"])
+        check = [e for e in eventos if e.event_type is EventType.IDENTITY_CHECK][-1]
+        assert check.metadata["reference_replaced"] is True
+
+        # El docente lo mira y lo admite: la referencia queda dada por buena.
+        admitido = client.post(
+            f"/api/v1/sessions/{datos['id']}/participants/{DEFAULT_DEV_STUDENT_ID}/identity",
+            json={"approve": True},
+        )
+        assert admitido.status_code == 200, admitido.text
+        assert faces.find(DEFAULT_DEV_STUDENT_ID).needs_review is False
 
 
 class TestElWorkerNoNecesitaLaClaveDeServicio:
