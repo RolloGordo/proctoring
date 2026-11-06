@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { RejillaCursos } from '../components/TarjetaCurso'
 import { api, type Course } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 
@@ -130,30 +131,7 @@ export function Cursos() {
           </div>
         )}
 
-        {cursos && cursos.length > 0 && (
-          <div className="tarjeta">
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Curso</th>
-                  <th>Sección</th>
-                  <th>Estudiantes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cursos.map((curso) => (
-                  <tr key={curso.id}>
-                    <td>
-                      <Link to={`/cursos/${curso.id}`}>{curso.name}</Link>
-                    </td>
-                    <td className="tenue">{curso.section ?? '—'}</td>
-                    <td>{curso.student_count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {cursos && cursos.length > 0 && <RejillaCursos cursos={cursos} />}
       </section>
     </>
   )

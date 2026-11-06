@@ -15,15 +15,20 @@ from proctoring_api.adapters.inbound.http.dependencies import (
     ListCourseMembersDep,
     ListMyCoursesDep,
     ListTeacherCoursesDep,
+    RequestCourseCoverUploadDep,
+    SetCourseCoverDep,
 )
 from proctoring_api.adapters.inbound.http.schemas import (
+    CourseCoverUploadRequest,
     CourseMemberResponse,
     CourseResponse,
     CreateCourseRequest,
     EnrollStudentRequest,
     EnrollStudentResponse,
     ErrorResponse,
+    EvidenceUploadResponse,
     MyCourseResponse,
+    SetCourseCoverRequest,
 )
 from proctoring_api.application.use_cases.manage_courses import TeacherCourse
 
@@ -94,6 +99,66 @@ def delete_course(
     """Elimina un curso sin matrículas, exámenes ni bancos asociados."""
     use_case.execute(course_id, actor=current_user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/courses/{course_id}/cover/upload-url",
+    response_model=EvidenceUploadResponse,
+    summary="URL firmada para subir la portada de un curso (solo su docente)",
+    responses={
+        **AUTH_RESPONSES,
+        400: {"model": ErrorResponse, "description": "Formato de imagen no admitido"},
+    },
+)
+def request_cover_upload(
+    course_id: UUID,
+    payload: CourseCoverUploadRequest,
+    use_case: RequestCourseCoverUploadDep,
+    current_user: CurrentUserDep,
+) -> EvidenceUploadResponse:
+    """Permiso para subir **una** imagen a **una** ruta nueva del bucket de portadas.
+
+    La imagen va directo a Storage; después se fija con `PUT .../cover`.
+    """
+    firma = use_case.execute(course_id, payload.content_type, actor=current_user)
+    return EvidenceUploadResponse(
+        path=firma.path,
+        url=firma.url,
+        token=firma.token,
+        expires_in_seconds=firma.expires_in_seconds,
+    )
+
+
+@router.put(
+    "/courses/{course_id}/cover",
+    response_model=CourseResponse,
+    summary="Fijar la portada de un curso (solo su docente)",
+    responses={
+        **AUTH_RESPONSES,
+        400: {"model": ErrorResponse, "description": "La ruta no es una portada de este curso"},
+    },
+)
+def set_cover(
+    course_id: UUID,
+    payload: SetCourseCoverRequest,
+    use_case: SetCourseCoverDep,
+    current_user: CurrentUserDep,
+) -> CourseResponse:
+    """Fija como portada la imagen ya subida. La anterior se borra del bucket."""
+    return CourseResponse.from_entity(use_case.execute(course_id, payload.path, actor=current_user))
+
+
+@router.delete(
+    "/courses/{course_id}/cover",
+    response_model=CourseResponse,
+    summary="Quitar la portada de un curso (solo su docente)",
+    responses=AUTH_RESPONSES,
+)
+def remove_cover(
+    course_id: UUID, use_case: SetCourseCoverDep, current_user: CurrentUserDep
+) -> CourseResponse:
+    """Vuelve a la portada de reserva y borra la imagen del bucket."""
+    return CourseResponse.from_entity(use_case.execute(course_id, None, actor=current_user))
 
 
 @router.get(

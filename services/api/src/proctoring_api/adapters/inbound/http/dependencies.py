@@ -22,6 +22,10 @@ from proctoring_api.application.use_cases.ai_jobs import (
     RegisterReferenceFace,
     RequestIdentityCheck,
 )
+from proctoring_api.application.use_cases.course_cover import (
+    RequestCourseCoverUpload,
+    SetCourseCover,
+)
 from proctoring_api.application.use_cases.create_evidence_upload_url import (
     CreateEvidenceUploadUrl,
 )
@@ -223,6 +227,16 @@ def get_list_teacher_courses(request: Request) -> ListTeacherCourses:
 
 def get_get_course(request: Request) -> GetCourse:
     use_case: GetCourse = request.app.state.get_course
+    return use_case
+
+
+def get_request_course_cover_upload(request: Request) -> RequestCourseCoverUpload:
+    use_case: RequestCourseCoverUpload = request.app.state.request_course_cover_upload
+    return use_case
+
+
+def get_set_course_cover(request: Request) -> SetCourseCover:
+    use_case: SetCourseCover = request.app.state.set_course_cover
     return use_case
 
 
@@ -431,6 +445,10 @@ CreateCourseDep = Annotated[CreateCourse, Depends(get_create_course)]
 DeleteCourseDep = Annotated[DeleteEmptyCourse, Depends(get_delete_course)]
 ListTeacherCoursesDep = Annotated[ListTeacherCourses, Depends(get_list_teacher_courses)]
 GetCourseDep = Annotated[GetCourse, Depends(get_get_course)]
+RequestCourseCoverUploadDep = Annotated[
+    RequestCourseCoverUpload, Depends(get_request_course_cover_upload)
+]
+SetCourseCoverDep = Annotated[SetCourseCover, Depends(get_set_course_cover)]
 EnrollStudentDep = Annotated[EnrollStudentInCourse, Depends(get_enroll_student)]
 ListCourseMembersDep = Annotated[ListCourseMembers, Depends(get_list_course_members)]
 ListMyCoursesDep = Annotated[ListMyCourses, Depends(get_list_my_courses)]

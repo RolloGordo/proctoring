@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
 from proctoring_api.application.course_access import ensure_teacher_owns_course
+from proctoring_api.application.course_covers import CourseCovers
 from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.course_repository import CourseRepository
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
@@ -20,6 +22,8 @@ from proctoring_api.domain.errors import AuthorizationError, DomainError
 from proctoring_api.domain.exam_session import ExamSession, SessionStatus
 from proctoring_api.domain.user import AuthenticatedUser, ProfileSummary, UserRole
 
+logger = logging.getLogger(__name__)
+
 
 class StudentNotFoundError(DomainError):
     """No hay un estudiante con ese correo."""
@@ -31,6 +35,8 @@ class TeacherCourse:
 
     course: Course
     student_count: int
+    #: URL firmada y temporal de la portada, o `None` si no tiene.
+    cover_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,10 +101,12 @@ class DeleteEmptyCourse:
         courses: CourseRepository,
         sessions: ExamSessionRepository,
         banks: QuestionBankRepository,
+        covers: CourseCovers | None = None,
     ) -> None:
         self._courses = courses
         self._sessions = sessions
         self._banks = banks
+        self._covers = covers
 
     def execute(self, course_id: UUID, *, actor: AuthenticatedUser | None = None) -> None:
         course = ensure_teacher_owns_course(self._courses, course_id, actor)
@@ -117,16 +125,26 @@ class DeleteEmptyCourse:
                 "No se puede eliminar el curso porque tiene bancos de preguntas asociados."
             )
         self._courses.delete(course_id)
+        # La portada se va con el curso: nadie más la puede pedir ya.
+        if self._covers and course.cover_path:
+            try:
+                self._covers.storage.remove(self._covers.bucket, [course.cover_path])
+            except Exception:
+                logger.warning("No se pudo borrar la portada %s", course.cover_path, exc_info=True)
 
 
 class ListTeacherCourses:
     """Los cursos del docente que pregunta, con su numero de estudiantes."""
 
     def __init__(
-        self, courses: CourseRepository, dev_teacher_id: UUID = DEFAULT_DEV_TEACHER_ID
+        self,
+        courses: CourseRepository,
+        dev_teacher_id: UUID = DEFAULT_DEV_TEACHER_ID,
+        covers: CourseCovers | None = None,
     ) -> None:
         self._courses = courses
         self._dev_teacher_id = dev_teacher_id
+        self._covers = covers
 
     def execute(self, *, actor: AuthenticatedUser | None = None) -> Sequence[TeacherCourse]:
         if actor is not None and not actor.is_teacher:
@@ -137,19 +155,28 @@ class ListTeacherCourses:
         # El id sale del token: no hay forma de pedir los de otro. Y el conteo
         # llega en una consulta para todos, no una por curso.
         conteo = self._courses.count_enrollments([c.id for c in cursos])
-        return [TeacherCourse(course=c, student_count=conteo.get(c.id, 0)) for c in cursos]
+        # Las portadas, igual: todas las URLs firmadas en una sola petición.
+        portadas = self._covers.urls(cursos) if self._covers else {}
+        return [
+            TeacherCourse(course=c, student_count=conteo.get(c.id, 0), cover_url=portadas.get(c.id))
+            for c in cursos
+        ]
 
 
 class GetCourse:
     """Un curso del docente."""
 
-    def __init__(self, courses: CourseRepository) -> None:
+    def __init__(self, courses: CourseRepository, covers: CourseCovers | None = None) -> None:
         self._courses = courses
+        self._covers = covers
 
     def execute(self, course_id: UUID, *, actor: AuthenticatedUser | None = None) -> TeacherCourse:
         course = ensure_teacher_owns_course(self._courses, course_id, actor)
         conteo = self._courses.count_enrollments([course.id])
-        return TeacherCourse(course=course, student_count=conteo.get(course.id, 0))
+        portada = self._covers.urls([course]).get(course.id) if self._covers else None
+        return TeacherCourse(
+            course=course, student_count=conteo.get(course.id, 0), cover_url=portada
+        )
 
 
 class EnrollStudentInCourse:

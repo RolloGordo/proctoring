@@ -4,6 +4,7 @@ import { api, type Course, type CourseMember, type QuestionBank } from '../lib/a
 import { useAuth } from '../lib/auth-context'
 import { fechaLarga } from '../lib/formato'
 import { CrearBancoCurso } from '../components/CrearBancoCurso'
+import { EditorPortadaCurso } from '../components/EditorPortadaCurso'
 import { NuevaSesion } from './NuevaSesion'
 
 /**
@@ -102,7 +103,8 @@ export function Curso() {
       !confirm(
         `¿Eliminar el curso "${cursoActual.name}"? Solo se puede borrar si no tiene estudiantes, exámenes ni bancos asociados.`
       )
-    ) return
+    )
+      return
     setErrorEliminarCurso(undefined)
     setEliminandoCurso(true)
     try {
@@ -133,6 +135,8 @@ export function Curso() {
 
   return (
     <>
+      <EditorPortadaCurso curso={cursoActual} token={token} onCambio={setCurso} />
+
       <div className="encabezado-pagina">
         <div>
           <h1>{cursoActual.name}</h1>
@@ -168,7 +172,11 @@ export function Curso() {
             <button type="button" className="boton" onClick={() => setAbrirCrearExamen(true)}>
               Crear examen para este curso
             </button>
-            <button type="button" className="boton boton-secundario" onClick={() => setAbrirCrearBanco(true)}>
+            <button
+              type="button"
+              className="boton boton-secundario"
+              onClick={() => setAbrirCrearBanco(true)}
+            >
               Crear banco de preguntas
             </button>
             <Link to={`/bancos?curso=${encodeURIComponent(id)}`} className="boton boton-texto">
@@ -198,7 +206,11 @@ export function Curso() {
         </p>
       )}
 
-      {errorEliminarCurso && <p className="aviso" role="alert">{errorEliminarCurso}</p>}
+      {errorEliminarCurso && (
+        <p className="aviso" role="alert">
+          {errorEliminarCurso}
+        </p>
+      )}
 
       <section className="bloque">
         <div className="tarjeta">

@@ -8,6 +8,7 @@ la reciba no puede subir a otra parte del bucket ni sobrescribir evidencia ajena
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from supabase import Client
@@ -54,3 +55,25 @@ class SupabaseEvidenceStorage:
         if not url:
             raise RuntimeError(f"Storage no devolvio URL de lectura para {bucket}/{path}")
         return str(url)
+
+    def create_read_urls(
+        self, bucket: str, paths: Sequence[str], expires_in_seconds: int
+    ) -> Mapping[str, str]:
+        if not paths:
+            return {}
+        items = cast(
+            "list[dict[str, Any]]",
+            self._client.storage.from_(bucket).create_signed_urls(list(paths), expires_in_seconds),
+        )
+        # Cada archivo trae su propio `error`: uno que ya no existe se omite y
+        # los demás siguen. Las dos formas de la clave, como en `create_read_url`.
+        firmadas: dict[str, str] = {}
+        for item in items:
+            url = item.get("signedURL") or item.get("signedUrl")
+            if url and not item.get("error"):
+                firmadas[str(item["path"])] = str(url)
+        return firmadas
+
+    def remove(self, bucket: str, paths: Sequence[str]) -> None:
+        if paths:
+            self._client.storage.from_(bucket).remove(list(paths))

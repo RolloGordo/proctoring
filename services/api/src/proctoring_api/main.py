@@ -56,6 +56,7 @@ from proctoring_api.adapters.outbound.memory.question_repository import (
 from proctoring_api.adapters.outbound.memory.reference_face_repository import (
     InMemoryReferenceFaceRepository,
 )
+from proctoring_api.application.course_covers import CourseCovers
 from proctoring_api.application.ports.alert_repository import AlertRepository
 from proctoring_api.application.ports.answer_repository import AnswerRepository
 from proctoring_api.application.ports.audio_analysis_repository import AudioAnalysisRepository
@@ -78,6 +79,10 @@ from proctoring_api.application.use_cases.ai_jobs import (
     RecordIdentityCheck,
     RegisterReferenceFace,
     RequestIdentityCheck,
+)
+from proctoring_api.application.use_cases.course_cover import (
+    RequestCourseCoverUpload,
+    SetCourseCover,
 )
 from proctoring_api.application.use_cases.create_evidence_upload_url import (
     CreateEvidenceUploadUrl,
@@ -600,11 +605,18 @@ def create_app(
         decision_repository, participant_repository, settings.dev_student_id
     )
     app.state.create_course = CreateCourse(course_repository, clock, settings.dev_teacher_id)
+    course_covers = CourseCovers(evidence_storage, settings.supabase_course_covers_bucket)
     app.state.delete_course = DeleteEmptyCourse(
-        course_repository, session_repository, bank_repository
+        course_repository, session_repository, bank_repository, course_covers
     )
-    app.state.list_teacher_courses = ListTeacherCourses(course_repository, settings.dev_teacher_id)
-    app.state.get_course = GetCourse(course_repository)
+    app.state.list_teacher_courses = ListTeacherCourses(
+        course_repository, settings.dev_teacher_id, course_covers
+    )
+    app.state.get_course = GetCourse(course_repository, course_covers)
+    app.state.request_course_cover_upload = RequestCourseCoverUpload(
+        course_repository, course_covers
+    )
+    app.state.set_course_cover = SetCourseCover(course_repository, course_covers)
     app.state.enroll_student = EnrollStudentInCourse(course_repository, profile_repository, clock)
     app.state.list_course_members = ListCourseMembers(course_repository, profile_repository)
     app.state.list_my_courses = ListMyCourses(

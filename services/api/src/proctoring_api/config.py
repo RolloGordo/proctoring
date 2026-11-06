@@ -105,6 +105,8 @@ class Settings(BaseSettings):
     supabase_evidence_bucket: str = "evidences"
     supabase_audio_bucket: str = "audio-segments"
     supabase_reference_faces_bucket: str = "reference-faces"
+    #: Portadas de los cursos. Privado como los demás: se leen con URL firmada.
+    supabase_course_covers_bucket: str = "course-covers"
 
     # --- Cola ---
     redis_url: str = "redis://redis:6379/0"

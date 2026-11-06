@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -39,4 +40,19 @@ class EvidenceStorage(Protocol):
         pantalla de revision no se convierta en acceso permanente a la cara de
         un estudiante.
         """
+        ...
+
+    def create_read_urls(
+        self, bucket: str, paths: Sequence[str], expires_in_seconds: int
+    ) -> Mapping[str, str]:
+        """URLs firmadas de lectura para varios archivos, en una sola petición.
+
+        Un archivo que ya no existe **no aparece** en el resultado en vez de
+        hacer fallar a los demás: quien lo use pinta lo que haya y trata la
+        ausencia como «sin imagen».
+        """
+        ...
+
+    def remove(self, bucket: str, paths: Sequence[str]) -> None:
+        """Borra esos archivos del bucket. Borrar uno que no existe no es error."""
         ...

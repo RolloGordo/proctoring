@@ -21,6 +21,10 @@ class CourseRepository(Protocol):
         """Elimina un curso sin dependencias asociadas."""
         ...
 
+    def set_cover(self, course_id: UUID, cover_path: str | None) -> None:
+        """Cambia la portada del curso; `None` la quita."""
+        ...
+
     def find_by_id(self, course_id: UUID) -> Course | None:
         """El curso, o `None` si no existe."""
         ...
