@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
 
@@ -26,6 +27,14 @@ class QuestionBankRepository(Protocol):
 
     def is_attached_to_session(self, bank_id: UUID) -> bool:
         """Indica si un examen todavía usa este banco."""
+        ...
+
+    def attached_to_sessions(self, bank_ids: Sequence[UUID]) -> set[UUID]:
+        """Devuelve los bancos de la lista vinculados a algún examen."""
+        ...
+
+    def update(self, bank: QuestionBank) -> None:
+        """Actualiza los datos descriptivos de un banco existente."""
         ...
 
     def list_by_teacher(self, teacher_id: UUID) -> Sequence[QuestionBank]:
@@ -52,4 +61,20 @@ class QuestionBankRepository(Protocol):
 
     def list_session_banks(self, session_id: UUID) -> Sequence[QuestionBank]:
         """Los bancos de los que extrae un examen."""
+        ...
+
+    def list_excluded_questions(self, session_id: UUID) -> set[UUID]:
+        """Preguntas de bancos que el docente excluyó de este examen."""
+        ...
+
+    def replace_excluded_questions(self, session_id: UUID, question_ids: Sequence[UUID]) -> None:
+        """Reemplaza la selección guardada de preguntas excluidas."""
+        ...
+
+    def list_question_points(self, session_id: UUID) -> Mapping[UUID, Decimal]:
+        """Per-exam points for questions originating in banks."""
+        ...
+
+    def replace_question_points(self, session_id: UUID, points: Mapping[UUID, Decimal]) -> None:
+        """Replace per-exam points for bank questions."""
         ...

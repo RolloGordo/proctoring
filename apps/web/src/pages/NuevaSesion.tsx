@@ -39,7 +39,15 @@ const PRESETS: Array<{ valor: SupervisionPreset; nombre: string; detalle: string
   }
 ]
 
-export function NuevaSesion() {
+export function NuevaSesion({
+  comoPanel = false,
+  cursoInicialId,
+  onCerrar
+}: {
+  comoPanel?: boolean
+  cursoInicialId?: string
+  onCerrar?: () => void
+} = {}) {
   const { token } = useAuth()
   const navegar = useNavigate()
   const [searchParams] = useSearchParams()
@@ -60,7 +68,7 @@ export function NuevaSesion() {
   const [cargandoCursos, setCargandoCursos] = useState(true)
   const [errorCursos, setErrorCursos] = useState<string>()
   const [reintentoCursos, setReintentoCursos] = useState(0)
-  const [cursoId, setCursoId] = useState(() => searchParams.get('curso') ?? '')
+  const [cursoId, setCursoId] = useState(() => cursoInicialId ?? searchParams.get('curso') ?? '')
   const [bancos, setBancos] = useState<QuestionBank[]>([])
   const [cargandoBancos, setCargandoBancos] = useState(true)
   const [errorBancos, setErrorBancos] = useState<string>()
@@ -69,6 +77,20 @@ export function NuevaSesion() {
   const [cuantas, setCuantas] = useState('')
   const [error, setError] = useState<string>()
   const [enviando, setEnviando] = useState(false)
+
+  useEffect(() => {
+    if (!comoPanel) return
+    const overflowAnterior = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const alPresionarTecla = (evento: KeyboardEvent): void => {
+      if (evento.key === 'Escape') onCerrar?.()
+    }
+    window.addEventListener('keydown', alPresionarTecla)
+    return () => {
+      document.body.style.overflow = overflowAnterior
+      window.removeEventListener('keydown', alPresionarTecla)
+    }
+  }, [comoPanel, onCerrar])
 
   useEffect(() => {
     let cancelado = false
@@ -164,7 +186,7 @@ export function NuevaSesion() {
       }
 
       if (fallidos.length > 0) {
-        navegar(`/sesiones/${sesion.id}`, {
+        navegar(`/sesiones/${sesion.id}/editar`, {
           state: {
             aviso:
               `El examen se creó, pero no se pudieron asociar estos bancos: ${fallidos.join(', ')}. ` +
@@ -175,7 +197,7 @@ export function NuevaSesion() {
       }
 
       if (elegidos.length === 0) {
-        navegar(`/sesiones/${sesion.id}/preguntas`, {
+        navegar(`/sesiones/${sesion.id}/editar`, {
           state: {
             aviso:
               'El examen está creado. Añade y guarda sus preguntas antes de compartir el código de acceso.'
@@ -184,7 +206,7 @@ export function NuevaSesion() {
         return
       }
 
-      navegar(`/sesiones/${sesion.id}`)
+      navegar(`/sesiones/${sesion.id}/editar`)
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo crear el examen')
       setEnviando(false)
@@ -215,9 +237,23 @@ export function NuevaSesion() {
 
   return (
     <>
+      {comoPanel && (
+        <button
+          type="button"
+          className="drawer-fondo"
+          aria-label="Cerrar creación del examen"
+          onClick={onCerrar}
+        />
+      )}
+      <div
+        className={comoPanel ? 'drawer-examen' : undefined}
+        role={comoPanel ? 'dialog' : undefined}
+        aria-modal={comoPanel ? true : undefined}
+        aria-labelledby={comoPanel ? 'titulo-drawer-examen' : undefined}
+      >
       <div className="encabezado-pagina">
         <div>
-          <h1>Crear examen</h1>
+          <h1 id={comoPanel ? 'titulo-drawer-examen' : undefined}>Crear examen</h1>
           <p className="subtitulo">
             {cursoSeleccionado
               ? `Para ${cursoSeleccionado.name}${cursoSeleccionado.section ? ` · sección ${cursoSeleccionado.section}` : ''}. `
@@ -225,9 +261,14 @@ export function NuevaSesion() {
             Completa los datos y las preguntas; al final obtendrás un código de acceso.
           </p>
         </div>
+        {comoPanel && (
+          <button type="button" className="boton boton-secundario" onClick={onCerrar}>
+            Cerrar
+          </button>
+        )}
       </div>
 
-      <div className="tarjeta" style={{ maxWidth: '760px' }}>
+      <div className="tarjeta formulario-nuevo-examen">
         <div className="tarjeta-cuerpo">
           <form onSubmit={(e) => void enviar(e)}>
             {error && (
@@ -510,13 +551,14 @@ export function NuevaSesion() {
               <button
                 type="button"
                 className="boton boton-secundario"
-                onClick={() => navegar('/sesiones')}
+                onClick={() => (comoPanel ? onCerrar?.() : navegar('/sesiones'))}
               >
                 Cancelar
               </button>
             </div>
           </form>
         </div>
+      </div>
       </div>
     </>
   )

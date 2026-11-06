@@ -12,9 +12,10 @@ from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.course_repository import CourseRepository
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.profile_repository import ProfileRepository
+from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.use_cases.create_exam_session import DEFAULT_DEV_TEACHER_ID
 from proctoring_api.application.use_cases.manage_enrollment import DEFAULT_DEV_STUDENT_ID
-from proctoring_api.domain.course import Course
+from proctoring_api.domain.course import Course, InvalidCourseError
 from proctoring_api.domain.errors import AuthorizationError, DomainError
 from proctoring_api.domain.exam_session import ExamSession, SessionStatus
 from proctoring_api.domain.user import AuthenticatedUser, ProfileSummary, UserRole
@@ -84,6 +85,38 @@ class CreateCourse:
         )
         self._courses.save(course)
         return course
+
+
+class DeleteEmptyCourse:
+    """Elimina un curso solo cuando no contiene matrículas, exámenes ni bancos."""
+
+    def __init__(
+        self,
+        courses: CourseRepository,
+        sessions: ExamSessionRepository,
+        banks: QuestionBankRepository,
+    ) -> None:
+        self._courses = courses
+        self._sessions = sessions
+        self._banks = banks
+
+    def execute(self, course_id: UUID, *, actor: AuthenticatedUser | None = None) -> None:
+        course = ensure_teacher_owns_course(self._courses, course_id, actor)
+        if self._courses.list_enrollments(course_id):
+            raise InvalidCourseError(
+                "No se puede eliminar el curso porque tiene estudiantes matriculados."
+            )
+        if self._sessions.list_by_courses([course_id]):
+            raise InvalidCourseError(
+                "No se puede eliminar el curso porque tiene exámenes asociados."
+            )
+        if any(
+            bank.course_id == course_id for bank in self._banks.list_by_teacher(course.teacher_id)
+        ):
+            raise InvalidCourseError(
+                "No se puede eliminar el curso porque tiene bancos de preguntas asociados."
+            )
+        self._courses.delete(course_id)
 
 
 class ListTeacherCourses:

@@ -17,6 +17,10 @@ class CourseRepository(Protocol):
         """Crea el curso."""
         ...
 
+    def delete(self, course_id: UUID) -> None:
+        """Elimina un curso sin dependencias asociadas."""
+        ...
+
     def find_by_id(self, course_id: UUID) -> Course | None:
         """El curso, o `None` si no existe."""
         ...

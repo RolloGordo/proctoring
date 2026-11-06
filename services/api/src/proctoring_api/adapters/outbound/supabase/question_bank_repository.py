@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, cast
 from uuid import UUID
 
@@ -14,6 +15,8 @@ from proctoring_api.domain.question_bank import QuestionBank
 
 BANKS_TABLE = "question_banks"
 LINKS_TABLE = "exam_session_banks"
+EXCLUSIONS_TABLE = "exam_session_question_exclusions"
+QUESTION_POINTS_TABLE = "exam_session_question_points"
 QUESTIONS_TABLE = "questions"
 COLUMNS = "id, teacher_id, course_id, name, description, created_at"
 
@@ -26,6 +29,15 @@ class SupabaseQuestionBankRepository:
 
     def save(self, bank: QuestionBank) -> None:
         self._client.table(BANKS_TABLE).insert(_to_row(bank)).execute()
+
+    def update(self, bank: QuestionBank) -> None:
+        self._client.table(BANKS_TABLE).update(
+            {
+                "course_id": str(bank.course_id) if bank.course_id else None,
+                "name": bank.name,
+                "description": bank.description,
+            }
+        ).eq("id", str(bank.id)).execute()
 
     def delete(self, bank_id: UUID) -> None:
         self._client.table(BANKS_TABLE).delete().eq("id", str(bank_id)).execute()
@@ -50,6 +62,18 @@ class SupabaseQuestionBankRepository:
             .execute()
         )
         return bool(cast("list[dict[str, Any]]", response.data))
+
+    def attached_to_sessions(self, bank_ids: Sequence[UUID]) -> set[UUID]:
+        if not bank_ids:
+            return set()
+        response = (
+            self._client.table(LINKS_TABLE)
+            .select("bank_id")
+            .in_("bank_id", [str(bank_id) for bank_id in bank_ids])
+            .execute()
+        )
+        rows = cast("list[dict[str, Any]]", response.data)
+        return {UUID(row["bank_id"]) for row in rows}
 
     def list_by_teacher(self, teacher_id: UUID) -> Sequence[QuestionBank]:
         response = (
@@ -116,6 +140,52 @@ class SupabaseQuestionBankRepository:
         }
         # En el orden en que se ataron, que es el que eligio el docente.
         return [bancos[UUID(i)] for i in ids if UUID(i) in bancos]
+
+    def list_excluded_questions(self, session_id: UUID) -> set[UUID]:
+        response = (
+            self._client.table(EXCLUSIONS_TABLE)
+            .select("question_id")
+            .eq("session_id", str(session_id))
+            .execute()
+        )
+        rows = cast("list[dict[str, Any]]", response.data)
+        return {UUID(row["question_id"]) for row in rows}
+
+    def replace_excluded_questions(self, session_id: UUID, question_ids: Sequence[UUID]) -> None:
+        self._client.table(EXCLUSIONS_TABLE).delete().eq("session_id", str(session_id)).execute()
+        if question_ids:
+            self._client.table(EXCLUSIONS_TABLE).insert(
+                [
+                    {"session_id": str(session_id), "question_id": str(question_id)}
+                    for question_id in question_ids
+                ]
+            ).execute()
+
+    def list_question_points(self, session_id: UUID) -> Mapping[UUID, Decimal]:
+        response = (
+            self._client.table(QUESTION_POINTS_TABLE)
+            .select("question_id,points")
+            .eq("session_id", str(session_id))
+            .execute()
+        )
+        rows = cast("list[dict[str, Any]]", response.data)
+        return {UUID(row["question_id"]): Decimal(str(row["points"])) for row in rows}
+
+    def replace_question_points(self, session_id: UUID, points: Mapping[UUID, Decimal]) -> None:
+        self._client.table(QUESTION_POINTS_TABLE).delete().eq(
+            "session_id", str(session_id)
+        ).execute()
+        if points:
+            self._client.table(QUESTION_POINTS_TABLE).insert(
+                [
+                    {
+                        "session_id": str(session_id),
+                        "question_id": str(question_id),
+                        "points": str(value),
+                    }
+                    for question_id, value in points.items()
+                ]
+            ).execute()
 
 
 def _to_row(bank: QuestionBank) -> dict[str, Any]:

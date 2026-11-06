@@ -10,7 +10,13 @@ import { useAuth } from '../lib/auth-context'
  * siguen ahí para el ciclo siguiente. El texto lo dice porque es exactamente la
  * clase de botón que da miedo pulsar.
  */
-export function BancosDelExamen({ sessionId }: { sessionId: string }) {
+export function BancosDelExamen({
+  sessionId,
+  onCambioBancos
+}: {
+  sessionId: string
+  onCambioBancos?: (cantidad: number) => void
+}) {
   const { token } = useAuth()
   const [atados, setAtados] = useState<QuestionBank[]>()
   const [mios, setMios] = useState<QuestionBank[]>([])
@@ -24,7 +30,11 @@ export function BancosDelExamen({ sessionId }: { sessionId: string }) {
     let cancelado = false
     api
       .listSessionBanks(sessionId, token)
-      .then((datos) => !cancelado && setAtados(datos))
+      .then((datos) => {
+        if (cancelado) return
+        setAtados(datos)
+        onCambioBancos?.(datos.length)
+      })
       .catch((fallo: Error) => !cancelado && setError(fallo.message))
     api
       .listBanks(token)
@@ -37,7 +47,13 @@ export function BancosDelExamen({ sessionId }: { sessionId: string }) {
     return () => {
       cancelado = true
     }
-  }, [sessionId, token, reintento])
+  }, [sessionId, token, reintento, onCambioBancos])
+
+  async function refrescarAsociados(): Promise<void> {
+    const datos = await api.listSessionBanks(sessionId, token)
+    setAtados(datos)
+    onCambioBancos?.(datos.length)
+  }
 
   function reintentarCarga(): void {
     setErrorMisBancos(undefined)
@@ -50,8 +66,7 @@ export function BancosDelExamen({ sessionId }: { sessionId: string }) {
     setTrabajando(true)
     try {
       await api.attachBank(sessionId, eligiendo, token)
-      const banco = mios.find((b) => b.id === eligiendo)
-      if (banco) setAtados((previos) => [...(previos ?? []), banco])
+      await refrescarAsociados()
       setEligiendo('')
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo atar el banco')
@@ -65,7 +80,7 @@ export function BancosDelExamen({ sessionId }: { sessionId: string }) {
     setTrabajando(true)
     try {
       await api.detachBank(sessionId, bankId, token)
-      setAtados((previos) => (previos ?? []).filter((b) => b.id !== bankId))
+      await refrescarAsociados()
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo quitar el banco')
     } finally {
@@ -139,7 +154,7 @@ export function BancosDelExamen({ sessionId }: { sessionId: string }) {
               disabled={!eligiendo || trabajando}
               onClick={() => void atar()}
             >
-              Asociar al examen
+              {atados && atados.length > 0 ? 'Agregar otro banco' : 'Asociar al examen'}
             </button>
           </div>
         )}

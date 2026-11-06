@@ -34,6 +34,9 @@ class SupabaseCourseRepository:
             }
         ).execute()
 
+    def delete(self, course_id: UUID) -> None:
+        self._client.table(COURSES_TABLE).delete().eq("id", str(course_id)).execute()
+
     def find_by_id(self, course_id: UUID) -> Course | None:
         response = (
             self._client.table(COURSES_TABLE)

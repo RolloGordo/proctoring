@@ -112,9 +112,11 @@ from proctoring_api.application.use_cases.manage_banks import (
     ListBankQuestions,
     ListQuestionBanks,
     ListSessionBanks,
+    UpdateQuestionBank,
 )
 from proctoring_api.application.use_cases.manage_courses import (
     CreateCourse,
+    DeleteEmptyCourse,
     EnrollStudentInCourse,
     GetCourse,
     ListCourseMembers,
@@ -132,6 +134,7 @@ from proctoring_api.application.use_cases.manage_questions import (
     GetExamQuestions,
     GetSubmittedExamQuestions,
     ListSessionQuestions,
+    SessionBankQuestionSelection,
 )
 from proctoring_api.application.use_cases.read_evidence import CreateEvidenceReadUrl
 from proctoring_api.application.use_cases.register_event import RegisterEvent
@@ -597,6 +600,9 @@ def create_app(
         decision_repository, participant_repository, settings.dev_student_id
     )
     app.state.create_course = CreateCourse(course_repository, clock, settings.dev_teacher_id)
+    app.state.delete_course = DeleteEmptyCourse(
+        course_repository, session_repository, bank_repository
+    )
     app.state.list_teacher_courses = ListTeacherCourses(course_repository, settings.dev_teacher_id)
     app.state.get_course = GetCourse(course_repository)
     app.state.enroll_student = EnrollStudentInCourse(course_repository, profile_repository, clock)
@@ -613,6 +619,9 @@ def create_app(
         question_repository, session_repository, participant_repository
     )
     app.state.list_session_questions = ListSessionQuestions(question_repository, session_repository)
+    app.state.bank_question_selection = SessionBankQuestionSelection(
+        question_repository, session_repository, bank_repository, participant_repository
+    )
     app.state.get_exam_questions = GetExamQuestions(
         question_repository,
         session_repository,
@@ -643,6 +652,7 @@ def create_app(
     app.state.create_bank = CreateQuestionBank(
         bank_repository, clock, settings.dev_teacher_id, courses=course_repository
     )
+    app.state.update_bank = UpdateQuestionBank(bank_repository, course_repository)
     app.state.delete_bank = DeleteQuestionBank(
         bank_repository, question_repository, answer_repository
     )

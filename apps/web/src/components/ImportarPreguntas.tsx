@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, type NewQuestion, type QtiImportResult, type QuestionBank } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import {
@@ -7,56 +7,53 @@ import {
   parsearTextoPdf,
   type FormatoArchivoPreguntas
 } from '../lib/importar-preguntas'
+import { VistaPreviaImportacion } from './VistaPreviaImportacion'
 
 type ArchivoImportable = {
+  id: string
   nombre: string
   contenido: string
   formato: 'qti' | 'pdf' | FormatoArchivoPreguntas
-}
-
-function observarPregunta(pregunta: NewQuestion): string[] {
-  const observaciones: string[] = []
-  const requiereOpciones = ['multiple_choice', 'true_false', 'multiple_select'].includes(
-    pregunta.question_type
-  )
-  if (!pregunta.statement.trim()) observaciones.push('Falta el enunciado.')
-  if (requiereOpciones && !pregunta.options?.length) {
-    observaciones.push('Faltan las alternativas.')
-  } else if (requiereOpciones && !pregunta.options?.some((opcion) => opcion.is_correct)) {
-    observaciones.push('No se marcó una respuesta correcta.')
-  }
-  if (pregunta.question_type === 'numeric' && !pregunta.correct_numeric_answer?.trim()) {
-    observaciones.push('Falta la respuesta numérica correcta.')
-  }
-  return observaciones
+  tamano: number
+  ultimaModificacion: number
 }
 
 const MAX_PREGUNTAS_POR_IMPORTACION = 50
 const MAX_ARCHIVO_BYTES = 1_000_000
 const MAX_PDF_BYTES = 5_000_000
+const MAX_ARCHIVOS = 10
+const MAX_TOTAL_BYTES = 10_000_000
+const MAX_TOTAL_PREGUNTAS = 1000
 
 export function ImportarPreguntas({
   bancoId,
   nombreBanco,
   crearBanco,
-  onImportado
+  onImportado,
+  onTrabajandoChange,
+  onBancoCreado
 }: {
   bancoId?: string
   nombreBanco?: string
   crearBanco?: () => Promise<QuestionBank>
   onImportado: (bancoId: string, importedCount: number, completed: boolean) => void
+  onTrabajandoChange?: (trabajando: boolean) => void
+  onBancoCreado?: (bancoId: string) => void
 }) {
   const { token } = useAuth()
   const entrada = useRef<HTMLInputElement>(null)
   const [archivo, setArchivo] = useState<ArchivoImportable>()
+  const [archivos, setArchivos] = useState<ArchivoImportable[]>([])
+  const [origenesPreguntas, setOrigenesPreguntas] = useState<string[]>([])
   const [vistaQti, setVistaQti] = useState<QtiImportResult>()
   const [vistaPreguntas, setVistaPreguntas] = useState<NewQuestion[]>()
+  const [preguntasSeleccionadas, setPreguntasSeleccionadas] = useState<NewQuestion[]>([])
   const [resultado, setResultado] = useState<string>()
   const [error, setError] = useState<string>()
   const [trabajando, setTrabajando] = useState(false)
   const [importadas, setImportadas] = useState(0)
   const [bancoImportacionId, setBancoImportacionId] = useState<string>()
-  const [indicePrevisualizado, setIndicePrevisualizado] = useState(0)
+  useEffect(() => onTrabajandoChange?.(trabajando), [onTrabajandoChange, trabajando])
   const destinoTexto = bancoId
     ? `«${nombreBanco || 'este banco'}»`
     : nombreBanco?.trim()
@@ -65,12 +62,14 @@ export function ImportarPreguntas({
 
   function limpiar(): void {
     setArchivo(undefined)
+    setArchivos([])
+    setOrigenesPreguntas([])
     setVistaQti(undefined)
     setVistaPreguntas(undefined)
+    setPreguntasSeleccionadas([])
     setError(undefined)
     setImportadas(0)
     setBancoImportacionId(undefined)
-    setIndicePrevisualizado(0)
     if (entrada.current) entrada.current.value = ''
   }
 
@@ -96,64 +95,118 @@ export function ImportarPreguntas({
     limpiar()
   }
 
-  async function elegir(fichero: File | undefined): Promise<void> {
-    if (!fichero) return
-    limpiar()
+  async function elegir(lista?: FileList | null): Promise<void> {
+    if (!lista?.length) return
+    const seleccionados = [...lista]
+    const yaAgregados = new Set(archivos.map((item) => `${item.nombre}:${item.tamano}:${item.ultimaModificacion}`))
+    const nuevosSeleccionados = seleccionados.filter(
+      (file) => !yaAgregados.has(`${file.name}:${file.size}:${file.lastModified}`)
+    )
+    if (nuevosSeleccionados.length === 0) {
+      setError('Esos archivos ya estan en la lista.')
+      return
+    }
+    const extensionQti = nuevosSeleccionados.some((file) => file.name.split('.').pop()?.toLowerCase() === 'xml')
+    if (extensionQti && (nuevosSeleccionados.length > 1 || archivos.length > 0)) {
+      setError('Los archivos QTI XML se importan por separado. Primero confirma o cancela la lista actual.')
+      return
+    }
+    if (archivos.some((item) => item.formato === 'qti')) {
+      setError('Confirma o cancela el archivo QTI antes de agregar otros formatos.')
+      return
+    }
+
+    setError(undefined)
     setResultado(undefined)
     setTrabajando(true)
     try {
-      const extension = fichero.name.split('.').pop()?.toLowerCase()
-      if (
-        extension !== 'xml' &&
-        extension !== 'csv' &&
-        extension !== 'json' &&
-        extension !== 'txt' &&
-        extension !== 'pdf'
-      ) {
-        throw new Error('Elige un archivo XML, CSV, JSON, TXT o PDF.')
+      if (archivos.length + nuevosSeleccionados.length > MAX_ARCHIVOS) {
+        throw new Error(`Puedes agregar hasta ${MAX_ARCHIVOS} archivos por importacion.`)
       }
-      const formato: ArchivoImportable['formato'] =
-        extension === 'xml'
-          ? 'qti'
-          : (extension as Exclude<ArchivoImportable['formato'], 'qti'>)
-      const limite = formato === 'pdf' ? MAX_PDF_BYTES : MAX_ARCHIVO_BYTES
-      if (fichero.size > limite) {
-        throw new Error(`El archivo supera el límite de ${limite / 1_000_000} MB.`)
+      const bytes = archivos.reduce((suma, item) => suma + item.tamano, 0) +
+        nuevosSeleccionados.reduce((suma, file) => suma + file.size, 0)
+      if (bytes > MAX_TOTAL_BYTES) throw new Error('Los archivos seleccionados superan los 10 MB en total.')
+
+      const nuevos: ArchivoImportable[] = []
+      const preguntasNuevas: NewQuestion[] = []
+      const origenesNuevos: string[] = []
+      const erroresArchivo: string[] = []
+      let totalPreguntas = vistaPreguntas?.length ?? 0
+
+      for (const file of nuevosSeleccionados) {
+        try {
+          const extension = file.name.split('.').pop()?.toLowerCase()
+          if (!['xml', 'csv', 'json', 'txt', 'pdf'].includes(extension ?? '')) {
+            throw new Error('Elige un archivo XML, CSV, JSON, TXT o PDF.')
+          }
+          const formato: ArchivoImportable['formato'] = extension === 'xml'
+            ? 'qti'
+            : extension as Exclude<ArchivoImportable['formato'], 'qti'>
+          const limite = formato === 'pdf' ? MAX_PDF_BYTES : MAX_ARCHIVO_BYTES
+          if (file.size > limite) throw new Error(`supera el limite de ${limite / 1_000_000} MB.`)
+
+          if (formato === 'qti') {
+            const contenido = await file.text()
+            const qti = { id: `${file.name}:${file.size}:${file.lastModified}`, nombre: file.name, contenido, formato, tamano: file.size, ultimaModificacion: file.lastModified }
+            setArchivo(qti)
+            setArchivos([qti])
+            setVistaPreguntas(undefined)
+            setPreguntasSeleccionadas([])
+            setOrigenesPreguntas([])
+            setVistaQti(bancoId ? await api.importQti(bancoId, contenido, { token, dryRun: true }) : undefined)
+            return
+          }
+
+          let contenido: string
+          let detectadas: NewQuestion[]
+          if (formato === 'pdf') {
+            const { extraerTextoPdf } = await import('../lib/extraer-pdf')
+            contenido = await extraerTextoPdf(file)
+            if (!contenido) throw new Error('No se pudo extraer texto del PDF.')
+            detectadas = parsearTextoPdf(contenido)
+          } else {
+            contenido = await file.text()
+            detectadas = parsearArchivoPreguntas(contenido, formato)
+          }
+          if (totalPreguntas + detectadas.length > MAX_TOTAL_PREGUNTAS) {
+            throw new Error(`El total supera el limite de ${MAX_TOTAL_PREGUNTAS} preguntas por importacion.`)
+          }
+          totalPreguntas += detectadas.length
+          const id = `${file.name}:${file.size}:${file.lastModified}`
+          nuevos.push({ id, nombre: file.name, contenido, formato, tamano: file.size, ultimaModificacion: file.lastModified })
+          preguntasNuevas.push(...detectadas)
+          origenesNuevos.push(...detectadas.map(() => id))
+        } catch (fallo) {
+          erroresArchivo.push(`${file.name}: ${fallo instanceof Error ? fallo.message : 'no se pudo leer.'}`)
+        }
       }
 
-      if (formato === 'pdf') {
-        const { extraerTextoPdf } = await import('../lib/extraer-pdf')
-        const texto = await extraerTextoPdf(fichero)
-        if (!texto) {
-          throw new Error(
-            'No se pudo extraer texto del PDF. Comprueba que no sea un documento escaneado.'
-          )
-        }
-        const preguntas = parsearTextoPdf(texto)
-        setArchivo({ nombre: fichero.name, contenido: texto, formato })
-        setVistaPreguntas(preguntas)
-        return
+      if (nuevos.length > 0) {
+        const combinados = [...archivos, ...nuevos]
+        setArchivos(combinados)
+        setVistaQti(undefined)
+        setVistaPreguntas([...(vistaPreguntas ?? []), ...preguntasNuevas])
+        setPreguntasSeleccionadas((actuales) => [...actuales, ...preguntasNuevas])
+        setOrigenesPreguntas([...origenesPreguntas, ...origenesNuevos])
+        setArchivo({
+          id: `lote:${Date.now()}`,
+          nombre: `${combinados.length} archivos`,
+          contenido: '',
+          formato: combinados[0].formato,
+          tamano: bytes,
+          ultimaModificacion: Date.now()
+        })
       }
-
-      const contenido = await fichero.text()
-      setArchivo({ nombre: fichero.name, contenido, formato })
-      if (formato === 'qti') {
-        if (bancoId) {
-          setVistaQti(await api.importQti(bancoId, contenido, { token, dryRun: true }))
-        }
-      } else {
-        setVistaPreguntas(parsearArchivoPreguntas(contenido, formato as FormatoArchivoPreguntas))
-      }
+      setError(erroresArchivo.length > 0 ? erroresArchivo.join(' | ') : undefined)
     } catch (fallo) {
-      setArchivo(undefined)
-      setError(fallo instanceof Error ? fallo.message : 'No se pudo leer el archivo.')
+      setError(fallo instanceof Error ? fallo.message : 'No se pudieron leer los archivos.')
     } finally {
       setTrabajando(false)
     }
   }
 
   async function confirmar(): Promise<void> {
-    if (!archivo || (!bancoId && !crearBanco)) return
+    if (!archivo || preguntasSeleccionadas.length === 0 || (!bancoId && !crearBanco)) return
     setError(undefined)
     setTrabajando(true)
     let completadas = importadas
@@ -164,6 +217,7 @@ export function ImportarPreguntas({
         const destino = await crearBanco()
         destinoId = destino.id
         setBancoImportacionId(destinoId)
+        onBancoCreado?.(destinoId)
       }
 
       if (archivo.formato === 'qti') {
@@ -175,7 +229,7 @@ export function ImportarPreguntas({
           return
         }
       } else {
-        const preguntas = vistaPreguntas ?? []
+        const preguntas = preguntasSeleccionadas
         const lotes = dividirEnLotes(preguntas, MAX_PREGUNTAS_POR_IMPORTACION)
         while (completadas < preguntas.length) {
           const lote = lotes[Math.floor(completadas / MAX_PREGUNTAS_POR_IMPORTACION)]
@@ -195,7 +249,7 @@ export function ImportarPreguntas({
       const detalle = fallo instanceof Error ? fallo.message : 'Error no identificado'
       setError(
         completadas > 0
-          ? `Se importaron ${completadas} de ${vistaPreguntas?.length ?? 0} preguntas. La importación se detuvo: ${detalle} Puedes continuar sin duplicar las que ya entraron.`
+          ? `Se importaron ${completadas} de ${preguntasSeleccionadas.length} preguntas seleccionadas. La importación se detuvo: ${detalle} Puedes continuar sin duplicar las que ya entraron.`
           : detalle
       )
       if (completadas > 0 && destinoId) onImportado(destinoId, completadas, false)
@@ -209,7 +263,7 @@ export function ImportarPreguntas({
       <section className="tarjeta importacion-archivo">
         <div className="tarjeta-cuerpo">
           <div className="campo">
-      <span>Importar preguntas desde un archivo</span>
+          <span>{archivos.length > 0 ? 'Agregar otro archivo al banco' : 'Importar preguntas desde archivos'}</span>
       <p className="ayuda">
         Se admite QTI XML, CSV, JSON, TXT y PDF con texto seleccionable (máximo 5 MB; otros
         formatos, 1 MB).{' '}
@@ -257,10 +311,17 @@ essay,"Explica tu procedimiento",2,,`}</pre>
         ref={entrada}
         type="file"
         accept=".xml,.csv,.json,.txt,.pdf,application/xml,text/csv,application/json,text/plain,application/pdf"
-        disabled={trabajando || bancoImportacionId !== undefined || importadas > 0}
-        onChange={(e) => void elegir(e.target.files?.[0])}
+        disabled={trabajando || bancoImportacionId !== undefined || importadas > 0 || archivos[0]?.formato === 'qti'}
+        multiple
+        onChange={(e) => {
+          void elegir(e.currentTarget.files)
+          e.currentTarget.value = ''
+        }}
         aria-label="Archivo de preguntas"
       />
+      {archivos.length > 0 && archivos[0].formato !== 'qti' && (
+        <p className="ayuda">Puedes volver a seleccionar archivos; se acumularan en esta importacion.</p>
+      )}
 
       {error && (
         <p className="aviso" role="alert">
@@ -276,20 +337,21 @@ essay,"Explica tu procedimiento",2,,`}</pre>
       {vistaPreguntas && archivo && (
         <div className="tarjeta importacion-vista-previa">
           <div className="tarjeta-cuerpo">
-            <h4>Vista previa: {archivo.nombre}</h4>
+            <h4>Vista previa: {archivos.length > 1 ? `${archivos.length} archivos` : archivo.nombre}</h4>
             <p className="ayuda">
-              {vistaPreguntas.length} pregunta{vistaPreguntas.length === 1 ? '' : 's'} lista
-              {vistaPreguntas.length === 1 ? '' : 's'} para importar.
-              {archivo.formato === 'txt' &&
+              {vistaPreguntas.length} pregunta{vistaPreguntas.length === 1 ? '' : 's'} detectada
+              {vistaPreguntas.length === 1 ? '' : 's'} · {preguntasSeleccionadas.length} seleccionada
+              {preguntasSeleccionadas.length === 1 ? '' : 's'} para importar.
+              {archivos.some((item) => item.formato === 'txt') &&
                 ` ${vistaPreguntas.filter((pregunta) => pregunta.question_type === 'multiple_choice').length} de opción múltiple.`}
-              {archivo.formato === 'pdf' &&
+              {archivos.some((item) => item.formato === 'pdf') &&
                 ` ${vistaPreguntas.filter((pregunta) => pregunta.question_type === 'multiple_choice').length} de opción múltiple.`}
               {importadas > 0 && ` Ya se importaron ${importadas}.`}
             </p>
             <p className="ayuda">
               Se guardarán en {destinoTexto}.
             </p>
-            {(archivo.formato === 'txt' || archivo.formato === 'pdf') && (
+            {archivos.some((item) => item.formato === 'txt' || item.formato === 'pdf') && (
               <p className="aviso aviso-neutro">
                 Revisa que cada enunciado tenga sus alternativas y que la clave marque la respuesta
                 correcta.
@@ -297,51 +359,15 @@ essay,"Explica tu procedimiento",2,,`}</pre>
             )}
             {vistaPreguntas.length > 0 && (
               <>
-                <div className="importacion-navegacion">
-                  <button
-                    type="button"
-                    className="boton boton-secundario"
-                    disabled={indicePrevisualizado === 0}
-                    onClick={() => setIndicePrevisualizado((indice) => Math.max(0, indice - 1))}
-                    aria-label="Ver pregunta anterior"
-                  >
-                    ← Anterior
-                  </button>
-                  <label className="campo">
-                    <span>Revisar pregunta</span>
-                    <select
-                      value={indicePrevisualizado}
-                      onChange={(evento) => setIndicePrevisualizado(Number(evento.target.value))}
-                    >
-                      {vistaPreguntas.map((pregunta, indice) => (
-                        <option key={`${indice}-${pregunta.statement}`} value={indice}>
-                          {observarPregunta(pregunta).length > 0 ? 'Revisar · ' : ''}
-                          {indice + 1}. {pregunta.statement.slice(0, 80)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="boton boton-secundario"
-                    disabled={indicePrevisualizado >= vistaPreguntas.length - 1}
-                    onClick={() =>
-                      setIndicePrevisualizado((indice) => Math.min(vistaPreguntas.length - 1, indice + 1))
-                    }
-                    aria-label="Ver pregunta siguiente"
-                  >
-                    Siguiente →
-                  </button>
-                </div>
                 <div className="fila importacion-acciones">
                   <button
                     type="button"
                     className="boton"
-                    disabled={trabajando || (!bancoId && !nombreBanco?.trim())}
+                    disabled={trabajando || preguntasSeleccionadas.length === 0 || (!bancoId && !nombreBanco?.trim())}
                     onClick={() => void confirmar()}
                   >
                     {trabajando
-                      ? `Importando ${importadas + 1} de ${vistaPreguntas.length}…`
+                      ? `Importando ${importadas + 1} de ${preguntasSeleccionadas.length}…`
                       : importadas > 0
                         ? 'Continuar importación'
                         : 'Importar al banco'}
@@ -372,63 +398,17 @@ essay,"Explica tu procedimiento",2,,`}</pre>
                 </div>
               </>
             )}
-            {vistaPreguntas[indicePrevisualizado] && (
-              <section className="importacion-simulacion">
-                {(() => {
-                  const pregunta = vistaPreguntas[indicePrevisualizado]
-                  const observaciones = observarPregunta(pregunta)
-                  const correctas = pregunta.options?.filter((opcion) => opcion.is_correct) ?? []
-                  return (
-                    <>
-                      <div className="importacion-simulacion-cabecera">
-                        <div>
-                          <span className="importacion-pregunta-tipo">Vista del estudiante</span>
-                          <h4 aria-live="polite">Pregunta {indicePrevisualizado + 1} de {vistaPreguntas.length}</h4>
-                        </div>
-                        <span className="importacion-simulacion-puntos">{pregunta.points ?? '1'} pts</span>
-                      </div>
-                      <div className="importacion-simulacion-cuerpo">
-                        <p className="importacion-enunciado">{pregunta.statement}</p>
-                        {pregunta.options?.length ? (
-                          <ul className="importacion-respuestas-estudiante">
-                            {pregunta.options.map((opcion, opcionIndice) => (
-                              <li key={`${opcionIndice}-${opcion.option_text}`}>
-                                <span
-                                  className={`importacion-circulo${pregunta.question_type === 'multiple_select' ? ' multiple' : ''}`}
-                                  aria-hidden="true"
-                                />
-                                <span>{opcion.option_text}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : pregunta.question_type === 'numeric' ? (
-                          <div className="importacion-campo-ejemplo">La respuesta numérica aparecerá aquí</div>
-                        ) : (
-                          <div className="importacion-campo-ejemplo importacion-campo-desarrollo">
-                            El estudiante escribirá su respuesta aquí
-                          </div>
-                        )}
-                      </div>
-                      <div className="importacion-revision-docente">
-                        <strong>Revisión docente</strong>
-                        {observaciones.length > 0 ? (
-                          <ul>
-                            {observaciones.map((observacion) => <li key={observacion}>{observacion}</li>)}
-                          </ul>
-                        ) : correctas.length > 0 ? (
-                          <p>Respuesta{correctas.length === 1 ? '' : 's'} correcta{correctas.length === 1 ? '' : 's'}: {correctas.map((opcion) => opcion.option_text).join(', ')}</p>
-                        ) : pregunta.question_type === 'numeric' && pregunta.correct_numeric_answer ? (
-                          <p>Respuesta correcta: {pregunta.correct_numeric_answer}</p>
-                        ) : pregunta.correct_text_answer ? (
-                          <p>Respuesta de referencia: {pregunta.correct_text_answer}</p>
-                        ) : (
-                          <p>Respuesta abierta; requiere revisión manual.</p>
-                        )}
-                      </div>
-                    </>
-                  )
-                })()}
-              </section>
+            {vistaPreguntas.length > 0 && (
+              <VistaPreviaImportacion
+                seleccionable
+                seleccionDeshabilitada={trabajando || importadas > 0}
+                onSeleccionadasChange={setPreguntasSeleccionadas}
+                grupos={archivos.filter((item) => item.formato !== 'qti').map((item) => ({
+                  id: item.id,
+                  nombre: item.nombre,
+                  preguntas: vistaPreguntas.filter((_, indice) => origenesPreguntas[indice] === item.id)
+                }))}
+              />
             )}
           </div>
         </div>
