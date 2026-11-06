@@ -7,7 +7,7 @@ import { ImportarPreguntasExamen } from '../components/ImportarPreguntasExamen'
 import { SeleccionPreguntasBancos } from '../components/SeleccionPreguntasBancos'
 import { api, type ExamSession, type NewQuestion } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
-import { estadoExamen, fechaLarga } from '../lib/formato'
+import { estadoExamen, fechaLarga, nombreEstadoExamen } from '../lib/formato'
 import { Preguntas } from './Preguntas'
 import { Resultados } from './Resultados'
 import { SesionEnVivo } from './SesionEnVivo'
@@ -193,7 +193,9 @@ export function EditorExamen() {
           </label>
           <p className="lienzo-examen-resumen">
             {fechaLarga(sesion.starts_at)} · {sesion.duration_minutes} min ·{' '}
-            {estadoExamen(sesion.starts_at, sesion.duration_minutes, ahora, sesion.status === 'cancelled')}
+            {nombreEstadoExamen(
+              estadoExamen(sesion.starts_at, sesion.duration_minutes, ahora, sesion.status === 'cancelled')
+            ).toLowerCase()}
             {guardandoTitulo && ' · Guardando título…'}
           </p>
         </div>

@@ -607,8 +607,17 @@ input[type='file']::file-selector-button:hover {
     flex-wrap: wrap;
   }
 
+  /* En columna, `flex-start` dejaría cada hijo con su ancho de escritorio y la
+     fila de botones se saldría de la pantalla; estirado, la fila envuelve. */
   .encabezado-pagina {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Una fila de botones baja a la línea siguiente en vez de empujar la página
+     de lado. Las de una tabla siguen en una línea (`.tabla .fila` pesa más). */
+  .fila {
+    flex-wrap: wrap;
   }
 
   .navegacion {
@@ -746,6 +755,9 @@ input[type='file']::file-selector-button:hover {
 /* ---------- Preguntas del examen ---------- */
 .lista-preguntas {
   min-width: 0;
+  /* El número va dentro de la tarjeta: la sangría de 40 px del navegador solo
+     dejaba un hueco vacío a la izquierda (en móvil, un 10 % del ancho). */
+  padding-left: 0;
   list-style: none;
   display: flex;
   flex-direction: column;

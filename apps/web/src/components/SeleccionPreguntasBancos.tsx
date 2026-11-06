@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type BankQuestionPoint, type SessionBankQuestion } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
+import { nombreDeTipo } from '../lib/preguntas'
 
 const OPCIONES_POR_PAGINA = [5, 10, 20, 50]
 
@@ -234,8 +235,11 @@ export function SeleccionPreguntasBancos({
               <p className="ayuda">No hay preguntas con ese texto en el banco seleccionado.</p>
             ) : (
               <ol className="seleccion-bancos-lista" start={(paginaActual - 1) * porPagina + 1}>
-                {visibles.map(({ question, bank_name: banco }) => {
+                {visibles.map(({ question, bank_name: banco }, indice) => {
                   const incluida = !excluidas.has(question.id)
+                  // El número de la lista, no `position`: con dos bancos, ambos tienen
+                  // una «pregunta 1» y el lector de pantalla no las distinguiría.
+                  const numero = (paginaActual - 1) * porPagina + indice + 1
                   return (
                     <li key={question.id} className={incluida ? '' : 'excluida'}>
                       <label className="seleccion-bancos-pregunta">
@@ -248,7 +252,7 @@ export function SeleccionPreguntasBancos({
                         <span className="seleccion-bancos-texto">
                           <span className="seleccion-bancos-meta">
                             <span className="chip chip-programado">{banco}</span>
-                            <span>{question.question_type.replaceAll('_', ' ')}</span>
+                            <span>{nombreDeTipo(question.question_type)}</span>
                             <span>{puntajes[question.id] ?? question.points} pts</span>
                           </span>
                           <strong>{question.statement}</strong>
@@ -263,7 +267,7 @@ export function SeleccionPreguntasBancos({
                           type="text"
                           inputMode="decimal"
                           value={puntajes[question.id] ?? ''}
-                          aria-label={`Puntos para la pregunta ${question.position} en este examen`}
+                          aria-label={`Puntos para la pregunta ${numero} en este examen`}
                           disabled={congelado || guardando || !incluida}
                           onChange={(evento) => {
                             setPuntajes((actuales) => ({ ...actuales, [question.id]: evento.target.value }))

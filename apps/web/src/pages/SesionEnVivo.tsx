@@ -289,7 +289,9 @@ export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) 
         </p>
       )}
       {enLienzo ? (
-        <div className="fila actividad-acciones" style={{ justifyContent: 'flex-end' }}>
+        <div className="fila actividad-acciones" style={{ justifyContent: 'space-between' }}>
+          {/* HU-031: en el editor también se ve qué vigila este examen. */}
+          <QueSeVigila sesion={sesion} />
           <button
             type="button"
             className="boton boton-secundario"

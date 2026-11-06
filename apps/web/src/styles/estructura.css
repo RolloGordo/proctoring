@@ -729,9 +729,15 @@
   gap: var(--e2);
   margin-bottom: var(--e4);
   border-bottom: 1px solid var(--linea);
+  /* En el teléfono las cinco pestañas no caben: se desliza la barra, no la
+     página (antes se salía 122 px por la derecha). */
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .lienzo-examen-pestanas button {
+  flex: 0 0 auto;
+  white-space: nowrap;
   padding: var(--e2) var(--e3);
   border: 0;
   border-bottom: 3px solid transparent;
@@ -1788,4 +1794,17 @@
 .puntos-editables input {
   width: 5rem;
   text-align: right;
+}
+
+/* Móvil: las acciones del editor bajan de línea en vez de salirse de la
+   pantalla, y una tabla dentro del editor se desliza dentro de su tarjeta. */
+@media (max-width: 720px) {
+  .lienzo-examen-acciones {
+    flex-wrap: wrap;
+  }
+
+  .lienzo-examen .tabla {
+    display: block;
+    overflow-x: auto;
+  }
 }
