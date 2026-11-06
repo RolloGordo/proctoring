@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { NewQuestion } from '../lib/api'
 
 export interface GrupoPreguntasImportadas {
@@ -32,15 +32,13 @@ export function VistaPreviaImportacion({
   const [indiceSeleccionado, setIndiceSeleccionado] = useState(0)
   const [excluidas, setExcluidas] = useState<Set<string>>(() => new Set())
 
-  useEffect(() => {
-    if (!grupos.some((grupo) => grupo.id === grupoId)) {
-      setGrupoId(grupos[0]?.id ?? '')
-      setIndiceSeleccionado(0)
-    }
-  }, [grupos, grupoId])
-
-  const grupo = grupos.find((item) => item.id === grupoId) ?? grupos[0]
-  const pregunta = grupo?.preguntas[indiceSeleccionado]
+  // Si el archivo elegido desaparece de la lista, se muestra el primero desde
+  // su primera pregunta. Se deriva aquí en vez de corregir el estado dentro de
+  // un efecto (react-hooks/set-state-in-effect).
+  const grupoElegido = grupos.find((item) => item.id === grupoId)
+  const grupo = grupoElegido ?? grupos[0]
+  const indice = grupoElegido ? indiceSeleccionado : 0
+  const pregunta = grupo?.preguntas[indice]
   if (!grupo) return null
 
   function elegirGrupo(id: string): void {
@@ -50,7 +48,7 @@ export function VistaPreviaImportacion({
 
   function alternarInclusion(incluir: boolean): void {
     if (!grupo || !onSeleccionadasChange) return
-    const clave = `${grupo.id}:${indiceSeleccionado}`
+    const clave = `${grupo.id}:${indice}`
     const nuevasExcluidas = new Set(excluidas)
     if (incluir) nuevasExcluidas.delete(clave)
     else nuevasExcluidas.add(clave)
@@ -96,12 +94,12 @@ export function VistaPreviaImportacion({
           <button
             type="button"
             className="boton boton-secundario"
-            disabled={indiceSeleccionado <= 0}
-            onClick={() => setIndiceSeleccionado(indiceSeleccionado - 1)}
+            disabled={indice <= 0}
+            onClick={() => setIndiceSeleccionado(indice - 1)}
           >Anterior</button>
           <label className="campo">
             <span>Pregunta a revisar</span>
-            <select value={indiceSeleccionado} onChange={(evento) => setIndiceSeleccionado(Number(evento.target.value))}>
+            <select value={indice} onChange={(evento) => setIndiceSeleccionado(Number(evento.target.value))}>
               {grupo.preguntas.map((item, indice) => (
                 <option key={`${indice}-${item.statement}`} value={indice}>
                   {indice + 1}. {item.statement.slice(0, 90)}
@@ -109,12 +107,12 @@ export function VistaPreviaImportacion({
               ))}
             </select>
           </label>
-          <span className="vista-previa-archivos-conteo">{indiceSeleccionado + 1} de {grupo.preguntas.length}</span>
+          <span className="vista-previa-archivos-conteo">{indice + 1} de {grupo.preguntas.length}</span>
           <button
             type="button"
             className="boton boton-secundario"
-            disabled={indiceSeleccionado >= grupo.preguntas.length - 1}
-            onClick={() => setIndiceSeleccionado(indiceSeleccionado + 1)}
+            disabled={indice >= grupo.preguntas.length - 1}
+            onClick={() => setIndiceSeleccionado(indice + 1)}
           >Siguiente</button>
         </div>
       )}
@@ -124,7 +122,7 @@ export function VistaPreviaImportacion({
           <div className="importacion-simulacion-cabecera">
             <div>
               <span className="importacion-pregunta-tipo">Vista del estudiante</span>
-              <h4>Pregunta {indiceSeleccionado + 1} de {grupo.preguntas.length}</h4>
+              <h4>Pregunta {indice + 1} de {grupo.preguntas.length}</h4>
             </div>
             <span className="importacion-simulacion-puntos">{pregunta.points ?? '1'} pts</span>
           </div>
@@ -132,7 +130,7 @@ export function VistaPreviaImportacion({
             <label className="vista-previa-incluir">
               <input
                 type="checkbox"
-                checked={!excluidas.has(`${grupo.id}:${indiceSeleccionado}`)}
+                checked={!excluidas.has(`${grupo.id}:${indice}`)}
                 disabled={seleccionDeshabilitada}
                 onChange={(evento) => alternarInclusion(evento.target.checked)}
               />

@@ -110,7 +110,9 @@ class DeleteEmptyCourse:
             raise InvalidCourseError(
                 "No se puede eliminar el curso porque tiene exámenes asociados."
             )
-        if any(bank.course_id == course_id for bank in self._banks.list_by_teacher(course.teacher_id)):
+        if any(
+            bank.course_id == course_id for bank in self._banks.list_by_teacher(course.teacher_id)
+        ):
             raise InvalidCourseError(
                 "No se puede eliminar el curso porque tiene bancos de preguntas asociados."
             )

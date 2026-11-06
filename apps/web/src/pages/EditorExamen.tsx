@@ -45,8 +45,21 @@ export function EditorExamen() {
   const ultimoConteoBancos = useRef<number | undefined>(undefined)
   const [bancosAsociados, setBancosAsociados] = useState(0)
   const [hayEntregas, setHayEntregas] = useState(false)
-  const [cargandoEstadoContenido, setCargandoEstadoContenido] = useState(true)
-  const [errorEstadoContenido, setErrorEstadoContenido] = useState<string>()
+  // Qué petición del estado del contenido terminó, y su error si lo hubo: la
+  // carga se deriva de eso en vez de reiniciarse dentro del efecto.
+  const [estadoCargadoPara, setEstadoCargadoPara] = useState<string>()
+  const [errorEstado, setErrorEstado] = useState<{ clave: string; mensaje: string }>()
+  const claveEstado = `${id}:${versionContenido}`
+  const cargandoEstadoContenido = estadoCargadoPara !== claveEstado
+  const errorEstadoContenido =
+    errorEstado?.clave === claveEstado ? errorEstado.mensaje : undefined
+  // La hora para el estado del examen (programado, en curso, terminado): un
+  // reloj en el estado, como el panel, y no `Date.now()` al pintar.
+  const [ahora, setAhora] = useState(() => Date.now())
+  useEffect(() => {
+    const temporizador = setInterval(() => setAhora(Date.now()), 30_000)
+    return () => clearInterval(temporizador)
+  }, [])
   const [errorContenido, setErrorContenido] = useState<string>()
   const [guardandoPregunta, setGuardandoPregunta] = useState(false)
   const [resumenContenido, setResumenContenido] = useState<{ cantidad: number; puntos: number }>()
@@ -68,8 +81,7 @@ export function EditorExamen() {
 
   useEffect(() => {
     let cancelado = false
-    setCargandoEstadoContenido(true)
-    setErrorEstadoContenido(undefined)
+    const clave = `${id}:${versionContenido}`
     Promise.all([api.listSessionBanks(id, token), api.listParticipants(id, token)])
       .then(([bancos, participantes]) => {
         if (cancelado) return
@@ -78,10 +90,10 @@ export function EditorExamen() {
       })
       .catch((fallo: Error) => {
         if (cancelado) return
-        setErrorEstadoContenido(fallo.message)
+        setErrorEstado({ clave, mensaje: fallo.message })
       })
       .finally(() => {
-        if (!cancelado) setCargandoEstadoContenido(false)
+        if (!cancelado) setEstadoCargadoPara(clave)
       })
     return () => {
       cancelado = true
@@ -181,7 +193,7 @@ export function EditorExamen() {
           </label>
           <p className="lienzo-examen-resumen">
             {fechaLarga(sesion.starts_at)} · {sesion.duration_minutes} min ·{' '}
-            {estadoExamen(sesion.starts_at, sesion.duration_minutes, Date.now(), sesion.status === 'cancelled')}
+            {estadoExamen(sesion.starts_at, sesion.duration_minutes, ahora, sesion.status === 'cancelled')}
             {guardandoTitulo && ' · Guardando título…'}
           </p>
         </div>

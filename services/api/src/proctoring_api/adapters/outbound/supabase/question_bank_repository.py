@@ -161,7 +161,6 @@ class SupabaseQuestionBankRepository:
                 ]
             ).execute()
 
-
     def list_question_points(self, session_id: UUID) -> Mapping[UUID, Decimal]:
         response = (
             self._client.table(QUESTION_POINTS_TABLE)
@@ -173,7 +172,9 @@ class SupabaseQuestionBankRepository:
         return {UUID(row["question_id"]): Decimal(str(row["points"])) for row in rows}
 
     def replace_question_points(self, session_id: UUID, points: Mapping[UUID, Decimal]) -> None:
-        self._client.table(QUESTION_POINTS_TABLE).delete().eq("session_id", str(session_id)).execute()
+        self._client.table(QUESTION_POINTS_TABLE).delete().eq(
+            "session_id", str(session_id)
+        ).execute()
         if points:
             self._client.table(QUESTION_POINTS_TABLE).insert(
                 [

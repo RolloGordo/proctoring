@@ -85,8 +85,12 @@ class SessionBankQuestionSelection:
         preguntas = self._questions.list_by_banks([banco.id for banco in bancos])
         excluidas = self._banks.list_excluded_questions(session_id)
         puntajes = self._banks.list_question_points(session_id)
-        nombre_por_id = {banco.id: banco.name for banco in bancos}
-        orden_bancos = {banco.id: indice for indice, banco in enumerate(bancos)}
+        # Las claves admiten `None` porque `Question.bank_id` es opcional: una
+        # pregunta propia del examen no tiene banco.
+        nombre_por_id: dict[UUID | None, str] = {banco.id: banco.name for banco in bancos}
+        orden_bancos: dict[UUID | None, int] = {
+            banco.id: indice for indice, banco in enumerate(bancos)
+        }
         preguntas_ordenadas = sorted(
             preguntas,
             key=lambda pregunta: (
@@ -97,7 +101,11 @@ class SessionBankQuestionSelection:
         )
         return [
             BankQuestionSelection(
-                question=(replace(pregunta, points=puntajes[pregunta.id]) if pregunta.id in puntajes else pregunta),
+                question=(
+                    replace(pregunta, points=puntajes[pregunta.id])
+                    if pregunta.id in puntajes
+                    else pregunta
+                ),
                 bank_name=nombre_por_id.get(pregunta.bank_id, "Banco"),
                 included=pregunta.id not in excluidas,
             )
@@ -134,7 +142,9 @@ class SessionBankQuestionSelection:
 
         puntajes = dict(question_points or {})
         if not puntajes.keys() <= ids_disponibles:
-            raise InvalidQuestionError("Los puntajes incluyen preguntas que no pertenecen a este examen.")
+            raise InvalidQuestionError(
+                "Los puntajes incluyen preguntas que no pertenecen a este examen."
+            )
         if any(not Decimal(0) <= puntos <= Decimal(100) for puntos in puntajes.values()):
             raise InvalidQuestionError("Cada pregunta debe valer entre 0 y 100 puntos.")
 

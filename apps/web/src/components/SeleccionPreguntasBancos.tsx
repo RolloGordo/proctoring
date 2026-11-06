@@ -26,14 +26,16 @@ export function SeleccionPreguntasBancos({
   const [pagina, setPagina] = useState(1)
   const [porPagina, setPorPagina] = useState(5)
   const [bloqueadoPorParticipantes, setBloqueadoPorParticipantes] = useState(false)
-  const [cargando, setCargando] = useState(true)
+  // La carga se deriva de qué petición terminó, en vez de ponerla a `true` a
+  // mano dentro del efecto (react-hooks/set-state-in-effect).
+  const [cargadoPara, setCargadoPara] = useState<string>()
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string>()
   const [aviso, setAviso] = useState<string>()
 
   useEffect(() => {
     let cancelado = false
-    setCargando(true)
+    const clave = `${sessionId}:${revision}`
     Promise.all([
       api.listSessionBankQuestions(sessionId, token),
       api.listParticipants(sessionId, token)
@@ -56,12 +58,14 @@ export function SeleccionPreguntasBancos({
         if (!cancelado) setError(fallo.message)
       })
       .finally(() => {
-        if (!cancelado) setCargando(false)
+        if (!cancelado) setCargadoPara(clave)
       })
     return () => {
       cancelado = true
     }
   }, [sessionId, token, revision])
+
+  const cargando = cargadoPara !== `${sessionId}:${revision}`
 
   const bancos = useMemo(
     () => [...new Set((preguntas ?? []).map((item) => item.bank_name))],

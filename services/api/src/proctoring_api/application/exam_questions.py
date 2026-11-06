@@ -35,7 +35,7 @@ def questions_for(
     que un segundo intento del mismo examen trae otras preguntas.
     """
     atados = banks.list_session_banks(session.id) if banks is not None else []
-    if not atados:
+    if banks is None or not atados:
         return questions.list_by_session(session.id)
 
     disponibles = questions.list_by_banks([banco.id for banco in atados])
