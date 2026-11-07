@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from spikes.similarity import evaluate_scores, rates, roc
+from spikes.similarity import OnnxSimilarityModel, evaluate_scores, rates, roc
 
 
 def test_perfect_and_inverted_roc() -> None:
@@ -52,3 +52,45 @@ def test_test_set_cannot_choose_threshold_and_reading_is_not_fraud() -> None:
     for row in test:
         row["score"] = 1 - float(row["score"])
     assert evaluate_scores(calibration + test, 0.6)["chosen_threshold"] == 0.8
+
+
+def test_onnx_similarity_model_validation_and_scoring() -> None:
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    rev = "e8f8c211226b894fcb81acc59f3b34ba3efd5f42"
+    with pytest.raises(ValueError, match="40-character"):
+        OnnxSimilarityModel("rev1", variant="int8")
+    with pytest.raises(ValueError, match="variant"):
+        OnnxSimilarityModel(rev, variant="invalid")
+    with pytest.raises(ValueError, match="vocab_mode"):
+        OnnxSimilarityModel(rev, vocab_mode="invalid")
+
+    inst = OnnxSimilarityModel.__new__(OnnxSimilarityModel)
+    inst._np = np
+    inst.revision = rev
+    inst.variant = "int8"
+    inst.vocab_mode = "es_en"
+    inst.max_seq_length = 5
+    inst.input_names = ["input_ids", "attention_mask"]
+
+    class FakeTokenizer:
+        def encode(self, text: str) -> Any:
+            ids = list(range(1, len(text.split()) + 1))
+            return SimpleNamespace(ids=ids, attention_mask=[1] * len(ids), type_ids=[])
+
+    class FakeSession:
+        def run(self, _outputs: Any, inputs: dict[str, Any]) -> list[Any]:
+            ids = inputs["input_ids"]
+            b, s = ids.shape
+            hidden = np.ones((b, s, 4), dtype=np.float32)
+            return [hidden]
+
+    inst.tokenizer = FakeTokenizer()
+    inst.session = FakeSession()
+
+    assert inst.score("hola mundo", "   ") == 0.0
+    assert inst.score("hola mundo", "hola mundo") == pytest.approx(1.0)
+    with pytest.raises(ValueError, match="context"):
+        inst.score("uno dos tres cuatro cinco seis", "hola")

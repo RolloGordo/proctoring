@@ -19,13 +19,34 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
+from time import perf_counter
+from typing import Any
 
 from redis import Redis
 from rq import Queue, SimpleWorker, Worker
 
-from salud import servir_salud
+from audio_runtime import (
+    _get_local_asr,
+    asr_provider,
+    check_memory_budget,
+    enforce_memory_budget,
+    similarity_model,
+)
+from salud import avisos_configuracion_asr, servir_salud
 
-WorkerClass = SimpleWorker if sys.platform == "win32" else Worker
+
+def _usar_simple_worker() -> bool:
+    if sys.platform == "win32":
+        return True
+    return os.environ.get("WORKER_USE_SIMPLE_WORKER", "false").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+WorkerClass = SimpleWorker if _usar_simple_worker() else Worker
 
 #: Las mismas colas que usa la API (ver el adaptador `redis_queue/job_queue.py`).
 #: `high` va primero: la verificacion facial tiene a alguien esperando en pantalla,
@@ -39,7 +60,82 @@ logging.basicConfig(
 logger = logging.getLogger("worker")
 
 
+def precargar_modelos(*, fork_worker: bool | None = None) -> dict[str, Any]:
+    """Precarga SimilarityModel (y ASR local si no hay fork) en el proceso padre.
+
+    RQ en Linux usa `Worker` (`os.fork()` por trabajo) salvo que se active
+    `WORKER_USE_SIMPLE_WORKER=true` (`SimpleWorker`).
+    - `SimilarityModel` (PyTorch) con `OMP_NUM_THREADS=1` es seguro tras `os.fork()`:
+      al precargarlo en el padre, los hijos heredan las páginas en Copy-on-Write y
+      ahorran la recarga de ~1.1 GiB en cada trabajo.
+    - `CTranslate2` (`faster-whisper`) crea un hilo C++ (`ctranslate2::ReplicaPool`)
+      en su constructor que POSIX `os.fork()` no clona al proceso hijo; invocar una
+      instancia creada antes de `os.fork()` bloquea indefinidamente al hijo. Por ello,
+      el ASR local solo se precarga en el padre cuando el worker no hace `fork()`
+      (`SimpleWorker`), y en modo `fork` se inicializa en el hijo (con salvaguarda
+      `os.register_at_fork` en `audio_runtime.py`).
+    """
+    os.environ.setdefault("OMP_NUM_THREADS", "1")
+    os.environ.setdefault("MKL_NUM_THREADS", "1")
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+    usa_fork = (not _usar_simple_worker()) if fork_worker is None else fork_worker
+
+    resultado: dict[str, Any] = {
+        "fork_worker": usa_fork,
+        "asr_preloaded": False,
+        "similarity_preloaded": False,
+        "asr_load_seconds": 0.0,
+        "similarity_load_seconds": 0.0,
+    }
+    try:
+        if asr_provider() == "faster-whisper" and not usa_fork:
+            t0 = perf_counter()
+            _get_local_asr()
+            resultado["asr_preloaded"] = True
+            resultado["asr_load_seconds"] = round(perf_counter() - t0, 4)
+            logger.info(
+                "Modelo ASR local precargado en el proceso padre (SimpleWorker) en %.3f s",
+                resultado["asr_load_seconds"],
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("No se pudo precargar el modelo ASR local al arrancar: %s", exc)
+
+    try:
+        t0 = perf_counter()
+        similarity_model()
+        resultado["similarity_preloaded"] = True
+        resultado["similarity_load_seconds"] = round(perf_counter() - t0, 4)
+        logger.info(
+            "SimilarityModel precargado en el proceso padre en %.3f s",
+            resultado["similarity_load_seconds"],
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("No se pudo precargar SimilarityModel al arrancar: %s", exc)
+
+    return resultado
+
+
 def main() -> int:
+    try:
+        mem_status = enforce_memory_budget()
+        if mem_status["memory_sufficient"]:
+            logger.info(
+                "Presupuesto de memoria verificado: modo=%s motor=%s sim=%s "
+                "limite_mib=%s requerido_mib=%s",
+                mem_status["asr_mode"],
+                mem_status["asr_provider"],
+                mem_status["similarity_backend"],
+                mem_status["memory_limit_mib"],
+                mem_status["required_memory_mib"],
+            )
+    except (RuntimeError, ValueError) as exc:
+        logger.error("Fallo de comprobación previa al arranque: %s", exc)
+        return 1
+
+    for aviso in avisos_configuracion_asr():
+        logger.warning("Aviso de configuración ASR: %s", aviso)
+
     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
     connection = Redis.from_url(redis_url)
@@ -49,6 +145,13 @@ def main() -> int:
         logger.error("No se pudo conectar a Redis en %s: %s", redis_url, exc)
         return 1
 
+    if os.environ.get("WORKER_PRELOAD_MODELS", "true").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+    ):
+        precargar_modelos()
+
     logger.info("Conectado a Redis. Escuchando las colas: %s", ", ".join(QUEUES))
     logger.info("Esperando trabajos. Manda un evento speech_detected a la API.")
 
@@ -56,6 +159,11 @@ def main() -> int:
     # los Spaces de Hugging Face como los Web Services de Render dan por caido
     # un contenedor sin puerto abierto y lo reinician en bucle.
     servir_salud(lambda: _estado(connection))
+
+    # Antes de escuchar la cola, no en un hilo: RQ hace fork por trabajo y el
+    # hijo hereda el modelo ya cargado. Cargarlo en paralelo y hacer fork a
+    # mitad de la carga puede dejar al hijo con un candado tomado.
+    _precalentar_motor_facial()
 
     worker = WorkerClass(
         [Queue(name, connection=connection) for name in QUEUES],
@@ -107,12 +215,69 @@ def _estado(connection: Redis) -> dict[str, object]:
     except Exception:  # noqa: BLE001 - cualquier fallo aqui significa lo mismo
         viva = False
     configuracion = _configuracion()
+    try:
+        mem_info = check_memory_budget()
+    except ValueError as exc:
+        mem_info = {
+            "asr_provider": "invalid",
+            "asr_local_model": None,
+            "asr_fallback_provider": "invalid",
+            "asr_mode": f"invalid-config:{exc}",
+            "similarity_backend": "invalid",
+            "memory_enforce": False,
+            "memory_limit_bytes": None,
+            "memory_limit_mib": None,
+            "required_memory_mib": None,
+            "memory_sufficient": False,
+        }
     return {
         "queue": viva,
         "queues": QUEUES,
         "config": configuracion,
         "missing": sorted(nombre for nombre, puesta in configuracion.items() if not puesta),
+        "warnings": avisos_configuracion_asr(),
+        "asr_mode": mem_info["asr_mode"],
+        "asr_provider": mem_info["asr_provider"],
+        "asr_local_model": mem_info["asr_local_model"],
+        "asr_fallback_provider": mem_info["asr_fallback_provider"],
+        "similarity_backend": mem_info["similarity_backend"],
+        "memory_enforce": mem_info["memory_enforce"],
+        "memory_limit_bytes": mem_info["memory_limit_bytes"],
+        "memory_limit_mib": mem_info["memory_limit_mib"],
+        "required_memory_mib": mem_info["required_memory_mib"],
+        "memory_sufficient": mem_info["memory_sufficient"],
+        "face_model": dict(MOTOR_FACIAL),
     }
+
+
+#: Estado del motor facial, para `/salud`. No cambia el código HTTP: sin
+#: modelo facial el audio sigue funcionando, y reiniciar el contenedor por
+#: eso tumbaría lo que sí va bien. Solo lo hace visible desde fuera.
+MOTOR_FACIAL: dict[str, str] = {"status": "pending"}
+
+
+def _precalentar_motor_facial() -> None:
+    """Carga el motor facial al arrancar (táctica de disponibilidad).
+
+    Un fallo aquí no detiene el worker: se registra y el primer trabajo de
+    verificación lo reintentará, con su propio manejo de errores.
+    """
+    if os.environ.get("FACE_WARMUP", "1").strip() == "0":
+        MOTOR_FACIAL.update(status="disabled")
+        return
+    MOTOR_FACIAL.update(status="loading")
+    comenzado = time.monotonic()
+    try:
+        from face_pipeline import precalentar
+
+        version = precalentar()
+    except Exception as fallo:  # noqa: BLE001 - cualquier fallo se informa igual
+        MOTOR_FACIAL.update(status="error", detail=str(fallo)[:200])
+        logger.warning("No se pudo precalentar el motor facial: %s", fallo)
+        return
+    ms = int((time.monotonic() - comenzado) * 1000)
+    MOTOR_FACIAL.update(status="ready", version=version, warmup_ms=str(ms))
+    logger.info("Motor facial listo (%s) en %d ms", version, ms)
 
 
 if __name__ == "__main__":

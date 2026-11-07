@@ -1,0 +1,689 @@
+{
+  "created_at": "2026-11-06T14:15:28.766070+00:00",
+  "experiment": "real_worker_queue_benchmark_20_jobs",
+  "description": "Benchmark por cola RQ con worker real, Redis, /health y precarga bajo l\u00edmites de 512m y 1g, con 0.1, 0.25, 0.5, 1.0 y 2.0 CPUs.",
+  "results": [
+    {
+      "case_name": "deepgram_onnx_int8_512m_1cpu",
+      "memory_limit": "512m",
+      "cpus_limit": 1.0,
+      "similarity_backend": "onnx-int8",
+      "asr_provider": "deepgram",
+      "jobs_requested": 20,
+      "jobs_completed": 20,
+      "oom_killed": false,
+      "cgroup_peak_mib": 241.88,
+      "latency_p50_seconds": 2.0272,
+      "latency_p90_seconds": 3.091,
+      "latency_min_seconds": 1.48,
+      "latency_max_seconds": 3.25,
+      "latency_mean_seconds": 2.14,
+      "health_ok": true
+    },
+    {
+      "case_name": "deepgram_onnx_int8_512m_05cpu",
+      "memory_limit": "512m",
+      "cpus_limit": 0.5,
+      "similarity_backend": "onnx-int8",
+      "asr_provider": "deepgram",
+      "asr_local_model": null,
+      "jobs_requested": 20,
+      "jobs_completed": 20,
+      "oom_killed": false,
+      "worker_rss_mib": 231.84,
+      "cgroup_peak_bytes": 406872064,
+      "cgroup_peak_mib": 388.02,
+      "latency_p50_seconds": 2.6565,
+      "latency_p90_seconds": 3.9409,
+      "latency_min_seconds": 1.7249,
+      "latency_max_seconds": 4.2354,
+      "latency_mean_seconds": 2.7975,
+      "health_endpoint_response": {
+        "queue": true,
+        "queues": [
+          "high",
+          "audio"
+        ],
+        "config": {
+          "REDIS_URL": true,
+          "SUPABASE_URL": false,
+          "SUPABASE_SERVICE_ROLE_KEY": false,
+          "PROCTORING_API_URL": false,
+          "INTERNAL_API_TOKEN": false
+        },
+        "missing": [
+          "INTERNAL_API_TOKEN",
+          "PROCTORING_API_URL",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "SUPABASE_URL"
+        ],
+        "warnings": [],
+        "asr_mode": "remote-deepgram",
+        "asr_provider": "deepgram",
+        "asr_local_model": null,
+        "asr_fallback_provider": "none",
+        "similarity_backend": "onnx-int8",
+        "memory_enforce": false,
+        "memory_limit_bytes": 536870912,
+        "memory_limit_mib": 512.0,
+        "required_memory_mib": 384.0,
+        "memory_sufficient": true
+      },
+      "jobs_summary": [
+        {
+          "job_index": 1,
+          "duration_seconds": 15,
+          "latency_seconds": 2.5557,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 2,
+          "duration_seconds": 30,
+          "latency_seconds": 2.1886,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 3,
+          "duration_seconds": 15,
+          "latency_seconds": 2.4512,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 4,
+          "duration_seconds": 30,
+          "latency_seconds": 2.7089,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 5,
+          "duration_seconds": 15,
+          "latency_seconds": 2.6041,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 6,
+          "duration_seconds": 30,
+          "latency_seconds": 2.8685,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 7,
+          "duration_seconds": 15,
+          "latency_seconds": 2.1426,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 8,
+          "duration_seconds": 30,
+          "latency_seconds": 3.5704,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 9,
+          "duration_seconds": 15,
+          "latency_seconds": 2.3847,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 10,
+          "duration_seconds": 30,
+          "latency_seconds": 2.9497,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 11,
+          "duration_seconds": 15,
+          "latency_seconds": 1.7249,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 12,
+          "duration_seconds": 30,
+          "latency_seconds": 2.3331,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 13,
+          "duration_seconds": 15,
+          "latency_seconds": 1.8275,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 14,
+          "duration_seconds": 30,
+          "latency_seconds": 2.9874,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 15,
+          "duration_seconds": 15,
+          "latency_seconds": 2.8021,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 16,
+          "duration_seconds": 30,
+          "latency_seconds": 3.3046,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 17,
+          "duration_seconds": 15,
+          "latency_seconds": 2.2967,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 18,
+          "duration_seconds": 30,
+          "latency_seconds": 3.9245,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 19,
+          "duration_seconds": 15,
+          "latency_seconds": 4.0889,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 20,
+          "duration_seconds": 30,
+          "latency_seconds": 4.2354,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        }
+      ]
+    },
+    {
+      "case_name": "deepgram_onnx_int8_1g_1cpu",
+      "memory_limit": "1g",
+      "cpus_limit": 1.0,
+      "similarity_backend": "onnx-int8",
+      "asr_provider": "deepgram",
+      "jobs_requested": 20,
+      "jobs_completed": 20,
+      "oom_killed": false,
+      "cgroup_peak_mib": 239.6,
+      "latency_p50_seconds": 1.999,
+      "latency_p90_seconds": 2.5716,
+      "latency_min_seconds": 1.45,
+      "latency_max_seconds": 2.82,
+      "latency_mean_seconds": 2.06,
+      "health_ok": true
+    },
+    {
+      "case_name": "deepgram_onnx_int8_1g_05cpu",
+      "memory_limit": "1g",
+      "cpus_limit": 0.5,
+      "similarity_backend": "onnx-int8",
+      "asr_provider": "deepgram",
+      "jobs_requested": 20,
+      "jobs_completed": 20,
+      "oom_killed": false,
+      "cgroup_peak_mib": 241.32,
+      "latency_p50_seconds": 2.4607,
+      "latency_p90_seconds": 4.6204,
+      "latency_min_seconds": 1.53,
+      "latency_max_seconds": 4.75,
+      "latency_mean_seconds": 2.74,
+      "health_ok": true
+    },
+    {
+      "case_name": "whisper_small_onnx_int8_512m_1cpu_oom_check",
+      "memory_limit": "512m",
+      "cpus_limit": 1.0,
+      "similarity_backend": "onnx-int8",
+      "asr_provider": "faster-whisper",
+      "asr_local_model": "small",
+      "jobs_requested": 2,
+      "jobs_completed": 0,
+      "oom_killed": true,
+      "cgroup_peak_mib": 512.0,
+      "latency_p50_seconds": null,
+      "latency_p90_seconds": null,
+      "health_ok": true,
+      "notes": "OOMKilled por el kernel de Linux durante la carga de faster-whisper en el proceso hijo"
+    },
+    {
+      "case_name": "whisper_small_onnx_int8_1g_1cpu",
+      "memory_limit": "1g",
+      "cpus_limit": 1.0,
+      "similarity_backend": "onnx-int8",
+      "asr_provider": "faster-whisper",
+      "asr_local_model": "small",
+      "jobs_requested": 6,
+      "jobs_completed": 6,
+      "oom_killed": false,
+      "cgroup_peak_mib": 1024.0,
+      "latency_p50_seconds": 32.1782,
+      "latency_p90_seconds": 37.6957,
+      "latency_min_seconds": 26.27,
+      "latency_max_seconds": 42.03,
+      "latency_mean_seconds": 33.25,
+      "health_ok": true
+    },
+    {
+      "case_name": "torch_deepgram_512m_1cpu_oom_check",
+      "memory_limit": "512m",
+      "cpus_limit": 1.0,
+      "similarity_backend": "torch",
+      "asr_provider": "deepgram",
+      "jobs_requested": 2,
+      "jobs_completed": 0,
+      "oom_killed": true,
+      "cgroup_peak_mib": 512.0,
+      "latency_p50_seconds": null,
+      "latency_p90_seconds": null,
+      "health_ok": true,
+      "notes": "OOMKilled porque SentenceTransformer con PyTorch requiere >= 1.2 GiB"
+    },
+    {
+      "case_name": "deepgram_onnx_int8_512m_01cpu",
+      "memory_limit": "512m",
+      "cpus_limit": 0.1,
+      "similarity_backend": "onnx-int8",
+      "asr_provider": "deepgram",
+      "asr_local_model": null,
+      "jobs_requested": 6,
+      "jobs_completed": 6,
+      "oom_killed": false,
+      "worker_rss_mib": 228.73,
+      "cgroup_peak_bytes": 261513216,
+      "cgroup_peak_mib": 249.4,
+      "latency_p50_seconds": 6.9638,
+      "latency_p90_seconds": 13.7905,
+      "latency_min_seconds": 4.596,
+      "latency_max_seconds": 19.1902,
+      "latency_mean_seconds": 8.6644,
+      "health_endpoint_response": null,
+      "jobs_summary": [
+        {
+          "job_index": 1,
+          "duration_seconds": 15,
+          "latency_seconds": 19.1902,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 2,
+          "duration_seconds": 30,
+          "latency_seconds": 5.8816,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 3,
+          "duration_seconds": 15,
+          "latency_seconds": 4.596,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 4,
+          "duration_seconds": 30,
+          "latency_seconds": 8.3908,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 5,
+          "duration_seconds": 15,
+          "latency_seconds": 7.5489,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 6,
+          "duration_seconds": 30,
+          "latency_seconds": 6.3788,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        }
+      ]
+    },
+    {
+      "case_name": "deepgram_onnx_int8_512m_025cpu",
+      "memory_limit": "512m",
+      "cpus_limit": 0.25,
+      "similarity_backend": "onnx-int8",
+      "asr_provider": "deepgram",
+      "asr_local_model": null,
+      "jobs_requested": 6,
+      "jobs_completed": 6,
+      "oom_killed": false,
+      "worker_rss_mib": 228.4,
+      "cgroup_peak_bytes": 248328192,
+      "cgroup_peak_mib": 236.82,
+      "latency_p50_seconds": 3.1075,
+      "latency_p90_seconds": 3.8516,
+      "latency_min_seconds": 2.2524,
+      "latency_max_seconds": 3.8753,
+      "latency_mean_seconds": 3.1199,
+      "health_endpoint_response": {
+        "queue": true,
+        "queues": [
+          "high",
+          "audio"
+        ],
+        "config": {
+          "REDIS_URL": true,
+          "SUPABASE_URL": false,
+          "SUPABASE_SERVICE_ROLE_KEY": false,
+          "PROCTORING_API_URL": false,
+          "INTERNAL_API_TOKEN": false
+        },
+        "missing": [
+          "INTERNAL_API_TOKEN",
+          "PROCTORING_API_URL",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "SUPABASE_URL"
+        ],
+        "warnings": [],
+        "asr_mode": "remote-deepgram",
+        "asr_provider": "deepgram",
+        "asr_local_model": null,
+        "asr_fallback_provider": "none",
+        "similarity_backend": "onnx-int8",
+        "memory_enforce": false,
+        "memory_limit_bytes": 536870912,
+        "memory_limit_mib": 512.0,
+        "required_memory_mib": 384.0,
+        "memory_sufficient": true
+      },
+      "jobs_summary": [
+        {
+          "job_index": 1,
+          "duration_seconds": 15,
+          "latency_seconds": 3.8279,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 2,
+          "duration_seconds": 30,
+          "latency_seconds": 3.8753,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 3,
+          "duration_seconds": 15,
+          "latency_seconds": 2.5486,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 4,
+          "duration_seconds": 30,
+          "latency_seconds": 2.924,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        },
+        {
+          "job_index": 5,
+          "duration_seconds": 15,
+          "latency_seconds": 2.2524,
+          "words": 30,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo",
+          "similarity": 0.9689699411392212
+        },
+        {
+          "job_index": 6,
+          "duration_seconds": 30,
+          "latency_seconds": 3.291,
+          "words": 61,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de su cliente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8402219414710999
+        }
+      ]
+    },
+    {
+      "case_name": "whisper_base_onnx_int8_1g_1cpu",
+      "memory_limit": "1g",
+      "cpus_limit": 1.0,
+      "similarity_backend": "onnx-int8",
+      "asr_provider": "faster-whisper",
+      "asr_local_model": "base",
+      "jobs_requested": 6,
+      "jobs_completed": 6,
+      "oom_killed": false,
+      "worker_rss_mib": 228.59,
+      "cgroup_peak_bytes": 679444480,
+      "cgroup_peak_mib": 647.97,
+      "latency_p50_seconds": 8.3013,
+      "latency_p90_seconds": 11.4413,
+      "latency_min_seconds": 6.3283,
+      "latency_max_seconds": 13.7901,
+      "latency_mean_seconds": 8.9026,
+      "health_endpoint_response": {
+        "queue": true,
+        "queues": [
+          "high",
+          "audio"
+        ],
+        "config": {
+          "REDIS_URL": true,
+          "SUPABASE_URL": false,
+          "SUPABASE_SERVICE_ROLE_KEY": false,
+          "PROCTORING_API_URL": false,
+          "INTERNAL_API_TOKEN": false
+        },
+        "missing": [
+          "INTERNAL_API_TOKEN",
+          "PROCTORING_API_URL",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "SUPABASE_URL"
+        ],
+        "warnings": [],
+        "asr_mode": "local-only",
+        "asr_provider": "faster-whisper",
+        "asr_local_model": "base",
+        "asr_fallback_provider": "none",
+        "similarity_backend": "onnx-int8",
+        "memory_enforce": false,
+        "memory_limit_bytes": 1073741824,
+        "memory_limit_mib": 1024.0,
+        "required_memory_mib": 640.0,
+        "memory_sufficient": true
+      },
+      "jobs_summary": [
+        {
+          "job_index": 1,
+          "duration_seconds": 15,
+          "latency_seconds": 7.602,
+          "words": 30,
+          "transcript": "\u00bfCu\u00e1l es la diferencia entre una variable local y una variable global en un programa? Explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo.",
+          "similarity": 0.9999998807907104
+        },
+        {
+          "job_index": 2,
+          "duration_seconds": 30,
+          "latency_seconds": 8.1467,
+          "words": 60,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de supliguiente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8505547046661377
+        },
+        {
+          "job_index": 3,
+          "duration_seconds": 15,
+          "latency_seconds": 6.3283,
+          "words": 30,
+          "transcript": "\u00bfCu\u00e1l es la diferencia entre una variable local y una variable global en un programa? Explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo.",
+          "similarity": 0.9999998807907104
+        },
+        {
+          "job_index": 4,
+          "duration_seconds": 30,
+          "latency_seconds": 8.456,
+          "words": 60,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de supliguiente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8505547046661377
+        },
+        {
+          "job_index": 5,
+          "duration_seconds": 15,
+          "latency_seconds": 9.0925,
+          "words": 30,
+          "transcript": "\u00bfCu\u00e1l es la diferencia entre una variable local y una variable global en un programa? Explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo.",
+          "similarity": 0.9999998807907104
+        },
+        {
+          "job_index": 6,
+          "duration_seconds": 30,
+          "latency_seconds": 13.7901,
+          "words": 60,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de supliguiente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8505547046661377
+        }
+      ]
+    },
+    {
+      "case_name": "whisper_base_onnx_int8_1g_2cpu",
+      "memory_limit": "1g",
+      "cpus_limit": 2.0,
+      "similarity_backend": "onnx-int8",
+      "asr_provider": "faster-whisper",
+      "asr_local_model": "base",
+      "jobs_requested": 6,
+      "jobs_completed": 6,
+      "oom_killed": false,
+      "worker_rss_mib": 228.5,
+      "cgroup_peak_bytes": 595849216,
+      "cgroup_peak_mib": 568.25,
+      "latency_p50_seconds": 4.6812,
+      "latency_p90_seconds": 6.8144,
+      "latency_min_seconds": 3.4708,
+      "latency_max_seconds": 7.152,
+      "latency_mean_seconds": 4.9976,
+      "health_endpoint_response": {
+        "queue": true,
+        "queues": [
+          "high",
+          "audio"
+        ],
+        "config": {
+          "REDIS_URL": true,
+          "SUPABASE_URL": false,
+          "SUPABASE_SERVICE_ROLE_KEY": false,
+          "PROCTORING_API_URL": false,
+          "INTERNAL_API_TOKEN": false
+        },
+        "missing": [
+          "INTERNAL_API_TOKEN",
+          "PROCTORING_API_URL",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "SUPABASE_URL"
+        ],
+        "warnings": [],
+        "asr_mode": "local-only",
+        "asr_provider": "faster-whisper",
+        "asr_local_model": "base",
+        "asr_fallback_provider": "none",
+        "similarity_backend": "onnx-int8",
+        "memory_enforce": false,
+        "memory_limit_bytes": 1073741824,
+        "memory_limit_mib": 1024.0,
+        "required_memory_mib": 640.0,
+        "memory_sufficient": true
+      },
+      "jobs_summary": [
+        {
+          "job_index": 1,
+          "duration_seconds": 15,
+          "latency_seconds": 3.4708,
+          "words": 30,
+          "transcript": "\u00bfCu\u00e1l es la diferencia entre una variable local y una variable global en un programa? Explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo.",
+          "similarity": 0.9999998807907104
+        },
+        {
+          "job_index": 2,
+          "duration_seconds": 30,
+          "latency_seconds": 7.152,
+          "words": 60,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de supliguiente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8505547046661377
+        },
+        {
+          "job_index": 3,
+          "duration_seconds": 15,
+          "latency_seconds": 4.2481,
+          "words": 30,
+          "transcript": "\u00bfCu\u00e1l es la diferencia entre una variable local y una variable global en un programa? Explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo.",
+          "similarity": 0.9999998807907104
+        },
+        {
+          "job_index": 4,
+          "duration_seconds": 30,
+          "latency_seconds": 6.4767,
+          "words": 60,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de supliguiente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8505547046661377
+        },
+        {
+          "job_index": 5,
+          "duration_seconds": 15,
+          "latency_seconds": 3.5239,
+          "words": 30,
+          "transcript": "\u00bfCu\u00e1l es la diferencia entre una variable local y una variable global en un programa? Explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo.",
+          "similarity": 0.9999998807907104
+        },
+        {
+          "job_index": 6,
+          "duration_seconds": 30,
+          "latency_seconds": 5.1142,
+          "words": 60,
+          "transcript": "cu\u00e1l es la diferencia entre una variable local y una variable global en un programa explica en qu\u00e9 parte del c\u00f3digo puede usarse cada una y da un ejemplo sencillo una empresa quiere guardar los datos de supliguiente de forma segura describe dos medidas para proteger la informaci\u00f3n y explica por qu\u00e9 una contrase\u00f1a nunca debe guardarse en texto visible",
+          "similarity": 0.8505547046661377
+        }
+      ]
+    }
+  ]
+}
