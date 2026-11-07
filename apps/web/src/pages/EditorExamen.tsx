@@ -8,6 +8,8 @@ import { SeleccionPreguntasBancos } from '../components/SeleccionPreguntasBancos
 import { api, type ExamSession, type NewQuestion } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { estadoExamen, fechaLarga, nombreEstadoExamen } from '../lib/formato'
+import { textoGlobo } from '../lib/avisos-examen'
+import { useAvisosExamen } from '../lib/useAvisosExamen'
 import { Preguntas } from './Preguntas'
 import { Resultados } from './Resultados'
 import { SesionEnVivo } from './SesionEnVivo'
@@ -63,6 +65,18 @@ export function EditorExamen() {
   const [errorContenido, setErrorContenido] = useState<string>()
   const [guardandoPregunta, setGuardandoPregunta] = useState(false)
   const [resumenContenido, setResumenContenido] = useState<{ cantidad: number; puntos: number }>()
+  // HU-038: los números rojos de Participantes y Actividad.
+  const { esperando, alertasNuevas, marcarVistas } = useAvisosExamen(id, token, vista === 'actividad')
+  const globos: Partial<Record<VistaEditor, { texto?: string; descripcion: string }>> = {
+    participantes: {
+      texto: textoGlobo(esperando),
+      descripcion: `${esperando} ${esperando === 1 ? 'estudiante espera' : 'estudiantes esperan'} que lo admitas`
+    },
+    actividad: {
+      texto: textoGlobo(alertasNuevas),
+      descripcion: `${alertasNuevas} ${alertasNuevas === 1 ? 'alerta nueva' : 'alertas nuevas'}`
+    }
+  }
 
   useEffect(() => {
     let cancelado = false
@@ -217,9 +231,18 @@ export function EditorExamen() {
             aria-selected={vista === opcion.id}
             aria-controls="panel-editor-examen"
             className={vista === opcion.id ? 'activa' : ''}
-            onClick={() => setParametros({ vista: opcion.id })}
+            onClick={() => {
+              if (opcion.id === 'actividad') marcarVistas()
+              setParametros({ vista: opcion.id })
+            }}
           >
             {opcion.etiqueta}
+            {globos[opcion.id]?.texto && (
+              <>
+                <span className="globo-aviso" aria-hidden="true">{globos[opcion.id]!.texto}</span>
+                <span className="sr-only">, {globos[opcion.id]!.descripcion}</span>
+              </>
+            )}
           </button>
         ))}
       </nav>
