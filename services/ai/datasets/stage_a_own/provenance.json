@@ -1,0 +1,8 @@
+{
+  "task": "Stage A ASR comparison (own recordings)",
+  "source": "20 original M4A recordings by P01 across 4 scripts and 5 acoustic conditions (base, ruido, lejos, voz baja, bajaylejos)",
+  "sample_count": 20,
+  "speaker_count": 1,
+  "reference_status": "Exact reading scripts confirmed by user in chat before evaluation",
+  "selection": "exploratory_not_final_test"
+}

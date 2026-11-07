@@ -72,6 +72,38 @@ respaldo. Requiere verificar la cuenta con tarjeta (no cobra lo Always Free) y a
 Si el equipo no lo acepta, la API se queda en Render con el límite medido declarado y despertándola antes
 de cada examen. Vercel (web) y Supabase (datos) no cambian.
 
+**Estado (06/11/2026).** Oracle respondió «Out of host capacity» en São Paulo durante más de una hora
+de reintentos automáticos (26 intentos, uno cada 2 minutos). Mientras no haya capacidad, producción
+sigue en Render. Los archivos de Oracle quedan listos en `deploy/oci/`.
+
+### 4.1 El worker de IA en Render: perfil `ligero`
+
+La transcripción ahora es 100 % local (faster-whisper, trabajo de Pierreluiggi), y la imagen completa
+(Whisper `small` + torch + insightface) necesita unos 1,7 GB. Render gratis da 512 MB. El Dockerfile de
+`services/ai` tiene un perfil `ligero` (`PERFIL=ligero` en el panel de Render):
+
+| Pieza | Completo | Ligero |
+|---|---|---|
+| Transcripción | Whisper `small` | Whisper `tiny` |
+| Similitud con el enunciado | MiniLM con torch | el mismo MiniLM en ONNX int8, vocabulario es/en (57 MB), exportado al construir |
+| Verificación facial | insightface | OpenCV YuNet + SFace (trabajo de Jesús) |
+| torch / insightface en la imagen | sí | no |
+
+Medido con la imagen ligera construida (1,29 GB), en un contenedor sin red y con `--memory 512m`,
+cargando los tres modelos y transcribiendo una pregunta hablada de 5 s:
+
+| CPU del contenedor | Carga de modelos | Transcripción | Pico de memoria |
+|---|---|---|---|
+| 1 CPU | 2,9 s | 2,3 s | 435 MiB |
+| 0,1 CPU (Render gratis) | 24,0 s | 38,4 s | 435 MiB |
+
+Cabe en 512 MB con unos 77 MiB de margen, y Whisper `tiny` transcribió la frase exacta (similitud 1,0).
+El CI construye esta imagen en cada PR y carga los modelos sin red con `--memory 512m`.
+
+Lo que cuesta: `tiny` se equivoca más que `small` con audio ruidoso, y **con los 0,1 CPU de Render la
+alerta de IA por voz tarda unos 40 s, cuatro veces el objetivo de 10 s**. Con 1 CPU tarda 2,3 s. El
+objetivo se cumple en local o en Oracle, no en el plan gratuito de Render, y así se reporta.
+
 ## Alternativas consideradas
 
 - **Escalar en vertical** (una instancia más grande). Más simple, pero tiene techo y deja un único punto

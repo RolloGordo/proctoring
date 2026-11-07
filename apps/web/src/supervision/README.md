@@ -186,3 +186,13 @@ episodio visual; el audio alerta cuando finaliza su segmento.
 
 Las métricas requieren datos etiquetados, separados entre calibración y prueba
 final: ver `docs/semana-07/PROTOCOLO_DE_PRUEBAS.md`.
+
+## Reconexión automática de la cámara (Jesús — Disponibilidad)
+
+Si la cámara se desconecta, `useSupervision` escucha `devicechange`
+([`reconexionCamara.ts`](./reconexionCamara.ts)) y, cuando vuelve a haber una
+`videoinput`, reinicia la supervisión sola, sin que el estudiante pulse
+«Reintentar cámara». Espera 1,5 s tras el último aviso (una webcam USB manda
+varios al enchufarse) y tiene un tope de 10 reintentos automáticos por examen,
+para que un cable flojo no la reinicie en bucle. El botón manual sigue igual y
+sin tope. Detalle del atributo: [`docs/guias/jesus-disponibilidad.md`](../../../../docs/guias/jesus-disponibilidad.md).

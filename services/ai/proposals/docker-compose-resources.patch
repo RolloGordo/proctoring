@@ -1,0 +1,34 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -61,12 +61,10 @@ services:
+       context: ./services/ai
+       dockerfile: Dockerfile
+       args:
+-        # En local no se instala `similarity`: el worker de compose es el
+-        # esqueleto y nadie tiene los pesos del modelo montados. Asi la imagen
+-        # se queda en 471 MB en disco (113 MB al descargar) y no arrastra torch.
+-        # La de produccion se construye con el valor por defecto del Dockerfile,
+-        # que si lo trae, porque la similitud con el enunciado es el diferencial.
++        # En local con ONNX el worker no necesita torch ni sentence-transformers.
++        # Genera el modelo ONNX INT8 de 54 MB en la etapa builder de forma reproducible.
+         EXTRAS: ""
++        BUILD_ONNX: "true"
+     container_name: proctoring-ai-worker
+     env_file:
+       - .env
+@@ -75,6 +73,14 @@ services:
+       # El worker le pide a la API que analizar y le devuelve lo medido. Por
+       # nombre de servicio: dentro de la red de compose, `api` resuelve solo.
+       PROCTORING_API_URL: http://api:8000
++      SIMILARITY_BACKEND: onnx-int8
++      ASR_PROVIDER: deepgram
++      ASR_FALLBACK_PROVIDER: none
++    deploy:
++      resources:
++        limits:
++          cpus: "1.0"
++          memory: 512M
+     depends_on:
+       redis:
+         condition: service_healthy

@@ -167,6 +167,46 @@ jobs:
         run: docker logs api-ci || true
 
   # ---------------------------------------------------------------------------
+  # La imagen ligera del worker de IA, la de Render (512 MB). Se comprueba que
+  # construye, que no trae torch ni insightface, y que los tres modelos cargan
+  # sin red y transcriben. La primera vez descarga torch para exportar el ONNX;
+  # despues la cache de Actions guarda las capas y tarda poco.
+  # ---------------------------------------------------------------------------
+  docker-ai:
+    name: Imagen ligera del worker de IA
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Construir la imagen (PERFIL=ligero)
+        uses: docker/build-push-action@v6
+        with:
+          context: services/ai
+          build-args: PERFIL=ligero
+          push: false
+          load: true
+          tags: proctoring-ai:ligero
+          cache-from: type=gha,scope=ai-ligero
+          cache-to: type=gha,mode=max,scope=ai-ligero
+
+      - name: Cargar los modelos sin red y con 512 MB
+        run: |
+          docker run --rm --network none --memory 512m proctoring-ai:ligero python -c "
+          import importlib.util as u, resource
+          assert u.find_spec('torch') is None, 'torch no debe estar en la imagen ligera'
+          assert u.find_spec('insightface') is None, 'insightface tampoco'
+          import audio_runtime, face_pipeline
+          audio_runtime._local_asr_model()
+          sim = audio_runtime.similarity_model()
+          print('motor facial:', face_pipeline.precalentar())
+          print('similitud:', round(sim.score('que es un hilo', 'que es un hilo de ejecucion'), 3))
+          print('pico MiB:', resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024)
+          "
+
+  # ---------------------------------------------------------------------------
   # Servicio de IA. Se salta solo mientras no exista su pyproject.toml.
   #
   # Las pruebas de los spikes usan dobles y NO descargan modelos, asi que el job

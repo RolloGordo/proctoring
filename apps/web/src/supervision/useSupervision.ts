@@ -28,6 +28,7 @@ import {
 } from './avisos'
 import { recordDiagnostic, type DiagnosticCode } from './diagnostics'
 import { prepararDetectores, type Arranque } from './arranque'
+import { escucharReconexionCamara } from './reconexionCamara'
 import type { SenalDetectada } from './tipos'
 import { EmisorDeSenales } from './emisor'
 import { publicarFotogramas, type AjustesMonitoreo, type Publicacion } from './monitoreo'
@@ -92,6 +93,9 @@ export type EstadoSupervision =
   | { tipo: 'degradada'; mensaje: string; fallidos: string[] }
   | { tipo: 'fallo'; mensaje: string }
 
+/** Reintentos automáticos de cámara por examen (ver `reconexionCamara.ts`). */
+export const MAXIMO_REINTENTOS_AUTO_POR_EXAMEN = 10
+
 export function useSupervision({
   sessionId,
   studentId,
@@ -107,6 +111,10 @@ export function useSupervision({
   activa = true
 }: OpcionesSupervision): EstadoSupervision {
   const [estado, setEstado] = useState<EstadoSupervision>({ tipo: 'apagada' })
+  // Reintentos que no pidió nadie: la cámara volvió a conectarse y el navegador
+  // avisó (`reconexionCamara.ts`). Con tope por examen, para que un cable flojo
+  // no reinicie la supervisión en bucle; el botón manual sigue sin tope.
+  const [reintentoAuto, setReintentoAuto] = useState(0)
   const emisorRef = useRef<EmisorDeSenales | null>(null)
 
   // Por referencia: si entrara en las dependencias del efecto, cada renderizado
@@ -146,6 +154,17 @@ export function useSupervision({
     let chequeoCamara: ReturnType<typeof setInterval> | undefined
     let envioEnVivo: Publicacion | null = null
     let quitarEscuchaCamara: (() => void) | null = null
+    let quitarReconexion: (() => void) | null = null
+    // Al perder la cámara se escucha su vuelta. Solo una escucha a la vez.
+    const esperarReconexion = () => {
+      if (quitarReconexion || reintentoAuto >= MAXIMO_REINTENTOS_AUTO_POR_EXAMEN) return
+      quitarReconexion = escucharReconexionCamara(
+        typeof navigator === 'undefined' ? undefined : navigator.mediaDevices,
+        () => {
+          if (!cancelado) setReintentoAuto((n) => n + 1)
+        }
+      )
+    }
     let ultimoFallo: CameraHealth | null = null
     const saludCamara = new CameraHealthMonitor()
 
@@ -250,9 +269,11 @@ export function useSupervision({
           // le quitaba de la pantalla la vista de su propia camara, que es
           // justo lo que necesita para arreglar la luz o el encuadre.
           if (tipo === 'interrupted') {
+            esperarReconexion()
             setEstado({
               tipo: 'fallo',
-              mensaje: 'La cámara se desconectó. Reconéctala y selecciona Reintentar cámara.'
+              mensaje:
+                'La cámara se desconectó. Reconéctala: la supervisión se reanudará sola. Si no, selecciona Reintentar cámara.'
             })
           }
           callbacksRef.current.onAviso?.(avisoCamara(tipo))
@@ -430,6 +451,7 @@ export function useSupervision({
             : 'No se pudo encender la supervisión.'
         // El examen sigue: se avisa y queda constancia, pero no se bloquea.
         console.error('[supervisión]', fallo)
+        esperarReconexion()
         setEstado({ tipo: 'fallo', mensaje })
         callbacksRef.current.onAviso?.(avisoCamara('interrupted'))
         informar('camera_interrupted', undefined, {
@@ -503,13 +525,24 @@ export function useSupervision({
       void envioEnVivo?.detener()
       observadoRef.current?.(false)
       quitarEscuchaCamara?.()
+      quitarReconexion?.()
       callbacksRef.current.onCamara?.(null)
       cerrarCamara?.()
     }
     // `questionId` se actualiza por su propio efecto: incluirlo aquí reiniciaría
     // la cámara en cada pregunta.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [habilitada, sessionId, studentId, token, detectores, conAudio, monitoreo, reintento])
+  }, [
+    habilitada,
+    sessionId,
+    studentId,
+    token,
+    detectores,
+    conAudio,
+    monitoreo,
+    reintento,
+    reintentoAuto
+  ])
 
   return habilitada ? estado : { tipo: 'apagada' }
 }

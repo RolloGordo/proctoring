@@ -149,12 +149,15 @@ def load_pairs(path: Path) -> list[dict[str, Any]]:
 
 
 class SimilarityModel:
+    backend = "torch"
+
     def __init__(self, revision: str, offline: bool = False) -> None:
         configure_model_downloads()
         if len(revision) != 40 or any(c not in "0123456789abcdef" for c in revision):
             raise ValueError("Pass a pinned 40-character model commit, not main")
         from sentence_transformers import SentenceTransformer
 
+        self.revision = revision
         self.engine = SentenceTransformer(
             MODEL, revision=revision, device="cpu", cache_folder="models", local_files_only=offline
         )
@@ -170,6 +173,156 @@ class SimilarityModel:
             if len(tokens) > self.engine.max_seq_length:
                 raise ValueError("Text exceeds model context; segment it before evaluation")
         vectors = self.engine.encode([question, transcript], normalize_embeddings=True)
+        return max(0.0, min(1.0, float(vectors[0] @ vectors[1])))
+
+
+class OnnxSimilarityModel:
+    """Ejecuta paraphrase-multilingual-MiniLM-L12-v2 con onnxruntime sin torch."""
+
+    def __init__(
+        self,
+        revision: str,
+        *,
+        variant: str = "int8",
+        offline: bool = True,
+        cache_dir: Path | str = "models",
+        onnx_path: Path | None = None,
+        tokenizer_path: Path | None = None,
+        vocab_mode: str = "es_en",
+        max_seq_length: int = 128,
+        intra_op_num_threads: int = 1,
+        enable_cpu_mem_arena: bool = False,
+        enable_mem_pattern: bool = False,
+        disable_prepacking: bool = False,
+    ) -> None:
+        if len(revision) != 40 or any(c not in "0123456789abcdef" for c in revision):
+            raise ValueError("Pass a pinned 40-character model commit, not main")
+        if variant not in ("int8", "fp32"):
+            raise ValueError(f"Unsupported ONNX variant '{variant}'. Expected 'int8' or 'fp32'.")
+        if vocab_mode not in ("es_en", "full"):
+            raise ValueError(f"Unsupported ONNX vocab_mode '{vocab_mode}'.")
+
+        import numpy as np
+        import onnxruntime as ort  # type: ignore[import-untyped]
+        from tokenizers import Tokenizer
+
+        self._np = np
+        self.revision = revision
+        self.variant = variant
+        self.backend = f"onnx-{variant}"
+        self.version = f"multilingual-MiniLM-L12-v2@{revision};backend=onnx-{variant}"
+        self.offline = offline
+        self.max_seq_length = max_seq_length
+
+        root = Path(cache_dir)
+        onnx_dir = root / "onnx_minilm_experiment"
+        snap_dir = (
+            root
+            / "models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2"
+            / "snapshots"
+            / revision
+        )
+
+        resolved_onnx = onnx_path
+        resolved_tok = tokenizer_path
+        used_vocab = vocab_mode
+
+        if resolved_onnx is None:
+            pruned_candidate = onnx_dir / f"model_{variant}_es_en.onnx"
+            full_candidate = onnx_dir / f"model_{variant}.onnx"
+            if vocab_mode == "es_en" and pruned_candidate.is_file():
+                resolved_onnx = pruned_candidate
+                used_vocab = "es_en"
+            elif full_candidate.is_file():
+                resolved_onnx = full_candidate
+                used_vocab = "full"
+            else:
+                resolved_onnx = pruned_candidate if vocab_mode == "es_en" else full_candidate
+
+        if resolved_tok is None:
+            pruned_tok_candidate = onnx_dir / "tokenizer_es_en.json"
+            full_tok_candidate = snap_dir / "tokenizer.json"
+            if used_vocab == "es_en" and pruned_tok_candidate.is_file():
+                resolved_tok = pruned_tok_candidate
+            else:
+                resolved_tok = full_tok_candidate
+
+        if not resolved_onnx.is_file():
+            raise OSError(f"ONNX similarity model file not found: {resolved_onnx}")
+        if not resolved_tok.is_file():
+            raise OSError(f"ONNX tokenizer file not found: {resolved_tok}")
+
+        self.onnx_path = resolved_onnx
+        self.tokenizer_path = resolved_tok
+        self.vocab_mode = used_vocab
+
+        self.tokenizer: Any = Tokenizer.from_file(str(resolved_tok))
+        self.tokenizer.no_truncation()
+        self.tokenizer.no_padding()
+
+        sess_options = ort.SessionOptions()
+        sess_options.enable_cpu_mem_arena = enable_cpu_mem_arena
+        sess_options.enable_mem_pattern = enable_mem_pattern
+        if disable_prepacking:
+            sess_options.add_session_config_entry("session.disable_prepacking", "1")
+        if intra_op_num_threads > 0:
+            sess_options.intra_op_num_threads = intra_op_num_threads
+            sess_options.inter_op_num_threads = 1
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+
+        self.session = ort.InferenceSession(
+            str(resolved_onnx),
+            sess_options=sess_options,
+            providers=["CPUExecutionProvider"],
+        )
+        self.input_names = [inp.name for inp in self.session.get_inputs()]
+
+    def encode(self, texts: list[str], normalize_embeddings: bool = True) -> Any:
+        np = self._np
+        encodings = [self.tokenizer.encode(t) for t in texts]
+        for enc in encodings:
+            if len(enc.ids) > self.max_seq_length:
+                raise ValueError("Text exceeds model context; segment it before evaluation")
+
+        max_len = max(len(enc.ids) for enc in encodings)
+        batch_size = len(encodings)
+        input_ids = np.zeros((batch_size, max_len), dtype=np.int64)
+        attention_mask = np.zeros((batch_size, max_len), dtype=np.int64)
+        token_type_ids = np.zeros((batch_size, max_len), dtype=np.int64)
+
+        for idx, enc in enumerate(encodings):
+            length = len(enc.ids)
+            input_ids[idx, :length] = enc.ids
+            attention_mask[idx, :length] = enc.attention_mask
+            if enc.type_ids:
+                token_type_ids[idx, :length] = enc.type_ids
+
+        feed: dict[str, Any] = {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+        }
+        if "token_type_ids" in self.input_names:
+            feed["token_type_ids"] = token_type_ids
+
+        outputs = self.session.run(["last_hidden_state"], feed)
+        token_embeddings = outputs[0].astype(np.float32)
+
+        mask_expanded = np.expand_dims(attention_mask, axis=-1).astype(np.float32)
+        sum_embeddings = np.sum(token_embeddings * mask_expanded, axis=1)
+        sum_mask = np.clip(mask_expanded.sum(axis=1), a_min=1e-9, a_max=None)
+        pooled = sum_embeddings / sum_mask
+
+        if normalize_embeddings:
+            norms = np.linalg.norm(pooled, axis=1, keepdims=True)
+            pooled = pooled / np.clip(norms, a_min=1e-12, a_max=None)
+        return pooled
+
+    def score(self, question: str, transcript: str) -> float:
+        if not question.strip():
+            raise ValueError("Empty question")
+        if not transcript.strip():
+            return 0.0
+        vectors = self.encode([question, transcript], normalize_embeddings=True)
         return max(0.0, min(1.0, float(vectors[0] @ vectors[1])))
 
 

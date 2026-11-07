@@ -1,0 +1,3245 @@
+{
+  "created_at": "2026-11-06T12:23:05.168622+00:00",
+  "experiment": "2B_onnx_minilm_fp32_int8_and_vocab_pruning",
+  "export_and_quantization": {
+    "model_id": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "revision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+    "license": "Apache-2.0 (verificado en README.md del snapshot oficial de Hugging Face)",
+    "architecture": {
+      "base": "BertModel (12 layers, hidden_size=384, max_seq_length=128)",
+      "pooling": "mean_tokens (ponderado por attention_mask, 1_Pooling/config.json)",
+      "normalization": "L2 normalize embeddings, cosine clipped to [0, 1]"
+    },
+    "vocabulary_pruning": {
+      "original_vocab_size": 250002,
+      "pruned_es_en_vocab_size": 90525,
+      "retained_ratio_pct": 36.21,
+      "criteria": "Retiene tokens especiales y todos los subwords compuestos por caracteres Latin/ASCII/español/inglés, signos de puntuación y dígitos; elimina 159 477 tokens de escrituras no latinas (CJK, árabe, cirílico, devanagari, etc.)."
+    },
+    "files": {
+      "pytorch_safetensors_mib": 448.84,
+      "tokenizer_full_mib": 8.66,
+      "tokenizer_es_en_mib": 3.54,
+      "onnx_fp32_full_mib": 448.5,
+      "onnx_fp32_es_en_mib": 214.82,
+      "onnx_int8_full_mib": 112.67,
+      "onnx_int8_es_en_mib": 54.24
+    }
+  },
+  "evaluation": {
+    "embedding_parity": {
+      "num_unique_texts": 222,
+      "batch_encode_seconds": {
+        "pytorch_fp32": 3.2462,
+        "onnx_fp32_full": 12.2489,
+        "onnx_fp32_es_en": 12.1402,
+        "onnx_int8_full": 6.4675,
+        "onnx_int8_es_en": 6.5211
+      },
+      "pytorch_vs_onnx_fp32_full": {
+        "mean_cosine": 0.99999999,
+        "min_cosine": 0.99999982,
+        "mean_abs_score_diff": 3e-08,
+        "max_abs_score_diff": 2.4e-07
+      },
+      "pytorch_vs_onnx_fp32_es_en": {
+        "mean_cosine": 0.99999999,
+        "min_cosine": 0.99999982
+      },
+      "onnx_fp32_full_vs_es_en_pruned": {
+        "mean_cosine": 0.99999998,
+        "min_cosine": 0.99999976,
+        "tokenization_mismatches_on_131_es_en_texts": 0
+      },
+      "onnx_int8_full_vs_es_en_pruned": {
+        "mean_cosine": 0.99999999,
+        "min_cosine": 0.99999982,
+        "tokenization_mismatches_on_131_es_en_texts": 0
+      },
+      "pytorch_vs_onnx_int8": {
+        "mean_cosine": 0.988686,
+        "min_cosine": 0.962184,
+        "mean_abs_score_diff_all_pairs": 0.010575,
+        "p95_abs_score_diff_all_pairs": 0.03481,
+        "max_abs_score_diff_all_pairs": 0.100028
+      }
+    },
+    "q04_self_comparison_diagnosis": {
+      "explanation": "En la tabla previa de 28 transcripciones, se usó una única frase fija UNRELATED_REFERENCE = 'Mañana tengo que ir al mercado a comprar frutas y después pasar por la farmacia antes de que cierre.' para los 28 audios. Los 5 audios P01_Q04 (base, lejos, ruido, bajaylejos, voz_baja) tienen exactamente esa misma oración como enunciado de referencia (Q04). Por tanto, los 5 cruces >= 0.60 en Deepgram (0.8359 a 0.9739) eran autocomparaciones de Q04 consigo misma y no falsos positivos con una frase ajena.",
+      "q04_samples_in_deepgram": [
+        {
+          "sample_id": "P01_A4_bajaylejos",
+          "transcript": "mañana tengo que ir al mercado a comprar fruta después pasar por la farmacia",
+          "score_vs_U01_same_as_A4_reference": 0.9439,
+          "score_vs_U02_truly_unrelated": 0.0157
+        },
+        {
+          "sample_id": "P01_A4_base",
+          "transcript": "mañana tengo que ir al mercado a comprar frutas y después pasar por la farmacia antes de que cierre",
+          "score_vs_U01_same_as_A4_reference": 0.9739,
+          "score_vs_U02_truly_unrelated": 0.0
+        },
+        {
+          "sample_id": "P01_A4_lejos",
+          "transcript": "mañana tengo que ir al mercado a comprar fruta después pasar por la farmacia antes de que cierre",
+          "score_vs_U01_same_as_A4_reference": 0.971,
+          "score_vs_U02_truly_unrelated": 0.0012
+        },
+        {
+          "sample_id": "P01_A4_ruido",
+          "transcript": "mañana tengo que anotar algo comprar después pasar por la farmacia antes de que cierre",
+          "score_vs_U01_same_as_A4_reference": 0.6837,
+          "score_vs_U02_truly_unrelated": 0.0
+        },
+        {
+          "sample_id": "P01_A4_voz_baja",
+          "transcript": "mañana tengo que comprar frutas después pasar por la farmacia y no te dejes llevar",
+          "score_vs_U01_same_as_A4_reference": 0.8506,
+          "score_vs_U02_truly_unrelated": 0.0
+        }
+      ]
+    },
+    "p1_synthetic_text_notice": "NOTA METODOLÓGICA: docs/P1-recording-plan.json contiene pares de texto sintético donde las 21 muestras 'reading' comparan cadenas idénticas (script == question, puntaje 1.0000). Por ello se retira 'AUC=1.0000 en P1' como evidencia de desempeño ASR+similitud, y se reportan las métricas sobre las 28 transcripciones reales de audio por motor.",
+    "unrelated_phrases_12": [
+      {
+        "id": "U01_mercado",
+        "category": "out_of_domain",
+        "exclude_sample_prefix": "P01_A4",
+        "text": "Mañana tengo que ir al mercado a comprar frutas y después pasar por la farmacia antes de que cierre."
+      },
+      {
+        "id": "U02_planetas",
+        "category": "out_of_domain",
+        "exclude_sample_prefix": "",
+        "text": "El sistema solar está formado por ocho planetas que giran alrededor del sol en órbitas elípticas."
+      },
+      {
+        "id": "U03_receta",
+        "category": "out_of_domain",
+        "exclude_sample_prefix": "",
+        "text": "La receta tradicional de la paella valenciana lleva arroz, pollo, conejo, judías verdes y azafrán."
+      },
+      {
+        "id": "U04_futbol",
+        "category": "out_of_domain",
+        "exclude_sample_prefix": "",
+        "text": "El partido de fútbol del domingo se suspendió en el segundo tiempo por la lluvia intensa."
+      },
+      {
+        "id": "U05_pasaporte",
+        "category": "out_of_domain",
+        "exclude_sample_prefix": "",
+        "text": "Para renovar el pasaporte es necesario pedir cita previa y llevar dos fotografías recientes."
+      },
+      {
+        "id": "U06_tren",
+        "category": "out_of_domain",
+        "exclude_sample_prefix": "",
+        "text": "El tren de alta velocidad sale de la estación central a las siete de la mañana en punto."
+      },
+      {
+        "id": "S01_prog_bucles",
+        "category": "same_subject",
+        "exclude_sample_prefix": "",
+        "text": "¿Qué diferencia existe entre un bucle while y un bucle for en programación y cuándo conviene usar cada uno?"
+      },
+      {
+        "id": "S02_prog_recursividad",
+        "category": "same_subject",
+        "exclude_sample_prefix": "",
+        "text": "Explica qué es la recursividad en una función y por qué siempre debe definirse un caso base para evitar un desbordamiento de pila."
+      },
+      {
+        "id": "S03_bd_claves",
+        "category": "same_subject",
+        "exclude_sample_prefix": "",
+        "text": "¿Para qué sirve una clave primaria y una clave foránea en una base de datos relacional y cómo garantizan la integridad referencial?"
+      },
+      {
+        "id": "S04_seg_sqli",
+        "category": "same_subject",
+        "exclude_sample_prefix": "",
+        "text": "Describe en qué consiste un ataque de inyección SQL y cómo se previene mediante consultas parametrizadas."
+      },
+      {
+        "id": "S05_geom_circulo",
+        "category": "same_subject",
+        "exclude_sample_prefix": "",
+        "text": "Calcula el perímetro y el área de un círculo cuyo radio mide cinco centímetros utilizando el valor de pi."
+      },
+      {
+        "id": "S06_geom_pitagoras",
+        "category": "same_subject",
+        "exclude_sample_prefix": "",
+        "text": "Enuncia el teorema de Pitágoras para un triángulo rectángulo y calcula la hipotenusa si los catetos miden tres y cuatro centímetros."
+      }
+    ],
+    "asr_28_real_transcriptions_by_engine": {
+      "faster-whisper-tiny": {
+        "torch": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.750324,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.747303,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.5037,
+            "min": 0.0,
+            "max": 0.9844,
+            "crossing_0_60": 15,
+            "tpr_at_0_60": 0.5357
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.4564,
+            "min": 0.0,
+            "max": 0.9227,
+            "crossing_0_60": 15,
+            "tpr_at_0_60": 0.5357
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0455,
+            "max": 0.2538,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.0935,
+            "max": 0.5425,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0698,
+            "max": 0.5425,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          }
+        },
+        "onnx_fp32": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.750324,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.747303,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.5037,
+            "min": 0.0,
+            "max": 0.9844,
+            "crossing_0_60": 15,
+            "tpr_at_0_60": 0.5357
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.4564,
+            "min": 0.0,
+            "max": 0.9227,
+            "crossing_0_60": 15,
+            "tpr_at_0_60": 0.5357
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0455,
+            "max": 0.2538,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.0935,
+            "max": 0.5425,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0698,
+            "max": 0.5425,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          }
+        },
+        "onnx_fp32_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.750324,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.747303,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.5037,
+            "min": 0.0,
+            "max": 0.9844,
+            "crossing_0_60": 15,
+            "tpr_at_0_60": 0.5357
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.4564,
+            "min": 0.0,
+            "max": 0.9227,
+            "crossing_0_60": 15,
+            "tpr_at_0_60": 0.5357
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0455,
+            "max": 0.2538,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.0935,
+            "max": 0.5425,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0698,
+            "max": 0.5425,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          }
+        },
+        "onnx_int8": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.749973,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.746224,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.501,
+            "min": 0.0,
+            "max": 0.9775,
+            "crossing_0_60": 15,
+            "tpr_at_0_60": 0.5357
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.4455,
+            "min": 0.0,
+            "max": 0.9074,
+            "crossing_0_60": 14,
+            "tpr_at_0_60": 0.5
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.046,
+            "max": 0.2377,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1026,
+            "max": 0.577,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0747,
+            "max": 0.577,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          }
+        },
+        "onnx_int8_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.749973,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.746224,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.501,
+            "min": 0.0,
+            "max": 0.9775,
+            "crossing_0_60": 15,
+            "tpr_at_0_60": 0.5357
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.4455,
+            "min": 0.0,
+            "max": 0.9074,
+            "crossing_0_60": 14,
+            "tpr_at_0_60": 0.5
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.046,
+            "max": 0.2377,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1026,
+            "max": 0.577,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0747,
+            "max": 0.577,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          }
+        }
+      },
+      "faster-whisper-base": {
+        "torch": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.788466,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.788196,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.583,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 17,
+            "tpr_at_0_60": 0.6071
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5315,
+            "min": 0.0,
+            "max": 0.9183,
+            "crossing_0_60": 17,
+            "tpr_at_0_60": 0.6071
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0426,
+            "max": 0.3019,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1088,
+            "max": 0.7046,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0762,
+            "max": 0.7046,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_fp32": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.788466,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.788196,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.583,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 17,
+            "tpr_at_0_60": 0.6071
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5315,
+            "min": 0.0,
+            "max": 0.9183,
+            "crossing_0_60": 17,
+            "tpr_at_0_60": 0.6071
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0426,
+            "max": 0.3019,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1088,
+            "max": 0.7046,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0762,
+            "max": 0.7046,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_fp32_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.788466,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.788196,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.583,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 17,
+            "tpr_at_0_60": 0.6071
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5315,
+            "min": 0.0,
+            "max": 0.9183,
+            "crossing_0_60": 17,
+            "tpr_at_0_60": 0.6071
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0426,
+            "max": 0.3019,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1088,
+            "max": 0.7046,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0762,
+            "max": 0.7046,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_int8": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.790516,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.790893,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.5802,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 17,
+            "tpr_at_0_60": 0.6071
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5213,
+            "min": 0.0,
+            "max": 0.9058,
+            "crossing_0_60": 17,
+            "tpr_at_0_60": 0.6071
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0416,
+            "max": 0.343,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1179,
+            "max": 0.7154,
+            "false_positives_0_60": 3,
+            "fpr_0_60": 0.017857
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0804,
+            "max": 0.7154,
+            "false_positives_0_60": 3,
+            "fpr_0_60": 0.009063
+          }
+        },
+        "onnx_int8_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.790516,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.790893,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.5802,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 17,
+            "tpr_at_0_60": 0.6071
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5213,
+            "min": 0.0,
+            "max": 0.9058,
+            "crossing_0_60": 17,
+            "tpr_at_0_60": 0.6071
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0416,
+            "max": 0.343,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1179,
+            "max": 0.7154,
+            "false_positives_0_60": 3,
+            "fpr_0_60": 0.017857
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0804,
+            "max": 0.7154,
+            "false_positives_0_60": 3,
+            "fpr_0_60": 0.009063
+          }
+        }
+      },
+      "faster-whisper-small": {
+        "torch": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.802358,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.797205,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6279,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5718,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0424,
+            "max": 0.3177,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1069,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0751,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_fp32": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.802358,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.797205,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6279,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5718,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0424,
+            "max": 0.3177,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1069,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0751,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_fp32_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.802358,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.797205,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6279,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5718,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0424,
+            "max": 0.3177,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1069,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0751,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_int8": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.808103,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.807402,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6249,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5624,
+            "min": 0.0,
+            "max": 0.9459,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0426,
+            "max": 0.3273,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1137,
+            "max": 0.7081,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0787,
+            "max": 0.7081,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_int8_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.808103,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.807402,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6249,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5624,
+            "min": 0.0,
+            "max": 0.9459,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0426,
+            "max": 0.3273,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1137,
+            "max": 0.7081,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0787,
+            "max": 0.7081,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        }
+      },
+      "deepgram-nova-3": {
+        "torch": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.939199,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.939469,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.8616,
+            "min": 0.0,
+            "max": 0.9956,
+            "crossing_0_60": 26,
+            "tpr_at_0_60": 0.9286
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.7803,
+            "min": 0.0,
+            "max": 0.9676,
+            "crossing_0_60": 25,
+            "tpr_at_0_60": 0.8929
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0509,
+            "max": 0.2594,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1442,
+            "max": 0.6925,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.035714
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0983,
+            "max": 0.6925,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.018127
+          }
+        },
+        "onnx_fp32": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.939199,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.939469,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.8616,
+            "min": 0.0,
+            "max": 0.9956,
+            "crossing_0_60": 26,
+            "tpr_at_0_60": 0.9286
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.7803,
+            "min": 0.0,
+            "max": 0.9676,
+            "crossing_0_60": 25,
+            "tpr_at_0_60": 0.8929
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0509,
+            "max": 0.2594,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1442,
+            "max": 0.6925,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.035714
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0983,
+            "max": 0.6925,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.018127
+          }
+        },
+        "onnx_fp32_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.939199,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.939469,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.8616,
+            "min": 0.0,
+            "max": 0.9956,
+            "crossing_0_60": 26,
+            "tpr_at_0_60": 0.9286
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.7803,
+            "min": 0.0,
+            "max": 0.9676,
+            "crossing_0_60": 25,
+            "tpr_at_0_60": 0.8929
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0509,
+            "max": 0.2594,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1442,
+            "max": 0.6925,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.035714
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0983,
+            "max": 0.6925,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.018127
+          }
+        },
+        "onnx_int8": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.939038,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.939361,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.8583,
+            "min": 0.0,
+            "max": 0.9897,
+            "crossing_0_60": 26,
+            "tpr_at_0_60": 0.9286
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.7655,
+            "min": 0.0,
+            "max": 0.9592,
+            "crossing_0_60": 25,
+            "tpr_at_0_60": 0.8929
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0494,
+            "max": 0.2395,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1536,
+            "max": 0.7095,
+            "false_positives_0_60": 7,
+            "fpr_0_60": 0.041667
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.1023,
+            "max": 0.7095,
+            "false_positives_0_60": 7,
+            "fpr_0_60": 0.021148
+          }
+        },
+        "onnx_int8_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.939038,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.939361,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.8583,
+            "min": 0.0,
+            "max": 0.9897,
+            "crossing_0_60": 26,
+            "tpr_at_0_60": 0.9286
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.7655,
+            "min": 0.0,
+            "max": 0.9592,
+            "crossing_0_60": 25,
+            "tpr_at_0_60": 0.8929
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0494,
+            "max": 0.2395,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1536,
+            "max": 0.7095,
+            "false_positives_0_60": 7,
+            "fpr_0_60": 0.041667
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.1023,
+            "max": 0.7095,
+            "false_positives_0_60": 7,
+            "fpr_0_60": 0.021148
+          }
+        }
+      },
+      "small_vad_true_default": {
+        "torch": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.802358,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.797205,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6279,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5718,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0424,
+            "max": 0.3177,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1069,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0751,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_fp32": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.802358,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.797205,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6279,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5718,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0424,
+            "max": 0.3177,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1069,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0751,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_fp32_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.802358,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.797205,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6279,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5718,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0424,
+            "max": 0.3177,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1069,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0751,
+            "max": 0.688,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_int8": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.808103,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.807402,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6249,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5624,
+            "min": 0.0,
+            "max": 0.9459,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0426,
+            "max": 0.3273,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1137,
+            "max": 0.7081,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0787,
+            "max": 0.7081,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_int8_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.808103,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.807402,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6249,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5624,
+            "min": 0.0,
+            "max": 0.9459,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0426,
+            "max": 0.3273,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1137,
+            "max": 0.7081,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0787,
+            "max": 0.7081,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        }
+      },
+      "small_vad_false": {
+        "torch": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.957326,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.956193,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.7536,
+            "min": 0.0268,
+            "max": 1.0,
+            "crossing_0_60": 21,
+            "tpr_at_0_60": 0.75
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.6843,
+            "min": 0.0453,
+            "max": 0.9564,
+            "crossing_0_60": 19,
+            "tpr_at_0_60": 0.6786
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0551,
+            "max": 0.2519,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1422,
+            "max": 0.6945,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0993,
+            "max": 0.6945,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_fp32": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.957326,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.956193,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.7536,
+            "min": 0.0268,
+            "max": 1.0,
+            "crossing_0_60": 21,
+            "tpr_at_0_60": 0.75
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.6843,
+            "min": 0.0453,
+            "max": 0.9564,
+            "crossing_0_60": 19,
+            "tpr_at_0_60": 0.6786
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0551,
+            "max": 0.2519,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1422,
+            "max": 0.6945,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0993,
+            "max": 0.6945,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_fp32_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.957326,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.956193,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.7536,
+            "min": 0.0268,
+            "max": 1.0,
+            "crossing_0_60": 21,
+            "tpr_at_0_60": 0.75
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.6843,
+            "min": 0.0453,
+            "max": 0.9564,
+            "crossing_0_60": 19,
+            "tpr_at_0_60": 0.6786
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0551,
+            "max": 0.2519,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1422,
+            "max": 0.6945,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0993,
+            "max": 0.6945,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_int8": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.957704,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.959107,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.7546,
+            "min": 0.0712,
+            "max": 1.0,
+            "crossing_0_60": 21,
+            "tpr_at_0_60": 0.75
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.6732,
+            "min": 0.0696,
+            "max": 0.9459,
+            "crossing_0_60": 19,
+            "tpr_at_0_60": 0.6786
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0543,
+            "max": 0.2555,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.151,
+            "max": 0.6945,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.1034,
+            "max": 0.6945,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        },
+        "onnx_int8_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.957704,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.959107,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.7546,
+            "min": 0.0712,
+            "max": 1.0,
+            "crossing_0_60": 21,
+            "tpr_at_0_60": 0.75
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.6732,
+            "min": 0.0696,
+            "max": 0.9459,
+            "crossing_0_60": 19,
+            "tpr_at_0_60": 0.6786
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0543,
+            "max": 0.2555,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.151,
+            "max": 0.6945,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.02381
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.1034,
+            "max": 0.6945,
+            "false_positives_0_60": 4,
+            "fpr_0_60": 0.012085
+          }
+        }
+      },
+      "small_vad_true_threshold_0_3": {
+        "torch": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.830492,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.831571,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6539,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5915,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0469,
+            "max": 0.2725,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1191,
+            "max": 0.6965,
+            "false_positives_0_60": 5,
+            "fpr_0_60": 0.029762
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0835,
+            "max": 0.6965,
+            "false_positives_0_60": 5,
+            "fpr_0_60": 0.015106
+          }
+        },
+        "onnx_fp32": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.830492,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.831571,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6539,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5915,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0469,
+            "max": 0.2725,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1191,
+            "max": 0.6965,
+            "false_positives_0_60": 5,
+            "fpr_0_60": 0.029762
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0835,
+            "max": 0.6965,
+            "false_positives_0_60": 5,
+            "fpr_0_60": 0.015106
+          }
+        },
+        "onnx_fp32_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.830492,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.831571,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.6539,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5915,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0469,
+            "max": 0.2725,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1191,
+            "max": 0.6965,
+            "false_positives_0_60": 5,
+            "fpr_0_60": 0.029762
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0835,
+            "max": 0.6965,
+            "false_positives_0_60": 5,
+            "fpr_0_60": 0.015106
+          }
+        },
+        "onnx_int8": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.833675,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.835024,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.656,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5824,
+            "min": 0.0,
+            "max": 0.9459,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.046,
+            "max": 0.2681,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1278,
+            "max": 0.6991,
+            "false_positives_0_60": 5,
+            "fpr_0_60": 0.029762
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0875,
+            "max": 0.6991,
+            "false_positives_0_60": 5,
+            "fpr_0_60": 0.015106
+          }
+        },
+        "onnx_int8_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.833675,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.835024,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.656,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.5824,
+            "min": 0.0,
+            "max": 0.9459,
+            "crossing_0_60": 18,
+            "tpr_at_0_60": 0.6429
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.046,
+            "max": 0.2681,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1278,
+            "max": 0.6991,
+            "false_positives_0_60": 5,
+            "fpr_0_60": 0.029762
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0875,
+            "max": 0.6991,
+            "false_positives_0_60": 5,
+            "fpr_0_60": 0.015106
+          }
+        }
+      },
+      "cascade_small_03_to_deepgram": {
+        "torch": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.938552,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.938822,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.8451,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 26,
+            "tpr_at_0_60": 0.9286
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.76,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 25,
+            "tpr_at_0_60": 0.8929
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0506,
+            "max": 0.2725,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1432,
+            "max": 0.6965,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.035714
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0976,
+            "max": 0.6965,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.018127
+          }
+        },
+        "onnx_fp32": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.938552,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.938822,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.8451,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 26,
+            "tpr_at_0_60": 0.9286
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.76,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 25,
+            "tpr_at_0_60": 0.8929
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0506,
+            "max": 0.2725,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1432,
+            "max": 0.6965,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.035714
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0976,
+            "max": 0.6965,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.018127
+          }
+        },
+        "onnx_fp32_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.938552,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.938822,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.8451,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 26,
+            "tpr_at_0_60": 0.9286
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.76,
+            "min": 0.0,
+            "max": 0.9564,
+            "crossing_0_60": 25,
+            "tpr_at_0_60": 0.8929
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0506,
+            "max": 0.2725,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1432,
+            "max": 0.6965,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.035714
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.0976,
+            "max": 0.6965,
+            "false_positives_0_60": 6,
+            "fpr_0_60": 0.018127
+          }
+        },
+        "onnx_int8": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.938876,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.939038,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.8427,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 26,
+            "tpr_at_0_60": 0.9286
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.7465,
+            "min": 0.0,
+            "max": 0.9459,
+            "crossing_0_60": 25,
+            "tpr_at_0_60": 0.8929
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0497,
+            "max": 0.2515,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1525,
+            "max": 0.6991,
+            "false_positives_0_60": 7,
+            "fpr_0_60": 0.041667
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.1019,
+            "max": 0.6991,
+            "false_positives_0_60": 7,
+            "fpr_0_60": 0.021148
+          }
+        },
+        "onnx_int8_es_en": {
+          "num_audios_speech": 28,
+          "real_transcripts_auc_pos_vs_all_12_unrelated": 0.938876,
+          "real_transcripts_auc_reading_vs_all_12_unrelated": 0.939038,
+          "reading_28": {
+            "count": 28,
+            "mean": 0.8427,
+            "min": 0.0,
+            "max": 1.0,
+            "crossing_0_60": 26,
+            "tpr_at_0_60": 0.9286
+          },
+          "query_paraphrase_28": {
+            "count": 28,
+            "mean": 0.7465,
+            "min": 0.0,
+            "max": 0.9459,
+            "crossing_0_60": 25,
+            "tpr_at_0_60": 0.8929
+          },
+          "unrelated_out_of_domain_6": {
+            "count": 163,
+            "mean": 0.0497,
+            "max": 0.2515,
+            "false_positives_0_60": 0,
+            "fpr_0_60": 0.0
+          },
+          "unrelated_same_subject_6": {
+            "count": 168,
+            "mean": 0.1525,
+            "max": 0.6991,
+            "false_positives_0_60": 7,
+            "fpr_0_60": 0.041667
+          },
+          "unrelated_all_12": {
+            "count": 331,
+            "mean": 0.1019,
+            "max": 0.6991,
+            "false_positives_0_60": 7,
+            "fpr_0_60": 0.021148
+          }
+        }
+      }
+    },
+    "borderline_pairs_0_50_to_0_70": {
+      "p1_synthetic_pairs_in_0_50_0_70": [],
+      "p1_count": 0,
+      "p1_flips_at_0_60": 0,
+      "real_28_transcriptions_pairs_in_0_50_0_70": [
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "7cb30906-a831-4349-b72f-89f1cdeb4ae6",
+          "pair_type": "reading",
+          "score_torch": 0.693,
+          "score_onnx_fp32": 0.693,
+          "score_onnx_int8": 0.6604,
+          "score_onnx_int8_es_en": 0.6604,
+          "diff_int8_minus_torch": -0.0325,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "...acata lua, mi familia tanto materna como materna es fruto de esas soledas mig"
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "7cb30906-a831-4349-b72f-89f1cdeb4ae6",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.6306,
+          "score_onnx_fp32": 0.6306,
+          "score_onnx_int8": 0.6146,
+          "score_onnx_int8_es_en": 0.6146,
+          "diff_int8_minus_torch": -0.0159,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "...acata lua, mi familia tanto materna como materna es fruto de esas soledas mig"
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "3cedc890-6886-4344-bfdb-c54700697f2f",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.6297,
+          "score_onnx_fp32": 0.6297,
+          "score_onnx_int8": 0.5778,
+          "score_onnx_int8_es_en": 0.5778,
+          "diff_int8_minus_torch": -0.0518,
+          "changed_side_of_0_60": true,
+          "transcript_preview": "quiero confirmar mar y si estamos en vivo en la web, a ver si nos pueden fijar b"
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "e17fb1c3-0351-4ec8-bd3a-4a9aaab969f6",
+          "pair_type": "reading",
+          "score_torch": 0.7073,
+          "score_onnx_fp32": 0.7073,
+          "score_onnx_int8": 0.6713,
+          "score_onnx_int8_es_en": 0.6713,
+          "diff_int8_minus_torch": -0.036,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Pero los que confían el señor Renoirán, sus fueras. ¿Sas respetamos el comentari"
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "e17fb1c3-0351-4ec8-bd3a-4a9aaab969f6",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.6568,
+          "score_onnx_fp32": 0.6568,
+          "score_onnx_int8": 0.6417,
+          "score_onnx_int8_es_en": 0.6417,
+          "diff_int8_minus_torch": -0.0152,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Pero los que confían el señor Renoirán, sus fueras. ¿Sas respetamos el comentari"
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "P01_A1_base",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5306,
+          "score_onnx_fp32": 0.5306,
+          "score_onnx_int8": 0.577,
+          "score_onnx_int8_es_en": 0.577,
+          "diff_int8_minus_torch": 0.0464,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la diferencia entre un avariable local y un avariable global en program"
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "P01_A1_lejos",
+          "pair_type": "reading",
+          "score_torch": 0.6589,
+          "score_onnx_fp32": 0.6589,
+          "score_onnx_int8": 0.6881,
+          "score_onnx_int8_es_en": 0.6881,
+          "diff_int8_minus_torch": 0.0291,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la referencia entre una variabilidad local y una variabilidad robot? En"
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "P01_A1_lejos",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.6393,
+          "score_onnx_fp32": 0.6393,
+          "score_onnx_int8": 0.6232,
+          "score_onnx_int8_es_en": 0.6232,
+          "diff_int8_minus_torch": -0.0161,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la referencia entre una variabilidad local y una variabilidad robot? En"
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "P01_A1_lejos",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.4724,
+          "score_onnx_fp32": 0.4724,
+          "score_onnx_int8": 0.5131,
+          "score_onnx_int8_es_en": 0.5131,
+          "diff_int8_minus_torch": 0.0407,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la referencia entre una variabilidad local y una variabilidad robot? En"
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "P01_A3_base",
+          "pair_type": "reading",
+          "score_torch": 0.6755,
+          "score_onnx_fp32": 0.6755,
+          "score_onnx_int8": 0.6832,
+          "score_onnx_int8_es_en": 0.6832,
+          "diff_int8_minus_torch": 0.0077,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula, el área de entriángulo cuya va a ser miden 12 cm y cuya el tubro miden "
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "P01_A3_base",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.6538,
+          "score_onnx_fp32": 0.6538,
+          "score_onnx_int8": 0.6363,
+          "score_onnx_int8_es_en": 0.6363,
+          "diff_int8_minus_torch": -0.0175,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula, el área de entriángulo cuya va a ser miden 12 cm y cuya el tubro miden "
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "P01_A3_base",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.5425,
+          "score_onnx_fp32": 0.5425,
+          "score_onnx_int8": 0.5654,
+          "score_onnx_int8_es_en": 0.5654,
+          "diff_int8_minus_torch": 0.0229,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula, el área de entriángulo cuya va a ser miden 12 cm y cuya el tubro miden "
+        },
+        {
+          "engine": "faster-whisper-tiny",
+          "sample_id": "P01_A3_lejos",
+          "pair_type": "reading",
+          "score_torch": 0.5696,
+          "score_onnx_fp32": 0.5696,
+          "score_onnx_int8": 0.5899,
+          "score_onnx_int8_es_en": 0.5899,
+          "diff_int8_minus_torch": 0.0203,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "la escuela, el año de un triángulo, cuida a base, mide en todo sentido y cuida e"
+        },
+        {
+          "engine": "faster-whisper-base",
+          "sample_id": "3cedc890-6886-4344-bfdb-c54700697f2f",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.7244,
+          "score_onnx_fp32": 0.7244,
+          "score_onnx_int8": 0.6734,
+          "score_onnx_int8_es_en": 0.6734,
+          "diff_int8_minus_torch": -0.051,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Quiero confirmar, Mary si estamos en vivo en la web, a ver si nos podemos fijar,"
+        },
+        {
+          "engine": "faster-whisper-base",
+          "sample_id": "e17fb1c3-0351-4ec8-bd3a-4a9aaab969f6",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.6676,
+          "score_onnx_fp32": 0.6676,
+          "score_onnx_int8": 0.6639,
+          "score_onnx_int8_es_en": 0.6639,
+          "diff_int8_minus_torch": -0.0037,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "pero los que confían el señor renovarán su fuerza. O sea, respetamos el comentar"
+        },
+        {
+          "engine": "faster-whisper-base",
+          "sample_id": "P01_A1_base",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5138,
+          "score_onnx_fp32": 0.5138,
+          "score_onnx_int8": 0.5633,
+          "score_onnx_int8_es_en": 0.5633,
+          "diff_int8_minus_torch": 0.0496,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la diferencia entre una variable local y una variable global en un prog"
+        },
+        {
+          "engine": "faster-whisper-base",
+          "sample_id": "P01_A1_lejos",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5263,
+          "score_onnx_fp32": 0.5263,
+          "score_onnx_int8": 0.5775,
+          "score_onnx_int8_es_en": 0.5775,
+          "diff_int8_minus_torch": 0.0512,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la diferencia entre una variable local y una variable global de un prog"
+        },
+        {
+          "engine": "faster-whisper-base",
+          "sample_id": "P01_A2_bajaylejos",
+          "pair_type": "reading",
+          "score_torch": 0.606,
+          "score_onnx_fp32": 0.606,
+          "score_onnx_int8": 0.6036,
+          "score_onnx_int8_es_en": 0.6036,
+          "diff_int8_minus_torch": -0.0024,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Es decir, se han que guardar, rolar, descliebe dos metidas para proteger la info"
+        },
+        {
+          "engine": "faster-whisper-base",
+          "sample_id": "P01_A2_bajaylejos",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.6049,
+          "score_onnx_fp32": 0.6049,
+          "score_onnx_int8": 0.6089,
+          "score_onnx_int8_es_en": 0.6089,
+          "diff_int8_minus_torch": 0.004,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Es decir, se han que guardar, rolar, descliebe dos metidas para proteger la info"
+        },
+        {
+          "engine": "faster-whisper-base",
+          "sample_id": "P01_A3_base",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.7046,
+          "score_onnx_fp32": 0.7046,
+          "score_onnx_int8": 0.6888,
+          "score_onnx_int8_es_en": 0.6888,
+          "diff_int8_minus_torch": -0.0158,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuña base mide 12 centímetros y cuya altura mide"
+        },
+        {
+          "engine": "faster-whisper-base",
+          "sample_id": "P01_A3_base",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.6871,
+          "score_onnx_fp32": 0.6871,
+          "score_onnx_int8": 0.7154,
+          "score_onnx_int8_es_en": 0.7154,
+          "diff_int8_minus_torch": 0.0283,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuña base mide 12 centímetros y cuya altura mide"
+        },
+        {
+          "engine": "faster-whisper-base",
+          "sample_id": "P01_A3_lejos",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.6146,
+          "score_onnx_fp32": 0.6146,
+          "score_onnx_int8": 0.5822,
+          "score_onnx_int8_es_en": 0.5822,
+          "diff_int8_minus_torch": -0.0324,
+          "changed_side_of_0_60": true,
+          "transcript_preview": "la cola el área de un triángulo, cuya base mide dos centímetros y cuya torra mid"
+        },
+        {
+          "engine": "faster-whisper-base",
+          "sample_id": "P01_A3_lejos",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.6936,
+          "score_onnx_fp32": 0.6936,
+          "score_onnx_int8": 0.699,
+          "score_onnx_int8_es_en": 0.699,
+          "diff_int8_minus_torch": 0.0054,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "la cola el área de un triángulo, cuya base mide dos centímetros y cuya torra mid"
+        },
+        {
+          "engine": "faster-whisper-small",
+          "sample_id": "P01_A1_base",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5138,
+          "score_onnx_fp32": 0.5138,
+          "score_onnx_int8": 0.5633,
+          "score_onnx_int8_es_en": 0.5633,
+          "diff_int8_minus_torch": 0.0496,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la diferencia entre una variable local y una variable global en un prog"
+        },
+        {
+          "engine": "faster-whisper-small",
+          "sample_id": "P01_A1_lejos",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5146,
+          "score_onnx_fp32": 0.5146,
+          "score_onnx_int8": 0.5672,
+          "score_onnx_int8_es_en": 0.5672,
+          "diff_int8_minus_torch": 0.0525,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la diferencia entre una variable local y una variable global? Un progra"
+        },
+        {
+          "engine": "faster-whisper-small",
+          "sample_id": "P01_A2_bajaylejos",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.6991,
+          "score_onnx_fp32": 0.6991,
+          "score_onnx_int8": 0.702,
+          "score_onnx_int8_es_en": 0.702,
+          "diff_int8_minus_torch": 0.0029,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "la empresa quiere guardar, escribe dos medidas para proteger la información y ex"
+        },
+        {
+          "engine": "faster-whisper-small",
+          "sample_id": "P01_A3_base",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.6877,
+          "score_onnx_fp32": 0.6877,
+          "score_onnx_int8": 0.6622,
+          "score_onnx_int8_es_en": 0.6622,
+          "diff_int8_minus_torch": -0.0255,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuya base mide 12 centímetros y cuya altura mide"
+        },
+        {
+          "engine": "faster-whisper-small",
+          "sample_id": "P01_A3_base",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.6763,
+          "score_onnx_fp32": 0.6763,
+          "score_onnx_int8": 0.7061,
+          "score_onnx_int8_es_en": 0.7061,
+          "diff_int8_minus_torch": 0.0297,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuya base mide 12 centímetros y cuya altura mide"
+        },
+        {
+          "engine": "faster-whisper-small",
+          "sample_id": "P01_A3_lejos",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.6363,
+          "score_onnx_fp32": 0.6363,
+          "score_onnx_int8": 0.6069,
+          "score_onnx_int8_es_en": 0.6069,
+          "diff_int8_minus_torch": -0.0293,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "cura el área de un triángulo cuya base mide 2 centímetros y cuya altura mide 9 c"
+        },
+        {
+          "engine": "faster-whisper-small",
+          "sample_id": "P01_A3_lejos",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.688,
+          "score_onnx_fp32": 0.688,
+          "score_onnx_int8": 0.7081,
+          "score_onnx_int8_es_en": 0.7081,
+          "diff_int8_minus_torch": 0.02,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "cura el área de un triángulo cuya base mide 2 centímetros y cuya altura mide 9 c"
+        },
+        {
+          "engine": "faster-whisper-small",
+          "sample_id": "P01_A3_ruido",
+          "pair_type": "reading",
+          "score_torch": 0.6559,
+          "score_onnx_fp32": 0.6559,
+          "score_onnx_int8": 0.6479,
+          "score_onnx_int8_es_en": 0.6479,
+          "diff_int8_minus_torch": -0.008,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Alcune de la realidad de un triángulo, un aerobas en medio de 2 centímetros y cu"
+        },
+        {
+          "engine": "faster-whisper-small",
+          "sample_id": "P01_A3_ruido",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.651,
+          "score_onnx_fp32": 0.651,
+          "score_onnx_int8": 0.6271,
+          "score_onnx_int8_es_en": 0.6271,
+          "diff_int8_minus_torch": -0.0239,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Alcune de la realidad de un triángulo, un aerobas en medio de 2 centímetros y cu"
+        },
+        {
+          "engine": "faster-whisper-small",
+          "sample_id": "P01_A3_ruido",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.5315,
+          "score_onnx_fp32": 0.5315,
+          "score_onnx_int8": 0.5235,
+          "score_onnx_int8_es_en": 0.5235,
+          "diff_int8_minus_torch": -0.008,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Alcune de la realidad de un triángulo, un aerobas en medio de 2 centímetros y cu"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A1_base",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5115,
+          "score_onnx_fp32": 0.5115,
+          "score_onnx_int8": 0.5371,
+          "score_onnx_int8_es_en": 0.5371,
+          "diff_int8_minus_torch": 0.0257,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "cuál es la diferencia entre una variable local y una variable global en un progr"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A1_lejos",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5113,
+          "score_onnx_fp32": 0.5113,
+          "score_onnx_int8": 0.546,
+          "score_onnx_int8_es_en": 0.546,
+          "diff_int8_minus_torch": 0.0347,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "cuál es la diferencia entre una variable local y una variable global en un progr"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A1_ruido",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5145,
+          "score_onnx_fp32": 0.5145,
+          "score_onnx_int8": 0.5651,
+          "score_onnx_int8_es_en": 0.5651,
+          "diff_int8_minus_torch": 0.0505,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "cuál es la diferencia entre una variable local y una variable global con un prog"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A3_bajaylejos",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.5994,
+          "score_onnx_fp32": 0.5994,
+          "score_onnx_int8": 0.589,
+          "score_onnx_int8_es_en": 0.589,
+          "diff_int8_minus_torch": -0.0104,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula el base mide doce centímetros mide nueve centímetros y el resultado fina"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A3_bajaylejos",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.5482,
+          "score_onnx_fp32": 0.5482,
+          "score_onnx_int8": 0.5867,
+          "score_onnx_int8_es_en": 0.5867,
+          "diff_int8_minus_torch": 0.0385,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula el base mide doce centímetros mide nueve centímetros y el resultado fina"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A3_base",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.6827,
+          "score_onnx_fp32": 0.6827,
+          "score_onnx_int8": 0.6544,
+          "score_onnx_int8_es_en": 0.6544,
+          "diff_int8_minus_torch": -0.0284,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula el área de un triángulo cuya base mide doce centímetros y cuya altura mi"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A3_base",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.6819,
+          "score_onnx_fp32": 0.6819,
+          "score_onnx_int8": 0.7078,
+          "score_onnx_int8_es_en": 0.7078,
+          "diff_int8_minus_torch": 0.0259,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula el área de un triángulo cuya base mide doce centímetros y cuya altura mi"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A3_lejos",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.6925,
+          "score_onnx_fp32": 0.6925,
+          "score_onnx_int8": 0.6716,
+          "score_onnx_int8_es_en": 0.6716,
+          "diff_int8_minus_torch": -0.0209,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula el área de un triángulo cuya base mide dos centímetros y cuya altura mid"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A3_lejos",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.6892,
+          "score_onnx_fp32": 0.6892,
+          "score_onnx_int8": 0.7095,
+          "score_onnx_int8_es_en": 0.7095,
+          "diff_int8_minus_torch": 0.0203,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula el área de un triángulo cuya base mide dos centímetros y cuya altura mid"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A3_ruido",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.6491,
+          "score_onnx_fp32": 0.6491,
+          "score_onnx_int8": 0.6283,
+          "score_onnx_int8_es_en": 0.6283,
+          "diff_int8_minus_torch": -0.0207,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula la escalera de un triángulo cuya base mide dos centímetros y cuya altura"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A3_ruido",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.6614,
+          "score_onnx_fp32": 0.6614,
+          "score_onnx_int8": 0.6976,
+          "score_onnx_int8_es_en": 0.6976,
+          "diff_int8_minus_torch": 0.0362,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula la escalera de un triángulo cuya base mide dos centímetros y cuya altura"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A3_voz_baja",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.5635,
+          "score_onnx_fp32": 0.5635,
+          "score_onnx_int8": 0.6026,
+          "score_onnx_int8_es_en": 0.6026,
+          "diff_int8_minus_torch": 0.0391,
+          "changed_side_of_0_60": true,
+          "transcript_preview": "calcula de la de ocho a doce centímetros de nueve setenta escribe la fórmula y e"
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A4_ruido",
+          "pair_type": "reading",
+          "score_torch": 0.6837,
+          "score_onnx_fp32": 0.6837,
+          "score_onnx_int8": 0.6808,
+          "score_onnx_int8_es_en": 0.6808,
+          "diff_int8_minus_torch": -0.0029,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "mañana tengo que anotar algo comprar después pasar por la farmacia antes de que "
+        },
+        {
+          "engine": "deepgram-nova-3",
+          "sample_id": "P01_A4_ruido",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.5842,
+          "score_onnx_fp32": 0.5842,
+          "score_onnx_int8": 0.5975,
+          "score_onnx_int8_es_en": 0.5975,
+          "diff_int8_minus_torch": 0.0134,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "mañana tengo que anotar algo comprar después pasar por la farmacia antes de que "
+        },
+        {
+          "engine": "small_vad_true_threshold_0_3",
+          "sample_id": "P01_A1_base",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5138,
+          "score_onnx_fp32": 0.5138,
+          "score_onnx_int8": 0.5633,
+          "score_onnx_int8_es_en": 0.5633,
+          "diff_int8_minus_torch": 0.0496,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la diferencia entre una variable local y una variable global en un prog"
+        },
+        {
+          "engine": "small_vad_true_threshold_0_3",
+          "sample_id": "P01_A1_lejos",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5146,
+          "score_onnx_fp32": 0.5146,
+          "score_onnx_int8": 0.5672,
+          "score_onnx_int8_es_en": 0.5672,
+          "diff_int8_minus_torch": 0.0525,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la diferencia entre una variable local y una variable global? Un progra"
+        },
+        {
+          "engine": "small_vad_true_threshold_0_3",
+          "sample_id": "P01_A1_ruido",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.6294,
+          "score_onnx_fp32": 0.6294,
+          "score_onnx_int8": 0.6541,
+          "score_onnx_int8_es_en": 0.6541,
+          "diff_int8_minus_torch": 0.0248,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la diferencia entre una vallada de burca y una vallada de burca con un "
+        },
+        {
+          "engine": "small_vad_true_threshold_0_3",
+          "sample_id": "P01_A2_ruido",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.4966,
+          "score_onnx_fp32": 0.4966,
+          "score_onnx_int8": 0.5034,
+          "score_onnx_int8_es_en": 0.5034,
+          "diff_int8_minus_torch": 0.0068,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Podemos adquirir moral los datos de sus clientes de formación que te escribo dos"
+        },
+        {
+          "engine": "small_vad_true_threshold_0_3",
+          "sample_id": "P01_A3_base",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.6945,
+          "score_onnx_fp32": 0.6945,
+          "score_onnx_int8": 0.6866,
+          "score_onnx_int8_es_en": 0.6866,
+          "diff_int8_minus_torch": -0.0079,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuya base mide 12 centímetros y cuya altura mide"
+        },
+        {
+          "engine": "small_vad_true_threshold_0_3",
+          "sample_id": "P01_A3_base",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.6667,
+          "score_onnx_fp32": 0.6667,
+          "score_onnx_int8": 0.6901,
+          "score_onnx_int8_es_en": 0.6901,
+          "diff_int8_minus_torch": 0.0234,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuya base mide 12 centímetros y cuya altura mide"
+        },
+        {
+          "engine": "small_vad_true_threshold_0_3",
+          "sample_id": "P01_A3_lejos",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.6965,
+          "score_onnx_fp32": 0.6965,
+          "score_onnx_int8": 0.6758,
+          "score_onnx_int8_es_en": 0.6758,
+          "diff_int8_minus_torch": -0.0207,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuya base mide 2 centímetros y cuya altura mide "
+        },
+        {
+          "engine": "small_vad_true_threshold_0_3",
+          "sample_id": "P01_A3_lejos",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.6705,
+          "score_onnx_fp32": 0.6705,
+          "score_onnx_int8": 0.6991,
+          "score_onnx_int8_es_en": 0.6991,
+          "diff_int8_minus_torch": 0.0286,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuya base mide 2 centímetros y cuya altura mide "
+        },
+        {
+          "engine": "small_vad_true_threshold_0_3",
+          "sample_id": "P01_A3_ruido",
+          "pair_type": "reading",
+          "score_torch": 0.6896,
+          "score_onnx_fp32": 0.6896,
+          "score_onnx_int8": 0.6977,
+          "score_onnx_int8_es_en": 0.6977,
+          "diff_int8_minus_torch": 0.0081,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Alcuna literaridad de un triángulo con la base de 2 centímetros y cuida el toro "
+        },
+        {
+          "engine": "small_vad_true_threshold_0_3",
+          "sample_id": "P01_A3_ruido",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.6713,
+          "score_onnx_fp32": 0.6713,
+          "score_onnx_int8": 0.6612,
+          "score_onnx_int8_es_en": 0.6612,
+          "diff_int8_minus_torch": -0.0102,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Alcuna literaridad de un triángulo con la base de 2 centímetros y cuida el toro "
+        },
+        {
+          "engine": "small_vad_true_threshold_0_3",
+          "sample_id": "P01_A3_ruido",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.5569,
+          "score_onnx_fp32": 0.5569,
+          "score_onnx_int8": 0.5639,
+          "score_onnx_int8_es_en": 0.5639,
+          "diff_int8_minus_torch": 0.007,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Alcuna literaridad de un triángulo con la base de 2 centímetros y cuida el toro "
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A1_base",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5138,
+          "score_onnx_fp32": 0.5138,
+          "score_onnx_int8": 0.5633,
+          "score_onnx_int8_es_en": 0.5633,
+          "diff_int8_minus_torch": 0.0496,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la diferencia entre una variable local y una variable global en un prog"
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A1_lejos",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5146,
+          "score_onnx_fp32": 0.5146,
+          "score_onnx_int8": 0.5672,
+          "score_onnx_int8_es_en": 0.5672,
+          "diff_int8_minus_torch": 0.0525,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "¿Cuál es la diferencia entre una variable local y una variable global? Un progra"
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A1_ruido",
+          "pair_type": "unrelated:same_subject:S01_prog_bucles",
+          "score_torch": 0.5145,
+          "score_onnx_fp32": 0.5145,
+          "score_onnx_int8": 0.5651,
+          "score_onnx_int8_es_en": 0.5651,
+          "diff_int8_minus_torch": 0.0505,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "cuál es la diferencia entre una variable local y una variable global con un prog"
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A3_bajaylejos",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.5994,
+          "score_onnx_fp32": 0.5994,
+          "score_onnx_int8": 0.589,
+          "score_onnx_int8_es_en": 0.589,
+          "diff_int8_minus_torch": -0.0104,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula el base mide doce centímetros mide nueve centímetros y el resultado fina"
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A3_bajaylejos",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.5482,
+          "score_onnx_fp32": 0.5482,
+          "score_onnx_int8": 0.5867,
+          "score_onnx_int8_es_en": 0.5867,
+          "diff_int8_minus_torch": 0.0385,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula el base mide doce centímetros mide nueve centímetros y el resultado fina"
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A3_base",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.6945,
+          "score_onnx_fp32": 0.6945,
+          "score_onnx_int8": 0.6866,
+          "score_onnx_int8_es_en": 0.6866,
+          "diff_int8_minus_torch": -0.0079,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuya base mide 12 centímetros y cuya altura mide"
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A3_base",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.6667,
+          "score_onnx_fp32": 0.6667,
+          "score_onnx_int8": 0.6901,
+          "score_onnx_int8_es_en": 0.6901,
+          "diff_int8_minus_torch": 0.0234,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuya base mide 12 centímetros y cuya altura mide"
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A3_lejos",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.6965,
+          "score_onnx_fp32": 0.6965,
+          "score_onnx_int8": 0.6758,
+          "score_onnx_int8_es_en": 0.6758,
+          "diff_int8_minus_torch": -0.0207,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuya base mide 2 centímetros y cuya altura mide "
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A3_lejos",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.6705,
+          "score_onnx_fp32": 0.6705,
+          "score_onnx_int8": 0.6991,
+          "score_onnx_int8_es_en": 0.6991,
+          "diff_int8_minus_torch": 0.0286,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "Calcula el área de un triángulo cuya base mide 2 centímetros y cuya altura mide "
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A3_ruido",
+          "pair_type": "unrelated:same_subject:S05_geom_circulo",
+          "score_torch": 0.6491,
+          "score_onnx_fp32": 0.6491,
+          "score_onnx_int8": 0.6283,
+          "score_onnx_int8_es_en": 0.6283,
+          "diff_int8_minus_torch": -0.0207,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula la escalera de un triángulo cuya base mide dos centímetros y cuya altura"
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A3_ruido",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.6614,
+          "score_onnx_fp32": 0.6614,
+          "score_onnx_int8": 0.6976,
+          "score_onnx_int8_es_en": 0.6976,
+          "diff_int8_minus_torch": 0.0362,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "calcula la escalera de un triángulo cuya base mide dos centímetros y cuya altura"
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A3_voz_baja",
+          "pair_type": "unrelated:same_subject:S06_geom_pitagoras",
+          "score_torch": 0.5635,
+          "score_onnx_fp32": 0.5635,
+          "score_onnx_int8": 0.6026,
+          "score_onnx_int8_es_en": 0.6026,
+          "diff_int8_minus_torch": 0.0391,
+          "changed_side_of_0_60": true,
+          "transcript_preview": "calcula de la de ocho a doce centímetros de nueve setenta escribe la fórmula y e"
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A4_ruido",
+          "pair_type": "reading",
+          "score_torch": 0.6837,
+          "score_onnx_fp32": 0.6837,
+          "score_onnx_int8": 0.6808,
+          "score_onnx_int8_es_en": 0.6808,
+          "diff_int8_minus_torch": -0.0029,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "mañana tengo que anotar algo comprar después pasar por la farmacia antes de que "
+        },
+        {
+          "engine": "cascade_small_03_to_deepgram",
+          "sample_id": "P01_A4_ruido",
+          "pair_type": "query_paraphrase",
+          "score_torch": 0.5842,
+          "score_onnx_fp32": 0.5842,
+          "score_onnx_int8": 0.5975,
+          "score_onnx_int8_es_en": 0.5975,
+          "diff_int8_minus_torch": 0.0134,
+          "changed_side_of_0_60": false,
+          "transcript_preview": "mañana tengo que anotar algo comprar después pasar por la farmacia antes de que "
+        }
+      ],
+      "real_28_count": 72,
+      "real_28_flips_at_0_60": 4
+    },
+    "host_isolated_subprocess_memory": {
+      "pytorch_fp32": {
+        "variant": "pytorch_fp32",
+        "load_seconds": 5.2012,
+        "first_score_seconds": 0.0186,
+        "score": 0.624419,
+        "vm_hwm_mib": 1094.36,
+        "vm_rss_mib": 1094.36
+      },
+      "onnx_fp32_full": {
+        "variant": "onnx_fp32_full",
+        "load_seconds": 2.0129,
+        "first_score_seconds": 0.0176,
+        "score": 0.624419,
+        "vm_hwm_mib": 1171.57,
+        "vm_rss_mib": 863.75
+      },
+      "onnx_fp32_es_en": {
+        "variant": "onnx_fp32_es_en",
+        "load_seconds": 0.7462,
+        "first_score_seconds": 0.0193,
+        "score": 0.624419,
+        "vm_hwm_mib": 497.47,
+        "vm_rss_mib": 422.92
+      },
+      "onnx_int8_full": {
+        "variant": "onnx_int8_full",
+        "load_seconds": 0.8243,
+        "first_score_seconds": 0.0089,
+        "score": 0.593356,
+        "vm_hwm_mib": 560.94,
+        "vm_rss_mib": 485.59
+      },
+      "onnx_int8_es_en": {
+        "variant": "onnx_int8_es_en",
+        "load_seconds": 0.357,
+        "first_score_seconds": 0.0088,
+        "score": 0.593356,
+        "vm_hwm_mib": 237.65,
+        "vm_rss_mib": 220.54
+      }
+    },
+    "onnxruntime_options_ablation": [
+      {
+        "model": "model_int8.onnx",
+        "enable_cpu_mem_arena": true,
+        "enable_mem_pattern": true,
+        "disable_prepacking": false,
+        "vm_hwm_mib": 262.55,
+        "vm_rss_mib": 192.64
+      },
+      {
+        "model": "model_int8.onnx",
+        "enable_cpu_mem_arena": false,
+        "enable_mem_pattern": false,
+        "disable_prepacking": false,
+        "vm_hwm_mib": 262.64,
+        "vm_rss_mib": 185.33
+      },
+      {
+        "model": "model_int8.onnx",
+        "enable_cpu_mem_arena": false,
+        "enable_mem_pattern": false,
+        "disable_prepacking": true,
+        "vm_hwm_mib": 262.43,
+        "vm_rss_mib": 180.46
+      },
+      {
+        "model": "model_int8_es_en.onnx",
+        "enable_cpu_mem_arena": false,
+        "enable_mem_pattern": false,
+        "disable_prepacking": false,
+        "vm_hwm_mib": 145.73,
+        "vm_rss_mib": 126.89
+      },
+      {
+        "model": "model_int8_es_en.onnx",
+        "enable_cpu_mem_arena": false,
+        "enable_mem_pattern": false,
+        "disable_prepacking": true,
+        "vm_hwm_mib": 145.58,
+        "vm_rss_mib": 121.94
+      }
+    ]
+  },
+  "docker_images": {
+    "build_seconds": 84.76,
+    "images": {
+      "prod_base_with_torch": {
+        "image": "proctoring-ai:prod-base",
+        "size_bytes": 2768415301,
+        "size_mib": 2640.17,
+        "size_gb_decimal": 2.77
+      },
+      "prod_asr_local_with_torch": {
+        "image": "proctoring-ai:prod-asr-local",
+        "size_bytes": 2952493692,
+        "size_mib": 2815.72,
+        "size_gb_decimal": 2.95
+      },
+      "exp_2b_asr_local_no_torch": {
+        "image": "proctoring-ai:exp-2b-no-torch",
+        "size_bytes": 1626329833,
+        "size_mib": 1550.99,
+        "size_gb_decimal": 1.63
+      }
+    },
+    "savings_vs_prod_asr_local_mib": 1264.73,
+    "savings_vs_prod_base_mib": 1089.18,
+    "effective_footprint_with_similarity_weights_mib": {
+      "image_without_models_mib": 1550.99,
+      "with_onnx_int8_es_en_mib": 1608.77,
+      "with_onnx_int8_full_mib": 1672.32,
+      "with_onnx_fp32_es_en_mib": 1769.35,
+      "with_onnx_fp32_full_mib": 2008.15
+    }
+  },
+  "docker_memory_benchmarks_30s_audio": {
+    "int8_full_vocab_250k": [
+      {
+        "mode": "only_sim",
+        "memory_limit": "512m",
+        "exit_code": 137,
+        "oom_killed": true,
+        "wall_seconds": 1.2205,
+        "stderr_tail": ""
+      },
+      {
+        "mode": "only_sim",
+        "memory_limit": "1g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 1.4496,
+        "torch_installed": false,
+        "sim_load_seconds": 0.6189,
+        "sim_infer_seconds": 0.0098,
+        "asr_load_seconds": 0.0,
+        "asr_transcribe_seconds": 0.0,
+        "total_seconds": 0.6287,
+        "similarity": 1.0,
+        "peak_rss_mib": 545.58,
+        "cgroup_peak_mib": 528.89
+      },
+      {
+        "mode": "only_sim",
+        "memory_limit": "2g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 1.3105,
+        "torch_installed": false,
+        "sim_load_seconds": 0.5721,
+        "sim_infer_seconds": 0.0073,
+        "asr_load_seconds": 0.0,
+        "asr_transcribe_seconds": 0.0,
+        "total_seconds": 0.5794,
+        "similarity": 1.0,
+        "peak_rss_mib": 545.79,
+        "cgroup_peak_mib": 514.39
+      },
+      {
+        "mode": "deepgram",
+        "memory_limit": "512m",
+        "exit_code": 137,
+        "oom_killed": true,
+        "wall_seconds": 1.1177,
+        "stderr_tail": ""
+      },
+      {
+        "mode": "deepgram",
+        "memory_limit": "1g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 3.9191,
+        "torch_installed": false,
+        "sim_load_seconds": 0.6112,
+        "sim_infer_seconds": 0.0182,
+        "asr_load_seconds": 0.0,
+        "asr_transcribe_seconds": 2.3338,
+        "total_seconds": 2.9632,
+        "similarity": 0.8402,
+        "peak_rss_mib": 545.7,
+        "cgroup_peak_mib": 514.39
+      },
+      {
+        "mode": "deepgram",
+        "memory_limit": "2g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 6.128,
+        "torch_installed": false,
+        "sim_load_seconds": 0.6084,
+        "sim_infer_seconds": 0.0173,
+        "asr_load_seconds": 0.0,
+        "asr_transcribe_seconds": 4.1804,
+        "total_seconds": 4.8061,
+        "similarity": 0.8402,
+        "peak_rss_mib": 545.76,
+        "cgroup_peak_mib": 514.72
+      },
+      {
+        "mode": "faster-whisper-tiny",
+        "memory_limit": "512m",
+        "exit_code": 137,
+        "oom_killed": true,
+        "wall_seconds": 1.3801,
+        "stderr_tail": ""
+      },
+      {
+        "mode": "faster-whisper-tiny",
+        "memory_limit": "1g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 3.4775,
+        "torch_installed": false,
+        "sim_load_seconds": 0.6187,
+        "sim_infer_seconds": 0.0213,
+        "asr_load_seconds": 0.9014,
+        "asr_transcribe_seconds": 0.713,
+        "total_seconds": 2.2544,
+        "similarity": 0.8764,
+        "peak_rss_mib": 706.52,
+        "cgroup_peak_mib": 750.35
+      },
+      {
+        "mode": "faster-whisper-base",
+        "memory_limit": "512m",
+        "exit_code": 137,
+        "oom_killed": true,
+        "wall_seconds": 1.2037,
+        "stderr_tail": ""
+      },
+      {
+        "mode": "faster-whisper-base",
+        "memory_limit": "1g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 3.5846,
+        "torch_installed": false,
+        "sim_load_seconds": 0.6041,
+        "sim_infer_seconds": 0.0245,
+        "asr_load_seconds": 0.6099,
+        "asr_transcribe_seconds": 1.1575,
+        "total_seconds": 2.3961,
+        "similarity": 0.8506,
+        "peak_rss_mib": 832.89,
+        "cgroup_peak_mib": 786.77
+      },
+      {
+        "mode": "faster-whisper-small",
+        "memory_limit": "512m",
+        "exit_code": 137,
+        "oom_killed": true,
+        "wall_seconds": 1.3681,
+        "stderr_tail": ""
+      },
+      {
+        "mode": "faster-whisper-small",
+        "memory_limit": "1g",
+        "exit_code": 137,
+        "oom_killed": true,
+        "wall_seconds": 2.8007,
+        "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'"
+      },
+      {
+        "mode": "faster-whisper-small",
+        "memory_limit": "2g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 6.0114,
+        "torch_installed": false,
+        "sim_load_seconds": 0.6148,
+        "sim_infer_seconds": 0.0218,
+        "asr_load_seconds": 1.3738,
+        "asr_transcribe_seconds": 2.7461,
+        "total_seconds": 4.7564,
+        "similarity": 0.8841,
+        "peak_rss_mib": 1321.04,
+        "cgroup_peak_mib": 1478.02
+      }
+    ],
+    "int8_es_en_pruned_90k_and_fp32": [
+      {
+        "sim_variant": "int8_es_en",
+        "mode": "only_sim",
+        "memory_limit": "512m",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 1.6243,
+        "torch_installed": false,
+        "sim_load_seconds": 0.2463,
+        "sim_infer_seconds": 0.0141,
+        "asr_load_seconds": 0.0,
+        "asr_transcribe_seconds": 0.0,
+        "total_seconds": 0.2604,
+        "similarity": 1.0,
+        "peak_rss_mib": 222.45,
+        "cgroup_peak_mib": 287.06
+      },
+      {
+        "sim_variant": "int8_es_en",
+        "mode": "deepgram",
+        "memory_limit": "512m",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 6.3137,
+        "torch_installed": false,
+        "sim_load_seconds": 0.2468,
+        "sim_infer_seconds": 0.0356,
+        "asr_load_seconds": 0.0,
+        "asr_transcribe_seconds": 5.1644,
+        "total_seconds": 5.4468,
+        "similarity": 0.8402,
+        "peak_rss_mib": 222.69,
+        "cgroup_peak_mib": 213.91
+      },
+      {
+        "sim_variant": "int8_es_en",
+        "mode": "faster-whisper-tiny",
+        "memory_limit": "512m",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 3.7241,
+        "torch_installed": false,
+        "sim_load_seconds": 0.2411,
+        "sim_infer_seconds": 0.0305,
+        "asr_load_seconds": 1.7202,
+        "asr_transcribe_seconds": 0.9312,
+        "total_seconds": 2.9229,
+        "similarity": 0.8764,
+        "peak_rss_mib": 438.18,
+        "cgroup_peak_mib": 512.0
+      },
+      {
+        "sim_variant": "int8_es_en",
+        "mode": "faster-whisper-base",
+        "memory_limit": "512m",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 3.6293,
+        "torch_installed": false,
+        "sim_load_seconds": 0.2754,
+        "sim_infer_seconds": 0.0288,
+        "asr_load_seconds": 1.4745,
+        "asr_transcribe_seconds": 1.082,
+        "total_seconds": 2.8607,
+        "similarity": 0.8506,
+        "peak_rss_mib": 564.86,
+        "cgroup_peak_mib": 512.0
+      },
+      {
+        "sim_variant": "int8_es_en",
+        "mode": "faster-whisper-base",
+        "memory_limit": "1g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 3.4764,
+        "torch_installed": false,
+        "sim_load_seconds": 0.2492,
+        "sim_infer_seconds": 0.0292,
+        "asr_load_seconds": 1.3226,
+        "asr_transcribe_seconds": 1.1134,
+        "total_seconds": 2.7145,
+        "similarity": 0.8506,
+        "peak_rss_mib": 564.83,
+        "cgroup_peak_mib": 763.82
+      },
+      {
+        "sim_variant": "int8_es_en",
+        "mode": "faster-whisper-small",
+        "memory_limit": "1g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 6.22,
+        "torch_installed": false,
+        "sim_load_seconds": 0.2533,
+        "sim_infer_seconds": 0.0292,
+        "asr_load_seconds": 2.0532,
+        "asr_transcribe_seconds": 3.0576,
+        "total_seconds": 5.3933,
+        "similarity": 0.8841,
+        "peak_rss_mib": 911.48,
+        "cgroup_peak_mib": 1024.0
+      },
+      {
+        "sim_variant": "int8_es_en",
+        "mode": "faster-whisper-small",
+        "memory_limit": "2g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 5.185,
+        "torch_installed": false,
+        "sim_load_seconds": 0.2365,
+        "sim_infer_seconds": 0.0287,
+        "asr_load_seconds": 1.5959,
+        "asr_transcribe_seconds": 2.5822,
+        "total_seconds": 4.4433,
+        "similarity": 0.8841,
+        "peak_rss_mib": 914.0,
+        "cgroup_peak_mib": 1155.09
+      },
+      {
+        "sim_variant": "fp32_full",
+        "mode": "only_sim",
+        "memory_limit": "512m",
+        "exit_code": 137,
+        "oom_killed": true,
+        "wall_seconds": 1.3835,
+        "stderr_tail": ""
+      },
+      {
+        "sim_variant": "fp32_full",
+        "mode": "only_sim",
+        "memory_limit": "1g",
+        "exit_code": 137,
+        "oom_killed": true,
+        "wall_seconds": 2.1668,
+        "stderr_tail": ""
+      },
+      {
+        "sim_variant": "fp32_es_en",
+        "mode": "only_sim",
+        "memory_limit": "512m",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 1.4454,
+        "torch_installed": false,
+        "sim_load_seconds": 0.8424,
+        "sim_infer_seconds": 0.0304,
+        "asr_load_seconds": 0.0,
+        "asr_transcribe_seconds": 0.0,
+        "total_seconds": 0.8728,
+        "similarity": 1.0,
+        "peak_rss_mib": 482.59,
+        "cgroup_peak_mib": 512.0
+      },
+      {
+        "sim_variant": "fp32_es_en",
+        "mode": "only_sim",
+        "memory_limit": "1g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 1.2992,
+        "torch_installed": false,
+        "sim_load_seconds": 0.6899,
+        "sim_infer_seconds": 0.0304,
+        "asr_load_seconds": 0.0,
+        "asr_transcribe_seconds": 0.0,
+        "total_seconds": 0.7203,
+        "similarity": 1.0,
+        "peak_rss_mib": 482.59,
+        "cgroup_peak_mib": 604.7
+      },
+      {
+        "sim_variant": "fp32_es_en",
+        "mode": "deepgram",
+        "memory_limit": "1g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 4.1635,
+        "torch_installed": false,
+        "sim_load_seconds": 0.4156,
+        "sim_infer_seconds": 0.0654,
+        "asr_load_seconds": 0.0,
+        "asr_transcribe_seconds": 2.929,
+        "total_seconds": 3.4099,
+        "similarity": 0.8202,
+        "peak_rss_mib": 482.29,
+        "cgroup_peak_mib": 450.74
+      },
+      {
+        "sim_variant": "fp32_es_en",
+        "mode": "faster-whisper-small",
+        "memory_limit": "1g",
+        "exit_code": 137,
+        "oom_killed": true,
+        "wall_seconds": 2.2816,
+        "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'"
+      },
+      {
+        "sim_variant": "fp32_es_en",
+        "mode": "faster-whisper-small",
+        "memory_limit": "2g",
+        "exit_code": 0,
+        "oom_killed": false,
+        "wall_seconds": 4.5911,
+        "torch_installed": false,
+        "sim_load_seconds": 0.4065,
+        "sim_infer_seconds": 0.0594,
+        "asr_load_seconds": 0.9057,
+        "asr_transcribe_seconds": 2.4453,
+        "total_seconds": 3.8169,
+        "similarity": 0.8826,
+        "peak_rss_mib": 1101.67,
+        "cgroup_peak_mib": 1035.88
+      }
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+# Mantener despiertos la API y el worker de IA en horario de examen.
+#
+# Jesús Limay — atributo de Disponibilidad, escenario «arranque en frío».
+#
+# El plan gratuito de Render duerme el servicio tras 15 minutos sin uso, y
+# despertarlo pasa del minuto (ver docs/guias/desplegar-paso-a-paso.md). Si el
+# primer estudiante del día llega con la API dormida, sus eventos esperan en la
+# cola del cliente y su verificación facial tarda. Con un sondeo cada 10
+# minutos el servicio no llega a dormirse.
+#
+# Solo en horario de examen (07:00 a 22:59 hora de Lima, UTC-5), para no gastar
+# las horas gratuitas del mes de madrugada.
+#
+# Configuración: en GitHub → Settings → Secrets and variables → Actions →
+# Variables, crear `API_HEALTH_URL` (p. ej. https://<api>.onrender.com/health) y,
+# si el worker también duerme, `AI_HEALTH_URL`. Sin variables, el trabajo no
+# hace nada y termina en verde.
+#
+# Recomendado: solo `API_HEALTH_URL`. Las 750 horas gratuitas de Render son
+# por cuenta, no por servicio: 16 h al día x 30 días x 2 servicios = 960 h, y
+# a fin de mes los dos se apagarían. El worker no lo necesita: la API lo
+# despierta cada vez que encola un trabajo (AI_SERVICE_URL).
+#
+# Ojo: GitHub desactiva los workflows programados de un repositorio sin
+# actividad durante 60 días. Si deja de correr, reactivarlo en la pestaña
+# Actions.
+
+name: Mantener despierto
+
+on:
+  schedule:
+    # Minutos UTC. 12-23 y 0-3 UTC = 07:00-22:59 en Lima.
+    - cron: '*/10 12-23,0-3 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  sondear:
+    name: Sondear salud
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: API principal
+        if: ${{ vars.API_HEALTH_URL != '' }}
+        env:
+          URL: ${{ vars.API_HEALTH_URL }}
+        # Hasta 90 s: si estaba dormida, este es justo el sondeo que la despierta.
+        run: curl --fail --silent --show-error --max-time 90 --retry 2 "$URL"
+
+      - name: Worker de IA
+        if: ${{ vars.AI_HEALTH_URL != '' }}
+        env:
+          URL: ${{ vars.AI_HEALTH_URL }}
+        # El worker devuelve 503 si perdió Redis; eso es un aviso, no se reintenta en bucle.
+        run: curl --fail --silent --show-error --max-time 90 "$URL"

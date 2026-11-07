@@ -17,11 +17,18 @@ from spikes.metrics import word_errors
 class Transcriber:
     """Load once so dataset timings separate model setup from inference."""
 
-    def __init__(self, model: str = "small", threads: int = 4, offline: bool = False) -> None:
+    def __init__(
+        self,
+        model: str = "small",
+        threads: int = 4,
+        offline: bool = False,
+        vad_filter: bool = True,
+        vad_parameters: dict[str, Any] | None = None,
+    ) -> None:
         from spikes.network import configure_model_downloads
 
         configure_model_downloads()
-        from faster_whisper import WhisperModel
+        from faster_whisper import WhisperModel  # type: ignore[import-untyped]
 
         started = perf_counter()
         self.engine = WhisperModel(
@@ -35,6 +42,8 @@ class Transcriber:
         self.load_seconds = perf_counter() - started
         self.model = model
         self.threads = threads
+        self.vad_filter = vad_filter
+        self.vad_parameters = vad_parameters
 
     @property
     def version(self) -> str:
@@ -50,17 +59,33 @@ class Transcriber:
         if not audio.is_file():
             raise ValueError(f"No existe el audio: {audio}")
         started = perf_counter()
-        segments, info = self.engine.transcribe(
-            str(audio),
-            language="es",
-            beam_size=5,
-            vad_filter=True,
-            condition_on_previous_text=False,
-        )
+        vad_filter = getattr(self, "vad_filter", True)
+        vad_parameters = getattr(self, "vad_parameters", None)
+        transcribe_kwargs: dict[str, Any] = {
+            "language": "es",
+            "beam_size": 5,
+            "vad_filter": vad_filter,
+            "condition_on_previous_text": False,
+        }
+        if vad_parameters is not None:
+            transcribe_kwargs["vad_parameters"] = vad_parameters
+        segments, info = self.engine.transcribe(str(audio), **transcribe_kwargs)
         # Whisper executes lazily: the timer must include iterating every segment.
-        output = [{"start": s.start, "end": s.end, "text": s.text.strip()} for s in segments]
+        output = [
+            {
+                "start": s.start,
+                "end": s.end,
+                "text": s.text.strip(),
+                "no_speech_prob": getattr(s, "no_speech_prob", None),
+                "avg_logprob": getattr(s, "avg_logprob", None),
+                "compression_ratio": getattr(s, "compression_ratio", None),
+            }
+            for s in segments
+        ]
         elapsed = perf_counter() - started
-        transcript = " ".join(s["text"] for s in output)
+        transcript = " ".join(s["text"] for s in output if s["text"])
+        word_count = len(transcript.split())
+        words_per_second = word_count / info.duration if info.duration > 0 else 0.0
         result: dict[str, Any] = {
             "schema_version": 1,
             "created_at": datetime.now(UTC).isoformat(),
@@ -72,13 +97,16 @@ class Transcriber:
             "cpu_threads": self.threads,
             "beam_size": 5,
             "language": "es",
-            "vad_filter": True,
+            "vad_filter": vad_filter,
+            "vad_parameters": vad_parameters,
             "condition_on_previous_text": False,
             "model_load_seconds": self.load_seconds,
             "inference_seconds": elapsed,
             "audio_seconds": info.duration,
             "real_time_factor": elapsed / info.duration if info.duration > 0 else None,
             "transcript": transcript,
+            "word_count": word_count,
+            "words_per_second": words_per_second,
             "segments": output,
             "environment": {
                 "python": platform.python_version(),

@@ -36,6 +36,49 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     return max(0.0, min(1.0, sum(x * y for x, y in zip(a, b)) / (norm_a * norm_b)))
 
 
+#: Motores disponibles. `opencv` es la API de imagen propia (`vision/`):
+#: modelos gratuitos dentro de la imagen, sin descargas al arrancar.
+MOTORES = ("insightface", "opencv")
+
+
+def motor_seleccionado() -> str:
+    """El motor que pide `FACE_ENGINE`. Uno desconocido es un error de despliegue."""
+    motor = os.getenv("FACE_ENGINE", "insightface").strip().lower() or "insightface"
+    if motor not in MOTORES:
+        raise RuntimeError(f"FACE_ENGINE={motor!r} no es válido; usar uno de {MOTORES}")
+    return motor
+
+
+def model_version() -> str:
+    """Lo que se registra junto a cada resultado, para saber con qué se midió."""
+    if motor_seleccionado() == "opencv":
+        from vision import VerificadorOpenCV
+
+        return VerificadorOpenCV.version
+    return f"insightface/{os.getenv('FACE_MODEL_NAME', 'buffalo_sc')}-cpu"
+
+
+def precalentar() -> str:
+    """Carga el motor elegido antes del primer trabajo (táctica de disponibilidad).
+
+    Sin esto, el primer estudiante tras un arranque en frío paga la carga del
+    modelo dentro de su verificación. Devuelve la versión cargada; si falla,
+    la excepción sube y quien llama decide (el worker solo la registra).
+    """
+    if motor_seleccionado() == "opencv":
+        _motor_opencv()
+    else:
+        _engine()
+    return model_version()
+
+
+@lru_cache(maxsize=1)
+def _motor_opencv() -> Any:
+    from vision import VerificadorOpenCV
+
+    return VerificadorOpenCV()
+
+
 @lru_cache(maxsize=1)
 def _engine() -> Any:
     try:
@@ -57,6 +100,8 @@ def _engine() -> Any:
 def embedding_from_bytes(content: bytes) -> list[float]:
     if not content or len(content) > MAX_IMAGE_BYTES:
         raise FaceInconclusive("Imagen vacía o demasiado grande")
+    if motor_seleccionado() == "opencv":
+        return list(_motor_opencv().embedding(content))
     try:
         import cv2  # type: ignore[import-not-found]
         import numpy as np  # type: ignore[import-not-found]
@@ -107,6 +152,14 @@ def compare_job(job: dict[str, Any]) -> tuple[float, list[float] | None]:
     capture_vector = embedding_from_bytes(capture)
     reference = job.get("reference_embedding")
     new_reference: list[float] | None = None
+    # Un embedding guardado con otro motor (InsightFace da 512 valores, SFace
+    # 128) no es comparable. Se recalcula desde la foto de referencia y se
+    # devuelve a la API para que lo guarde: cambiar de motor no deja a nadie
+    # sin poder verificarse.
+    if reference is not None and len(reference) != len(capture_vector):
+        if not job.get("reference_path"):
+            raise FaceInconclusive("Referencia de otro motor y sin foto para recalcular")
+        reference = None
     if reference is None:
         original = get_storage_image(job["reference_bucket"], job["reference_path"])
         reference = embedding_from_bytes(original)
