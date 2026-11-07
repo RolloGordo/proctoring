@@ -81,6 +81,12 @@ COPY --chown=proctoring:proctoring \
 COPY --chown=proctoring:proctoring spikes/__init__.py spikes/metrics.py spikes/network.py \
     spikes/similarity.py spikes/synthetic_voice.py spikes/transcribe.py ./spikes/
 
+# API de imagen propia (Jesus, atributo de Disponibilidad): YuNet + SFace int8,
+# unos 10 MB, versionados en `vision/modelos/` con su sha256. Van DENTRO de la
+# imagen a proposito: con `FACE_ENGINE=opencv` el worker no descarga nada al
+# arrancar, y un arranque en frio sin red no deja la verificacion caida.
+COPY --chown=proctoring:proctoring vision/ ./vision/
+
 # Donde insightface descarga su modelo, con dueno.
 #
 # `FaceAnalysis` hace `os.makedirs` sobre `FACE_MODEL_ROOT`, que por defecto

@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
 from time import perf_counter
 from typing import Any
 
@@ -159,6 +160,11 @@ def main() -> int:
     # un contenedor sin puerto abierto y lo reinician en bucle.
     servir_salud(lambda: _estado(connection))
 
+    # Antes de escuchar la cola, no en un hilo: RQ hace fork por trabajo y el
+    # hijo hereda el modelo ya cargado. Cargarlo en paralelo y hacer fork a
+    # mitad de la carga puede dejar al hijo con un candado tomado.
+    _precalentar_motor_facial()
+
     worker = WorkerClass(
         [Queue(name, connection=connection) for name in QUEUES],
         connection=connection,
@@ -240,7 +246,38 @@ def _estado(connection: Redis) -> dict[str, object]:
         "memory_limit_mib": mem_info["memory_limit_mib"],
         "required_memory_mib": mem_info["required_memory_mib"],
         "memory_sufficient": mem_info["memory_sufficient"],
+        "face_model": dict(MOTOR_FACIAL),
     }
+
+
+#: Estado del motor facial, para `/salud`. No cambia el código HTTP: sin
+#: modelo facial el audio sigue funcionando, y reiniciar el contenedor por
+#: eso tumbaría lo que sí va bien. Solo lo hace visible desde fuera.
+MOTOR_FACIAL: dict[str, str] = {"status": "pending"}
+
+
+def _precalentar_motor_facial() -> None:
+    """Carga el motor facial al arrancar (táctica de disponibilidad).
+
+    Un fallo aquí no detiene el worker: se registra y el primer trabajo de
+    verificación lo reintentará, con su propio manejo de errores.
+    """
+    if os.environ.get("FACE_WARMUP", "1").strip() == "0":
+        MOTOR_FACIAL.update(status="disabled")
+        return
+    MOTOR_FACIAL.update(status="loading")
+    comenzado = time.monotonic()
+    try:
+        from face_pipeline import precalentar
+
+        version = precalentar()
+    except Exception as fallo:  # noqa: BLE001 - cualquier fallo se informa igual
+        MOTOR_FACIAL.update(status="error", detail=str(fallo)[:200])
+        logger.warning("No se pudo precalentar el motor facial: %s", fallo)
+        return
+    ms = int((time.monotonic() - comenzado) * 1000)
+    MOTOR_FACIAL.update(status="ready", version=version, warmup_ms=str(ms))
+    logger.info("Motor facial listo (%s) en %d ms", version, ms)
 
 
 if __name__ == "__main__":
