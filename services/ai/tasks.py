@@ -194,10 +194,11 @@ def verify_face(participant_id: str, capture_path: str) -> dict[str, Any]:
     job = _get(f"/api/v1/internal/face-jobs/{participant_id}", capture_path=capture_path)
 
     from face_pipeline import FaceInconclusive, compare_job
+    from face_pipeline import model_version as version_del_motor
 
     similarity: float | None = None
     inconclusive = False
-    model_version = f"insightface/{os.getenv('FACE_MODEL_NAME', 'buffalo_sc')}-cpu"
+    model_version = version_del_motor()
     reference_embedding: list[float] | None = None
     try:
         similarity, reference_embedding = compare_job(job)

@@ -81,6 +81,10 @@ datasets/**
 *.bin
 *.gguf
 *.safetensors
+# Excepcion: los modelos de la API de imagen propia SI se versionan. Pesan
+# ~10 MB, y tenerlos en el repo (y en la imagen) es justo lo que evita
+# descargarlos en cada arranque en frio. Ver services/ai/vision/modelos/PROCEDENCIA.json.
+!services/ai/vision/modelos/*.onnx
 
 # ---------- Media (no se versiona audio ni video) ----------
 *.wav
