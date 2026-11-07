@@ -85,3 +85,9 @@ def test_every_event_type_has_a_severity() -> None:
     # devuelve None y esto falla.
     for event_type in EventType:
         assert isinstance(default_severity(event_type, 0), Severity)
+
+
+def test_framing_lost_short_is_low_and_sustained_is_medium() -> None:
+    # Estirarse unos segundos no es lo mismo que dejar la camara en la cara.
+    assert default_severity(EventType.FRAMING_LOST, 8_000) is Severity.LOW
+    assert default_severity(EventType.FRAMING_LOST, 45_000) is Severity.MEDIUM

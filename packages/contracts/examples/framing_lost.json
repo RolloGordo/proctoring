@@ -1,0 +1,19 @@
+{
+  "session_id": "3f1a7c20-9b4e-4d2a-8f6c-1e2d3a4b5c60",
+  "student_id": "7b2e4d10-5c6f-4a8b-9d0e-2f3a4b5c6d71",
+  "question_id": null,
+  "event_type": "framing_lost",
+  "started_at": "2026-10-03T14:42:10.000Z",
+  "duration_ms": 8000,
+  "metadata": {
+    "source": "mediapipe-pose",
+    "reason": "no_shoulders",
+    "framing_required": "elbows",
+    "shoulders_visible": 0,
+    "elbows_visible": 0,
+    "wrists_visible": 0,
+    "shoulder_width": null,
+    "min_duration_ms": 5000
+  },
+  "evidence_path": null
+}

@@ -5,7 +5,8 @@ const LABELS: Partial<Record<EventType, string>> = {
   copy_attempt: 'Intento de copiar',
   extra_display: 'Monitor adicional',
   suspicious_process: 'Proceso sospechoso',
-  prohibited_object: 'Objeto no permitido'
+  prohibited_object: 'Objeto no permitido',
+  framing_lost: 'Encuadre insuficiente'
 }
 
 /**
@@ -29,6 +30,8 @@ function severity(event: ProctoringEvent): Severidad {
       return 'alta'
     case 'prohibited_object':
       return 'media'
+    case 'framing_lost':
+      return event.duration_ms >= 30_000 ? 'media' : 'info'
     case 'copy_attempt':
       return 'media'
     case 'extra_display':

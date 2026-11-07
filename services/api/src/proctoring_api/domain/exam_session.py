@@ -161,6 +161,9 @@ EVENT_MODULES: dict[EventType, frozenset[SupervisionModule]] = {
         {SupervisionModule.AI_VOICE, SupervisionModule.EXTERNAL_VOICES}
     ),
     EventType.PROHIBITED_OBJECT: frozenset({SupervisionModule.OBJECTS}),
+    # El encuadre (hombros y brazos a la vista) lo comprueban los mismos
+    # modulos que dejan de servir si la camara solo ve la cara.
+    EventType.FRAMING_LOST: frozenset({SupervisionModule.GAZE, SupervisionModule.OBJECTS}),
     EventType.IDENTITY_CHECK: frozenset(
         {SupervisionModule.FACE_VERIFICATION, SupervisionModule.FACE_REVERIFICATION}
     ),

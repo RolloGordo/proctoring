@@ -1,7 +1,15 @@
 /** Detectores de SPEC-007. Sin grabación continua ni eventos por fotograma. */
 import type { FaceLandmarker } from '@mediapipe/tasks-vision'
 import type { Detector, Observacion, Veredicto } from '../tipos'
-import { angulosDesdeMatriz, capacidadParaUmbralRostros, reglasVision } from './vision-core'
+import {
+  angulosDesdeMatriz,
+  capacidadParaUmbralRostros,
+  LIMITES_OJOS_POR_DEFECTO,
+  ojosDesdeBlendshapes,
+  reglaOjos,
+  reglasVision,
+  type Ojos
+} from './vision-core'
 
 export interface AjustesMirada {
   yaw_degrees?: number
@@ -10,6 +18,18 @@ export interface AjustesMirada {
   yaw_baseline_deg?: number
   calibration_status?: 'calibrated' | 'default'
   min_duration_ms?: number
+  /**
+   * Mirada con los ojos aunque la cabeza no se mueva (Jesús). Encendida por
+   * defecto: es justo el hueco por el que se miraba el celular sin ser visto.
+   * El docente la apaga con `eye_gaze: false`.
+   */
+  eye_gaze?: boolean
+  /** Desvío de `eyeLookDown` (0 a 1) sobre la línea base que cuenta como "abajo". */
+  eye_down_threshold?: number
+  eye_side_threshold?: number
+  /** Línea base de la calibración ("mira al centro"). */
+  eye_down_baseline?: number
+  eye_blink_baseline?: number
 }
 export interface AjustesRostro { min_duration_ms?: number }
 export interface AjustesPersonaExtra {
@@ -23,6 +43,7 @@ interface Medicion {
   pitch: number | null
   inferenceMs: number
   mouthOpenRatio: number | null
+  ojos: Ojos | null
 }
 
 /** Modelo compartido: la biblioteca se importa solo al activar supervisión visual.
@@ -55,6 +76,8 @@ async function motor(rostrosNecesarios = 2): Promise<void> {
         baseOptions: { modelAssetPath: '/mediapipe/face_landmarker.task' },
         numFaces: requeridos,
         outputFacialTransformationMatrixes: true,
+        // Los coeficientes de los ojos. El modelo ya viene en el .task.
+        outputFaceBlendshapes: true,
         runningMode: 'VIDEO'
       })
     }
@@ -88,7 +111,15 @@ function medicionDe({ video, ahoraMs }: Observacion): Medicion | null {
   const width = left && right ? Math.hypot(left.x - right.x, left.y - right.y) : 0
   const mouthOpenRatio = width > 0 && upper && lower
     ? Math.hypot(upper.x - lower.x, upper.y - lower.y) / width : null
-  const medicion = { caras, yaw: angulos?.yaw ?? null, pitch: angulos?.pitch ?? null, inferenceMs, mouthOpenRatio }
+  const ojos = caras === 1 ? ojosDesdeBlendshapes(resultado.faceBlendshapes?.[0]?.categories) : null
+  const medicion = {
+    caras,
+    yaw: angulos?.yaw ?? null,
+    pitch: angulos?.pitch ?? null,
+    inferenceMs,
+    mouthOpenRatio,
+    ojos
+  }
   ultima = { video, frame: ahoraMs, medicion }
   return medicion
 }
@@ -101,6 +132,13 @@ export class DetectorMirada implements Detector {
   private readonly pitchLimite: number | null
   private readonly yawCentro: number
   private readonly calibrationStatus: 'calibrated' | 'default'
+  private readonly conOjos: boolean
+  private readonly limitesOjos: {
+    abajo: number
+    lado: number
+    baseAbajo: number
+    baseParpado: number
+  }
 
   constructor(ajustes: AjustesMirada = {}) {
     this.minimoMs = ajustes.min_duration_ms ?? 3000
@@ -109,6 +147,13 @@ export class DetectorMirada implements Detector {
       ? ajustes.pitch_degrees : null
     this.yawCentro = ajustes.yaw_baseline_deg ?? 0
     this.calibrationStatus = ajustes.calibration_status ?? 'default'
+    this.conOjos = ajustes.eye_gaze !== false
+    this.limitesOjos = {
+      abajo: positivo(ajustes.eye_down_threshold) ?? LIMITES_OJOS_POR_DEFECTO.abajo,
+      lado: positivo(ajustes.eye_side_threshold) ?? LIMITES_OJOS_POR_DEFECTO.lado,
+      baseAbajo: finito(ajustes.eye_down_baseline) ?? 0,
+      baseParpado: finito(ajustes.eye_blink_baseline) ?? 0
+    }
   }
 
   async preparar(): Promise<void> { await motor() }
@@ -120,10 +165,20 @@ export class DetectorMirada implements Detector {
     const turnedYaw = reglasVision(m.caras, yawDeviation, this.yawLimite, 2).gaze_away
     const turnedPitch = m.caras === 1 && m.pitch !== null && this.pitchLimite !== null
       && Math.abs(m.pitch) > this.pitchLimite
+    // Solo con un rostro: con dos, de quién son los ojos es ambiguo.
+    const ojos = this.conOjos && m.caras === 1 ? reglaOjos(m.ojos, this.limitesOjos) : null
+    // El motivo queda en metadata: el docente tiene que saber si giró la cabeza
+    // o si solo bajó la vista, porque se revisan distinto.
+    const reason = turnedYaw ? 'head_yaw' : turnedPitch ? 'head_pitch' : ojos
     return {
-      activa: turnedYaw || turnedPitch,
+      activa: turnedYaw || turnedPitch || ojos !== null,
       metadata: {
-        source: 'mediapipe', faces_detected: m.caras, yaw_deg: m.yaw,
+        source: 'mediapipe', reason, faces_detected: m.caras, yaw_deg: m.yaw,
+        eye_gaze: this.conOjos,
+        eye_down: redondear(m.ojos?.abajo), eye_side: redondear(m.ojos?.lado),
+        eye_blink: redondear(m.ojos?.parpado),
+        eye_down_threshold: this.limitesOjos.abajo, eye_side_threshold: this.limitesOjos.lado,
+        eye_down_baseline: this.limitesOjos.baseAbajo,
         pitch_deg: m.pitch, pitch_threshold_deg: this.pitchLimite,
         inference_ms: Math.round(m.inferenceMs * 10) / 10, mouth_open_ratio: m.mouthOpenRatio,
         yaw_baseline_deg: this.yawCentro, calibration_status: this.calibrationStatus, threshold_deg: this.yawLimite,
@@ -131,6 +186,16 @@ export class DetectorMirada implements Detector {
       }
     }
   }
+}
+
+function positivo(valor: unknown): number | undefined {
+  return typeof valor === 'number' && Number.isFinite(valor) && valor > 0 ? valor : undefined
+}
+function finito(valor: unknown): number | undefined {
+  return typeof valor === 'number' && Number.isFinite(valor) ? valor : undefined
+}
+function redondear(valor: number | undefined): number | null {
+  return typeof valor === 'number' ? Math.round(valor * 1000) / 1000 : null
 }
 
 export class DetectorRostroAusente implements Detector {
@@ -190,9 +255,21 @@ export async function contarRostrosEnCamara(video: HTMLVideoElement): Promise<nu
 }
 
 /** A head-pose measurement for a consented calibration step (not identity verification). */
-export async function measureHeadPose(video: HTMLVideoElement): Promise<{ faceCount: number; yaw: number | null; pitch: number | null }> {
+export async function measureHeadPose(video: HTMLVideoElement): Promise<{
+  faceCount: number
+  yaw: number | null
+  pitch: number | null
+  eyeDown: number | null
+  eyeBlink: number | null
+}> {
   await motor(2)
   const result = medicionDe({ video, ahoraMs: Date.now() })
   if (!result) throw new Error('La cámara todavía no entrega una imagen válida.')
-  return { faceCount: result.caras, yaw: result.yaw, pitch: result.pitch }
+  return {
+    faceCount: result.caras,
+    yaw: result.yaw,
+    pitch: result.pitch,
+    eyeDown: result.ojos?.abajo ?? null,
+    eyeBlink: result.ojos?.parpado ?? null
+  }
 }

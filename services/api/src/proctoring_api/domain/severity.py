@@ -25,6 +25,8 @@ FACE_ABSENT_MEDIUM_MS = 5_000
 FACE_ABSENT_HIGH_MS = 15_000
 #: Mirar fuera de pantalla de forma sostenida.
 GAZE_AWAY_MEDIUM_MS = 10_000
+#: Encuadre insuficiente sostenido (Jesus): mas de 30 s ya no es estirarse.
+FRAMING_LOST_MEDIUM_MS = 30_000
 
 
 class Severity(StrEnum):
@@ -65,6 +67,13 @@ def default_severity(event_type: EventType, duration_ms: int) -> Severity:
         # como alerta revisable, sin clasificarla como evidencia concluyente.
         case EventType.PROHIBITED_OBJECT:
             return Severity.MEDIUM
+
+        # Encuadre insuficiente: un rato corto puede ser estirarse; sostenido,
+        # es que la camara ya no ve las manos. Lo revisa el docente.
+        case EventType.FRAMING_LOST:
+            if duration_ms >= FRAMING_LOST_MEDIUM_MS:
+                return Severity.MEDIUM
+            return Severity.LOW
 
         # El estudiante intentó usar un atajo de copia bloqueado por la app.
         case EventType.COPY_ATTEMPT:

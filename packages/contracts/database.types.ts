@@ -749,6 +749,7 @@ export type Database = {
         | "speech_detected"
         | "identity_check"
         | "prohibited_object"
+        | "framing_lost"
       question_type:
         | "multiple_choice"
         | "true_false"
@@ -918,6 +919,7 @@ export const Constants = {
         "speech_detected",
         "identity_check",
         "prohibited_object",
+        "framing_lost",
       ],
       question_type: [
         "multiple_choice",

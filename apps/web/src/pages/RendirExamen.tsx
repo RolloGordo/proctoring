@@ -211,6 +211,16 @@ export function RendirExamen() {
           ? Math.max(Number(config.gaze.yaw_degrees) || 25, calibracion.thresholdDeg)
           : config.gaze.yaw_degrees,
         yaw_baseline_deg: calibracion?.baselineYawDeg ?? 0,
+        // Línea base y umbral de los ojos medidos en la calibración (Jesús).
+        // Sin calibrar quedan los del detector.
+        ...(calibracion?.eyeDownThreshold !== undefined && {
+          eye_down_threshold: Math.max(
+            Number(config.gaze.eye_down_threshold) || 0,
+            calibracion.eyeDownThreshold
+          ),
+          eye_down_baseline: calibracion.baselineEyeDown,
+          eye_blink_baseline: calibracion.baselineEyeBlink
+        }),
         // Queda registrado si se calibró o no: una señal de mirada sin calibrar
         // vale menos, y el docente tiene que poder saberlo al revisar.
         calibration_status: calibracion ? 'calibrated' : 'default'

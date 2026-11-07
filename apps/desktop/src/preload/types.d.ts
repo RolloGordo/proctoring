@@ -11,6 +11,7 @@ type EventType =
   | 'screen_share'
   | 'speech_detected'
   | 'prohibited_object'
+  | 'framing_lost'
   | 'identity_check'
 
 interface ProctoringEvent {
