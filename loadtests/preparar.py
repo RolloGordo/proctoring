@@ -70,15 +70,24 @@ def generar_clave() -> None:
         print(f"Ya existe {CLAVE}; no se reemplaza.")
         return
     cli = os.environ.get("SUPABASE_CLI", "npx -y supabase@2")
-    salida = subprocess.run(
+    # Como config.toml declara `signing_keys_path`, la CLI lee ese archivo antes
+    # de generar y falla si no existe (pasó en el primer CI). Con una lista vacía
+    # en su lugar, añade la clave al archivo ella misma; se le contesta que sí a
+    # sobrescribir. Desde la raíz del repo, donde está supabase/config.toml.
+    CLAVE.write_text("[]", encoding="utf-8")
+    proceso = subprocess.run(
         f"{cli} gen signing-key --algorithm ES256",
         shell=True,
+        input="y\n",
         capture_output=True,
         text=True,
-        check=True,
-    ).stdout
-    jwk = json.loads(salida[salida.index("{") : salida.rindex("}") + 1])
-    CLAVE.write_text(json.dumps([jwk]), encoding="utf-8")
+        cwd=AQUI.parent,
+        check=False,
+    )
+    claves = json.loads(CLAVE.read_text(encoding="utf-8") or "[]")
+    if proceso.returncode != 0 or not claves:
+        CLAVE.unlink(missing_ok=True)
+        sys.exit(f"supabase gen signing-key falló:\n{proceso.stderr or proceso.stdout}")
     print(f"Escrita {CLAVE} (clave privada de pruebas, fuera de git).")
 
 
