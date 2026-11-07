@@ -39,7 +39,8 @@
         "speech_detected",
         "identity_check",
         "copy_attempt",
-        "prohibited_object"
+        "prohibited_object",
+        "framing_lost"
       ],
       "description": "Tipo de senal detectada. El mismo conjunto que el tipo event_type de PostgreSQL."
     },

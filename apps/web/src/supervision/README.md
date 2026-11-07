@@ -196,3 +196,13 @@ Si la cámara se desconecta, `useSupervision` escucha `devicechange`
 varios al enchufarse) y tiene un tope de 10 reintentos automáticos por examen,
 para que un cable flojo no la reinicie en bucle. El botón manual sigue igual y
 sin tope. Detalle del atributo: [`docs/guias/jesus-disponibilidad.md`](../../../../docs/guias/jesus-disponibilidad.md).
+
+## Mirada con los ojos y encuadre (Jesús)
+
+- `gaze_away` ahora también salta si los **ojos** bajan o se van a un lado con la
+  cabeza quieta (blendshapes del mismo Face Landmarker, sin modelo extra).
+- `DetectorEncuadre` (Pose Landmarker lite, local) exige que se vean hombros y
+  brazos: bloquea la entrada en la sala de espera (`ComprobacionEncuadre`) y
+  registra `framing_lost` durante el examen.
+
+Detalle: [`docs/guias/jesus-camara-encuadre-y-mirada.md`](../../../../docs/guias/jesus-camara-encuadre-y-mirada.md).

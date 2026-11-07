@@ -167,6 +167,13 @@ export function avisoParaEvento(evento: EventType): AvisoSupervision | null {
         titulo: 'Se detectó un celular u objeto no permitido',
         detalle: 'La cámara detectó un objeto que debe permanecer fuera del área del examen. El docente podrá revisar la señal.'
       }
+    case 'framing_lost':
+      return {
+        tipo: evento,
+        titulo: 'Reajusta la cámara: deben verse tus hombros y brazos',
+        detalle:
+          'La cámara solo ve parte de ti. Aléjala o inclina la pantalla hacia atrás. Se ha registrado para revisión del docente.'
+      }
     default:
       return null
   }

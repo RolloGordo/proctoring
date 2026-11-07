@@ -143,6 +143,7 @@ const EVENTOS: Record<EventType, string> = {
   screen_share: 'Pantalla compartida',
   speech_detected: 'Voz detectada',
   prohibited_object: 'Objeto no permitido',
+  framing_lost: 'Encuadre insuficiente',
   identity_check: 'Verificación de identidad'
 }
 

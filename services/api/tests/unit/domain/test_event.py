@@ -149,4 +149,5 @@ def test_event_type_values_match_the_shared_contract() -> None:
         "speech_detected",
         "identity_check",
         "prohibited_object",
+        "framing_lost",
     }

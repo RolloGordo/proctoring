@@ -17,6 +17,14 @@ import {
 } from './vision'
 import { DetectorHabla, type AjustesVoz } from './voz'
 import { DetectorObjetoProhibido, type AjustesObjeto } from './objetos'
+import { DetectorEncuadre, type AjustesEncuadre } from './encuadre'
+
+/**
+ * El encuadre (hombros y brazos a la vista) no es un módulo elegible: va con
+ * `gaze` y `objects`, que son los que dejan de servir si la cámara solo ve la
+ * cara. Sus ajustes (`framing_required`) se leen de cualquiera de los dos.
+ */
+const MODULOS_CON_ENCUADRE = ['objects', 'gaze'] as const
 
 /** Módulos de `SupervisionModule` que corren en el navegador. */
 const CONSTRUCTORES: Record<string, (ajustes: Record<string, unknown>) => Detector> = {
@@ -48,6 +56,12 @@ export function detectoresDe(modulos: Record<string, Record<string, unknown>>): 
     yaPuestos.add(detector.nombre)
     detectores.push(detector)
   }
+  const conEncuadre = MODULOS_CON_ENCUADRE.find((m) => m in modulos)
+  if (conEncuadre) {
+    const ajustes = (modulos.objects ?? modulos.gaze ?? {}) as AjustesEncuadre
+    const encuadre = new DetectorEncuadre(ajustes)
+    if (encuadre.nivel !== 'off') detectores.push(encuadre)
+  }
   return detectores
 }
 
@@ -59,3 +73,5 @@ export function necesitaAudio(detectores: Detector[]): boolean {
 export * from './vision'
 export * from './voz'
 export * from './objetos'
+export * from './encuadre'
+export * from './encuadre-core'
