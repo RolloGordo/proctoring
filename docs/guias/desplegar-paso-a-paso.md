@@ -134,7 +134,7 @@ no puede entregar lo que mide y los trabajos fallan en silencio.
    > Render pasa sus variables como argumentos de construcción, así que con esta
    > sola variable el Dockerfile arma la imagen ligera y deja puestas las demás.
    > El precio: `tiny` transcribe peor que `small`, y con 0,1 CPU cada análisis
-   > tarda más que el objetivo de 10 s. Medido y explicado en el ADR-0011.
+   > tarda unos 40 s, por encima del objetivo de 10 s (ADR-0011 §4.1).
 
 4. **Create Web Service**. Cuando termine, te da una dirección como
    `https://proctoring-ai-xxxx.onrender.com`. **Apúntala.**

@@ -89,15 +89,20 @@ La transcripción ahora es 100 % local (faster-whisper, trabajo de Pierreluiggi)
 | Verificación facial | insightface | OpenCV YuNet + SFace (trabajo de Jesús) |
 | torch / insightface en la imagen | sí | no |
 
-Medido en local con las dependencias de la imagen ligera y los tres modelos cargados, procesando una
-pregunta hablada de 5 s: **pico de 391 MiB**. Cabe en 512 MB con unos 120 MiB de margen. Whisper `tiny`
-transcribió la frase exacta. El CI construye esta imagen en cada PR y carga los modelos sin red con
-`--memory 512m`.
+Medido con la imagen ligera construida (1,29 GB), en un contenedor sin red y con `--memory 512m`,
+cargando los tres modelos y transcribiendo una pregunta hablada de 5 s:
 
-Lo que cuesta: `tiny` se equivoca más que `small` con audio ruidoso. La transcripción tardó 0,75 s con la
-CPU completa de un PC; con los 0,1 CPU de Render se espera un orden de magnitud más, **por encima del
-objetivo de 10 s para la alerta de IA por voz**. Ese objetivo se cumple en local o en Oracle, no en el plan
-gratuito de Render, y así se reporta.
+| CPU del contenedor | Carga de modelos | Transcripción | Pico de memoria |
+|---|---|---|---|
+| 1 CPU | 2,9 s | 2,3 s | 435 MiB |
+| 0,1 CPU (Render gratis) | 24,0 s | 38,4 s | 435 MiB |
+
+Cabe en 512 MB con unos 77 MiB de margen, y Whisper `tiny` transcribió la frase exacta (similitud 1,0).
+El CI construye esta imagen en cada PR y carga los modelos sin red con `--memory 512m`.
+
+Lo que cuesta: `tiny` se equivoca más que `small` con audio ruidoso, y **con los 0,1 CPU de Render la
+alerta de IA por voz tarda unos 40 s, cuatro veces el objetivo de 10 s**. Con 1 CPU tarda 2,3 s. El
+objetivo se cumple en local o en Oracle, no en el plan gratuito de Render, y así se reporta.
 
 ## Alternativas consideradas
 
