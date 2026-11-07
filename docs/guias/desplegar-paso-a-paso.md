@@ -113,17 +113,28 @@ no puede entregar lo que mide y los trabajos fallan en silencio.
 2. Rellena:
    - **Name:** `proctoring-ai`
    - **Language / Runtime:** `Docker`
-   - **Branch:** `develop`
+   - **Branch:** `main`
    - **Root Directory:** `services/ai` ← distinto del de la API
    - **Instance Type:** `Free`
 3. En **Advanced → Add Environment Variable**:
 
    | Clave | Valor |
    |---|---|
+   | `PERFIL` | `ligero` ← **imprescindible en el plan gratuito** (ver abajo) |
    | `REDIS_URL` | la misma del paso 1, **idéntica a la de la API** |
    | `PROCTORING_API_URL` | la URL de la API del paso 2 |
    | `INTERNAL_API_TOKEN` | el mismo secreto del paso 0 |
-   | `DEEPGRAM_API_KEY` | la clave de Deepgram de Pierreluiggi |
+   | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | las mismas de la API (descargar audio y capturas) |
+
+   > **Por qué `PERFIL=ligero`.** El worker transcribe en local con
+   > faster-whisper; ningún audio sale a un tercero. El perfil `completo`
+   > (Whisper `small` + torch + insightface) necesita unos 1,7 GB y Render gratis
+   > da 512 MB: el contenedor moriría por falta de memoria. El ligero usa Whisper
+   > `tiny`, la similitud en ONNX int8 y el motor facial OpenCV de Jesús, y cabe.
+   > Render pasa sus variables como argumentos de construcción, así que con esta
+   > sola variable el Dockerfile arma la imagen ligera y deja puestas las demás.
+   > El precio: `tiny` transcribe peor que `small`, y con 0,1 CPU cada análisis
+   > tarda más que el objetivo de 10 s. Medido y explicado en el ADR-0011.
 
 4. **Create Web Service**. Cuando termine, te da una dirección como
    `https://proctoring-ai-xxxx.onrender.com`. **Apúntala.**

@@ -58,6 +58,13 @@ face = [
     "onnxruntime>=1.19,<2",
     "opencv-python-headless>=4.10,<5",
 ]
+# El motor facial de OpenCV (YuNet + SFace, `FACE_ENGINE=opencv`) sin insightface:
+# es el de la imagen ligera de Render, que no cabe con torch ni con insightface
+# en 512 MB. Ver el perfil `ligero` del Dockerfile.
+face-opencv = [
+    "onnxruntime>=1.19,<2",
+    "opencv-python-headless>=4.10,<5",
+]
 
 [dependency-groups]
 dev = [
