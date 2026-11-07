@@ -348,7 +348,8 @@ export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) 
 
       {!enLienzo && <BancosDelExamen sessionId={id} />}
 
-      {!enLienzo && 'live_monitoring' in sesion.modules && (
+      {/* HU-038: en el editor también, sin tener que abrir las cámaras una por una. */}
+      {'live_monitoring' in sesion.modules && (
         <section className="bloque">
           <div className="encabezado-seccion">
             <h2>Cámaras en vivo</h2>
@@ -376,7 +377,7 @@ export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) 
                         sessionId={id}
                         studentId={participante.student_id}
                         teacherId={userId}
-                        nombre={participante.student_name ?? undefined}
+                        nombre={participante.student_name ?? participante.student_email ?? undefined}
                       />
                     ))}
                   </div>
