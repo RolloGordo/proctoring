@@ -753,6 +753,37 @@
   color: var(--tinta);
 }
 
+/* HU-038: alguien espera o algo pasó en otra pestaña. Rojo de «alta», que es
+   lo que significa: requiere tu atención. Con su propio fondo de texto, la
+   pareja pasa AA en el tema claro y en el oscuro. */
+.globo-aviso {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  margin-left: var(--e2);
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--alta);
+  color: var(--alta-fondo);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  vertical-align: 0.1em;
+  animation: globo-aparece 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+@keyframes globo-aparece {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globo-aviso { animation: none; }
+}
+
 .lienzo-examen-pestanas button:focus-visible {
   outline: 3px solid var(--amarillo);
   outline-offset: -3px;
