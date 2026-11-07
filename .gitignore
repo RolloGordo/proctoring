@@ -136,3 +136,11 @@ apps/web/spikes/vision/datasets/predictions/
 .taste-skill/
 .impeccable/
 .playwright-mcp/
+
+# Clave privada de pruebas de Supabase local (supabase gen signing-key)
+supabase/signing_keys.json
+
+# Pruebas de carga: claves de Supabase local y escenario generado (tokens)
+loadtests/.datos/
+loadtests/.venv/
+loadtests/resultados/

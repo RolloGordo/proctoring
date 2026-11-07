@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -55,3 +55,74 @@ def test_rejects_a_user_without_profile(use_case: IdentifyUser) -> None:
     """
     with pytest.raises(AuthenticationError, match="perfil"):
         use_case.execute("t-sin-perfil")
+
+
+class CuentaLecturas(InMemoryProfileRepository):
+    """Cuenta cuántas veces se lee `profiles`: lo que la caché tiene que ahorrar."""
+
+    def __init__(self, roles: dict[UUID, UserRole]) -> None:
+        super().__init__(roles)
+        self.lecturas = 0
+
+    def get_role(self, user_id: UUID) -> UserRole | None:
+        self.lecturas += 1
+        return super().get_role(user_id)
+
+
+class Reloj:
+    def __init__(self) -> None:
+        self.ahora = 1000.0
+
+    def __call__(self) -> float:
+        return self.ahora
+
+
+class TestRolRecordado:
+    """ADR-0011: el rol se recuerda un minuto; la firma se verifica siempre."""
+
+    def armar(self, **kw: float) -> tuple[IdentifyUser, CuentaLecturas, Reloj]:
+        perfiles = CuentaLecturas({STUDENT: UserRole.STUDENT, TEACHER: UserRole.TEACHER})
+        reloj = Reloj()
+        verifier = StubTokenVerifier({"t-student": STUDENT, "t-sin-perfil": SIN_PERFIL})
+        return IdentifyUser(verifier, perfiles, reloj=reloj, **kw), perfiles, reloj
+
+    def test_la_segunda_peticion_no_vuelve_a_leer_profiles(self) -> None:
+        caso, perfiles, _ = self.armar()
+
+        for _ in range(5):
+            assert caso.execute("t-student").is_student
+
+        assert perfiles.lecturas == 1
+
+    def test_pasado_el_minuto_se_vuelve_a_leer(self) -> None:
+        caso, perfiles, reloj = self.armar(role_ttl_seconds=60)
+        caso.execute("t-student")
+
+        reloj.ahora += 61
+        caso.execute("t-student")
+
+        assert perfiles.lecturas == 2
+
+    def test_un_token_invalido_falla_aunque_el_rol_este_recordado(self) -> None:
+        caso, _, _ = self.armar()
+        caso.execute("t-student")
+
+        with pytest.raises(AuthenticationError):
+            caso.execute("token-inventado")
+
+    def test_sin_perfil_no_se_recuerda(self) -> None:
+        caso, perfiles, _ = self.armar()
+
+        for _ in range(2):
+            with pytest.raises(AuthenticationError):
+                caso.execute("t-sin-perfil")
+
+        assert perfiles.lecturas == 2
+
+    def test_con_ttl_cero_no_se_recuerda_nada(self) -> None:
+        caso, perfiles, _ = self.armar(role_ttl_seconds=0)
+
+        caso.execute("t-student")
+        caso.execute("t-student")
+
+        assert perfiles.lecturas == 2

@@ -12,7 +12,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from proctoring_api import __version__
 from proctoring_api.adapters.inbound.http.errors import register_error_handlers
-from proctoring_api.adapters.inbound.http.rate_limit import RateLimitMiddleware
+from proctoring_api.adapters.inbound.http.rate_limit import (
+    RateLimitMiddleware,
+    Ventana,
+    VentanaEnMemoria,
+    VentanaRedis,
+)
 from proctoring_api.adapters.inbound.http.routers import (
     ai,
     answers,
@@ -266,6 +271,18 @@ def _build_session_repository(settings: Settings, client: object | None) -> Exam
     return InMemoryExamSessionRepository()
 
 
+def _build_rate_limit_window(settings: Settings) -> Ventana:
+    """Redis si hay varias réplicas; si no, la memoria de esta (ADR-0011)."""
+    if settings.rate_limit_backend == "redis":
+        from redis.asyncio import Redis
+
+        # Tiempos cortos: si Redis tarda, la ventana cae a la memoria de la
+        # réplica en vez de dejar al estudiante esperando la respuesta.
+        cliente = Redis.from_url(settings.redis_url, socket_timeout=0.5, socket_connect_timeout=0.5)
+        return VentanaRedis(cliente)
+    return VentanaEnMemoria()
+
+
 def _build_evidence_storage(settings: Settings, client: object | None) -> EvidenceStorage:
     if settings.evidence_storage == "supabase":
         from supabase import Client
@@ -484,7 +501,11 @@ def create_app(
     # lo ejecuta DESPUES: asi una respuesta 429 tambien lleva las cabeceras de
     # CORS y el navegador puede leer el motivo en vez de ver un error opaco.
     if settings.rate_limit_enabled:
-        app.add_middleware(RateLimitMiddleware)
+        app.add_middleware(
+            RateLimitMiddleware,
+            ventana=_build_rate_limit_window(settings),
+            proxies_de_confianza=settings.trusted_proxies.split(","),
+        )
 
     app.add_middleware(
         CORSMiddleware,

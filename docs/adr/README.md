@@ -19,6 +19,7 @@ viejo pasa a estado `Sustituida por ADR-XXXX`. El historial es el valor.
 | [0008](0008-examenes-propios-sin-integracion-lms.md) | El sistema aloja sus propios exámenes; sin integración con LMS | Aceptada |
 | [0009](0009-monorepo-github-actions-despliegue-gratuito.md) | Monorepo con GitHub Actions; Vercel, Render y Hugging Face Spaces | Aceptada |
 | [0010](0010-autenticacion-en-la-api-no-en-rls.md) | La autorización del estudiante vive en la API, no en RLS | Aceptada |
+| [0011](0011-escalabilidad-horizontal.md) | La API escala en horizontal: réplicas sin estado detrás de un balanceador | Aceptada |
 
 ## Las dos restricciones que explican casi todo
 

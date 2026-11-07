@@ -87,6 +87,12 @@ class Settings(BaseSettings):
     #: Se desactiva en las pruebas de integracion, que hacen decenas de
     #: peticiones seguidas desde el mismo cliente y chocarian con el limite.
     rate_limit_enabled: bool = True
+    #: Dónde se cuentan las peticiones. `redis` en cuanto haya más de una
+    #: réplica: en memoria cada una cuenta por su lado (ADR-0011).
+    rate_limit_backend: Literal["memory", "redis"] = "memory"
+    #: Redes de los proxies que ponen `X-Forwarded-For` (el balanceador, el de
+    #: Render), separadas por coma. Vacío: no se le cree a esa cabecera.
+    trusted_proxies: str = ""
 
     # --- Seleccion de adaptadores ---
     event_repository: RepositoryBackend = "memory"

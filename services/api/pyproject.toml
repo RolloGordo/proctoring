@@ -23,6 +23,7 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "import-linter>=2.1",
+    "fakeredis[lua]>=2.26",
 ]
 
 [build-system]
