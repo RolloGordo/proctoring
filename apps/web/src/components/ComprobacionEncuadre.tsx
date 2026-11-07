@@ -11,6 +11,17 @@ import { guardarEncuadre, leerEncuadre, type EstadoEncuadreSala } from '../super
 /** Cada cuánto se mide mientras el estudiante acomoda la cámara. */
 const INTERVALO_MS = 400
 
+/**
+ * Tras este tiempo intentándolo sin lograrlo, se ofrece entrar igual.
+ *
+ * Una cámara de laptop muy cerrada o un escritorio estrecho pueden hacer
+ * imposible mostrar los codos, y el estudiante no puede quedarse sin rendir
+ * por eso: el sistema audita, no juzga. Entrar igual no oculta nada, porque
+ * durante el examen `DetectorEncuadre` sigue midiendo y registra
+ * `framing_lost` para que el docente lo revise.
+ */
+const PUEDE_SALTAR_MS = 45_000
+
 const QUE_SE_VE: Record<Exclude<NivelEncuadre, 'off'>, string> = {
   shoulders: 'tu cara y tus dos hombros',
   elbows: 'tu cara, tus hombros y tus brazos hasta los codos',
@@ -50,6 +61,7 @@ export function ComprobacionEncuadre({
   const [ultimo, setUltimo] = useState<ResultadoEncuadre | null>(null)
   const [progreso, setProgreso] = useState(0)
   const [error, setError] = useState<string>()
+  const [puedeSaltar, setPuedeSaltar] = useState(false)
 
   useEffect(() => {
     onEstado(estado)
@@ -74,6 +86,7 @@ export function ComprobacionEncuadre({
     // La primera medición carga el modelo y tarda; sin esto se apilan.
     let ocupado = false
     const estable = new EstabilidadEncuadre()
+    const salida = setTimeout(() => setPuedeSaltar(true), PUEDE_SALTAR_MS)
     const reloj = setInterval(() => {
       const video = videoRef.current
       if (!video || ocupado) return
@@ -107,6 +120,7 @@ export function ComprobacionEncuadre({
     return () => {
       cancelado = true
       clearInterval(reloj)
+      clearTimeout(salida)
     }
   }, [midiendo, nivel, terminar])
 
@@ -183,6 +197,21 @@ export function ComprobacionEncuadre({
                   aria-label="Encuadre sostenido"
                   style={{ width: 320, maxWidth: '100%' }}
                 />
+                {puedeSaltar && (
+                  <div style={{ marginTop: 'var(--e3)' }}>
+                    <p className="ayuda">
+                      ¿Tu cámara no llega a mostrar los brazos? Puedes entrar igual. Durante el
+                      examen se seguirá midiendo y tu docente verá que el encuadre no se cumplió.
+                    </p>
+                    <button
+                      type="button"
+                      className="boton boton-texto"
+                      onClick={() => terminar('unavailable')}
+                    >
+                      No logro encuadrar: entrar igual
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <button
