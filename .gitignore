@@ -134,6 +134,9 @@ apps/web/spikes/vision/datasets/predictions/
 # El modelo de MediaPipe no esta en npm, asi que este si se versiona: sin el,
 # un despliegue corre sin deteccion de vision y no avisa de nada.
 !apps/web/public/mediapipe/face_landmarker.task
+# Pose Landmarker lite (Jesus): comprueba que se vean hombros y brazos. Tampoco
+# esta en npm. Sin el, un estudiante podria enfocar solo su cara.
+!apps/web/public/mediapipe/pose_landmarker_lite.task
 
 # Ficheros de trabajo de las skills de diseño: capturas, borradores y medidas.
 # La evidencia va a Notion, no al repositorio.

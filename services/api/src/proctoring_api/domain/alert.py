@@ -100,5 +100,7 @@ def alert_reason(event_type: EventType, duration_ms: int) -> str:
             return "Se detecto voz durante el examen"
         case EventType.PROHIBITED_OBJECT:
             return "Se detecto un celular u objeto no permitido en camara"
+        case EventType.FRAMING_LOST:
+            return f"La camara no mostro sus hombros y brazos durante {seconds:.0f} s"
         case EventType.IDENTITY_CHECK:
             return "Verificacion de identidad"

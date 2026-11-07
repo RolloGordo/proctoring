@@ -104,5 +104,33 @@ try {
   process.exitCode = 1
 }
 
+// Pose Landmarker lite (Jesus): el encuadre de hombros y brazos antes y
+// durante el examen. Se fija por sha256 porque no sale de npm: es el
+// `pose_landmarker_lite.task` float16 oficial de Google (Apache-2.0), y otros
+// proyectos fijan esta misma huella. Un .task es un zip con dos bytes nulos
+// delante (igual que face_landmarker.task): "PK" va en el byte 2.
+const modeloPose = resolve(salida, 'pose_landmarker_lite.task')
+const SHA256_POSE = '59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a'
+try {
+  const crudo = await readFile(modeloPose)
+  const huella = createHash('sha256').update(crudo).digest('hex')
+  if (crudo.subarray(2, 4).toString('ascii') !== 'PK' || huella !== SHA256_POSE) {
+    throw new Error('modelo de pose truncado o distinto al registrado')
+  }
+  procedencia.push({
+    package: 'google/mediapipe-models (Apache-2.0)',
+    file: 'pose_landmarker_lite.task',
+    sha256: huella,
+    uso: 'encuadre: hombros, codos y munecas visibles; NO identifica personas'
+  })
+} catch {
+  console.error(
+    '\nFALTA o esta corrupto public/mediapipe/pose_landmarker_lite.task.\n' +
+      'Sin el no se comprueba que se vean hombros y brazos, y un estudiante\n' +
+      'podria enfocar solo su cara. Esta versionado en el repositorio.\n'
+  )
+  process.exitCode = 1
+}
+
 await writeFile(resolve(salida, 'provenance.json'), JSON.stringify(procedencia, null, 2))
 console.log(`MediaPipe: ${nombres.length} assets preparados en local; sin CDN durante un examen.`)

@@ -40,6 +40,7 @@ class EventType(StrEnum):
     SCREEN_SHARE = "screen_share"
     SPEECH_DETECTED = "speech_detected"
     PROHIBITED_OBJECT = "prohibited_object"
+    FRAMING_LOST = "framing_lost"
     IDENTITY_CHECK = "identity_check"
 
 

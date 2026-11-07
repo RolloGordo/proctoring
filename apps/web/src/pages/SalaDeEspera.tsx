@@ -8,6 +8,9 @@ import { cuandoEmpieza, fechaLarga } from '../lib/formato'
 import { VerificacionFacialEspera } from './VerificacionFacialEspera'
 import { PruebaMicrofono } from '../supervision/PruebaMicrofono'
 import { CalibracionMirada } from '../components/CalibracionMirada'
+import { ComprobacionEncuadre } from '../components/ComprobacionEncuadre'
+import { nivelDe } from '../supervision/detectores/encuadre-core'
+import type { EstadoEncuadreSala } from '../supervision/encuadreSala'
 import { agrupar, dispositivosQueUsa, modulosVigilados } from '../lib/modulos'
 import { sondear } from '../lib/sondeo'
 
@@ -40,6 +43,7 @@ export function SalaDeEspera() {
   const [entrando, setEntrando] = useState(false)
   const [acabanDeAdmitirme, setAcabanDeAdmitirme] = useState(false)
   const [error, setError] = useState<string>()
+  const [encuadre, setEncuadre] = useState<EstadoEncuadreSala | null>(null)
   const [ahora, setAhora] = useState(() => Date.now())
 
   useEffect(() => {
@@ -165,6 +169,12 @@ export function SalaDeEspera() {
   const todaviaNoEmpieza = empiezaEn > 0 && !examen.can_enter_now
   const requiereVerificacionFacial = 'face_verification' in examen.modules
   const requiereMicrofono = 'ai_voice' in examen.modules || 'external_voices' in examen.modules
+  // Encuadre de hombros y brazos (Jesús): con mirada u objetos activos, la
+  // cámara tiene que ver más que la cara antes de entrar.
+  const nivelEncuadre = nivelDe((examen.modules.objects ?? examen.modules.gaze)?.framing_required)
+  const requiereEncuadre =
+    ('gaze' in examen.modules || 'objects' in examen.modules) && nivelEncuadre !== 'off'
+  const encuadreListo = !requiereEncuadre || encuadre !== null
 
   return (
     <div className="centrado-estrecho">
@@ -288,6 +298,15 @@ export function SalaDeEspera() {
 
       {yaConsintio && !yaEntrego && requiereMicrofono && <PruebaMicrofono />}
 
+      {yaConsintio && matricula?.can_take_exam && !yaEntrego && requiereEncuadre && (
+        <ComprobacionEncuadre
+          sessionId={id}
+          studentId={matricula.student_id}
+          nivel={nivelEncuadre}
+          onEstado={setEncuadre}
+        />
+      )}
+
       {!yaEntrego && (
         <div className="tarjeta">
           <div className="tarjeta-cuerpo">
@@ -307,9 +326,15 @@ export function SalaDeEspera() {
                       La comprobación del micrófono no bloquea el ingreso al examen.
                     </p>
                   )}
-                  <Link to={`/examen/${id}/rendir`} className="boton">
-                    Entrar al examen
-                  </Link>
+                  {encuadreListo ? (
+                    <Link to={`/examen/${id}/rendir`} className="boton">
+                      Entrar al examen
+                    </Link>
+                  ) : (
+                    <button type="button" className="boton" disabled>
+                      Comprueba el encuadre de la cámara para entrar
+                    </button>
+                  )}
                 </>
               ) : (
                 <button type="button" className="boton" disabled>

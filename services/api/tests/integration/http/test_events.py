@@ -25,6 +25,7 @@ EVENT_TYPES = [
     "speech_detected",
     "identity_check",
     "prohibited_object",
+    "framing_lost",
 ]
 
 pytestmark = pytest.mark.integration
