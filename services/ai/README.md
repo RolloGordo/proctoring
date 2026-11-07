@@ -248,7 +248,7 @@ El módulo de audio (`audio_runtime.py`) soporta dos motores de transcripción y
 |---|---|---|
 | `ASR_PROVIDER` | `faster-whisper` | `faster-whisper` \| `deepgram`. Motor de transcripción primario (leído en cada llamada). |
 | `ASR_LOCAL_MODEL` | `small` | `tiny` \| `base` \| `small`. Tamaño del modelo CTranslate2 (`int8`, CPU). |
-| `ASR_FALLBACK_PROVIDER` | `deepgram` | `deepgram` \| `none`. Con `deepgram`, pasa a Deepgram Nova-3 solo si Whisper falla o no supera la puerta de calidad. Con `none`, el procesamiento es **100 % local**. |
+| `ASR_FALLBACK_PROVIDER` | `none` | `none` \| `deepgram`. Con `none` (por defecto), el procesamiento es **100 % local** sin requerir credenciales externas. Con `deepgram`, pasa a Deepgram Nova-3 solo si Whisper falla o no supera la puerta de calidad. |
 | `ASR_FALLBACK_ON_EMPTY` | `true` | `true` \| `false`. Si `true`, una salida vacía de Whisper dispara el respaldo (cuando está activo). |
 | `ASR_LOCAL_VAD_FILTER` | `true` | `true` \| `false`. Activa el filtro Silero VAD integrado en `faster-whisper`. |
 | `ASR_LOCAL_VAD_THRESHOLD` | `0.3` | Flotante en `(0, 1)`. Umbral de probabilidad de voz del VAD local. |

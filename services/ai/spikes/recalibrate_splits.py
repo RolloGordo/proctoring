@@ -175,13 +175,15 @@ def evaluate_split(
                 fn += 1
             else:
                 tn += 1
-            details.append({
-                "sample_id": feat["sample_id"],
-                "condition": feat["condition"],
-                "is_bad": bad,
-                "flagged": flagged,
-                "reason": reason,
-            })
+            details.append(
+                {
+                    "sample_id": feat["sample_id"],
+                    "condition": feat["condition"],
+                    "is_bad": bad,
+                    "flagged": flagged,
+                    "reason": reason,
+                }
+            )
 
         n = len(features)
         bad_count = tp + fn
@@ -228,28 +230,39 @@ def main() -> int:
 
     # Split 1: Train = MediaSpeech + Audio1 + Audio2; Test = Audio3 + Audio4
     train1 = [
-        f for f in features if not (f["sample_id"].startswith("P01_A3") or f["sample_id"].startswith("P01_A4"))
+        f
+        for f in features
+        if not (f["sample_id"].startswith("P01_A3") or f["sample_id"].startswith("P01_A4"))
     ]
     test1 = [
-        f for f in features if f["sample_id"].startswith("P01_A3") or f["sample_id"].startswith("P01_A4")
+        f
+        for f in features
+        if f["sample_id"].startswith("P01_A3") or f["sample_id"].startswith("P01_A4")
     ]
 
     # Split 2 (inverso): Train = MediaSpeech + Audio3 + Audio4; Test = Audio1 + Audio2
     train2 = [
-        f for f in features if not (f["sample_id"].startswith("P01_A1") or f["sample_id"].startswith("P01_A2"))
+        f
+        for f in features
+        if not (f["sample_id"].startswith("P01_A1") or f["sample_id"].startswith("P01_A2"))
     ]
     test2 = [
-        f for f in features if f["sample_id"].startswith("P01_A1") or f["sample_id"].startswith("P01_A2")
+        f
+        for f in features
+        if f["sample_id"].startswith("P01_A1") or f["sample_id"].startswith("P01_A2")
     ]
 
     res1 = evaluate_split(train1, test1, "Split 1: Train=MediaSpeech+A1+A2 (18) -> Test=A3+A4 (10)")
-    res2 = evaluate_split(train2, test2, "Split 2 (Inverso): Train=MediaSpeech+A3+A4 (18) -> Test=A1+A2 (10)")
+    res2 = evaluate_split(
+        train2, test2, "Split 2 (Inverso): Train=MediaSpeech+A3+A4 (18) -> Test=A1+A2 (10)"
+    )
 
     output = {
         "speaker_warning": (
             "NOTA CRÍTICA: Las muestras grabadas provienen de una única voz y hablante (P01), "
-            "con el mismo micrófono y entorno acústico. La generalización evaluada es exclusivamente "
-            "entre guiones y preguntas distintas (out-of-script), pero NO entre diferentes hablantes ni micrófonos."
+            "con el mismo micrófono y entorno acústico. La generalización evaluada es "
+            "exclusivamente entre guiones y preguntas distintas (out-of-script), pero NO "
+            "entre diferentes hablantes ni micrófonos."
         ),
         "split_1": res1,
         "split_2_inverse": res2,
@@ -260,22 +273,23 @@ def main() -> int:
     print(f"Resultados guardados en {out_path}")
     print("\n--- RESUMEN SPLIT 1 (Train: A1-2+MediaSpeech -> Test: A3-4) ---")
     print("Umbrales calibrados en Train:", res1["calibrated_thresholds"])
+    m1 = res1["test_metrics"]
     print(
-        f"Test Recall: {res1['test_metrics']['recall']} (Wilson 95%: {res1['test_metrics']['recall_wilson_95']}) | "
-        f"Accuracy: {res1['test_metrics']['accuracy']} (Wilson 95%: {res1['test_metrics']['accuracy_wilson_95']}) | "
-        f"FP: {res1['test_metrics']['fp']} | FN: {res1['test_metrics']['fn']}"
+        f"Test Recall: {m1['recall']} (Wilson 95%: {m1['recall_wilson_95']}) | "
+        f"Accuracy: {m1['accuracy']} (Wilson 95%: {m1['accuracy_wilson_95']}) | "
+        f"FP: {m1['fp']} | FN: {m1['fn']}"
     )
 
     print("\n--- RESUMEN SPLIT 2 INVERSO (Train: A3-4+MediaSpeech -> Test: A1-2) ---")
     print("Umbrales calibrados en Train:", res2["calibrated_thresholds"])
+    m2 = res2["test_metrics"]
     print(
-        f"Test Recall: {res2['test_metrics']['recall']} (Wilson 95%: {res2['test_metrics']['recall_wilson_95']}) | "
-        f"Accuracy: {res2['test_metrics']['accuracy']} (Wilson 95%: {res2['test_metrics']['accuracy_wilson_95']}) | "
-        f"FP: {res2['test_metrics']['fp']} | FN: {res2['test_metrics']['fn']}"
+        f"Test Recall: {m2['recall']} (Wilson 95%: {m2['recall_wilson_95']}) | "
+        f"Accuracy: {m2['accuracy']} (Wilson 95%: {m2['accuracy_wilson_95']}) | "
+        f"FP: {m2['fp']} | FN: {m2['fn']}"
     )
     return 0
 
 
 if __name__ == "__main__":
     main()
-

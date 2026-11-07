@@ -28,7 +28,7 @@ LOCAL_ASR_EXTRA = "asr-local"
 DEFAULT_ASR_LOCAL_MODEL = "small"
 ASR_LOCAL_MODELS = ("tiny", "base", "small")
 
-DEFAULT_ASR_FALLBACK_PROVIDER = "deepgram"
+DEFAULT_ASR_FALLBACK_PROVIDER = "none"
 ASR_FALLBACK_PROVIDERS = ("deepgram", "none")
 
 DEFAULT_SIMILARITY_BACKEND = "torch"

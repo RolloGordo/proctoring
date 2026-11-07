@@ -3,13 +3,9 @@
 # Imagen del worker de IA. Mismo patron que services/api: dependencias en una
 # capa aparte, runtime sin uv ni compiladores, usuario sin privilegios.
 #
-# Los modelos NO van en la imagen. Se montan en un volumen, porque pesan
-# cientos de megabytes y porque `similarity_model()` carga en modo `offline=True`
-# a proposito: un trabajo de audio nunca descarga nada mientras un estudiante
-# rinde.
-#
-# La transcripcion va por API (Deepgram, TA-070), asi que aqui no entra
-# faster-whisper: vive en el extra `asr-local`, para comparar en local.
+# faster-whisper funciona 100% en local como motor principal a traves del extra
+# `asr-local`, con los pesos del modelo predescargados en `/app/models` para permitir
+# ejecucion `offline=True` (imprescindible en Hugging Face Spaces o entornos aislados).
 # ---------------------------------------------------------------------------
 # Etapa 1 — dependencias
 # ---------------------------------------------------------------------------
@@ -29,24 +25,25 @@ WORKDIR /app
 # el `.venv` ya construido y sigue sin compiladores, que es como tiene que ser.
 RUN apt-get update     && apt-get install -y --no-install-recommends build-essential     && rm -rf /var/lib/apt/lists/*
 
-# `similarity` trae sentence-transformers, y con el torch. Es el diferencial del
-# proyecto —comparar lo que se dijo con el enunciado— asi que va por defecto;
-# queda como argumento para poder construir una imagen minima y medir la
-# diferencia.
-#
-# `face` va tambien por defecto desde que se descubrio por que la verificacion
-# facial no habia terminado nunca: sus dependencias vivian solo en
-# `requirements-face.txt`, con la nota de instalarlas "a mano en el worker".
-# En Render no hay instalacion a mano, asi que no estaban en la imagen y cada
-# trabajo moria con `ModuleNotFoundError: No module named 'cv2'`. Lo que el
-# despliegue necesita tiene que estar en el Dockerfile, no en un documento.
-ARG EXTRAS="--extra similarity --extra face"
+# `asr-local` trae faster-whisper para transcripcion offline 100% local.
+# `similarity` trae sentence-transformers y torch para similitud semantica.
+# `face` trae insightface y opencv para verificacion facial.
+ARG EXTRAS="--extra asr-local --extra similarity --extra face"
 
 COPY pyproject.toml uv.lock ./
 # [tool.uv] package = false: aqui no hay proyecto que instalar, solo dependencias.
 # --no-dev: ruff, mypy y pytest no pintan nada en produccion.
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev ${EXTRAS}
+
+# Pre-descarga de pesos del modelo faster-whisper (small) en el builder para permitir
+# ejecucion offline en entornos sin conexion a internet externa (Hugging Face Spaces).
+ARG DOWNLOAD_ASR_MODEL="true"
+RUN if [ "$DOWNLOAD_ASR_MODEL" = "true" ]; then \
+        /app/.venv/bin/python -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8', download_root='/app/models', local_files_only=False)"; \
+    else \
+        mkdir -p /app/models; \
+    fi
 
 # ---------------------------------------------------------------------------
 # Etapa 2 — runtime
@@ -64,6 +61,7 @@ RUN groupadd --system --gid 1001 proctoring \
 WORKDIR /app
 
 COPY --from=builder --chown=proctoring:proctoring /app/.venv /app/.venv
+COPY --from=builder --chown=proctoring:proctoring /app/models /app/models
 
 # Solo lo que el worker ejecuta. Los demas spikes se quedan fuera: son
 # experimentos, no codigo de produccion.

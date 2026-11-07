@@ -113,6 +113,8 @@ module = [
     "torch.*",
     "transformers.*",
     "sklearn.*",
+    "onnxruntime.*",
+    "tokenizers.*",
     # Solo los usa spikes/network.py, para descargar pesos.
     "huggingface_hub.*",
     "truststore.*",

@@ -173,16 +173,16 @@ def local_asr(asr_env):
 
 
 @pytest.mark.parametrize("value", [None, "", "   "])
-def test_default_provider_is_faster_whisper_with_deepgram_fallback(asr_env, local_asr, value):
+def test_default_provider_is_faster_whisper_100_percent_local(asr_env, local_asr, value):
     if value is not None:
         asr_env.setenv("ASR_PROVIDER", value)
-    asr_env.setenv("DEEPGRAM_API_KEY", FAKE_KEY)
     assert audio_runtime.DEFAULT_ASR_PROVIDER == "faster-whisper"
     assert audio_runtime.asr_provider() == "faster-whisper"
     assert audio_runtime.DEFAULT_ASR_LOCAL_MODEL == "small"
     assert audio_runtime.asr_local_model() == "small"
-    assert audio_runtime.DEFAULT_ASR_FALLBACK_PROVIDER == "deepgram"
-    assert audio_runtime.asr_fallback_provider() == "deepgram"
+    assert audio_runtime.DEFAULT_ASR_FALLBACK_PROVIDER == "none"
+    assert audio_runtime.asr_fallback_provider() == "none"
+    # Sin clave de Deepgram: por defecto opera 100 % local y no exige ninguna clave
     model = audio_runtime.asr_model()
     assert model is local_asr
 
@@ -190,13 +190,12 @@ def test_default_provider_is_faster_whisper_with_deepgram_fallback(asr_env, loca
 @pytest.mark.parametrize("value", ["faster-whisper", "Faster-Whisper", " faster-whisper "])
 def test_faster_whisper_can_be_selected_explicitly(asr_env, local_asr, value):
     asr_env.setenv("ASR_PROVIDER", value)
-    asr_env.setenv("DEEPGRAM_API_KEY", FAKE_KEY)
     assert audio_runtime.asr_model() is local_asr
 
 
-def test_default_without_key_fails_clearly_when_fallback_is_deepgram(asr_env, local_asr):
-    # Con faster-whisper por defecto y fallback deepgram, una clave ausente
-    # debe fallar de inmediato para evitar que el fallo ocurra tarde durante un examen.
+def test_missing_key_when_fallback_is_configured_as_deepgram(asr_env, local_asr):
+    # Si se activa explicitamente el respaldo con Deepgram pero falta la clave, falla de inmediato
+    asr_env.setenv("ASR_FALLBACK_PROVIDER", "deepgram")
     with pytest.raises(deepgram_transcriber.DeepgramError, match="DEEPGRAM_API_KEY is required"):
         audio_runtime.asr_model()
     local_asr.factory.assert_not_called()
@@ -715,7 +714,7 @@ def test_memory_budget_warns_by_default_and_fails_only_when_enforced(asr_env, tm
     # 2 GiB passes for faster-whisper small + SimilarityModel(torch)
     ok = audio_runtime.enforce_memory_budget(limit_bytes=2048 * 1024 * 1024)
     assert ok["memory_sufficient"] is True
-    assert ok["asr_mode"] == "local-with-deepgram-fallback"
+    assert ok["asr_mode"] == "local-only"
 
 
 @pytest.mark.parametrize(
