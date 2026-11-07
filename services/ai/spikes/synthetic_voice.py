@@ -232,9 +232,9 @@ def compare(
     held_out_engine: str,
 ) -> dict[str, Any]:
     import numpy as np
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.pipeline import make_pipeline
-    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LogisticRegression  # type: ignore[import-untyped]
+    from sklearn.pipeline import make_pipeline  # type: ignore[import-untyped]
+    from sklearn.preprocessing import StandardScaler  # type: ignore[import-untyped]
 
     train = [i for i, row in enumerate(rows) if row["split"] == "train"]
     features = np.asarray(embeddings)

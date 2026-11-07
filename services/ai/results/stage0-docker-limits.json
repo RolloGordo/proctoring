@@ -1,0 +1,5078 @@
+{
+  "schema_version": 1,
+  "experiment": "stage_0_docker_memory_and_cpu_limits",
+  "scope": "experiment_only_not_production_code",
+  "created_at": "2026-11-05T05:08:04.522068+00:00",
+  "test_audios": {
+    "15s": {
+      "duration_seconds": 15.0,
+      "samples": 240000,
+      "size_bytes": 480044,
+      "sha256": "7b51f0c9475b1639c9d49a751aefa01e47edaccb7867a2ef5b4f3422649028ae"
+    },
+    "30s": {
+      "duration_seconds": 30.0,
+      "samples": 480000,
+      "size_bytes": 960044,
+      "sha256": "1841e90380c801c138fa40d89a4df26070d2ebb1f44e603dfe2e071e9c2f6dba"
+    }
+  },
+  "images": {
+    "proctoring-ai:prod-base": {
+      "size_bytes": 2768415301,
+      "size_mb_decimal": 2768.42,
+      "size_gib_binary": 2.578
+    },
+    "proctoring-ai:prod-asr-local": {
+      "size_bytes": 2952493692,
+      "size_mb_decimal": 2952.49,
+      "size_gib_binary": 2.75
+    }
+  },
+  "prod_base_default_extras_verification": {
+    "deepgram_by_memory": [
+      {
+        "image": "proctoring-ai:prod-base",
+        "memory_limit": "512m",
+        "cpus": "unlimited_host_8_vcpu",
+        "asr_provider": "deepgram",
+        "local_model": null,
+        "with_similarity": true,
+        "audio_filename": "stage0_15s.wav",
+        "exit_code": 137,
+        "oom_killed": true,
+        "succeeded": false,
+        "last_reached_stage": "after_asr_load",
+        "observed_peak_rss_bytes": 68210688,
+        "observed_peak_rss_mib": 65.05,
+        "observed_cgroup_peak_bytes": 230084608,
+        "observed_cgroup_peak_mib": 219.43,
+        "cold_timings": null,
+        "warm_runs": null,
+        "stage_trace": [
+          {
+            "stage": "start",
+            "memory": {
+              "vm_rss_bytes": 16105472,
+              "vm_hwm_bytes": 16240640,
+              "ru_maxrss_bytes": 16240640,
+              "cgroup_current_bytes": 23949312,
+              "cgroup_peak_bytes": 24162304
+            }
+          },
+          {
+            "stage": "after_decode",
+            "memory": {
+              "vm_rss_bytes": 68034560,
+              "vm_hwm_bytes": 68034560,
+              "ru_maxrss_bytes": 67383296,
+              "cgroup_current_bytes": 230051840,
+              "cgroup_peak_bytes": 230084608
+            },
+            "decode_seconds": 0.7635,
+            "samples": 240000
+          },
+          {
+            "stage": "after_asr_load",
+            "memory": {
+              "vm_rss_bytes": 68210688,
+              "vm_hwm_bytes": 68210688,
+              "ru_maxrss_bytes": 67514368,
+              "cgroup_current_bytes": 230051840,
+              "cgroup_peak_bytes": 230084608
+            },
+            "asr_load_seconds": 0.0025,
+            "asr_version": "deepgram-nova-3-es"
+          }
+        ],
+        "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights:   1%|          | 1/199 [00:08<26:49,  8.13s/it]\nLoading weights: 100%|██████████| 199/199 [00:08<00:00, 24.27it/s]"
+      },
+      {
+        "image": "proctoring-ai:prod-base",
+        "memory_limit": "1g",
+        "cpus": "unlimited_host_8_vcpu",
+        "asr_provider": "deepgram",
+        "local_model": null,
+        "with_similarity": true,
+        "audio_filename": "stage0_15s.wav",
+        "exit_code": 137,
+        "oom_killed": true,
+        "succeeded": false,
+        "last_reached_stage": "after_asr_transcribe",
+        "observed_peak_rss_bytes": 1010597888,
+        "observed_peak_rss_mib": 963.78,
+        "observed_cgroup_peak_bytes": 1073741824,
+        "observed_cgroup_peak_mib": 1024.0,
+        "cold_timings": null,
+        "warm_runs": null,
+        "stage_trace": [
+          {
+            "stage": "start",
+            "memory": {
+              "vm_rss_bytes": 16015360,
+              "vm_hwm_bytes": 16109568,
+              "ru_maxrss_bytes": 16109568,
+              "cgroup_current_bytes": 23560192,
+              "cgroup_peak_bytes": 23756800
+            }
+          },
+          {
+            "stage": "after_decode",
+            "memory": {
+              "vm_rss_bytes": 68849664,
+              "vm_hwm_bytes": 68849664,
+              "ru_maxrss_bytes": 68214784,
+              "cgroup_current_bytes": 230146048,
+              "cgroup_peak_bytes": 230178816
+            },
+            "decode_seconds": 0.7245,
+            "samples": 240000
+          },
+          {
+            "stage": "after_asr_load",
+            "memory": {
+              "vm_rss_bytes": 69021696,
+              "vm_hwm_bytes": 69021696,
+              "ru_maxrss_bytes": 68345856,
+              "cgroup_current_bytes": 230408192,
+              "cgroup_peak_bytes": 230408192
+            },
+            "asr_load_seconds": 0.0024,
+            "asr_version": "deepgram-nova-3-es"
+          },
+          {
+            "stage": "after_similarity_load",
+            "memory": {
+              "vm_rss_bytes": 944746496,
+              "vm_hwm_bytes": 1010597888,
+              "ru_maxrss_bytes": 1010597888,
+              "cgroup_current_bytes": 1073623040,
+              "cgroup_peak_bytes": 1073741824
+            },
+            "similarity_load_seconds": 58.31
+          },
+          {
+            "stage": "after_asr_transcribe",
+            "memory": {
+              "vm_rss_bytes": 948903936,
+              "vm_hwm_bytes": 1010597888,
+              "ru_maxrss_bytes": 1010597888,
+              "cgroup_current_bytes": 1052827648,
+              "cgroup_peak_bytes": 1073741824
+            },
+            "asr_inference_seconds": 3.0519,
+            "transcript_words": 30
+          }
+        ],
+        "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 12728.23it/s]"
+      },
+      {
+        "image": "proctoring-ai:prod-base",
+        "memory_limit": "2g",
+        "cpus": "unlimited_host_8_vcpu",
+        "asr_provider": "deepgram",
+        "local_model": null,
+        "with_similarity": true,
+        "audio_filename": "stage0_15s.wav",
+        "exit_code": 0,
+        "oom_killed": false,
+        "succeeded": true,
+        "last_reached_stage": "finished",
+        "observed_peak_rss_bytes": 1176195072,
+        "observed_peak_rss_mib": 1121.71,
+        "observed_cgroup_peak_bytes": 2010939392,
+        "observed_cgroup_peak_mib": 1917.78,
+        "cold_timings": {
+          "cold_total_seconds": 19.0795,
+          "decode_seconds": 0.7797,
+          "asr_load_seconds": 0.0029,
+          "similarity_load_seconds": 10.7275,
+          "asr_inference_seconds": 6.6167,
+          "similarity_inference_seconds": 0.9509
+        },
+        "warm_runs": [],
+        "stage_trace": [
+          {
+            "stage": "start",
+            "memory": {
+              "vm_rss_bytes": 16117760,
+              "vm_hwm_bytes": 16203776,
+              "ru_maxrss_bytes": 16203776,
+              "cgroup_current_bytes": 19144704,
+              "cgroup_peak_bytes": 19357696
+            }
+          },
+          {
+            "stage": "after_decode",
+            "memory": {
+              "vm_rss_bytes": 68247552,
+              "vm_hwm_bytes": 68247552,
+              "ru_maxrss_bytes": 67932160,
+              "cgroup_current_bytes": 225222656,
+              "cgroup_peak_bytes": 225255424
+            },
+            "decode_seconds": 0.7797,
+            "samples": 240000
+          },
+          {
+            "stage": "after_asr_load",
+            "memory": {
+              "vm_rss_bytes": 68419584,
+              "vm_hwm_bytes": 68419584,
+              "ru_maxrss_bytes": 68063232,
+              "cgroup_current_bytes": 225243136,
+              "cgroup_peak_bytes": 225484800
+            },
+            "asr_load_seconds": 0.0029,
+            "asr_version": "deepgram-nova-3-es"
+          },
+          {
+            "stage": "after_similarity_load",
+            "memory": {
+              "vm_rss_bytes": 1080467456,
+              "vm_hwm_bytes": 1126244352,
+              "ru_maxrss_bytes": 1126244352,
+              "cgroup_current_bytes": 1739481088,
+              "cgroup_peak_bytes": 1793433600
+            },
+            "similarity_load_seconds": 10.7275
+          },
+          {
+            "stage": "after_asr_transcribe",
+            "memory": {
+              "vm_rss_bytes": 1080532992,
+              "vm_hwm_bytes": 1126244352,
+              "ru_maxrss_bytes": 1126244352,
+              "cgroup_current_bytes": 1741582336,
+              "cgroup_peak_bytes": 1793433600
+            },
+            "asr_inference_seconds": 6.6167,
+            "transcript_words": 30
+          },
+          {
+            "stage": "after_similarity_score",
+            "memory": {
+              "vm_rss_bytes": 1176195072,
+              "vm_hwm_bytes": 1176195072,
+              "ru_maxrss_bytes": 1175494656,
+              "cgroup_current_bytes": 2010939392,
+              "cgroup_peak_bytes": 2010939392
+            },
+            "similarity_inference_seconds": 0.9509,
+            "similarity_score": 0.9867
+          },
+          {
+            "stage": "cold_complete",
+            "memory": {
+              "vm_rss_bytes": 1176195072,
+              "vm_hwm_bytes": 1176195072,
+              "ru_maxrss_bytes": 1175494656,
+              "cgroup_current_bytes": 2010939392,
+              "cgroup_peak_bytes": 2010939392
+            },
+            "cold_total_seconds": 19.0795,
+            "decode_seconds": 0.7797,
+            "asr_load_seconds": 0.0029,
+            "similarity_load_seconds": 10.7275,
+            "asr_inference_seconds": 6.6167,
+            "similarity_inference_seconds": 0.9509
+          },
+          {
+            "stage": "finished",
+            "memory": {
+              "vm_rss_bytes": 1176195072,
+              "vm_hwm_bytes": 1176195072,
+              "ru_maxrss_bytes": 1175494656,
+              "cgroup_current_bytes": 2010939392,
+              "cgroup_peak_bytes": 2010939392
+            },
+            "warm_runs": []
+          }
+        ],
+        "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 11085.43it/s]"
+      }
+    ],
+    "faster_whisper_without_asr_local_extra": {
+      "image": "proctoring-ai:prod-base",
+      "memory_limit": "2g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 1,
+      "oom_killed": false,
+      "succeeded": false,
+      "last_reached_stage": "after_decode",
+      "observed_peak_rss_bytes": 68431872,
+      "observed_peak_rss_mib": 65.26,
+      "observed_cgroup_peak_bytes": 37007360,
+      "observed_cgroup_peak_mib": 35.29,
+      "cold_timings": null,
+      "warm_runs": null,
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 15978496,
+            "vm_hwm_bytes": 16150528,
+            "ru_maxrss_bytes": 16150528,
+            "cgroup_current_bytes": 10825728,
+            "cgroup_peak_bytes": 11018240
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68431872,
+            "vm_hwm_bytes": 68431872,
+            "ru_maxrss_bytes": 68104192,
+            "cgroup_current_bytes": 36974592,
+            "cgroup_peak_bytes": 37007360
+          },
+          "decode_seconds": 0.1301,
+          "samples": 240000
+        }
+      ],
+      "stderr_tail": "Traceback (most recent call last):\n  File \"<string>\", line 70, in <module>\n  File \"/app/audio_runtime.py\", line 136, in asr_model\n    return _local_asr_model()\n           ^^^^^^^^^^^^^^^^^^\n  File \"/app/audio_runtime.py\", line 112, in _local_asr_model\n    raise RuntimeError(\nRuntimeError: ASR_PROVIDER=faster-whisper needs the optional extra 'asr-local' (uv sync --extra asr-local)"
+    }
+  },
+  "memory_limit_matrix": [
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "512m",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 137,
+      "oom_killed": true,
+      "succeeded": false,
+      "last_reached_stage": "after_asr_load",
+      "observed_peak_rss_bytes": 68911104,
+      "observed_peak_rss_mib": 65.72,
+      "observed_cgroup_peak_bytes": 202080256,
+      "observed_cgroup_peak_mib": 192.72,
+      "cold_timings": null,
+      "warm_runs": null,
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16105472,
+            "vm_hwm_bytes": 16273408,
+            "ru_maxrss_bytes": 16273408,
+            "cgroup_current_bytes": 11079680,
+            "cgroup_peak_bytes": 11341824
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68734976,
+            "vm_hwm_bytes": 68734976,
+            "ru_maxrss_bytes": 68231168,
+            "cgroup_current_bytes": 202076160,
+            "cgroup_peak_bytes": 202080256
+          },
+          "decode_seconds": 0.7177,
+          "samples": 240000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 68911104,
+            "vm_hwm_bytes": 68911104,
+            "ru_maxrss_bytes": 68362240,
+            "cgroup_current_bytes": 201887744,
+            "cgroup_peak_bytes": 202080256
+          },
+          "asr_load_seconds": 0.0032,
+          "asr_version": "deepgram-nova-3-es"
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights:   1%|          | 1/199 [00:00<01:13,  2.68it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 490.64it/s]",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "1g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1029910528,
+      "observed_peak_rss_mib": 982.2,
+      "observed_cgroup_peak_bytes": 1073741824,
+      "observed_cgroup_peak_mib": 1024.0,
+      "cold_timings": {
+        "cold_total_seconds": 509.5743,
+        "decode_seconds": 0.7002,
+        "asr_load_seconds": 0.0034,
+        "similarity_load_seconds": 15.2381,
+        "asr_inference_seconds": 2.5548,
+        "similarity_inference_seconds": 491.0754
+      },
+      "warm_runs": [],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16089088,
+            "vm_hwm_bytes": 16089088,
+            "ru_maxrss_bytes": 16039936,
+            "cgroup_current_bytes": 11341824,
+            "cgroup_peak_bytes": 11571200
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68100096,
+            "vm_hwm_bytes": 68100096,
+            "ru_maxrss_bytes": 67387392,
+            "cgroup_current_bytes": 201908224,
+            "cgroup_peak_bytes": 201912320
+          },
+          "decode_seconds": 0.7002,
+          "samples": 240000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 68276224,
+            "vm_hwm_bytes": 68276224,
+            "ru_maxrss_bytes": 67518464,
+            "cgroup_current_bytes": 201859072,
+            "cgroup_peak_bytes": 201912320
+          },
+          "asr_load_seconds": 0.0034,
+          "asr_version": "deepgram-nova-3-es"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 959385600,
+            "vm_hwm_bytes": 1026277376,
+            "ru_maxrss_bytes": 1026277376,
+            "cgroup_current_bytes": 1073733632,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "similarity_load_seconds": 15.2381
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 959451136,
+            "vm_hwm_bytes": 1026277376,
+            "ru_maxrss_bytes": 1026277376,
+            "cgroup_current_bytes": 1052073984,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "asr_inference_seconds": 2.5548,
+          "transcript_words": 30
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1029910528,
+            "vm_hwm_bytes": 1029910528,
+            "ru_maxrss_bytes": 1029279744,
+            "cgroup_current_bytes": 1073618944,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "similarity_inference_seconds": 491.0754,
+          "similarity_score": 0.9867
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1029910528,
+            "vm_hwm_bytes": 1029910528,
+            "ru_maxrss_bytes": 1029279744,
+            "cgroup_current_bytes": 1073618944,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "cold_total_seconds": 509.5743,
+          "decode_seconds": 0.7002,
+          "asr_load_seconds": 0.0034,
+          "similarity_load_seconds": 15.2381,
+          "asr_inference_seconds": 2.5548,
+          "similarity_inference_seconds": 491.0754
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1029910528,
+            "vm_hwm_bytes": 1029910528,
+            "ru_maxrss_bytes": 1029279744,
+            "cgroup_current_bytes": 1073618944,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "warm_runs": []
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 12009.42it/s]",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1176371200,
+      "observed_peak_rss_mib": 1121.88,
+      "observed_cgroup_peak_bytes": 1779568640,
+      "observed_cgroup_peak_mib": 1697.13,
+      "cold_timings": {
+        "cold_total_seconds": 14.7951,
+        "decode_seconds": 0.6762,
+        "asr_load_seconds": 0.0031,
+        "similarity_load_seconds": 10.1634,
+        "asr_inference_seconds": 3.5385,
+        "similarity_inference_seconds": 0.4123
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 3.616,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16011264,
+            "vm_hwm_bytes": 16257024,
+            "ru_maxrss_bytes": 16257024,
+            "cgroup_current_bytes": 10887168,
+            "cgroup_peak_bytes": 11091968
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68739072,
+            "vm_hwm_bytes": 68739072,
+            "ru_maxrss_bytes": 68431872,
+            "cgroup_current_bytes": 195379200,
+            "cgroup_peak_bytes": 195379200
+          },
+          "decode_seconds": 0.6762,
+          "samples": 240000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 68915200,
+            "vm_hwm_bytes": 68915200,
+            "ru_maxrss_bytes": 68562944,
+            "cgroup_current_bytes": 195198976,
+            "cgroup_peak_bytes": 195379200
+          },
+          "asr_load_seconds": 0.0031,
+          "asr_version": "deepgram-nova-3-es"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1080647680,
+            "vm_hwm_bytes": 1126768640,
+            "ru_maxrss_bytes": 1126768640,
+            "cgroup_current_bytes": 1653542912,
+            "cgroup_peak_bytes": 1700413440
+          },
+          "similarity_load_seconds": 10.1634
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1080713216,
+            "vm_hwm_bytes": 1126768640,
+            "ru_maxrss_bytes": 1126768640,
+            "cgroup_current_bytes": 1653522432,
+            "cgroup_peak_bytes": 1700413440
+          },
+          "asr_inference_seconds": 3.5385,
+          "transcript_words": 30
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1176317952,
+            "vm_hwm_bytes": 1176317952,
+            "ru_maxrss_bytes": 1175576576,
+            "cgroup_current_bytes": 1767583744,
+            "cgroup_peak_bytes": 1767583744
+          },
+          "similarity_inference_seconds": 0.4123,
+          "similarity_score": 0.9867
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1176317952,
+            "vm_hwm_bytes": 1176317952,
+            "ru_maxrss_bytes": 1175576576,
+            "cgroup_current_bytes": 1767583744,
+            "cgroup_peak_bytes": 1767583744
+          },
+          "cold_total_seconds": 14.7951,
+          "decode_seconds": 0.6762,
+          "asr_load_seconds": 0.0031,
+          "similarity_load_seconds": 10.1634,
+          "asr_inference_seconds": 3.5385,
+          "similarity_inference_seconds": 0.4123
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1176371200,
+            "vm_hwm_bytes": 1176371200,
+            "ru_maxrss_bytes": 1175576576,
+            "cgroup_current_bytes": 1757085696,
+            "cgroup_peak_bytes": 1779568640
+          },
+          "run": 1,
+          "warm_total_seconds": 3.616
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1176371200,
+            "vm_hwm_bytes": 1176371200,
+            "ru_maxrss_bytes": 1175576576,
+            "cgroup_current_bytes": 1757085696,
+            "cgroup_peak_bytes": 1779568640
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 3.616,
+              "similarity": 0.9867,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 11964.66it/s]",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "512m",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 137,
+      "oom_killed": true,
+      "succeeded": false,
+      "last_reached_stage": "after_asr_load",
+      "observed_peak_rss_bytes": 70234112,
+      "observed_peak_rss_mib": 66.98,
+      "observed_cgroup_peak_bytes": 40398848,
+      "observed_cgroup_peak_mib": 38.53,
+      "cold_timings": null,
+      "warm_runs": null,
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16109568,
+            "vm_hwm_bytes": 16269312,
+            "ru_maxrss_bytes": 16269312,
+            "cgroup_current_bytes": 10792960,
+            "cgroup_peak_bytes": 11018240
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68755456,
+            "vm_hwm_bytes": 70234112,
+            "ru_maxrss_bytes": 70234112,
+            "cgroup_current_bytes": 38633472,
+            "cgroup_peak_bytes": 40398848
+          },
+          "decode_seconds": 0.1258,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 68882432,
+            "vm_hwm_bytes": 70234112,
+            "ru_maxrss_bytes": 70234112,
+            "cgroup_current_bytes": 38559744,
+            "cgroup_peak_bytes": 40398848
+          },
+          "asr_load_seconds": 0.003,
+          "asr_version": "deepgram-nova-3-es"
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 9835.34it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "1g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1178996736,
+      "observed_peak_rss_mib": 1124.38,
+      "observed_cgroup_peak_bytes": 1073741824,
+      "observed_cgroup_peak_mib": 1024.0,
+      "cold_timings": {
+        "cold_total_seconds": 10.673,
+        "decode_seconds": 0.1144,
+        "asr_load_seconds": 0.0028,
+        "similarity_load_seconds": 5.558,
+        "asr_inference_seconds": 3.6145,
+        "similarity_inference_seconds": 1.3814
+      },
+      "warm_runs": [],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16146432,
+            "vm_hwm_bytes": 16334848,
+            "ru_maxrss_bytes": 16334848,
+            "cgroup_current_bytes": 10784768,
+            "cgroup_peak_bytes": 10805248
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68702208,
+            "vm_hwm_bytes": 70090752,
+            "ru_maxrss_bytes": 70090752,
+            "cgroup_current_bytes": 38526976,
+            "cgroup_peak_bytes": 40390656
+          },
+          "decode_seconds": 0.1144,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 68829184,
+            "vm_hwm_bytes": 70090752,
+            "ru_maxrss_bytes": 70090752,
+            "cgroup_current_bytes": 38518784,
+            "cgroup_peak_bytes": 40390656
+          },
+          "asr_load_seconds": 0.0028,
+          "asr_version": "deepgram-nova-3-es"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1080594432,
+            "vm_hwm_bytes": 1126211584,
+            "ru_maxrss_bytes": 1126211584,
+            "cgroup_current_bytes": 1014800384,
+            "cgroup_peak_bytes": 1061289984
+          },
+          "similarity_load_seconds": 5.558
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1080659968,
+            "vm_hwm_bytes": 1126211584,
+            "ru_maxrss_bytes": 1126211584,
+            "cgroup_current_bytes": 1014718464,
+            "cgroup_peak_bytes": 1061289984
+          },
+          "asr_inference_seconds": 3.6145,
+          "transcript_words": 61
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1178992640,
+            "vm_hwm_bytes": 1178992640,
+            "ru_maxrss_bytes": 1178259456,
+            "cgroup_current_bytes": 1073704960,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "similarity_inference_seconds": 1.3814,
+          "similarity_score": 0.8202
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1178992640,
+            "vm_hwm_bytes": 1178992640,
+            "ru_maxrss_bytes": 1178259456,
+            "cgroup_current_bytes": 1073704960,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "cold_total_seconds": 10.673,
+          "decode_seconds": 0.1144,
+          "asr_load_seconds": 0.0028,
+          "similarity_load_seconds": 5.558,
+          "asr_inference_seconds": 3.6145,
+          "similarity_inference_seconds": 1.3814
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1178996736,
+            "vm_hwm_bytes": 1178996736,
+            "ru_maxrss_bytes": 1178259456,
+            "cgroup_current_bytes": 1073713152,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "warm_runs": []
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 13189.43it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1178968064,
+      "observed_peak_rss_mib": 1124.35,
+      "observed_cgroup_peak_bytes": 1133182976,
+      "observed_cgroup_peak_mib": 1080.69,
+      "cold_timings": {
+        "cold_total_seconds": 8.4896,
+        "decode_seconds": 0.1046,
+        "asr_load_seconds": 0.0028,
+        "similarity_load_seconds": 5.4576,
+        "asr_inference_seconds": 2.622,
+        "similarity_inference_seconds": 0.3013
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 3.5425,
+          "similarity": 0.8202,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16187392,
+            "vm_hwm_bytes": 16338944,
+            "ru_maxrss_bytes": 16338944,
+            "cgroup_current_bytes": 10805248,
+            "cgroup_peak_bytes": 11018240
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68866048,
+            "vm_hwm_bytes": 70565888,
+            "ru_maxrss_bytes": 70565888,
+            "cgroup_current_bytes": 38014976,
+            "cgroup_peak_bytes": 40144896
+          },
+          "decode_seconds": 0.1046,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 68993024,
+            "vm_hwm_bytes": 70565888,
+            "ru_maxrss_bytes": 70565888,
+            "cgroup_current_bytes": 38268928,
+            "cgroup_peak_bytes": 40144896
+          },
+          "asr_load_seconds": 0.0028,
+          "asr_version": "deepgram-nova-3-es"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1080553472,
+            "vm_hwm_bytes": 1127112704,
+            "ru_maxrss_bytes": 1127112704,
+            "cgroup_current_bytes": 1011023872,
+            "cgroup_peak_bytes": 1058967552
+          },
+          "similarity_load_seconds": 5.4576
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1080619008,
+            "vm_hwm_bytes": 1127112704,
+            "ru_maxrss_bytes": 1127112704,
+            "cgroup_current_bytes": 1011953664,
+            "cgroup_peak_bytes": 1058967552
+          },
+          "asr_inference_seconds": 2.622,
+          "transcript_words": 61
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1178894336,
+            "vm_hwm_bytes": 1178894336,
+            "ru_maxrss_bytes": 1177870336,
+            "cgroup_current_bytes": 1110941696,
+            "cgroup_peak_bytes": 1110945792
+          },
+          "similarity_inference_seconds": 0.3013,
+          "similarity_score": 0.8202
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1178894336,
+            "vm_hwm_bytes": 1178894336,
+            "ru_maxrss_bytes": 1177870336,
+            "cgroup_current_bytes": 1110941696,
+            "cgroup_peak_bytes": 1110945792
+          },
+          "cold_total_seconds": 8.4896,
+          "decode_seconds": 0.1046,
+          "asr_load_seconds": 0.0028,
+          "similarity_load_seconds": 5.4576,
+          "asr_inference_seconds": 2.622,
+          "similarity_inference_seconds": 0.3013
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1178968064,
+            "vm_hwm_bytes": 1178968064,
+            "ru_maxrss_bytes": 1177870336,
+            "cgroup_current_bytes": 1110753280,
+            "cgroup_peak_bytes": 1133182976
+          },
+          "run": 1,
+          "warm_total_seconds": 3.5425
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1178968064,
+            "vm_hwm_bytes": 1178968064,
+            "ru_maxrss_bytes": 1177870336,
+            "cgroup_current_bytes": 1110753280,
+            "cgroup_peak_bytes": 1133182976
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 3.5425,
+              "similarity": 0.8202,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 14680.36it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "512m",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 137,
+      "oom_killed": true,
+      "succeeded": false,
+      "last_reached_stage": "after_decode",
+      "observed_peak_rss_bytes": 68546560,
+      "observed_peak_rss_mib": 65.37,
+      "observed_cgroup_peak_bytes": 35790848,
+      "observed_cgroup_peak_mib": 34.13,
+      "cold_timings": null,
+      "warm_runs": null,
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16121856,
+            "vm_hwm_bytes": 16166912,
+            "ru_maxrss_bytes": 16166912,
+            "cgroup_current_bytes": 10801152,
+            "cgroup_peak_bytes": 11038720
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68546560,
+            "vm_hwm_bytes": 68546560,
+            "ru_maxrss_bytes": 68276224,
+            "cgroup_current_bytes": 35758080,
+            "cgroup_peak_bytes": 35790848
+          },
+          "decode_seconds": 0.0901,
+          "samples": 240000
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "1g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 137,
+      "oom_killed": true,
+      "succeeded": false,
+      "last_reached_stage": "after_asr_load",
+      "observed_peak_rss_bytes": 658268160,
+      "observed_peak_rss_mib": 627.77,
+      "observed_cgroup_peak_bytes": 1073741824,
+      "observed_cgroup_peak_mib": 1024.0,
+      "cold_timings": null,
+      "warm_runs": null,
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16138240,
+            "vm_hwm_bytes": 16375808,
+            "ru_maxrss_bytes": 16375808,
+            "cgroup_current_bytes": 10596352,
+            "cgroup_peak_bytes": 10833920
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68145152,
+            "vm_hwm_bytes": 68145152,
+            "ru_maxrss_bytes": 67952640,
+            "cgroup_current_bytes": 36122624,
+            "cgroup_peak_bytes": 36155392
+          },
+          "decode_seconds": 0.1171,
+          "samples": 240000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 606314496,
+            "vm_hwm_bytes": 658268160,
+            "ru_maxrss_bytes": 658268160,
+            "cgroup_current_bytes": 1021251584,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "asr_load_seconds": 2.3121,
+          "asr_version": "faster-whisper-small-cpu-int8"
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 12061.48it/s]",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1775616000,
+      "observed_peak_rss_mib": 1693.36,
+      "observed_cgroup_peak_bytes": 2147483648,
+      "observed_cgroup_peak_mib": 2048.0,
+      "cold_timings": {
+        "cold_total_seconds": 11.9625,
+        "decode_seconds": 0.2089,
+        "asr_load_seconds": 2.2663,
+        "similarity_load_seconds": 6.0116,
+        "asr_inference_seconds": 2.3978,
+        "similarity_inference_seconds": 1.0755
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 2.0548,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16113664,
+            "vm_hwm_bytes": 16281600,
+            "ru_maxrss_bytes": 16281600,
+            "cgroup_current_bytes": 10772480,
+            "cgroup_peak_bytes": 11059200
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68300800,
+            "vm_hwm_bytes": 68300800,
+            "ru_maxrss_bytes": 67891200,
+            "cgroup_current_bytes": 63668224,
+            "cgroup_peak_bytes": 63934464
+          },
+          "decode_seconds": 0.2089,
+          "samples": 240000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 606412800,
+            "vm_hwm_bytes": 658309120,
+            "ru_maxrss_bytes": 658309120,
+            "cgroup_current_bytes": 1179041792,
+            "cgroup_peak_bytes": 1230761984
+          },
+          "asr_load_seconds": 2.2663,
+          "asr_version": "faster-whisper-small-cpu-int8"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1397067776,
+            "vm_hwm_bytes": 1442553856,
+            "ru_maxrss_bytes": 1442553856,
+            "cgroup_current_bytes": 1845739520,
+            "cgroup_peak_bytes": 1879154688
+          },
+          "similarity_load_seconds": 6.0116
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1574027264,
+            "vm_hwm_bytes": 1644032000,
+            "ru_maxrss_bytes": 1644032000,
+            "cgroup_current_bytes": 2043428864,
+            "cgroup_peak_bytes": 2128150528
+          },
+          "asr_inference_seconds": 2.3978,
+          "transcript_words": 30
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1668120576,
+            "vm_hwm_bytes": 1668120576,
+            "ru_maxrss_bytes": 1667420160,
+            "cgroup_current_bytes": 2146955264,
+            "cgroup_peak_bytes": 2147483648
+          },
+          "similarity_inference_seconds": 1.0755,
+          "similarity_score": 1.0
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1668120576,
+            "vm_hwm_bytes": 1668120576,
+            "ru_maxrss_bytes": 1667420160,
+            "cgroup_current_bytes": 2146955264,
+            "cgroup_peak_bytes": 2147483648
+          },
+          "cold_total_seconds": 11.9625,
+          "decode_seconds": 0.2089,
+          "asr_load_seconds": 2.2663,
+          "similarity_load_seconds": 6.0116,
+          "asr_inference_seconds": 2.3978,
+          "similarity_inference_seconds": 1.0755
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1668263936,
+            "vm_hwm_bytes": 1775616000,
+            "ru_maxrss_bytes": 1775616000,
+            "cgroup_current_bytes": 2039001088,
+            "cgroup_peak_bytes": 2147483648
+          },
+          "run": 1,
+          "warm_total_seconds": 2.0548
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1668263936,
+            "vm_hwm_bytes": 1775616000,
+            "ru_maxrss_bytes": 1775616000,
+            "cgroup_current_bytes": 2039001088,
+            "cgroup_peak_bytes": 2147483648
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 2.0548,
+              "similarity": 1.0,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 12229.19it/s]",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "512m",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 137,
+      "oom_killed": true,
+      "succeeded": false,
+      "last_reached_stage": "after_decode",
+      "observed_peak_rss_bytes": 69750784,
+      "observed_peak_rss_mib": 66.52,
+      "observed_cgroup_peak_bytes": 148791296,
+      "observed_cgroup_peak_mib": 141.9,
+      "cold_timings": null,
+      "warm_runs": null,
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16195584,
+            "vm_hwm_bytes": 16363520,
+            "ru_maxrss_bytes": 16363520,
+            "cgroup_current_bytes": 10567680,
+            "cgroup_peak_bytes": 10801152
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68878336,
+            "vm_hwm_bytes": 69750784,
+            "ru_maxrss_bytes": 69750784,
+            "cgroup_current_bytes": 147017728,
+            "cgroup_peak_bytes": 148791296
+          },
+          "decode_seconds": 0.5585,
+          "samples": 480000
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "1g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 137,
+      "oom_killed": true,
+      "succeeded": false,
+      "last_reached_stage": "after_asr_load",
+      "observed_peak_rss_bytes": 659521536,
+      "observed_peak_rss_mib": 628.97,
+      "observed_cgroup_peak_bytes": 1073741824,
+      "observed_cgroup_peak_mib": 1024.0,
+      "cold_timings": null,
+      "warm_runs": null,
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16191488,
+            "vm_hwm_bytes": 16351232,
+            "ru_maxrss_bytes": 16351232,
+            "cgroup_current_bytes": 10780672,
+            "cgroup_peak_bytes": 11005952
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68751360,
+            "vm_hwm_bytes": 70139904,
+            "ru_maxrss_bytes": 70139904,
+            "cgroup_current_bytes": 146751488,
+            "cgroup_peak_bytes": 148598784
+          },
+          "decode_seconds": 0.5299,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 607973376,
+            "vm_hwm_bytes": 659521536,
+            "ru_maxrss_bytes": 659521536,
+            "cgroup_current_bytes": 1021874176,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "asr_load_seconds": 1.9912,
+          "asr_version": "faster-whisper-small-cpu-int8"
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 11910.03it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1780924416,
+      "observed_peak_rss_mib": 1698.42,
+      "observed_cgroup_peak_bytes": 2147483648,
+      "observed_cgroup_peak_mib": 2048.0,
+      "cold_timings": {
+        "cold_total_seconds": 12.1551,
+        "decode_seconds": 0.555,
+        "asr_load_seconds": 2.0327,
+        "similarity_load_seconds": 5.6479,
+        "asr_inference_seconds": 3.1621,
+        "similarity_inference_seconds": 0.756
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 2.8512,
+          "similarity": 0.8607,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16113664,
+            "vm_hwm_bytes": 16273408,
+            "ru_maxrss_bytes": 16273408,
+            "cgroup_current_bytes": 10817536,
+            "cgroup_peak_bytes": 11026432
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 69214208,
+            "vm_hwm_bytes": 70385664,
+            "ru_maxrss_bytes": 70385664,
+            "cgroup_current_bytes": 147288064,
+            "cgroup_peak_bytes": 149073920
+          },
+          "decode_seconds": 0.555,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 608436224,
+            "vm_hwm_bytes": 659902464,
+            "ru_maxrss_bytes": 659902464,
+            "cgroup_current_bytes": 1231880192,
+            "cgroup_peak_bytes": 1283596288
+          },
+          "asr_load_seconds": 2.0327,
+          "asr_version": "faster-whisper-small-cpu-int8"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1399492608,
+            "vm_hwm_bytes": 1445699584,
+            "ru_maxrss_bytes": 1445699584,
+            "cgroup_current_bytes": 1931759616,
+            "cgroup_peak_bytes": 1973952512
+          },
+          "similarity_load_seconds": 5.6479
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1576472576,
+            "vm_hwm_bytes": 1646571520,
+            "ru_maxrss_bytes": 1646571520,
+            "cgroup_current_bytes": 2076516352,
+            "cgroup_peak_bytes": 2147483648
+          },
+          "asr_inference_seconds": 3.1621,
+          "transcript_words": 61
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1673818112,
+            "vm_hwm_bytes": 1673818112,
+            "ru_maxrss_bytes": 1672790016,
+            "cgroup_current_bytes": 2118098944,
+            "cgroup_peak_bytes": 2147483648
+          },
+          "similarity_inference_seconds": 0.756,
+          "similarity_score": 0.8607
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1673818112,
+            "vm_hwm_bytes": 1673818112,
+            "ru_maxrss_bytes": 1672790016,
+            "cgroup_current_bytes": 2118098944,
+            "cgroup_peak_bytes": 2147483648
+          },
+          "cold_total_seconds": 12.1551,
+          "decode_seconds": 0.555,
+          "asr_load_seconds": 2.0327,
+          "similarity_load_seconds": 5.6479,
+          "asr_inference_seconds": 3.1621,
+          "similarity_inference_seconds": 0.756
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1673908224,
+            "vm_hwm_bytes": 1780924416,
+            "ru_maxrss_bytes": 1780924416,
+            "cgroup_current_bytes": 2055651328,
+            "cgroup_peak_bytes": 2147483648
+          },
+          "run": 1,
+          "warm_total_seconds": 2.8512
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1673908224,
+            "vm_hwm_bytes": 1780924416,
+            "ru_maxrss_bytes": 1780924416,
+            "cgroup_current_bytes": 2055651328,
+            "cgroup_peak_bytes": 2147483648
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 2.8512,
+              "similarity": 0.8607,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 12937.16it/s]",
+      "audio_seconds": 30.0
+    }
+  ],
+  "capacity_breakdown_matrix_30s": [
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "512m",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": false,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 76283904,
+      "observed_peak_rss_mib": 72.75,
+      "observed_cgroup_peak_bytes": 65761280,
+      "observed_cgroup_peak_mib": 62.71,
+      "cold_timings": {
+        "cold_total_seconds": 3.9536,
+        "decode_seconds": 0.2159,
+        "asr_load_seconds": 0.0023,
+        "similarity_load_seconds": 0.0,
+        "asr_inference_seconds": 3.7342,
+        "similarity_inference_seconds": 0.0
+      },
+      "warm_runs": [],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16023552,
+            "vm_hwm_bytes": 16265216,
+            "ru_maxrss_bytes": 16265216,
+            "cgroup_current_bytes": 10825728,
+            "cgroup_peak_bytes": 11038720
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 69005312,
+            "vm_hwm_bytes": 70414336,
+            "ru_maxrss_bytes": 70414336,
+            "cgroup_current_bytes": 58785792,
+            "cgroup_peak_bytes": 60534784
+          },
+          "decode_seconds": 0.2159,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 69132288,
+            "vm_hwm_bytes": 70414336,
+            "ru_maxrss_bytes": 70414336,
+            "cgroup_current_bytes": 58957824,
+            "cgroup_peak_bytes": 60534784
+          },
+          "asr_load_seconds": 0.0023,
+          "asr_version": "deepgram-nova-3-es"
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 74964992,
+            "vm_hwm_bytes": 76283904,
+            "ru_maxrss_bytes": 76283904,
+            "cgroup_current_bytes": 63545344,
+            "cgroup_peak_bytes": 65761280
+          },
+          "asr_inference_seconds": 3.7342,
+          "transcript_words": 61
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 74964992,
+            "vm_hwm_bytes": 76283904,
+            "ru_maxrss_bytes": 76283904,
+            "cgroup_current_bytes": 63545344,
+            "cgroup_peak_bytes": 65761280
+          },
+          "cold_total_seconds": 3.9536,
+          "decode_seconds": 0.2159,
+          "asr_load_seconds": 0.0023,
+          "similarity_load_seconds": 0.0,
+          "asr_inference_seconds": 3.7342,
+          "similarity_inference_seconds": 0.0
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 74964992,
+            "vm_hwm_bytes": 76283904,
+            "ru_maxrss_bytes": 76283904,
+            "cgroup_current_bytes": 63545344,
+            "cgroup_peak_bytes": 65761280
+          },
+          "warm_runs": []
+        }
+      ],
+      "stderr_tail": null,
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "512m",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": false,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 137,
+      "oom_killed": true,
+      "succeeded": false,
+      "last_reached_stage": "after_decode",
+      "observed_peak_rss_bytes": 70909952,
+      "observed_peak_rss_mib": 67.62,
+      "observed_cgroup_peak_bytes": 37744640,
+      "observed_cgroup_peak_mib": 36.0,
+      "cold_timings": null,
+      "warm_runs": null,
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16117760,
+            "vm_hwm_bytes": 16367616,
+            "ru_maxrss_bytes": 16367616,
+            "cgroup_current_bytes": 10604544,
+            "cgroup_peak_bytes": 10858496
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 69128192,
+            "vm_hwm_bytes": 70909952,
+            "ru_maxrss_bytes": 70909952,
+            "cgroup_current_bytes": 35708928,
+            "cgroup_peak_bytes": 37744640
+          },
+          "decode_seconds": 0.0985,
+          "samples": 480000
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "1g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": false,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 830365696,
+      "observed_peak_rss_mib": 791.9,
+      "observed_cgroup_peak_bytes": 1073741824,
+      "observed_cgroup_peak_mib": 1024.0,
+      "cold_timings": {
+        "cold_total_seconds": 4.9994,
+        "decode_seconds": 0.1013,
+        "asr_load_seconds": 1.8885,
+        "similarity_load_seconds": 0.0,
+        "asr_inference_seconds": 3.0087,
+        "similarity_inference_seconds": 0.0
+      },
+      "warm_runs": [],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16121856,
+            "vm_hwm_bytes": 16269312,
+            "ru_maxrss_bytes": 16269312,
+            "cgroup_current_bytes": 10866688,
+            "cgroup_peak_bytes": 11091968
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68980736,
+            "vm_hwm_bytes": 70602752,
+            "ru_maxrss_bytes": 70602752,
+            "cgroup_current_bytes": 35852288,
+            "cgroup_peak_bytes": 37650432
+          },
+          "decode_seconds": 0.1013,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 608231424,
+            "vm_hwm_bytes": 659836928,
+            "ru_maxrss_bytes": 659836928,
+            "cgroup_current_bytes": 1021923328,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "asr_load_seconds": 1.8885,
+          "asr_version": "faster-whisper-small-cpu-int8"
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 787869696,
+            "vm_hwm_bytes": 830365696,
+            "ru_maxrss_bytes": 830365696,
+            "cgroup_current_bytes": 1037180928,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "asr_inference_seconds": 3.0087,
+          "transcript_words": 61
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 787869696,
+            "vm_hwm_bytes": 830365696,
+            "ru_maxrss_bytes": 830365696,
+            "cgroup_current_bytes": 1037180928,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "cold_total_seconds": 4.9994,
+          "decode_seconds": 0.1013,
+          "asr_load_seconds": 1.8885,
+          "similarity_load_seconds": 0.0,
+          "asr_inference_seconds": 3.0087,
+          "similarity_inference_seconds": 0.0
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 787869696,
+            "vm_hwm_bytes": 830365696,
+            "ru_maxrss_bytes": 830365696,
+            "cgroup_current_bytes": 1037180928,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "warm_runs": []
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "512m",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "tiny",
+      "with_similarity": false,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 313839616,
+      "observed_peak_rss_mib": 299.3,
+      "observed_cgroup_peak_bytes": 322125824,
+      "observed_cgroup_peak_mib": 307.2,
+      "cold_timings": {
+        "cold_total_seconds": 1.371,
+        "decode_seconds": 0.1028,
+        "asr_load_seconds": 0.5682,
+        "similarity_load_seconds": 0.0,
+        "asr_inference_seconds": 0.6993,
+        "similarity_inference_seconds": 0.0
+      },
+      "warm_runs": [],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16027648,
+            "vm_hwm_bytes": 16195584,
+            "ru_maxrss_bytes": 16195584,
+            "cgroup_current_bytes": 10465280,
+            "cgroup_peak_bytes": 10752000
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 69099520,
+            "vm_hwm_bytes": 70684672,
+            "ru_maxrss_bytes": 70684672,
+            "cgroup_current_bytes": 35786752,
+            "cgroup_peak_bytes": 37642240
+          },
+          "decode_seconds": 0.1028,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 183533568,
+            "vm_hwm_bytes": 265461760,
+            "ru_maxrss_bytes": 265461760,
+            "cgroup_current_bytes": 217751552,
+            "cgroup_peak_bytes": 300769280
+          },
+          "asr_load_seconds": 0.5682,
+          "asr_version": "faster-whisper-tiny-cpu-int8"
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 263729152,
+            "vm_hwm_bytes": 313839616,
+            "ru_maxrss_bytes": 313839616,
+            "cgroup_current_bytes": 271486976,
+            "cgroup_peak_bytes": 322125824
+          },
+          "asr_inference_seconds": 0.6993,
+          "transcript_words": 60
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 263729152,
+            "vm_hwm_bytes": 313839616,
+            "ru_maxrss_bytes": 313839616,
+            "cgroup_current_bytes": 271486976,
+            "cgroup_peak_bytes": 322125824
+          },
+          "cold_total_seconds": 1.371,
+          "decode_seconds": 0.1028,
+          "asr_load_seconds": 0.5682,
+          "similarity_load_seconds": 0.0,
+          "asr_inference_seconds": 0.6993,
+          "similarity_inference_seconds": 0.0
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 263729152,
+            "vm_hwm_bytes": 313839616,
+            "ru_maxrss_bytes": 313839616,
+            "cgroup_current_bytes": 271257600,
+            "cgroup_peak_bytes": 322125824
+          },
+          "warm_runs": []
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-tiny/trees/d90ca5fe260221311c53c58e660288d3deb8d356.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-tiny/trees/d90ca5fe260221311c53c58e660288d3deb8d356.json'",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "512m",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "base",
+      "with_similarity": false,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 411996160,
+      "observed_peak_rss_mib": 392.91,
+      "observed_cgroup_peak_bytes": 506146816,
+      "observed_cgroup_peak_mib": 482.7,
+      "cold_timings": {
+        "cold_total_seconds": 2.1036,
+        "decode_seconds": 0.2168,
+        "asr_load_seconds": 0.7879,
+        "similarity_load_seconds": 0.0,
+        "asr_inference_seconds": 1.0981,
+        "similarity_inference_seconds": 0.0
+      },
+      "warm_runs": [],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16117760,
+            "vm_hwm_bytes": 16285696,
+            "ru_maxrss_bytes": 16285696,
+            "cgroup_current_bytes": 10489856,
+            "cgroup_peak_bytes": 10776576
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 69115904,
+            "vm_hwm_bytes": 70647808,
+            "ru_maxrss_bytes": 70647808,
+            "cgroup_current_bytes": 64880640,
+            "cgroup_peak_bytes": 66715648
+          },
+          "decode_seconds": 0.2168,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 244252672,
+            "vm_hwm_bytes": 359845888,
+            "ru_maxrss_bytes": 359845888,
+            "cgroup_current_bytes": 363098112,
+            "cgroup_peak_bytes": 479383552
+          },
+          "asr_load_seconds": 0.7879,
+          "asr_version": "faster-whisper-base-cpu-int8"
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 322371584,
+            "vm_hwm_bytes": 411996160,
+            "ru_maxrss_bytes": 411996160,
+            "cgroup_current_bytes": 415662080,
+            "cgroup_peak_bytes": 506146816
+          },
+          "asr_inference_seconds": 1.0981,
+          "transcript_words": 60
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 322371584,
+            "vm_hwm_bytes": 411996160,
+            "ru_maxrss_bytes": 411996160,
+            "cgroup_current_bytes": 415662080,
+            "cgroup_peak_bytes": 506146816
+          },
+          "cold_total_seconds": 2.1036,
+          "decode_seconds": 0.2168,
+          "asr_load_seconds": 0.7879,
+          "similarity_load_seconds": 0.0,
+          "asr_inference_seconds": 1.0981,
+          "similarity_inference_seconds": 0.0
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 322371584,
+            "vm_hwm_bytes": 411996160,
+            "ru_maxrss_bytes": 411996160,
+            "cgroup_current_bytes": 415662080,
+            "cgroup_peak_bytes": 506146816
+          },
+          "warm_runs": []
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-base/trees/ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-base/trees/ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66.json'",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "1g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "tiny",
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 137,
+      "oom_killed": true,
+      "succeeded": false,
+      "last_reached_stage": "after_similarity_load",
+      "observed_peak_rss_bytes": 1210290176,
+      "observed_peak_rss_mib": 1154.22,
+      "observed_cgroup_peak_bytes": 1073741824,
+      "observed_cgroup_peak_mib": 1024.0,
+      "cold_timings": null,
+      "warm_runs": null,
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16146432,
+            "vm_hwm_bytes": 16252928,
+            "ru_maxrss_bytes": 16252928,
+            "cgroup_current_bytes": 10481664,
+            "cgroup_peak_bytes": 10760192
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68616192,
+            "vm_hwm_bytes": 69902336,
+            "ru_maxrss_bytes": 69902336,
+            "cgroup_current_bytes": 116174848,
+            "cgroup_peak_bytes": 117944320
+          },
+          "decode_seconds": 0.4362,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 182882304,
+            "vm_hwm_bytes": 264867840,
+            "ru_maxrss_bytes": 264867840,
+            "cgroup_current_bytes": 288055296,
+            "cgroup_peak_bytes": 373862400
+          },
+          "asr_load_seconds": 0.4812,
+          "asr_version": "faster-whisper-tiny-cpu-int8"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1164259328,
+            "vm_hwm_bytes": 1210290176,
+            "ru_maxrss_bytes": 1210290176,
+            "cgroup_current_bytes": 1020878848,
+            "cgroup_peak_bytes": 1073741824
+          },
+          "similarity_load_seconds": 5.6244
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-tiny/trees/d90ca5fe260221311c53c58e660288d3deb8d356.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-tiny/trees/d90ca5fe260221311c53c58e660288d3deb8d356.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 12880.26it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "1g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "base",
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 137,
+      "oom_killed": true,
+      "succeeded": false,
+      "last_reached_stage": "after_asr_load",
+      "observed_peak_rss_bytes": 359727104,
+      "observed_peak_rss_mib": 343.06,
+      "observed_cgroup_peak_bytes": 483033088,
+      "observed_cgroup_peak_mib": 460.66,
+      "cold_timings": null,
+      "warm_runs": null,
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16121856,
+            "vm_hwm_bytes": 16216064,
+            "ru_maxrss_bytes": 16216064,
+            "cgroup_current_bytes": 10784768,
+            "cgroup_peak_bytes": 11063296
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 69046272,
+            "vm_hwm_bytes": 69976064,
+            "ru_maxrss_bytes": 69976064,
+            "cgroup_current_bytes": 116609024,
+            "cgroup_peak_bytes": 118366208
+          },
+          "decode_seconds": 0.4356,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 244178944,
+            "vm_hwm_bytes": 359727104,
+            "ru_maxrss_bytes": 359727104,
+            "cgroup_current_bytes": 363933696,
+            "cgroup_peak_bytes": 483033088
+          },
+          "asr_load_seconds": 0.5992,
+          "asr_version": "faster-whisper-base-cpu-int8"
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-base/trees/ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-base/trees/ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 12033.83it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "tiny",
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1353150464,
+      "observed_peak_rss_mib": 1290.46,
+      "observed_cgroup_peak_bytes": 1355296768,
+      "observed_cgroup_peak_mib": 1292.51,
+      "cold_timings": {
+        "cold_total_seconds": 7.4884,
+        "decode_seconds": 0.4408,
+        "asr_load_seconds": 0.478,
+        "similarity_load_seconds": 5.6972,
+        "asr_inference_seconds": 0.8255,
+        "similarity_inference_seconds": 0.0456
+      },
+      "warm_runs": [],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16195584,
+            "vm_hwm_bytes": 16359424,
+            "ru_maxrss_bytes": 16359424,
+            "cgroup_current_bytes": 10600448,
+            "cgroup_peak_bytes": 10792960
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 70418432,
+            "vm_hwm_bytes": 70418432,
+            "ru_maxrss_bytes": 70361088,
+            "cgroup_current_bytes": 117506048,
+            "cgroup_peak_bytes": 118214656
+          },
+          "decode_seconds": 0.4408,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 183308288,
+            "vm_hwm_bytes": 266084352,
+            "ru_maxrss_bytes": 266084352,
+            "cgroup_current_bytes": 287756288,
+            "cgroup_peak_bytes": 374464512
+          },
+          "asr_load_seconds": 0.478,
+          "asr_version": "faster-whisper-tiny-cpu-int8"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1164935168,
+            "vm_hwm_bytes": 1210830848,
+            "ru_maxrss_bytes": 1210830848,
+            "cgroup_current_bytes": 1237647360,
+            "cgroup_peak_bytes": 1284431872
+          },
+          "similarity_load_seconds": 5.6972
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1255497728,
+            "vm_hwm_bytes": 1308540928,
+            "ru_maxrss_bytes": 1308540928,
+            "cgroup_current_bytes": 1301467136,
+            "cgroup_peak_bytes": 1355296768
+          },
+          "asr_inference_seconds": 0.8255,
+          "transcript_words": 60
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1353150464,
+            "vm_hwm_bytes": 1353150464,
+            "ru_maxrss_bytes": 1352519680,
+            "cgroup_current_bytes": 1304678400,
+            "cgroup_peak_bytes": 1355296768
+          },
+          "similarity_inference_seconds": 0.0456,
+          "similarity_score": 0.901
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1353150464,
+            "vm_hwm_bytes": 1353150464,
+            "ru_maxrss_bytes": 1352519680,
+            "cgroup_current_bytes": 1304678400,
+            "cgroup_peak_bytes": 1355296768
+          },
+          "cold_total_seconds": 7.4884,
+          "decode_seconds": 0.4408,
+          "asr_load_seconds": 0.478,
+          "similarity_load_seconds": 5.6972,
+          "asr_inference_seconds": 0.8255,
+          "similarity_inference_seconds": 0.0456
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1353150464,
+            "vm_hwm_bytes": 1353150464,
+            "ru_maxrss_bytes": 1352519680,
+            "cgroup_current_bytes": 1304678400,
+            "cgroup_peak_bytes": 1355296768
+          },
+          "warm_runs": []
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-tiny/trees/d90ca5fe260221311c53c58e660288d3deb8d356.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-tiny/trees/d90ca5fe260221311c53c58e660288d3deb8d356.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 12446.75it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "base",
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1395859456,
+      "observed_peak_rss_mib": 1331.2,
+      "observed_cgroup_peak_bytes": 1235136512,
+      "observed_cgroup_peak_mib": 1177.92,
+      "cold_timings": {
+        "cold_total_seconds": 7.3181,
+        "decode_seconds": 0.0996,
+        "asr_load_seconds": 0.4737,
+        "similarity_load_seconds": 5.3786,
+        "asr_inference_seconds": 1.196,
+        "similarity_inference_seconds": 0.1688
+      },
+      "warm_runs": [],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16097280,
+            "vm_hwm_bytes": 16191488,
+            "ru_maxrss_bytes": 16191488,
+            "cgroup_current_bytes": 11067392,
+            "cgroup_peak_bytes": 11321344
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68628480,
+            "vm_hwm_bytes": 70262784,
+            "ru_maxrss_bytes": 70262784,
+            "cgroup_current_bytes": 36409344,
+            "cgroup_peak_bytes": 38178816
+          },
+          "decode_seconds": 0.0996,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 243781632,
+            "vm_hwm_bytes": 359641088,
+            "ru_maxrss_bytes": 359641088,
+            "cgroup_current_bytes": 214634496,
+            "cgroup_peak_bytes": 333950976
+          },
+          "asr_load_seconds": 0.4737,
+          "asr_version": "faster-whisper-base-cpu-int8"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1208594432,
+            "vm_hwm_bytes": 1254907904,
+            "ru_maxrss_bytes": 1254907904,
+            "cgroup_current_bytes": 1103716352,
+            "cgroup_peak_bytes": 1151197184
+          },
+          "similarity_load_seconds": 5.3786
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1298509824,
+            "vm_hwm_bytes": 1369395200,
+            "ru_maxrss_bytes": 1369395200,
+            "cgroup_current_bytes": 1163464704,
+            "cgroup_peak_bytes": 1235136512
+          },
+          "asr_inference_seconds": 1.196,
+          "transcript_words": 60
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1395859456,
+            "vm_hwm_bytes": 1395859456,
+            "ru_maxrss_bytes": 1394987008,
+            "cgroup_current_bytes": 1192767488,
+            "cgroup_peak_bytes": 1235136512
+          },
+          "similarity_inference_seconds": 0.1688,
+          "similarity_score": 0.8826
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1395859456,
+            "vm_hwm_bytes": 1395859456,
+            "ru_maxrss_bytes": 1394987008,
+            "cgroup_current_bytes": 1192767488,
+            "cgroup_peak_bytes": 1235136512
+          },
+          "cold_total_seconds": 7.3181,
+          "decode_seconds": 0.0996,
+          "asr_load_seconds": 0.4737,
+          "similarity_load_seconds": 5.3786,
+          "asr_inference_seconds": 1.196,
+          "similarity_inference_seconds": 0.1688
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1395859456,
+            "vm_hwm_bytes": 1395859456,
+            "ru_maxrss_bytes": 1394987008,
+            "cgroup_current_bytes": 1192767488,
+            "cgroup_peak_bytes": 1235136512
+          },
+          "warm_runs": []
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-base/trees/ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-base/trees/ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 10328.11it/s]",
+      "audio_seconds": 30.0
+    }
+  ],
+  "cpu_limit_matrix": [
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "0.5",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1173426176,
+      "observed_peak_rss_mib": 1119.07,
+      "observed_cgroup_peak_bytes": 1151025152,
+      "observed_cgroup_peak_mib": 1097.7,
+      "cold_timings": {
+        "cold_total_seconds": 21.0658,
+        "decode_seconds": 0.6869,
+        "asr_load_seconds": 0.003,
+        "similarity_load_seconds": 17.2983,
+        "asr_inference_seconds": 2.7622,
+        "similarity_inference_seconds": 0.3134
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 3.1047,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 2.8983,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 4.4056,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16121856,
+            "vm_hwm_bytes": 16363520,
+            "ru_maxrss_bytes": 16363520,
+            "cgroup_current_bytes": 10817536,
+            "cgroup_peak_bytes": 11100160
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68616192,
+            "vm_hwm_bytes": 68616192,
+            "ru_maxrss_bytes": 68325376,
+            "cgroup_current_bytes": 143966208,
+            "cgroup_peak_bytes": 143998976
+          },
+          "decode_seconds": 0.6869,
+          "samples": 240000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 68792320,
+            "vm_hwm_bytes": 68792320,
+            "ru_maxrss_bytes": 68456448,
+            "cgroup_current_bytes": 144228352,
+            "cgroup_peak_bytes": 144228352
+          },
+          "asr_load_seconds": 0.003,
+          "asr_version": "deepgram-nova-3-es"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1079386112,
+            "vm_hwm_bytes": 1125986304,
+            "ru_maxrss_bytes": 1125986304,
+            "cgroup_current_bytes": 1103282176,
+            "cgroup_peak_bytes": 1151025152
+          },
+          "similarity_load_seconds": 17.2983
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1079451648,
+            "vm_hwm_bytes": 1125986304,
+            "ru_maxrss_bytes": 1125986304,
+            "cgroup_current_bytes": 1103499264,
+            "cgroup_peak_bytes": 1151025152
+          },
+          "asr_inference_seconds": 2.7622,
+          "transcript_words": 30
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1173319680,
+            "vm_hwm_bytes": 1173319680,
+            "ru_maxrss_bytes": 1172926464,
+            "cgroup_current_bytes": 1105383424,
+            "cgroup_peak_bytes": 1151025152
+          },
+          "similarity_inference_seconds": 0.3134,
+          "similarity_score": 0.9867
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1173319680,
+            "vm_hwm_bytes": 1173319680,
+            "ru_maxrss_bytes": 1172926464,
+            "cgroup_current_bytes": 1105383424,
+            "cgroup_peak_bytes": 1151025152
+          },
+          "cold_total_seconds": 21.0658,
+          "decode_seconds": 0.6869,
+          "asr_load_seconds": 0.003,
+          "similarity_load_seconds": 17.2983,
+          "asr_inference_seconds": 2.7622,
+          "similarity_inference_seconds": 0.3134
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1173377024,
+            "vm_hwm_bytes": 1173377024,
+            "ru_maxrss_bytes": 1173057536,
+            "cgroup_current_bytes": 1105489920,
+            "cgroup_peak_bytes": 1151025152
+          },
+          "run": 1,
+          "warm_total_seconds": 3.1047
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1173405696,
+            "vm_hwm_bytes": 1173405696,
+            "ru_maxrss_bytes": 1173057536,
+            "cgroup_current_bytes": 1105428480,
+            "cgroup_peak_bytes": 1151025152
+          },
+          "run": 2,
+          "warm_total_seconds": 2.8983
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1173426176,
+            "vm_hwm_bytes": 1173426176,
+            "ru_maxrss_bytes": 1173057536,
+            "cgroup_current_bytes": 1105289216,
+            "cgroup_peak_bytes": 1151025152
+          },
+          "run": 3,
+          "warm_total_seconds": 4.4056
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1173426176,
+            "vm_hwm_bytes": 1173426176,
+            "ru_maxrss_bytes": 1173057536,
+            "cgroup_current_bytes": 1105289216,
+            "cgroup_peak_bytes": 1151025152
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 3.1047,
+              "similarity": 0.9867,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 2.8983,
+              "similarity": 0.9867,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 4.4056,
+              "similarity": 0.9867,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights:  93%|█████████▎| 185/199 [00:00<00:00, 1849.66it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 1937.25it/s]",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "1",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1174040576,
+      "observed_peak_rss_mib": 1119.65,
+      "observed_cgroup_peak_bytes": 1011744768,
+      "observed_cgroup_peak_mib": 964.88,
+      "cold_timings": {
+        "cold_total_seconds": 8.8863,
+        "decode_seconds": 0.2105,
+        "asr_load_seconds": 0.0019,
+        "similarity_load_seconds": 6.2812,
+        "asr_inference_seconds": 2.3482,
+        "similarity_inference_seconds": 0.0428
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 2.7083,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 2.2002,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 2.2859,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16121856,
+            "vm_hwm_bytes": 16281600,
+            "ru_maxrss_bytes": 16281600,
+            "cgroup_current_bytes": 11042816,
+            "cgroup_peak_bytes": 11321344
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68395008,
+            "vm_hwm_bytes": 68395008,
+            "ru_maxrss_bytes": 68210688,
+            "cgroup_current_bytes": 35729408,
+            "cgroup_peak_bytes": 35762176
+          },
+          "decode_seconds": 0.2105,
+          "samples": 240000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 68567040,
+            "vm_hwm_bytes": 68567040,
+            "ru_maxrss_bytes": 68341760,
+            "cgroup_current_bytes": 35991552,
+            "cgroup_peak_bytes": 35991552
+          },
+          "asr_load_seconds": 0.0019,
+          "asr_version": "deepgram-nova-3-es"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1079877632,
+            "vm_hwm_bytes": 1125810176,
+            "ru_maxrss_bytes": 1125810176,
+            "cgroup_current_bytes": 964853760,
+            "cgroup_peak_bytes": 1011744768
+          },
+          "similarity_load_seconds": 6.2812
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1080008704,
+            "vm_hwm_bytes": 1125810176,
+            "ru_maxrss_bytes": 1125810176,
+            "cgroup_current_bytes": 965091328,
+            "cgroup_peak_bytes": 1011744768
+          },
+          "asr_inference_seconds": 2.3482,
+          "transcript_words": 30
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1173929984,
+            "vm_hwm_bytes": 1173929984,
+            "ru_maxrss_bytes": 1173172224,
+            "cgroup_current_bytes": 966922240,
+            "cgroup_peak_bytes": 1011744768
+          },
+          "similarity_inference_seconds": 0.0428,
+          "similarity_score": 0.9867
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1173929984,
+            "vm_hwm_bytes": 1173929984,
+            "ru_maxrss_bytes": 1173172224,
+            "cgroup_current_bytes": 966922240,
+            "cgroup_peak_bytes": 1011744768
+          },
+          "cold_total_seconds": 8.8863,
+          "decode_seconds": 0.2105,
+          "asr_load_seconds": 0.0019,
+          "similarity_load_seconds": 6.2812,
+          "asr_inference_seconds": 2.3482,
+          "similarity_inference_seconds": 0.0428
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1173995520,
+            "vm_hwm_bytes": 1173995520,
+            "ru_maxrss_bytes": 1173303296,
+            "cgroup_current_bytes": 967258112,
+            "cgroup_peak_bytes": 1011744768
+          },
+          "run": 1,
+          "warm_total_seconds": 2.7083
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1174020096,
+            "vm_hwm_bytes": 1174020096,
+            "ru_maxrss_bytes": 1173303296,
+            "cgroup_current_bytes": 966422528,
+            "cgroup_peak_bytes": 1011744768
+          },
+          "run": 2,
+          "warm_total_seconds": 2.2002
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1174040576,
+            "vm_hwm_bytes": 1174040576,
+            "ru_maxrss_bytes": 1173303296,
+            "cgroup_current_bytes": 966737920,
+            "cgroup_peak_bytes": 1011744768
+          },
+          "run": 3,
+          "warm_total_seconds": 2.2859
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1174040576,
+            "vm_hwm_bytes": 1174040576,
+            "ru_maxrss_bytes": 1173303296,
+            "cgroup_current_bytes": 966737920,
+            "cgroup_peak_bytes": 1011744768
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 2.7083,
+              "similarity": 0.9867,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 2.2002,
+              "similarity": 0.9867,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 2.2859,
+              "similarity": 0.9867,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 10189.92it/s]",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1173725184,
+      "observed_peak_rss_mib": 1119.35,
+      "observed_cgroup_peak_bytes": 1161596928,
+      "observed_cgroup_peak_mib": 1107.79,
+      "cold_timings": {
+        "cold_total_seconds": 12.8875,
+        "decode_seconds": 0.203,
+        "asr_load_seconds": 0.0028,
+        "similarity_load_seconds": 6.1742,
+        "asr_inference_seconds": 6.1412,
+        "similarity_inference_seconds": 0.364
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 3.8013,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 2.3824,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 3.6238,
+          "similarity": 0.9867,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16027648,
+            "vm_hwm_bytes": 16093184,
+            "ru_maxrss_bytes": 16093184,
+            "cgroup_current_bytes": 10502144,
+            "cgroup_peak_bytes": 10768384
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68644864,
+            "vm_hwm_bytes": 68644864,
+            "ru_maxrss_bytes": 68395008,
+            "cgroup_current_bytes": 69976064,
+            "cgroup_peak_bytes": 70275072
+          },
+          "decode_seconds": 0.203,
+          "samples": 240000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 68820992,
+            "vm_hwm_bytes": 68820992,
+            "ru_maxrss_bytes": 68657152,
+            "cgroup_current_bytes": 70238208,
+            "cgroup_peak_bytes": 70275072
+          },
+          "asr_load_seconds": 0.0028,
+          "asr_version": "deepgram-nova-3-es"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1080729600,
+            "vm_hwm_bytes": 1126100992,
+            "ru_maxrss_bytes": 1126100992,
+            "cgroup_current_bytes": 1000206336,
+            "cgroup_peak_bytes": 1046290432
+          },
+          "similarity_load_seconds": 6.1742
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1080795136,
+            "vm_hwm_bytes": 1126100992,
+            "ru_maxrss_bytes": 1126100992,
+            "cgroup_current_bytes": 1000394752,
+            "cgroup_peak_bytes": 1046290432
+          },
+          "asr_inference_seconds": 6.1412,
+          "transcript_words": 30
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1173630976,
+            "vm_hwm_bytes": 1173630976,
+            "ru_maxrss_bytes": 1172561920,
+            "cgroup_current_bytes": 1139322880,
+            "cgroup_peak_bytes": 1139322880
+          },
+          "similarity_inference_seconds": 0.364,
+          "similarity_score": 0.9867
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1173630976,
+            "vm_hwm_bytes": 1173630976,
+            "ru_maxrss_bytes": 1172561920,
+            "cgroup_current_bytes": 1139322880,
+            "cgroup_peak_bytes": 1139322880
+          },
+          "cold_total_seconds": 12.8875,
+          "decode_seconds": 0.203,
+          "asr_load_seconds": 0.0028,
+          "similarity_load_seconds": 6.1742,
+          "asr_inference_seconds": 6.1412,
+          "similarity_inference_seconds": 0.364
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1173684224,
+            "vm_hwm_bytes": 1173684224,
+            "ru_maxrss_bytes": 1172824064,
+            "cgroup_current_bytes": 1138884608,
+            "cgroup_peak_bytes": 1161596928
+          },
+          "run": 1,
+          "warm_total_seconds": 3.8013
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1173700608,
+            "vm_hwm_bytes": 1173700608,
+            "ru_maxrss_bytes": 1172824064,
+            "cgroup_current_bytes": 1138720768,
+            "cgroup_peak_bytes": 1161596928
+          },
+          "run": 2,
+          "warm_total_seconds": 2.3824
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1173725184,
+            "vm_hwm_bytes": 1173725184,
+            "ru_maxrss_bytes": 1172824064,
+            "cgroup_current_bytes": 1138966528,
+            "cgroup_peak_bytes": 1161596928
+          },
+          "run": 3,
+          "warm_total_seconds": 3.6238
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1173725184,
+            "vm_hwm_bytes": 1173725184,
+            "ru_maxrss_bytes": 1172824064,
+            "cgroup_current_bytes": 1138966528,
+            "cgroup_peak_bytes": 1161596928
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 3.8013,
+              "similarity": 0.9867,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 2.3824,
+              "similarity": 0.9867,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 3.6238,
+              "similarity": 0.9867,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 9819.49it/s]",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "0.5",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1174970368,
+      "observed_peak_rss_mib": 1120.54,
+      "observed_cgroup_peak_bytes": 1112440832,
+      "observed_cgroup_peak_mib": 1060.91,
+      "cold_timings": {
+        "cold_total_seconds": 23.9668,
+        "decode_seconds": 0.5955,
+        "asr_load_seconds": 0.0024,
+        "similarity_load_seconds": 16.8987,
+        "asr_inference_seconds": 6.1453,
+        "similarity_inference_seconds": 0.3235
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 6.2997,
+          "similarity": 0.8202,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 6.2034,
+          "similarity": 0.8202,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 5.5999,
+          "similarity": 0.8202,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16113664,
+            "vm_hwm_bytes": 16257024,
+            "ru_maxrss_bytes": 16257024,
+            "cgroup_current_bytes": 10813440,
+            "cgroup_peak_bytes": 11055104
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 69156864,
+            "vm_hwm_bytes": 70565888,
+            "ru_maxrss_bytes": 70565888,
+            "cgroup_current_bytes": 109899776,
+            "cgroup_peak_bytes": 111673344
+          },
+          "decode_seconds": 0.5955,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 69279744,
+            "vm_hwm_bytes": 70565888,
+            "ru_maxrss_bytes": 70565888,
+            "cgroup_current_bytes": 110063616,
+            "cgroup_peak_bytes": 111673344
+          },
+          "asr_load_seconds": 0.0024,
+          "asr_version": "deepgram-nova-3-es"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1078976512,
+            "vm_hwm_bytes": 1125482496,
+            "ru_maxrss_bytes": 1125482496,
+            "cgroup_current_bytes": 1064488960,
+            "cgroup_peak_bytes": 1112440832
+          },
+          "similarity_load_seconds": 16.8987
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1079042048,
+            "vm_hwm_bytes": 1125482496,
+            "ru_maxrss_bytes": 1125482496,
+            "cgroup_current_bytes": 1064177664,
+            "cgroup_peak_bytes": 1112440832
+          },
+          "asr_inference_seconds": 6.1453,
+          "transcript_words": 61
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1174872064,
+            "vm_hwm_bytes": 1174872064,
+            "ru_maxrss_bytes": 1174147072,
+            "cgroup_current_bytes": 1068879872,
+            "cgroup_peak_bytes": 1112440832
+          },
+          "similarity_inference_seconds": 0.3235,
+          "similarity_score": 0.8202
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1174872064,
+            "vm_hwm_bytes": 1174872064,
+            "ru_maxrss_bytes": 1174147072,
+            "cgroup_current_bytes": 1068879872,
+            "cgroup_peak_bytes": 1112440832
+          },
+          "cold_total_seconds": 23.9668,
+          "decode_seconds": 0.5955,
+          "asr_load_seconds": 0.0024,
+          "similarity_load_seconds": 16.8987,
+          "asr_inference_seconds": 6.1453,
+          "similarity_inference_seconds": 0.3235
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1174933504,
+            "vm_hwm_bytes": 1174933504,
+            "ru_maxrss_bytes": 1174147072,
+            "cgroup_current_bytes": 1068097536,
+            "cgroup_peak_bytes": 1112440832
+          },
+          "run": 1,
+          "warm_total_seconds": 6.2997
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1174958080,
+            "vm_hwm_bytes": 1174958080,
+            "ru_maxrss_bytes": 1174147072,
+            "cgroup_current_bytes": 1068236800,
+            "cgroup_peak_bytes": 1112440832
+          },
+          "run": 2,
+          "warm_total_seconds": 6.2034
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1174970368,
+            "vm_hwm_bytes": 1174970368,
+            "ru_maxrss_bytes": 1174147072,
+            "cgroup_current_bytes": 1068658688,
+            "cgroup_peak_bytes": 1112440832
+          },
+          "run": 3,
+          "warm_total_seconds": 5.5999
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1174970368,
+            "vm_hwm_bytes": 1174970368,
+            "ru_maxrss_bytes": 1174147072,
+            "cgroup_current_bytes": 1068658688,
+            "cgroup_peak_bytes": 1112440832
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 6.2997,
+              "similarity": 0.8202,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 6.2034,
+              "similarity": 0.8202,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 5.5999,
+              "similarity": 0.8202,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights:  90%|████████▉ | 179/199 [00:00<00:00, 1789.79it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 1948.42it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "1",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1175277568,
+      "observed_peak_rss_mib": 1120.83,
+      "observed_cgroup_peak_bytes": 1124450304,
+      "observed_cgroup_peak_mib": 1072.36,
+      "cold_timings": {
+        "cold_total_seconds": 10.4781,
+        "decode_seconds": 0.399,
+        "asr_load_seconds": 0.0019,
+        "similarity_load_seconds": 6.4169,
+        "asr_inference_seconds": 3.5686,
+        "similarity_inference_seconds": 0.0901
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 3.2966,
+          "similarity": 0.8202,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 3.5936,
+          "similarity": 0.8202,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 7.4072,
+          "similarity": 0.8202,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16150528,
+            "vm_hwm_bytes": 16404480,
+            "ru_maxrss_bytes": 16404480,
+            "cgroup_current_bytes": 10608640,
+            "cgroup_peak_bytes": 10813440
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68571136,
+            "vm_hwm_bytes": 70131712,
+            "ru_maxrss_bytes": 70131712,
+            "cgroup_current_bytes": 74629120,
+            "cgroup_peak_bytes": 76451840
+          },
+          "decode_seconds": 0.399,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 68698112,
+            "vm_hwm_bytes": 70131712,
+            "ru_maxrss_bytes": 70131712,
+            "cgroup_current_bytes": 74842112,
+            "cgroup_peak_bytes": 76451840
+          },
+          "asr_load_seconds": 0.0019,
+          "asr_version": "deepgram-nova-3-es"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1079521280,
+            "vm_hwm_bytes": 1125478400,
+            "ru_maxrss_bytes": 1125478400,
+            "cgroup_current_bytes": 1077514240,
+            "cgroup_peak_bytes": 1124450304
+          },
+          "similarity_load_seconds": 6.4169
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1079586816,
+            "vm_hwm_bytes": 1125478400,
+            "ru_maxrss_bytes": 1125478400,
+            "cgroup_current_bytes": 1077690368,
+            "cgroup_peak_bytes": 1124450304
+          },
+          "asr_inference_seconds": 3.5686,
+          "transcript_words": 61
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1175166976,
+            "vm_hwm_bytes": 1175166976,
+            "ru_maxrss_bytes": 1174192128,
+            "cgroup_current_bytes": 1081987072,
+            "cgroup_peak_bytes": 1124450304
+          },
+          "similarity_inference_seconds": 0.0901,
+          "similarity_score": 0.8202
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1175166976,
+            "vm_hwm_bytes": 1175166976,
+            "ru_maxrss_bytes": 1174192128,
+            "cgroup_current_bytes": 1081987072,
+            "cgroup_peak_bytes": 1124450304
+          },
+          "cold_total_seconds": 10.4781,
+          "decode_seconds": 0.399,
+          "asr_load_seconds": 0.0019,
+          "similarity_load_seconds": 6.4169,
+          "asr_inference_seconds": 3.5686,
+          "similarity_inference_seconds": 0.0901
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1175232512,
+            "vm_hwm_bytes": 1175232512,
+            "ru_maxrss_bytes": 1174323200,
+            "cgroup_current_bytes": 1081573376,
+            "cgroup_peak_bytes": 1124450304
+          },
+          "run": 1,
+          "warm_total_seconds": 3.2966
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1175261184,
+            "vm_hwm_bytes": 1175261184,
+            "ru_maxrss_bytes": 1174323200,
+            "cgroup_current_bytes": 1081716736,
+            "cgroup_peak_bytes": 1124450304
+          },
+          "run": 2,
+          "warm_total_seconds": 3.5936
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1175277568,
+            "vm_hwm_bytes": 1175277568,
+            "ru_maxrss_bytes": 1174323200,
+            "cgroup_current_bytes": 1081221120,
+            "cgroup_peak_bytes": 1124450304
+          },
+          "run": 3,
+          "warm_total_seconds": 7.4072
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1175277568,
+            "vm_hwm_bytes": 1175277568,
+            "ru_maxrss_bytes": 1174323200,
+            "cgroup_current_bytes": 1081188352,
+            "cgroup_peak_bytes": 1124450304
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 3.2966,
+              "similarity": 0.8202,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 3.5936,
+              "similarity": 0.8202,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 7.4072,
+              "similarity": 0.8202,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 8381.28it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "deepgram",
+      "local_model": null,
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1176727552,
+      "observed_peak_rss_mib": 1122.21,
+      "observed_cgroup_peak_bytes": 1130369024,
+      "observed_cgroup_peak_mib": 1078.0,
+      "cold_timings": {
+        "cold_total_seconds": 10.9081,
+        "decode_seconds": 0.4914,
+        "asr_load_seconds": 0.0025,
+        "similarity_load_seconds": 5.7419,
+        "asr_inference_seconds": 4.6197,
+        "similarity_inference_seconds": 0.051
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 2.7115,
+          "similarity": 0.8202,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 5.1182,
+          "similarity": 0.8202,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 2.5573,
+          "similarity": 0.8202,
+          "model_versions": {
+            "asr": "deepgram-nova-3-es",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16113664,
+            "vm_hwm_bytes": 16273408,
+            "ru_maxrss_bytes": 16273408,
+            "cgroup_current_bytes": 11087872,
+            "cgroup_peak_bytes": 11296768
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68845568,
+            "vm_hwm_bytes": 69746688,
+            "ru_maxrss_bytes": 69746688,
+            "cgroup_current_bytes": 127303680,
+            "cgroup_peak_bytes": 129327104
+          },
+          "decode_seconds": 0.4914,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 68972544,
+            "vm_hwm_bytes": 69746688,
+            "ru_maxrss_bytes": 69746688,
+            "cgroup_current_bytes": 127565824,
+            "cgroup_peak_bytes": 129327104
+          },
+          "asr_load_seconds": 0.0025,
+          "asr_version": "deepgram-nova-3-es"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1080606720,
+            "vm_hwm_bytes": 1126125568,
+            "ru_maxrss_bytes": 1126125568,
+            "cgroup_current_bytes": 1083875328,
+            "cgroup_peak_bytes": 1130369024
+          },
+          "similarity_load_seconds": 5.7419
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1080672256,
+            "vm_hwm_bytes": 1126125568,
+            "ru_maxrss_bytes": 1126125568,
+            "cgroup_current_bytes": 1083691008,
+            "cgroup_peak_bytes": 1130369024
+          },
+          "asr_inference_seconds": 4.6197,
+          "transcript_words": 61
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1176625152,
+            "vm_hwm_bytes": 1176625152,
+            "ru_maxrss_bytes": 1175728128,
+            "cgroup_current_bytes": 1087590400,
+            "cgroup_peak_bytes": 1130369024
+          },
+          "similarity_inference_seconds": 0.051,
+          "similarity_score": 0.8202
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1176625152,
+            "vm_hwm_bytes": 1176625152,
+            "ru_maxrss_bytes": 1175728128,
+            "cgroup_current_bytes": 1087590400,
+            "cgroup_peak_bytes": 1130369024
+          },
+          "cold_total_seconds": 10.9081,
+          "decode_seconds": 0.4914,
+          "asr_load_seconds": 0.0025,
+          "similarity_load_seconds": 5.7419,
+          "asr_inference_seconds": 4.6197,
+          "similarity_inference_seconds": 0.051
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1176682496,
+            "vm_hwm_bytes": 1176682496,
+            "ru_maxrss_bytes": 1175859200,
+            "cgroup_current_bytes": 1086803968,
+            "cgroup_peak_bytes": 1130369024
+          },
+          "run": 1,
+          "warm_total_seconds": 2.7115
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1176707072,
+            "vm_hwm_bytes": 1176707072,
+            "ru_maxrss_bytes": 1175990272,
+            "cgroup_current_bytes": 1087672320,
+            "cgroup_peak_bytes": 1130369024
+          },
+          "run": 2,
+          "warm_total_seconds": 5.1182
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1176727552,
+            "vm_hwm_bytes": 1176727552,
+            "ru_maxrss_bytes": 1175990272,
+            "cgroup_current_bytes": 1087426560,
+            "cgroup_peak_bytes": 1130369024
+          },
+          "run": 3,
+          "warm_total_seconds": 2.5573
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1176727552,
+            "vm_hwm_bytes": 1176727552,
+            "ru_maxrss_bytes": 1175990272,
+            "cgroup_current_bytes": 1087172608,
+            "cgroup_peak_bytes": 1130369024
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 2.7115,
+              "similarity": 0.8202,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 5.1182,
+              "similarity": 0.8202,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 2.5573,
+              "similarity": 0.8202,
+              "model_versions": {
+                "asr": "deepgram-nova-3-es",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 8306.21it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "0.5",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1780133888,
+      "observed_peak_rss_mib": 1697.67,
+      "observed_cgroup_peak_bytes": 1819688960,
+      "observed_cgroup_peak_mib": 1735.39,
+      "cold_timings": {
+        "cold_total_seconds": 65.4662,
+        "decode_seconds": 0.3919,
+        "asr_load_seconds": 14.8927,
+        "similarity_load_seconds": 13.0198,
+        "asr_inference_seconds": 36.3717,
+        "similarity_inference_seconds": 0.7884
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 39.1046,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 39.5948,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 38.5031,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16064512,
+            "vm_hwm_bytes": 16220160,
+            "ru_maxrss_bytes": 16220160,
+            "cgroup_current_bytes": 10768384,
+            "cgroup_peak_bytes": 11014144
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68681728,
+            "vm_hwm_bytes": 68681728,
+            "ru_maxrss_bytes": 68517888,
+            "cgroup_current_bytes": 35233792,
+            "cgroup_peak_bytes": 35266560
+          },
+          "decode_seconds": 0.3919,
+          "samples": 240000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 606998528,
+            "vm_hwm_bytes": 658604032,
+            "ru_maxrss_bytes": 658604032,
+            "cgroup_current_bytes": 862351360,
+            "cgroup_peak_bytes": 914784256
+          },
+          "asr_load_seconds": 14.8927,
+          "asr_version": "faster-whisper-small-cpu-int8"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1398824960,
+            "vm_hwm_bytes": 1444560896,
+            "ru_maxrss_bytes": 1444560896,
+            "cgroup_current_bytes": 1558630400,
+            "cgroup_peak_bytes": 1605173248
+          },
+          "similarity_load_seconds": 13.0198
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1575731200,
+            "vm_hwm_bytes": 1646084096,
+            "ru_maxrss_bytes": 1646084096,
+            "cgroup_current_bytes": 1706364928,
+            "cgroup_peak_bytes": 1789480960
+          },
+          "asr_inference_seconds": 36.3717,
+          "transcript_words": 30
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1669644288,
+            "vm_hwm_bytes": 1669644288,
+            "ru_maxrss_bytes": 1669107712,
+            "cgroup_current_bytes": 1707622400,
+            "cgroup_peak_bytes": 1789480960
+          },
+          "similarity_inference_seconds": 0.7884,
+          "similarity_score": 1.0
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1669644288,
+            "vm_hwm_bytes": 1669644288,
+            "ru_maxrss_bytes": 1669107712,
+            "cgroup_current_bytes": 1707622400,
+            "cgroup_peak_bytes": 1789480960
+          },
+          "cold_total_seconds": 65.4662,
+          "decode_seconds": 0.3919,
+          "asr_load_seconds": 14.8927,
+          "similarity_load_seconds": 13.0198,
+          "asr_inference_seconds": 36.3717,
+          "similarity_inference_seconds": 0.7884
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1670762496,
+            "vm_hwm_bytes": 1777246208,
+            "ru_maxrss_bytes": 1777246208,
+            "cgroup_current_bytes": 1708191744,
+            "cgroup_peak_bytes": 1819688960
+          },
+          "run": 1,
+          "warm_total_seconds": 39.1046
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1672728576,
+            "vm_hwm_bytes": 1779650560,
+            "ru_maxrss_bytes": 1779650560,
+            "cgroup_current_bytes": 1702490112,
+            "cgroup_peak_bytes": 1819688960
+          },
+          "run": 2,
+          "warm_total_seconds": 39.5948
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1672859648,
+            "vm_hwm_bytes": 1780133888,
+            "ru_maxrss_bytes": 1780133888,
+            "cgroup_current_bytes": 1700827136,
+            "cgroup_peak_bytes": 1819688960
+          },
+          "run": 3,
+          "warm_total_seconds": 38.5031
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1672859648,
+            "vm_hwm_bytes": 1780133888,
+            "ru_maxrss_bytes": 1780133888,
+            "cgroup_current_bytes": 1700827136,
+            "cgroup_peak_bytes": 1819688960
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 39.1046,
+              "similarity": 1.0,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 39.5948,
+              "similarity": 1.0,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 38.5031,
+              "similarity": 1.0,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 13331.63it/s]",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "1",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1779642368,
+      "observed_peak_rss_mib": 1697.2,
+      "observed_cgroup_peak_bytes": 1642795008,
+      "observed_cgroup_peak_mib": 1566.69,
+      "cold_timings": {
+        "cold_total_seconds": 29.5281,
+        "decode_seconds": 0.2483,
+        "asr_load_seconds": 5.202,
+        "similarity_load_seconds": 6.0865,
+        "asr_inference_seconds": 17.5959,
+        "similarity_inference_seconds": 0.3933
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 16.1019,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 17.2056,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 12.0869,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16121856,
+            "vm_hwm_bytes": 16289792,
+            "ru_maxrss_bytes": 16289792,
+            "cgroup_current_bytes": 10498048,
+            "cgroup_peak_bytes": 10784768
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68624384,
+            "vm_hwm_bytes": 68624384,
+            "ru_maxrss_bytes": 68411392,
+            "cgroup_current_bytes": 35192832,
+            "cgroup_peak_bytes": 35225600
+          },
+          "decode_seconds": 0.2483,
+          "samples": 240000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 606945280,
+            "vm_hwm_bytes": 658624512,
+            "ru_maxrss_bytes": 658624512,
+            "cgroup_current_bytes": 617377792,
+            "cgroup_peak_bytes": 661700608
+          },
+          "asr_load_seconds": 5.202,
+          "asr_version": "faster-whisper-small-cpu-int8"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1398452224,
+            "vm_hwm_bytes": 1444126720,
+            "ru_maxrss_bytes": 1444126720,
+            "cgroup_current_bytes": 1372057600,
+            "cgroup_peak_bytes": 1417396224
+          },
+          "similarity_load_seconds": 6.0865
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1576828928,
+            "vm_hwm_bytes": 1646714880,
+            "ru_maxrss_bytes": 1646714880,
+            "cgroup_current_bytes": 1516789760,
+            "cgroup_peak_bytes": 1606242304
+          },
+          "asr_inference_seconds": 17.5959,
+          "transcript_words": 30
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1670746112,
+            "vm_hwm_bytes": 1670746112,
+            "ru_maxrss_bytes": 1670049792,
+            "cgroup_current_bytes": 1518096384,
+            "cgroup_peak_bytes": 1606242304
+          },
+          "similarity_inference_seconds": 0.3933,
+          "similarity_score": 1.0
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1670746112,
+            "vm_hwm_bytes": 1670746112,
+            "ru_maxrss_bytes": 1670049792,
+            "cgroup_current_bytes": 1518096384,
+            "cgroup_peak_bytes": 1606242304
+          },
+          "cold_total_seconds": 29.5281,
+          "decode_seconds": 0.2483,
+          "asr_load_seconds": 5.202,
+          "similarity_load_seconds": 6.0865,
+          "asr_inference_seconds": 17.5959,
+          "similarity_inference_seconds": 0.3933
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1671798784,
+            "vm_hwm_bytes": 1778925568,
+            "ru_maxrss_bytes": 1778925568,
+            "cgroup_current_bytes": 1519054848,
+            "cgroup_peak_bytes": 1627869184
+          },
+          "run": 1,
+          "warm_total_seconds": 16.1019
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1672216576,
+            "vm_hwm_bytes": 1779642368,
+            "ru_maxrss_bytes": 1779642368,
+            "cgroup_current_bytes": 1474891776,
+            "cgroup_peak_bytes": 1642795008
+          },
+          "run": 2,
+          "warm_total_seconds": 17.2056
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1672187904,
+            "vm_hwm_bytes": 1779642368,
+            "ru_maxrss_bytes": 1779642368,
+            "cgroup_current_bytes": 1448112128,
+            "cgroup_peak_bytes": 1642795008
+          },
+          "run": 3,
+          "warm_total_seconds": 12.0869
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1672187904,
+            "vm_hwm_bytes": 1779642368,
+            "ru_maxrss_bytes": 1779642368,
+            "cgroup_current_bytes": 1448112128,
+            "cgroup_peak_bytes": 1642795008
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 16.1019,
+              "similarity": 1.0,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 17.2056,
+              "similarity": 1.0,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 12.0869,
+              "similarity": 1.0,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 11661.91it/s]",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_15s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1774837760,
+      "observed_peak_rss_mib": 1692.62,
+      "observed_cgroup_peak_bytes": 1691516928,
+      "observed_cgroup_peak_mib": 1613.16,
+      "cold_timings": {
+        "cold_total_seconds": 11.7311,
+        "decode_seconds": 0.1558,
+        "asr_load_seconds": 1.0861,
+        "similarity_load_seconds": 8.0256,
+        "asr_inference_seconds": 2.4307,
+        "similarity_inference_seconds": 0.0316
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 2.3492,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 2.4969,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 2.195,
+          "similarity": 1.0,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16052224,
+            "vm_hwm_bytes": 16121856,
+            "ru_maxrss_bytes": 16121856,
+            "cgroup_current_bytes": 11771904,
+            "cgroup_peak_bytes": 11993088
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68472832,
+            "vm_hwm_bytes": 68472832,
+            "ru_maxrss_bytes": 67887104,
+            "cgroup_current_bytes": 43077632,
+            "cgroup_peak_bytes": 43110400
+          },
+          "decode_seconds": 0.1558,
+          "samples": 240000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 606625792,
+            "vm_hwm_bytes": 658452480,
+            "ru_maxrss_bytes": 658452480,
+            "cgroup_current_bytes": 624058368,
+            "cgroup_peak_bytes": 677974016
+          },
+          "asr_load_seconds": 1.0861,
+          "asr_version": "faster-whisper-small-cpu-int8"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1395929088,
+            "vm_hwm_bytes": 1443246080,
+            "ru_maxrss_bytes": 1443246080,
+            "cgroup_current_bytes": 1452961792,
+            "cgroup_peak_bytes": 1501474816
+          },
+          "similarity_load_seconds": 8.0256
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1572847616,
+            "vm_hwm_bytes": 1642811392,
+            "ru_maxrss_bytes": 1642811392,
+            "cgroup_current_bytes": 1573179392,
+            "cgroup_peak_bytes": 1669439488
+          },
+          "asr_inference_seconds": 2.4307,
+          "transcript_words": 30
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1667256320,
+            "vm_hwm_bytes": 1667256320,
+            "ru_maxrss_bytes": 1666519040,
+            "cgroup_current_bytes": 1575264256,
+            "cgroup_peak_bytes": 1669439488
+          },
+          "similarity_inference_seconds": 0.0316,
+          "similarity_score": 1.0
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1667256320,
+            "vm_hwm_bytes": 1667256320,
+            "ru_maxrss_bytes": 1666519040,
+            "cgroup_current_bytes": 1575264256,
+            "cgroup_peak_bytes": 1669439488
+          },
+          "cold_total_seconds": 11.7311,
+          "decode_seconds": 0.1558,
+          "asr_load_seconds": 1.0861,
+          "similarity_load_seconds": 8.0256,
+          "asr_inference_seconds": 2.4307,
+          "similarity_inference_seconds": 0.0316
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1667395584,
+            "vm_hwm_bytes": 1774391296,
+            "ru_maxrss_bytes": 1774391296,
+            "cgroup_current_bytes": 1563713536,
+            "cgroup_peak_bytes": 1683402752
+          },
+          "run": 1,
+          "warm_total_seconds": 2.3492
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1667420160,
+            "vm_hwm_bytes": 1774579712,
+            "ru_maxrss_bytes": 1774579712,
+            "cgroup_current_bytes": 1557213184,
+            "cgroup_peak_bytes": 1691516928
+          },
+          "run": 2,
+          "warm_total_seconds": 2.4969
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1668804608,
+            "vm_hwm_bytes": 1774837760,
+            "ru_maxrss_bytes": 1774837760,
+            "cgroup_current_bytes": 1557819392,
+            "cgroup_peak_bytes": 1691516928
+          },
+          "run": 3,
+          "warm_total_seconds": 2.195
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1668804608,
+            "vm_hwm_bytes": 1774837760,
+            "ru_maxrss_bytes": 1774837760,
+            "cgroup_current_bytes": 1557819392,
+            "cgroup_peak_bytes": 1691516928
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 2.3492,
+              "similarity": 1.0,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 2.4969,
+              "similarity": 1.0,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 2.195,
+              "similarity": 1.0,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 11395.39it/s]",
+      "audio_seconds": 15.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "0.5",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1785618432,
+      "observed_peak_rss_mib": 1702.9,
+      "observed_cgroup_peak_bytes": 1852313600,
+      "observed_cgroup_peak_mib": 1766.5,
+      "cold_timings": {
+        "cold_total_seconds": 68.5708,
+        "decode_seconds": 0.38,
+        "asr_load_seconds": 9.7903,
+        "similarity_load_seconds": 15.5277,
+        "asr_inference_seconds": 41.3743,
+        "similarity_inference_seconds": 1.496
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 46.5998,
+          "similarity": 0.8607,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 39.3015,
+          "similarity": 0.8607,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 41.9919,
+          "similarity": 0.8607,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 15929344,
+            "vm_hwm_bytes": 16171008,
+            "ru_maxrss_bytes": 16171008,
+            "cgroup_current_bytes": 10493952,
+            "cgroup_peak_bytes": 10780672
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68538368,
+            "vm_hwm_bytes": 69795840,
+            "ru_maxrss_bytes": 69795840,
+            "cgroup_current_bytes": 37888000,
+            "cgroup_peak_bytes": 39751680
+          },
+          "decode_seconds": 0.38,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 607797248,
+            "vm_hwm_bytes": 659152896,
+            "ru_maxrss_bytes": 659152896,
+            "cgroup_current_bytes": 630743040,
+            "cgroup_peak_bytes": 677310464
+          },
+          "asr_load_seconds": 9.7903,
+          "asr_version": "faster-whisper-small-cpu-int8"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1398722560,
+            "vm_hwm_bytes": 1445056512,
+            "ru_maxrss_bytes": 1445056512,
+            "cgroup_current_bytes": 1327366144,
+            "cgroup_peak_bytes": 1375092736
+          },
+          "similarity_load_seconds": 15.5277
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1578889216,
+            "vm_hwm_bytes": 1649156096,
+            "ru_maxrss_bytes": 1649156096,
+            "cgroup_current_bytes": 1480888320,
+            "cgroup_peak_bytes": 1552683008
+          },
+          "asr_inference_seconds": 41.3743,
+          "transcript_words": 61
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1675915264,
+            "vm_hwm_bytes": 1675915264,
+            "ru_maxrss_bytes": 1675374592,
+            "cgroup_current_bytes": 1740603392,
+            "cgroup_peak_bytes": 1740603392
+          },
+          "similarity_inference_seconds": 1.496,
+          "similarity_score": 0.8607
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1675915264,
+            "vm_hwm_bytes": 1675915264,
+            "ru_maxrss_bytes": 1675374592,
+            "cgroup_current_bytes": 1740603392,
+            "cgroup_peak_bytes": 1740603392
+          },
+          "cold_total_seconds": 68.5708,
+          "decode_seconds": 0.38,
+          "asr_load_seconds": 9.7903,
+          "similarity_load_seconds": 15.5277,
+          "asr_inference_seconds": 41.3743,
+          "similarity_inference_seconds": 1.496
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1677000704,
+            "vm_hwm_bytes": 1784213504,
+            "ru_maxrss_bytes": 1784213504,
+            "cgroup_current_bytes": 1728376832,
+            "cgroup_peak_bytes": 1852313600
+          },
+          "run": 1,
+          "warm_total_seconds": 46.5998
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1678172160,
+            "vm_hwm_bytes": 1784791040,
+            "ru_maxrss_bytes": 1784791040,
+            "cgroup_current_bytes": 1696165888,
+            "cgroup_peak_bytes": 1852313600
+          },
+          "run": 2,
+          "warm_total_seconds": 39.3015
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1678176256,
+            "vm_hwm_bytes": 1785618432,
+            "ru_maxrss_bytes": 1785618432,
+            "cgroup_current_bytes": 1680498688,
+            "cgroup_peak_bytes": 1852313600
+          },
+          "run": 3,
+          "warm_total_seconds": 41.9919
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1678176256,
+            "vm_hwm_bytes": 1785618432,
+            "ru_maxrss_bytes": 1785618432,
+            "cgroup_current_bytes": 1680498688,
+            "cgroup_peak_bytes": 1852313600
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 46.5998,
+              "similarity": 0.8607,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 39.3015,
+              "similarity": 0.8607,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 41.9919,
+              "similarity": 0.8607,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 2024.34it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "1",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1784737792,
+      "observed_peak_rss_mib": 1702.06,
+      "observed_cgroup_peak_bytes": 1700319232,
+      "observed_cgroup_peak_mib": 1621.55,
+      "cold_timings": {
+        "cold_total_seconds": 32.357,
+        "decode_seconds": 0.2108,
+        "asr_load_seconds": 4.1857,
+        "similarity_load_seconds": 7.9634,
+        "asr_inference_seconds": 19.5842,
+        "similarity_inference_seconds": 0.411
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 18.976,
+          "similarity": 0.8607,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 24.0052,
+          "similarity": 0.8607,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 22.8078,
+          "similarity": 0.8607,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 15929344,
+            "vm_hwm_bytes": 16175104,
+            "ru_maxrss_bytes": 16175104,
+            "cgroup_current_bytes": 10780672,
+            "cgroup_peak_bytes": 10981376
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68468736,
+            "vm_hwm_bytes": 69951488,
+            "ru_maxrss_bytes": 69951488,
+            "cgroup_current_bytes": 40464384,
+            "cgroup_peak_bytes": 42594304
+          },
+          "decode_seconds": 0.2108,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 607690752,
+            "vm_hwm_bytes": 659320832,
+            "ru_maxrss_bytes": 659320832,
+            "cgroup_current_bytes": 617271296,
+            "cgroup_peak_bytes": 671928320
+          },
+          "asr_load_seconds": 4.1857,
+          "asr_version": "faster-whisper-small-cpu-int8"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1397936128,
+            "vm_hwm_bytes": 1444413440,
+            "ru_maxrss_bytes": 1444413440,
+            "cgroup_current_bytes": 1411796992,
+            "cgroup_peak_bytes": 1459273728
+          },
+          "similarity_load_seconds": 7.9634
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1578741760,
+            "vm_hwm_bytes": 1648009216,
+            "ru_maxrss_bytes": 1648009216,
+            "cgroup_current_bytes": 1567719424,
+            "cgroup_peak_bytes": 1656750080
+          },
+          "asr_inference_seconds": 19.5842,
+          "transcript_words": 61
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1675964416,
+            "vm_hwm_bytes": 1675964416,
+            "ru_maxrss_bytes": 1675079680,
+            "cgroup_current_bytes": 1569935360,
+            "cgroup_peak_bytes": 1656750080
+          },
+          "similarity_inference_seconds": 0.411,
+          "similarity_score": 0.8607
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1675964416,
+            "vm_hwm_bytes": 1675964416,
+            "ru_maxrss_bytes": 1675079680,
+            "cgroup_current_bytes": 1569935360,
+            "cgroup_peak_bytes": 1656750080
+          },
+          "cold_total_seconds": 32.357,
+          "decode_seconds": 0.2108,
+          "asr_load_seconds": 4.1857,
+          "similarity_load_seconds": 7.9634,
+          "asr_inference_seconds": 19.5842,
+          "similarity_inference_seconds": 0.411
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1677303808,
+            "vm_hwm_bytes": 1784586240,
+            "ru_maxrss_bytes": 1784586240,
+            "cgroup_current_bytes": 1579794432,
+            "cgroup_peak_bytes": 1679323136
+          },
+          "run": 1,
+          "warm_total_seconds": 18.976
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1677549568,
+            "vm_hwm_bytes": 1784586240,
+            "ru_maxrss_bytes": 1784586240,
+            "cgroup_current_bytes": 1570263040,
+            "cgroup_peak_bytes": 1700319232
+          },
+          "run": 2,
+          "warm_total_seconds": 24.0052
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1677537280,
+            "vm_hwm_bytes": 1784737792,
+            "ru_maxrss_bytes": 1784737792,
+            "cgroup_current_bytes": 1570717696,
+            "cgroup_peak_bytes": 1700319232
+          },
+          "run": 3,
+          "warm_total_seconds": 22.8078
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1677537280,
+            "vm_hwm_bytes": 1784737792,
+            "ru_maxrss_bytes": 1784737792,
+            "cgroup_current_bytes": 1570717696,
+            "cgroup_peak_bytes": 1700319232
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 18.976,
+              "similarity": 0.8607,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 24.0052,
+              "similarity": 0.8607,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 22.8078,
+              "similarity": 0.8607,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 2428.61it/s]",
+      "audio_seconds": 30.0
+    },
+    {
+      "image": "proctoring-ai:prod-asr-local",
+      "memory_limit": "2g",
+      "cpus": "unlimited_host_8_vcpu",
+      "asr_provider": "faster-whisper",
+      "local_model": "small",
+      "with_similarity": true,
+      "audio_filename": "stage0_30s.wav",
+      "exit_code": 0,
+      "oom_killed": false,
+      "succeeded": true,
+      "last_reached_stage": "finished",
+      "observed_peak_rss_bytes": 1782644736,
+      "observed_peak_rss_mib": 1700.06,
+      "observed_cgroup_peak_bytes": 1560285184,
+      "observed_cgroup_peak_mib": 1488.0,
+      "cold_timings": {
+        "cold_total_seconds": 8.5139,
+        "decode_seconds": 0.0991,
+        "asr_load_seconds": 0.8625,
+        "similarity_load_seconds": 4.9721,
+        "asr_inference_seconds": 2.5312,
+        "similarity_inference_seconds": 0.0478
+      },
+      "warm_runs": [
+        {
+          "run": 1,
+          "warm_total_seconds": 2.6848,
+          "similarity": 0.8607,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 2,
+          "warm_total_seconds": 2.5552,
+          "similarity": 0.8607,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        },
+        {
+          "run": 3,
+          "warm_total_seconds": 2.683,
+          "similarity": 0.8607,
+          "model_versions": {
+            "asr": "faster-whisper-small-cpu-int8",
+            "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+            "tts_det": "disabled:awaiting-dataset-validation"
+          }
+        }
+      ],
+      "stage_trace": [
+        {
+          "stage": "start",
+          "memory": {
+            "vm_rss_bytes": 16130048,
+            "vm_hwm_bytes": 16330752,
+            "ru_maxrss_bytes": 16330752,
+            "cgroup_current_bytes": 10559488,
+            "cgroup_peak_bytes": 10813440
+          }
+        },
+        {
+          "stage": "after_decode",
+          "memory": {
+            "vm_rss_bytes": 68513792,
+            "vm_hwm_bytes": 70230016,
+            "ru_maxrss_bytes": 70230016,
+            "cgroup_current_bytes": 35897344,
+            "cgroup_peak_bytes": 37679104
+          },
+          "decode_seconds": 0.0991,
+          "samples": 480000
+        },
+        {
+          "stage": "after_asr_load",
+          "memory": {
+            "vm_rss_bytes": 607731712,
+            "vm_hwm_bytes": 659447808,
+            "ru_maxrss_bytes": 659447808,
+            "cgroup_current_bytes": 565526528,
+            "cgroup_peak_bytes": 620007424
+          },
+          "asr_load_seconds": 0.8625,
+          "asr_version": "faster-whisper-small-cpu-int8"
+        },
+        {
+          "stage": "after_similarity_load",
+          "memory": {
+            "vm_rss_bytes": 1399422976,
+            "vm_hwm_bytes": 1445359616,
+            "ru_maxrss_bytes": 1445359616,
+            "cgroup_current_bytes": 1281376256,
+            "cgroup_peak_bytes": 1328099328
+          },
+          "similarity_load_seconds": 4.9721
+        },
+        {
+          "stage": "after_asr_transcribe",
+          "memory": {
+            "vm_rss_bytes": 1577521152,
+            "vm_hwm_bytes": 1647468544,
+            "ru_maxrss_bytes": 1647468544,
+            "cgroup_current_bytes": 1433096192,
+            "cgroup_peak_bytes": 1504792576
+          },
+          "asr_inference_seconds": 2.5312,
+          "transcript_words": 61
+        },
+        {
+          "stage": "after_similarity_score",
+          "memory": {
+            "vm_rss_bytes": 1675071488,
+            "vm_hwm_bytes": 1675071488,
+            "ru_maxrss_bytes": 1674158080,
+            "cgroup_current_bytes": 1435951104,
+            "cgroup_peak_bytes": 1504792576
+          },
+          "similarity_inference_seconds": 0.0478,
+          "similarity_score": 0.8607
+        },
+        {
+          "stage": "cold_complete",
+          "memory": {
+            "vm_rss_bytes": 1675071488,
+            "vm_hwm_bytes": 1675071488,
+            "ru_maxrss_bytes": 1674158080,
+            "cgroup_current_bytes": 1435951104,
+            "cgroup_peak_bytes": 1504792576
+          },
+          "cold_total_seconds": 8.5139,
+          "decode_seconds": 0.0991,
+          "asr_load_seconds": 0.8625,
+          "similarity_load_seconds": 4.9721,
+          "asr_inference_seconds": 2.5312,
+          "similarity_inference_seconds": 0.0478
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1675149312,
+            "vm_hwm_bytes": 1782353920,
+            "ru_maxrss_bytes": 1782353920,
+            "cgroup_current_bytes": 1436348416,
+            "cgroup_peak_bytes": 1544728576
+          },
+          "run": 1,
+          "warm_total_seconds": 2.6848
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1675173888,
+            "vm_hwm_bytes": 1782439936,
+            "ru_maxrss_bytes": 1782439936,
+            "cgroup_current_bytes": 1436160000,
+            "cgroup_peak_bytes": 1544785920
+          },
+          "run": 2,
+          "warm_total_seconds": 2.5552
+        },
+        {
+          "stage": "warm_run_complete",
+          "memory": {
+            "vm_rss_bytes": 1676435456,
+            "vm_hwm_bytes": 1782644736,
+            "ru_maxrss_bytes": 1782644736,
+            "cgroup_current_bytes": 1437184000,
+            "cgroup_peak_bytes": 1560285184
+          },
+          "run": 3,
+          "warm_total_seconds": 2.683
+        },
+        {
+          "stage": "finished",
+          "memory": {
+            "vm_rss_bytes": 1676435456,
+            "vm_hwm_bytes": 1782644736,
+            "ru_maxrss_bytes": 1782644736,
+            "cgroup_current_bytes": 1437184000,
+            "cgroup_peak_bytes": 1560285184
+          },
+          "warm_runs": [
+            {
+              "run": 1,
+              "warm_total_seconds": 2.6848,
+              "similarity": 0.8607,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 2,
+              "warm_total_seconds": 2.5552,
+              "similarity": 0.8607,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            },
+            {
+              "run": 3,
+              "warm_total_seconds": 2.683,
+              "similarity": 0.8607,
+              "model_versions": {
+                "asr": "faster-whisper-small-cpu-int8",
+                "sim": "multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+                "tts_det": "disabled:awaiting-dataset-validation"
+              }
+            }
+          ]
+        }
+      ],
+      "stderr_tail": "Ignoring corrupted tree cache file /app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json: [Errno 13] Permission denied: '/app/models/models--Systran--faster-whisper-small/trees/536b0662742c02347bc0e980a01041f333bce120.json'\n\nLoading weights:   0%|          | 0/199 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 199/199 [00:00<00:00, 13170.70it/s]",
+      "audio_seconds": 30.0
+    }
+  ]
+}

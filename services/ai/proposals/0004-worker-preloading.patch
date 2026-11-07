@@ -1,0 +1,365 @@
+From e8e37c9564956439d6f8b9b56ef241eb2844ce37 Mon Sep 17 00:00:00 2001
+From: Pierreluiggi Zevallos Bocanegra <pierzevallosbocanegra3@gmail.com>
+Date: Fri, 6 Nov 2026 10:31:52 -0500
+Subject: [PATCH 4/4] feat(ai): add worker preloading and configuration
+ documentation
+
+---
+ .env.example                          |  35 +++++++
+ services/ai/README.md                 |  45 +++++++++
+ services/ai/tests/test_worker_stub.py |  70 ++++++++++++++
+ services/ai/worker_stub.py            | 132 +++++++++++++++++++++++++-
+ 4 files changed, 280 insertions(+), 2 deletions(-)
+
+diff --git a/.env.example b/.env.example
+index f0b1e21..f5b14c8 100644
+--- a/.env.example
++++ b/.env.example
+@@ -76,3 +76,38 @@ RATE_LIMIT_ENABLED=true
+ # sin peticiones, y un worker que solo consume de una cola no recibe ninguna.
+ # Con esto puesto, la API lo despierta cada vez que encola un trabajo.
+ AI_SERVICE_URL=http://localhost:8001
++
++# ---------- Transcripcion de audio (services/ai) ----------
++# Motor principal: faster-whisper (por defecto) | deepgram
++ASR_PROVIDER=faster-whisper
++# Modelo local: tiny | base | small (por defecto small, int8, CPU)
++ASR_LOCAL_MODEL=small
++# Respaldo cuando faster-whisper falla o no pasa la puerta de calidad: deepgram (por defecto) | none
++# Con ASR_FALLBACK_PROVIDER=none el sistema funciona 100 % local sin conexion externa.
++# Nota de privacidad: con ASR_FALLBACK_PROVIDER=deepgram, los fragmentos que no pasen
++# la puerta de calidad se envian a la API externa de Deepgram (sin incluir el enunciado).
++ASR_FALLBACK_PROVIDER=deepgram
++# Disparar respaldo si faster-whisper devuelve transcripcion vacia (true | false)
++ASR_FALLBACK_ON_EMPTY=true
++# VAD local de faster-whisper (Silero VAD)
++ASR_LOCAL_VAD_FILTER=true
++ASR_LOCAL_VAD_THRESHOLD=0.3
++# Umbrales de la puerta de calidad (calibrados en muestra sobre 28 audios, sin validacion independiente)
++ASR_MIN_WORDS_PER_SECOND=0.50
++ASR_MAX_NO_SPEECH_PROB=0.60
++ASR_MIN_AVG_LOGPROB=-0.60
++ASR_MAX_COMPRESSION_RATIO=1.85
++ASR_HALLUCINATION_PHRASES=suscríbete,suscribete,más información en www,mas informacion en www,subtítulos realizados por,subtitulos realizados por,amara.org,gracias por ver
++# Presupuesto de latencia para el respaldo: min(4.5s, 10s - elapsed - 1.5s)
++ASR_LATENCY_BUDGET_SECONDS=10.0
++ASR_FALLBACK_MAX_TIMEOUT_SECONDS=4.5
++ASR_POST_ASR_RESERVE_SECONDS=1.5
++# Backend de similitud semantica: torch (por defecto) | onnx-int8 | onnx-fp32
++SIMILARITY_BACKEND=torch
++# Vocabulario del modelo ONNX de similitud: es_en (recortado ES/EN, ~221 MiB RSS) | full (250k tokens)
++SIMILARITY_ONNX_VOCAB=es_en
++# Comprobacion de memoria en cgroup al arrancar: false (solo aviso en log y /health) | true (fallo fatal)
++ASR_ENFORCE_MEMORY_BUDGET=false
++# Clave de Deepgram Nova-3 (requerida si ASR_PROVIDER=deepgram o ASR_FALLBACK_PROVIDER=deepgram)
++DEEPGRAM_API_KEY=
++DEEPGRAM_TIMEOUT_SECONDS=8.0
+diff --git a/services/ai/README.md b/services/ai/README.md
+index 6dc4fe3..45439bf 100644
+--- a/services/ai/README.md
++++ b/services/ai/README.md
+@@ -237,3 +237,48 @@ Verás el `event_id` que devolvió la API aparecer en los logs del worker. Lo ú
+ La API encola por **nombre** (`tasks.analyze_audio`), no importando la función, para no tener que
+ instalar tus modelos en su imagen. Si mueves la función, avísame: la constante está en
+ `services/api/src/proctoring_api/adapters/outbound/redis_queue/job_queue.py`.
++
++---
++
++## Configuración del motor ASR, puerta de calidad y cascada (Etapa 2A)
++
++El módulo de audio (`audio_runtime.py`) soporta dos motores de transcripción y una cascada opcional controlada íntegramente por variables de entorno:
++
++| Variable | Por defecto | Valores permitidos / Descripción |
++|---|---|---|
++| `ASR_PROVIDER` | `faster-whisper` | `faster-whisper` \| `deepgram`. Motor de transcripción primario (leído en cada llamada). |
++| `ASR_LOCAL_MODEL` | `small` | `tiny` \| `base` \| `small`. Tamaño del modelo CTranslate2 (`int8`, CPU). |
++| `ASR_FALLBACK_PROVIDER` | `deepgram` | `deepgram` \| `none`. Con `deepgram`, pasa a Deepgram Nova-3 solo si Whisper falla o no supera la puerta de calidad. Con `none`, el procesamiento es **100 % local**. |
++| `ASR_FALLBACK_ON_EMPTY` | `true` | `true` \| `false`. Si `true`, una salida vacía de Whisper dispara el respaldo (cuando está activo). |
++| `ASR_LOCAL_VAD_FILTER` | `true` | `true` \| `false`. Activa el filtro Silero VAD integrado en `faster-whisper`. |
++| `ASR_LOCAL_VAD_THRESHOLD` | `0.3` | Flotante en `(0, 1)`. Umbral de probabilidad de voz del VAD local. |
++| `ASR_MIN_WORDS_PER_SECOND` | `0.50` | Palabras por segundo mínimas aceptables en transcripciones no vacías. |
++| `ASR_MAX_NO_SPEECH_PROB` | `0.60` | `no_speech_prob` máxima permitida en cualquier segmento de Whisper. |
++| `ASR_MIN_AVG_LOGPROB` | `-0.60` | `avg_logprob` mínima permitida en cualquier segmento de Whisper. |
++| `ASR_MAX_COMPRESSION_RATIO` | `1.85` | `compression_ratio` máxima permitida por segmento (atrapa bucles repetitivos). |
++| `ASR_HALLUCINATION_PHRASES` | *(lista por defecto)* | Frases típicas de alucinación separadas por coma (`suscríbete`, `más información en www`, `amara.org`, `gracias por ver`, etc.). |
++| `ASR_LATENCY_BUDGET_SECONDS` | `10.0` | Presupuesto total de latencia para calcular el timeout restante del respaldo: `min(4.5, 10.0 - t_gastado - 1.5)`. Si no queda presupuesto (`<= 0`), se omite Deepgram y el evento se reporta sin análisis (`transcript=""`, `similarity=None`). |
++| `ASR_FALLBACK_MAX_TIMEOUT_SECONDS` | `4.5` | Timeout máximo por solicitud a Deepgram cuando actúa como respaldo. |
++| `ASR_POST_ASR_RESERVE_SECONDS` | `1.5` | Margen reservado tras el ASR para `SimilarityModel` y publicación del resultado. |
++| `SIMILARITY_BACKEND` | `torch` | `torch` \| `onnx-int8` \| `onnx-fp32`. Backend para `paraphrase-multilingual-MiniLM-L12-v2` (`SimilarityModel` con PyTorch o `OnnxSimilarityModel` con `onnxruntime` + `tokenizers`). |
++| `SIMILARITY_ONNX_VOCAB` | `es_en` | `es_en` \| `full`. Modo de vocabulario para `OnnxSimilarityModel` (`es_en` recorta a 90 525 tokens ES/EN manteniendo paridad 1,000000 y bajando el pico de RAM a ~221 MiB). |
++| `ASR_ENFORCE_MEMORY_BUDGET` | `false` | `false` \| `true`. Con `false` (por defecto), un límite de memoria de contenedor (`memory.max`) inferior al mínimo requerido por `(SIMILARITY_BACKEND, ASR_PROVIDER)` solo emite un aviso (`logger.warning` y `/health`). Con `true`, aborta el arranque con código de salida `1`. |
++
++### Trazabilidad en `model_versions["asr"]` y `model_versions["sim"]`
++
++- Motor local aceptado: `faster-whisper-small-cpu-int8`.
++- Respaldo ejecutado en Deepgram: `deepgram-nova-3-es;fallback_from=faster-whisper-small-cpu-int8;reason=<motivo>`.
++- Respaldo omitido por presupuesto agotado: `faster-whisper-small-cpu-int8;fallback_skipped=budget_exhausted;reason=<motivo>`.
++- Puerta de calidad activada con `ASR_FALLBACK_PROVIDER=none`: `faster-whisper-small-cpu-int8;quality_gate=<motivo>;fallback=none`.
++- Similitud: `multilingual-MiniLM-L12-v2@<SIM_REVISION>` (con `torch`) o `multilingual-MiniLM-L12-v2@<SIM_REVISION>;backend=onnx-int8` / `onnx-fp32`.
++
++### Nota de privacidad y limitaciones conocidas
++
++- **Privacidad**: Con `ASR_PROVIDER=faster-whisper` y `ASR_FALLBACK_PROVIDER=none`, ningún fragmento de audio sale del servidor. Con `ASR_FALLBACK_PROVIDER=deepgram` (o `ASR_PROVIDER=deepgram`), los fragmentos de audio que requieran respaldo (o todos en modo `deepgram`) son procesados por la API externa de Deepgram Nova-3. **El enunciado de la pregunta del examen nunca se envía a Deepgram**; la comparación semántica (`SimilarityModel` / `OnnxSimilarityModel`) se ejecuta siempre en local.
++- **Calibración en muestra**: Los umbrales de la puerta de calidad se calibraron sobre **28 audios en muestra** (8 de MediaSpeech y 20 grabaciones de una sola voz `P01` en 5 condiciones), sin validación independiente (véase `results/quality-gate-calibration.json`).
++- **Limitación conocida (susurro / voz muy baja)**: Las grabaciones en susurro (`voz baja`) presentan un WER de `100 %` en `faster-whisper small` y de `79,81 %` en Deepgram Nova-3 (`results/asr-comparison.json`). El susurro extremo no es transcribible de manera fiable por ninguno de los dos motores.
++- **Requisitos de memoria y CPU (Etapa 0 y 2B, `results/stage0-docker-limits.json` y `results/onnx-minilm-experiment.json`)**:
++  - Con `SIMILARITY_BACKEND=torch`: `faster-whisper small` alcanza un pico de `1.698,42 MiB` de RSS en Docker (mínimo requerido `1.800 MiB`), y Deepgram alcanza `1.124,38 MiB` (mínimo requerido `1.280 MiB`), por lo que requieren al menos **2 GB de RAM**.
++  - Con `SIMILARITY_BACKEND=onnx-int8` (`SIMILARITY_ONNX_VOCAB=es_en`): Deepgram baja a `~225 MiB` de RSS (cabe en **512 MB**), `faster-whisper tiny` a `~435 MiB` (cabe en **512 MB**), `base` a `~545 MiB` (cabe en **1 GB**) y `small` a `~980 MiB` (cabe en **2 GB**).
++  - Al arrancar, `worker_stub.py` lee `/sys/fs/cgroup/memory.max` y compara contra el mínimo según `(SIMILARITY_BACKEND, ASR_PROVIDER)`: por defecto emite un aviso en logs y en `/health`, y solo aborta el arranque si `ASR_ENFORCE_MEMORY_BUDGET=true`.
++
+diff --git a/services/ai/tests/test_worker_stub.py b/services/ai/tests/test_worker_stub.py
+index ccab139..e63a702 100644
+--- a/services/ai/tests/test_worker_stub.py
++++ b/services/ai/tests/test_worker_stub.py
+@@ -71,3 +71,73 @@ def test_la_cola_caida_sigue_notandose(monkeypatch: pytest.MonkeyPatch) -> None:
+     estado = _estado(_RedisFalso(responde=False))  # type: ignore[arg-type]
+ 
+     assert estado["queue"] is False
++
++
++def test_salud_avisa_sin_fallar_cuando_hay_respaldo_sin_clave(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    for nombre in REQUERIDAS:
++        monkeypatch.setenv(nombre, "puesta")
++    monkeypatch.setenv("ASR_PROVIDER", "faster-whisper")
++    monkeypatch.setenv("ASR_FALLBACK_PROVIDER", "deepgram")
++    monkeypatch.delenv("DEEPGRAM_API_KEY", raising=False)
++
++    estado: dict[str, Any] = _estado(_RedisFalso(responde=True))  # type: ignore[arg-type]
++
++    assert estado["queue"] is True
++    assert estado["missing"] == []
++    assert estado["asr_provider"] == "faster-whisper"
++    assert estado["asr_fallback_provider"] == "deepgram"
++    assert estado["asr_mode"] == "local-with-deepgram-fallback"
++    assert any("DEEPGRAM_API_KEY" in w for w in estado["warnings"])
++
++
++def test_precargar_modelos_respeta_modo_fork_vs_simple(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    import worker_stub
++
++    monkeypatch.setenv("ASR_PROVIDER", "faster-whisper")
++    asr_calls: list[int] = []
++    sim_calls: list[int] = []
++    monkeypatch.setattr(worker_stub, "_get_local_asr", lambda: asr_calls.append(1))
++    monkeypatch.setattr(worker_stub, "similarity_model", lambda: sim_calls.append(1))
++
++    # En modo fork (Worker en Linux), solo SimilarityModel se precarga en el padre
++    # porque CTranslate2 ReplicaPool no es fork-safe.
++    res_fork = worker_stub.precargar_modelos(fork_worker=True)
++    assert res_fork["fork_worker"] is True
++    assert res_fork["asr_preloaded"] is False
++    assert res_fork["similarity_preloaded"] is True
++    assert len(asr_calls) == 0
++    assert len(sim_calls) == 1
++
++    # En modo SimpleWorker (sin fork), se precargan ambos en el proceso padre.
++    res_simple = worker_stub.precargar_modelos(fork_worker=False)
++    assert res_simple["fork_worker"] is False
++    assert res_simple["asr_preloaded"] is True
++    assert res_simple["similarity_preloaded"] is True
++    assert len(asr_calls) == 1
++    assert len(sim_calls) == 2
++
++
++def test_salud_expone_backend_de_similitud_y_aviso_de_memoria(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    import audio_runtime
++
++    for nombre in REQUERIDAS:
++        monkeypatch.setenv(nombre, "puesta")
++    monkeypatch.setenv("ASR_PROVIDER", "faster-whisper")
++    monkeypatch.setenv("ASR_LOCAL_MODEL", "small")
++    monkeypatch.setenv("SIMILARITY_BACKEND", "onnx-int8")
++    monkeypatch.setattr(audio_runtime, "detect_memory_limit_bytes", lambda: 512 * 1024 * 1024)
++
++    estado: dict[str, Any] = _estado(_RedisFalso(responde=True))  # type: ignore[arg-type]
++
++    assert estado["similarity_backend"] == "onnx-int8"
++    assert estado["memory_enforce"] is False
++    assert estado["memory_limit_mib"] == 512.0
++    assert estado["required_memory_mib"] == 1150.0
++    assert estado["memory_sufficient"] is False
++    assert any("Insufficient container memory" in w for w in estado["warnings"])
+diff --git a/services/ai/worker_stub.py b/services/ai/worker_stub.py
+index be2916d..f2f9338 100644
+--- a/services/ai/worker_stub.py
++++ b/services/ai/worker_stub.py
+@@ -19,13 +19,33 @@ from __future__ import annotations
+ import logging
+ import os
+ import sys
++from time import perf_counter
++from typing import Any
+ 
+ from redis import Redis
+ from rq import Queue, SimpleWorker, Worker
+ 
+-from salud import servir_salud
++from audio_runtime import (
++    _get_local_asr,
++    asr_provider,
++    check_memory_budget,
++    enforce_memory_budget,
++    similarity_model,
++)
++from salud import avisos_configuracion_asr, servir_salud
++
++
++def _usar_simple_worker() -> bool:
++    if sys.platform == "win32":
++        return True
++    return os.environ.get("WORKER_USE_SIMPLE_WORKER", "false").strip().lower() in (
++        "1",
++        "true",
++        "yes",
++    )
++
+ 
+-WorkerClass = SimpleWorker if sys.platform == "win32" else Worker
++WorkerClass = SimpleWorker if _usar_simple_worker() else Worker
+ 
+ #: Las mismas colas que usa la API (ver el adaptador `redis_queue/job_queue.py`).
+ #: `high` va primero: la verificacion facial tiene a alguien esperando en pantalla,
+@@ -39,7 +59,82 @@ logging.basicConfig(
+ logger = logging.getLogger("worker")
+ 
+ 
++def precargar_modelos(*, fork_worker: bool | None = None) -> dict[str, Any]:
++    """Precarga SimilarityModel (y ASR local si no hay fork) en el proceso padre.
++
++    RQ en Linux usa `Worker` (`os.fork()` por trabajo) salvo que se active
++    `WORKER_USE_SIMPLE_WORKER=true` (`SimpleWorker`).
++    - `SimilarityModel` (PyTorch) con `OMP_NUM_THREADS=1` es seguro tras `os.fork()`:
++      al precargarlo en el padre, los hijos heredan las páginas en Copy-on-Write y
++      ahorran la recarga de ~1.1 GiB en cada trabajo.
++    - `CTranslate2` (`faster-whisper`) crea un hilo C++ (`ctranslate2::ReplicaPool`)
++      en su constructor que POSIX `os.fork()` no clona al proceso hijo; invocar una
++      instancia creada antes de `os.fork()` bloquea indefinidamente al hijo. Por ello,
++      el ASR local solo se precarga en el padre cuando el worker no hace `fork()`
++      (`SimpleWorker`), y en modo `fork` se inicializa en el hijo (con salvaguarda
++      `os.register_at_fork` en `audio_runtime.py`).
++    """
++    os.environ.setdefault("OMP_NUM_THREADS", "1")
++    os.environ.setdefault("MKL_NUM_THREADS", "1")
++    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
++
++    usa_fork = (not _usar_simple_worker()) if fork_worker is None else fork_worker
++
++    resultado: dict[str, Any] = {
++        "fork_worker": usa_fork,
++        "asr_preloaded": False,
++        "similarity_preloaded": False,
++        "asr_load_seconds": 0.0,
++        "similarity_load_seconds": 0.0,
++    }
++    try:
++        if asr_provider() == "faster-whisper" and not usa_fork:
++            t0 = perf_counter()
++            _get_local_asr()
++            resultado["asr_preloaded"] = True
++            resultado["asr_load_seconds"] = round(perf_counter() - t0, 4)
++            logger.info(
++                "Modelo ASR local precargado en el proceso padre (SimpleWorker) en %.3f s",
++                resultado["asr_load_seconds"],
++            )
++    except Exception as exc:  # noqa: BLE001
++        logger.warning("No se pudo precargar el modelo ASR local al arrancar: %s", exc)
++
++    try:
++        t0 = perf_counter()
++        similarity_model()
++        resultado["similarity_preloaded"] = True
++        resultado["similarity_load_seconds"] = round(perf_counter() - t0, 4)
++        logger.info(
++            "SimilarityModel precargado en el proceso padre en %.3f s",
++            resultado["similarity_load_seconds"],
++        )
++    except Exception as exc:  # noqa: BLE001
++        logger.warning("No se pudo precargar SimilarityModel al arrancar: %s", exc)
++
++    return resultado
++
++
+ def main() -> int:
++    try:
++        mem_status = enforce_memory_budget()
++        if mem_status["memory_sufficient"]:
++            logger.info(
++                "Presupuesto de memoria verificado: modo=%s motor=%s sim=%s "
++                "limite_mib=%s requerido_mib=%s",
++                mem_status["asr_mode"],
++                mem_status["asr_provider"],
++                mem_status["similarity_backend"],
++                mem_status["memory_limit_mib"],
++                mem_status["required_memory_mib"],
++            )
++    except (RuntimeError, ValueError) as exc:
++        logger.error("Fallo de comprobación previa al arranque: %s", exc)
++        return 1
++
++    for aviso in avisos_configuracion_asr():
++        logger.warning("Aviso de configuración ASR: %s", aviso)
++
+     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+ 
+     connection = Redis.from_url(redis_url)
+@@ -49,6 +144,13 @@ def main() -> int:
+         logger.error("No se pudo conectar a Redis en %s: %s", redis_url, exc)
+         return 1
+ 
++    if os.environ.get("WORKER_PRELOAD_MODELS", "true").strip().lower() not in (
++        "0",
++        "false",
++        "no",
++    ):
++        precargar_modelos()
++
+     logger.info("Conectado a Redis. Escuchando las colas: %s", ", ".join(QUEUES))
+     logger.info("Esperando trabajos. Manda un evento speech_detected a la API.")
+ 
+@@ -107,11 +209,37 @@ def _estado(connection: Redis) -> dict[str, object]:
+     except Exception:  # noqa: BLE001 - cualquier fallo aqui significa lo mismo
+         viva = False
+     configuracion = _configuracion()
++    try:
++        mem_info = check_memory_budget()
++    except ValueError as exc:
++        mem_info = {
++            "asr_provider": "invalid",
++            "asr_local_model": None,
++            "asr_fallback_provider": "invalid",
++            "asr_mode": f"invalid-config:{exc}",
++            "similarity_backend": "invalid",
++            "memory_enforce": False,
++            "memory_limit_bytes": None,
++            "memory_limit_mib": None,
++            "required_memory_mib": None,
++            "memory_sufficient": False,
++        }
+     return {
+         "queue": viva,
+         "queues": QUEUES,
+         "config": configuracion,
+         "missing": sorted(nombre for nombre, puesta in configuracion.items() if not puesta),
++        "warnings": avisos_configuracion_asr(),
++        "asr_mode": mem_info["asr_mode"],
++        "asr_provider": mem_info["asr_provider"],
++        "asr_local_model": mem_info["asr_local_model"],
++        "asr_fallback_provider": mem_info["asr_fallback_provider"],
++        "similarity_backend": mem_info["similarity_backend"],
++        "memory_enforce": mem_info["memory_enforce"],
++        "memory_limit_bytes": mem_info["memory_limit_bytes"],
++        "memory_limit_mib": mem_info["memory_limit_mib"],
++        "required_memory_mib": mem_info["required_memory_mib"],
++        "memory_sufficient": mem_info["memory_sufficient"],
+     }
+ 
+ 
+-- 
+2.43.0
+

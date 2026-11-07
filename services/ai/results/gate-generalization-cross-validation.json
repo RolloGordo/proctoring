@@ -1,0 +1,505 @@
+{
+  "speaker_warning": "NOTA CR\u00cdTICA: Las muestras grabadas provienen de una \u00fanica voz y hablante (P01), con el mismo micr\u00f3fono y entorno ac\u00fastico. La generalizaci\u00f3n evaluada es exclusivamente entre guiones y preguntas distintas (out-of-script), pero NO entre diferentes hablantes ni micr\u00f3fonos.",
+  "split_1": {
+    "split_name": "Split 1: Train=MediaSpeech+A1+A2 (18) -> Test=A3+A4 (10)",
+    "calibrated_thresholds": {
+      "min_words_per_second": 0.3,
+      "max_no_speech_prob": 0.6,
+      "min_avg_logprob": -0.7,
+      "max_compression_ratio": 1.6
+    },
+    "train_metrics": {
+      "total_samples": 18,
+      "bad_count": 5,
+      "good_count": 13,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "tn": 13,
+      "precision": 1.0,
+      "recall": 1.0,
+      "recall_wilson_95": [
+        0.5655,
+        1.0
+      ],
+      "accuracy": 1.0,
+      "accuracy_wilson_95": [
+        0.8241,
+        1.0
+      ],
+      "f1_score": 1.0,
+      "samples": [
+        {
+          "sample_id": "dce9e72f-77f7-48ae-bc86-39ea510a3968",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "7cb30906-a831-4349-b72f-89f1cdeb4ae6",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "16d02f33-67f3-4cac-b055-4c6479643d8e",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "3cedc890-6886-4344-bfdb-c54700697f2f",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "fe2b5ae1-7672-4ce5-b641-86a50ed1ab7f",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "e17fb1c3-0351-4ec8-bd3a-4a9aaab969f6",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "f5332df9-9074-4047-a6d2-09d2b21c720c",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "d4ec9549-0143-4047-be07-0a7992f2aca2",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A1_bajaylejos",
+          "condition": "bajaylejos",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "low_logprob:-0.72<-0.70"
+        },
+        {
+          "sample_id": "P01_A1_base",
+          "condition": "base",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A1_lejos",
+          "condition": "lejos",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A1_ruido",
+          "condition": "ruido",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "high_no_speech:0.68>0.60"
+        },
+        {
+          "sample_id": "P01_A1_voz_baja",
+          "condition": "voz baja",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "empty_transcript"
+        },
+        {
+          "sample_id": "P01_A2_bajaylejos",
+          "condition": "bajaylejos",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A2_base",
+          "condition": "base",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A2_lejos",
+          "condition": "lejos",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A2_ruido",
+          "condition": "ruido",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "low_logprob:-0.85<-0.70"
+        },
+        {
+          "sample_id": "P01_A2_voz_baja",
+          "condition": "voz baja",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "empty_transcript"
+        }
+      ]
+    },
+    "test_metrics": {
+      "total_samples": 10,
+      "bad_count": 6,
+      "good_count": 4,
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "tn": 4,
+      "precision": 1.0,
+      "recall": 1.0,
+      "recall_wilson_95": [
+        0.6097,
+        1.0
+      ],
+      "accuracy": 1.0,
+      "accuracy_wilson_95": [
+        0.7225,
+        1.0
+      ],
+      "f1_score": 1.0,
+      "samples": [
+        {
+          "sample_id": "P01_A3_bajaylejos",
+          "condition": "bajaylejos",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "empty_transcript"
+        },
+        {
+          "sample_id": "P01_A3_base",
+          "condition": "base",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A3_lejos",
+          "condition": "lejos",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A3_ruido",
+          "condition": "ruido",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "low_logprob:-0.70<-0.70"
+        },
+        {
+          "sample_id": "P01_A3_voz_baja",
+          "condition": "voz baja",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "hallucination:suscr\u00edbete"
+        },
+        {
+          "sample_id": "P01_A4_bajaylejos",
+          "condition": "bajaylejos",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "empty_transcript"
+        },
+        {
+          "sample_id": "P01_A4_base",
+          "condition": "base",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A4_lejos",
+          "condition": "lejos",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A4_ruido",
+          "condition": "ruido",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "low_logprob:-0.80<-0.70"
+        },
+        {
+          "sample_id": "P01_A4_voz_baja",
+          "condition": "voz baja",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "empty_transcript"
+        }
+      ]
+    }
+  },
+  "split_2_inverse": {
+    "split_name": "Split 2 (Inverso): Train=MediaSpeech+A3+A4 (18) -> Test=A1+A2 (10)",
+    "calibrated_thresholds": {
+      "min_words_per_second": 0.3,
+      "max_no_speech_prob": 0.6,
+      "min_avg_logprob": -0.7,
+      "max_compression_ratio": 1.6
+    },
+    "train_metrics": {
+      "total_samples": 18,
+      "bad_count": 6,
+      "good_count": 12,
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "tn": 12,
+      "precision": 1.0,
+      "recall": 1.0,
+      "recall_wilson_95": [
+        0.6097,
+        1.0
+      ],
+      "accuracy": 1.0,
+      "accuracy_wilson_95": [
+        0.8241,
+        1.0
+      ],
+      "f1_score": 1.0,
+      "samples": [
+        {
+          "sample_id": "dce9e72f-77f7-48ae-bc86-39ea510a3968",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "7cb30906-a831-4349-b72f-89f1cdeb4ae6",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "16d02f33-67f3-4cac-b055-4c6479643d8e",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "3cedc890-6886-4344-bfdb-c54700697f2f",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "fe2b5ae1-7672-4ce5-b641-86a50ed1ab7f",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "e17fb1c3-0351-4ec8-bd3a-4a9aaab969f6",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "f5332df9-9074-4047-a6d2-09d2b21c720c",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "d4ec9549-0143-4047-be07-0a7992f2aca2",
+          "condition": "mediaspeech_es",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A3_bajaylejos",
+          "condition": "bajaylejos",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "empty_transcript"
+        },
+        {
+          "sample_id": "P01_A3_base",
+          "condition": "base",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A3_lejos",
+          "condition": "lejos",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A3_ruido",
+          "condition": "ruido",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "low_logprob:-0.70<-0.70"
+        },
+        {
+          "sample_id": "P01_A3_voz_baja",
+          "condition": "voz baja",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "hallucination:suscr\u00edbete"
+        },
+        {
+          "sample_id": "P01_A4_bajaylejos",
+          "condition": "bajaylejos",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "empty_transcript"
+        },
+        {
+          "sample_id": "P01_A4_base",
+          "condition": "base",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A4_lejos",
+          "condition": "lejos",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A4_ruido",
+          "condition": "ruido",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "low_logprob:-0.80<-0.70"
+        },
+        {
+          "sample_id": "P01_A4_voz_baja",
+          "condition": "voz baja",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "empty_transcript"
+        }
+      ]
+    },
+    "test_metrics": {
+      "total_samples": 10,
+      "bad_count": 5,
+      "good_count": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "tn": 5,
+      "precision": 1.0,
+      "recall": 1.0,
+      "recall_wilson_95": [
+        0.5655,
+        1.0
+      ],
+      "accuracy": 1.0,
+      "accuracy_wilson_95": [
+        0.7225,
+        1.0
+      ],
+      "f1_score": 1.0,
+      "samples": [
+        {
+          "sample_id": "P01_A1_bajaylejos",
+          "condition": "bajaylejos",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "low_logprob:-0.72<-0.70"
+        },
+        {
+          "sample_id": "P01_A1_base",
+          "condition": "base",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A1_lejos",
+          "condition": "lejos",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A1_ruido",
+          "condition": "ruido",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "high_no_speech:0.68>0.60"
+        },
+        {
+          "sample_id": "P01_A1_voz_baja",
+          "condition": "voz baja",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "empty_transcript"
+        },
+        {
+          "sample_id": "P01_A2_bajaylejos",
+          "condition": "bajaylejos",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A2_base",
+          "condition": "base",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A2_lejos",
+          "condition": "lejos",
+          "is_bad": false,
+          "flagged": false,
+          "reason": "ok"
+        },
+        {
+          "sample_id": "P01_A2_ruido",
+          "condition": "ruido",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "low_logprob:-0.85<-0.70"
+        },
+        {
+          "sample_id": "P01_A2_voz_baja",
+          "condition": "voz baja",
+          "is_bad": true,
+          "flagged": true,
+          "reason": "empty_transcript"
+        }
+      ]
+    }
+  }
+}

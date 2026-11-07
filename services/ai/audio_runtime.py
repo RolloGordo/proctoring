@@ -10,6 +10,7 @@ import math
 import os
 from functools import lru_cache
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 from urllib.parse import quote, urlsplit
 
@@ -20,9 +21,117 @@ logger = logging.getLogger(__name__)
 SIM_REVISION = "e8f8c211226b894fcb81acc59f3b34ba3efd5f42"
 MAX_AUDIO_BYTES = 8_000_000
 
-DEFAULT_ASR_PROVIDER = "deepgram"
+DEFAULT_ASR_PROVIDER = "faster-whisper"
 ASR_PROVIDERS = ("deepgram", "faster-whisper")
 LOCAL_ASR_EXTRA = "asr-local"
+
+DEFAULT_ASR_LOCAL_MODEL = "small"
+ASR_LOCAL_MODELS = ("tiny", "base", "small")
+
+DEFAULT_ASR_FALLBACK_PROVIDER = "none"
+ASR_FALLBACK_PROVIDERS = ("deepgram", "none")
+
+DEFAULT_SIMILARITY_BACKEND = "torch"
+SIMILARITY_BACKENDS = ("torch", "onnx-int8", "onnx-fp32")
+
+DEFAULT_SIMILARITY_ONNX_VOCAB = "es_en"
+SIMILARITY_ONNX_VOCAB_MODES = ("es_en", "full")
+
+DEFAULT_ENFORCE_MEMORY_BUDGET = False
+
+DEFAULT_ASR_LOCAL_VAD_FILTER = True
+DEFAULT_ASR_LOCAL_VAD_THRESHOLD = 0.3
+
+# Quality gate thresholds calibrated on 28 in-sample audios (8 MediaSpeech + 20 from a
+# single speaker P01 across 5 conditions) without independent held-out validation.
+DEFAULT_MIN_WORDS_PER_SECOND = 0.50
+DEFAULT_MAX_NO_SPEECH_PROB = 0.60
+DEFAULT_MIN_AVG_LOGPROB = -0.60
+DEFAULT_MAX_COMPRESSION_RATIO = 1.85
+DEFAULT_HALLUCINATION_PHRASES: tuple[str, ...] = (
+    "suscríbete",
+    "suscribete",
+    "más información en www",
+    "mas informacion en www",
+    "subtítulos realizados por",
+    "subtitulos realizados por",
+    "amara.org",
+    "gracias por ver",
+)
+
+# Latency budget for fallback: min(4.5 s, 10.0 s - elapsed - 1.5 s).
+DEFAULT_LATENCY_BUDGET_SECONDS = 10.0
+DEFAULT_FALLBACK_MAX_TIMEOUT_SECONDS = 4.5
+DEFAULT_POST_ASR_RESERVE_SECONDS = 1.5
+
+# Pre-flight container memory thresholds (bytes) measured in Stage 0 and 2B Docker benchmarks:
+# 1) SIMILARITY_BACKEND=torch (PyTorch MiniLM FP32):
+# - Deepgram + SimilarityModel (torch) peaks at ~1,124 MiB RSS -> 1,280 MiB min.
+# - faster-whisper tiny/base + SimilarityModel (torch) peaks at ~1,290-1,331 MiB -> 1,500 MiB min.
+# - faster-whisper small + SimilarityModel (torch) peaks at ~1,698 MiB RSS -> 1,800 MiB min.
+MIN_MEM_DEEPGRAM_WITH_SIM_BYTES = 1_280 * 1024 * 1024
+MIN_MEM_WHISPER_TINY_BASE_WITH_SIM_BYTES = 1_500 * 1024 * 1024
+MIN_MEM_WHISPER_SMALL_WITH_SIM_BYTES = 1_800 * 1024 * 1024
+
+# 2) SIMILARITY_BACKEND=onnx-int8 (ONNX Runtime MiniLM INT8):
+# - Deepgram + OnnxSimilarityModel (int8, es_en) peaks at ~225 MiB RSS -> 384 MiB min.
+# - faster-whisper tiny + OnnxSimilarityModel (int8, es_en) peaks at ~435 MiB RSS -> 500 MiB min.
+# - faster-whisper base + OnnxSimilarityModel (int8, es_en) peaks at ~545 MiB RSS -> 640 MiB min.
+# - faster-whisper small + OnnxSimilarityModel (int8, es_en) peaks at ~980 MiB RSS -> 1,150 MiB min.
+MIN_MEM_DEEPGRAM_WITH_ONNX_INT8_BYTES = 384 * 1024 * 1024
+MIN_MEM_WHISPER_TINY_WITH_ONNX_INT8_BYTES = 500 * 1024 * 1024
+MIN_MEM_WHISPER_BASE_WITH_ONNX_INT8_BYTES = 640 * 1024 * 1024
+MIN_MEM_WHISPER_SMALL_WITH_ONNX_INT8_BYTES = 1_150 * 1024 * 1024
+
+# 3) SIMILARITY_BACKEND=onnx-fp32 (ONNX Runtime MiniLM FP32):
+# - Deepgram + OnnxSimilarityModel (fp32, es_en) peaks at ~485 MiB RSS -> 640 MiB min.
+# - faster-whisper tiny/base + OnnxSimilarityModel (fp32) peaks at ~720-820 MiB -> 900 MiB min.
+# - faster-whisper small + OnnxSimilarityModel (fp32) peaks at ~1,210 MiB RSS -> 1,400 MiB min.
+MIN_MEM_DEEPGRAM_WITH_ONNX_FP32_BYTES = 640 * 1024 * 1024
+MIN_MEM_WHISPER_TINY_BASE_WITH_ONNX_FP32_BYTES = 900 * 1024 * 1024
+MIN_MEM_WHISPER_SMALL_WITH_ONNX_FP32_BYTES = 1_400 * 1024 * 1024
+
+CGROUP_V2_MEMORY_MAX = Path("/sys/fs/cgroup/memory.max")
+CGROUP_V1_MEMORY_LIMIT = Path("/sys/fs/cgroup/memory/memory.limit_in_bytes")
+
+
+def _parse_bool_env(var_name: str, default: bool) -> bool:
+    raw = os.getenv(var_name)
+    if raw is None or not raw.strip():
+        return default
+    norm = raw.strip().lower()
+    if norm in ("1", "true", "yes", "on"):
+        return True
+    if norm in ("0", "false", "no", "off"):
+        return False
+    raise ValueError(f"{var_name} must be a boolean (true or false)")
+
+
+def _parse_float_env(
+    var_name: str,
+    default: float,
+    *,
+    min_val: float | None = None,
+    max_val: float | None = None,
+    strict_min: bool = False,
+    strict_max: bool = False,
+) -> float:
+    raw = os.getenv(var_name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        val = float(raw.strip())
+    except ValueError:
+        raise ValueError(f"{var_name} must be a finite number") from None
+    if not math.isfinite(val):
+        raise ValueError(f"{var_name} must be a finite number")
+    if min_val is not None and (val <= min_val if strict_min else val < min_val):
+        op = ">" if strict_min else ">="
+        raise ValueError(f"{var_name} must be {op} {min_val}")
+    if max_val is not None and (val >= max_val if strict_max else val > max_val):
+        op = "<" if strict_max else "<="
+        raise ValueError(f"{var_name} must be {op} {max_val}")
+    return val
 
 
 def download_audio(job: dict[str, Any], destination: Path) -> None:
@@ -101,6 +210,204 @@ def asr_provider() -> str:
     return name
 
 
+def asr_local_model() -> str:
+    """Local Whisper model size chosen by ``ASR_LOCAL_MODEL``; defaults to ``small``."""
+    name = os.getenv("ASR_LOCAL_MODEL", "").strip().lower() or DEFAULT_ASR_LOCAL_MODEL
+    if name not in ASR_LOCAL_MODELS:
+        raise ValueError(f"Unknown ASR_LOCAL_MODEL; expected one of: {', '.join(ASR_LOCAL_MODELS)}")
+    return name
+
+
+def asr_fallback_provider() -> str:
+    """Fallback provider chosen by ``ASR_FALLBACK_PROVIDER``; defaults to ``none``."""
+    name = os.getenv("ASR_FALLBACK_PROVIDER", "").strip().lower() or DEFAULT_ASR_FALLBACK_PROVIDER
+    if name not in ASR_FALLBACK_PROVIDERS:
+        raise ValueError(
+            f"Unknown ASR_FALLBACK_PROVIDER; expected one of: {', '.join(ASR_FALLBACK_PROVIDERS)}"
+        )
+    return name
+
+
+def asr_fallback_on_empty() -> bool:
+    """Whether an empty Whisper transcript triggers fallback when fallback is enabled."""
+    return _parse_bool_env("ASR_FALLBACK_ON_EMPTY", True)
+
+
+def similarity_backend() -> str:
+    """Similarity backend chosen by ``SIMILARITY_BACKEND``; defaults to ``torch``."""
+    name = os.getenv("SIMILARITY_BACKEND", "").strip().lower() or DEFAULT_SIMILARITY_BACKEND
+    if name not in SIMILARITY_BACKENDS:
+        raise ValueError(
+            f"Unknown SIMILARITY_BACKEND; expected one of: {', '.join(SIMILARITY_BACKENDS)}"
+        )
+    return name
+
+
+def similarity_onnx_vocab() -> str:
+    """Vocabulary mode for ONNX similarity model (``es_en`` default or ``full``)."""
+    name = os.getenv("SIMILARITY_ONNX_VOCAB", "").strip().lower() or DEFAULT_SIMILARITY_ONNX_VOCAB
+    if name not in SIMILARITY_ONNX_VOCAB_MODES:
+        raise ValueError(
+            "Unknown SIMILARITY_ONNX_VOCAB; expected one of: "
+            f"{', '.join(SIMILARITY_ONNX_VOCAB_MODES)}"
+        )
+    return name
+
+
+def asr_enforce_memory_budget() -> bool:
+    """Whether an insufficient container memory limit aborts startup (default False)."""
+    return _parse_bool_env("ASR_ENFORCE_MEMORY_BUDGET", DEFAULT_ENFORCE_MEMORY_BUDGET)
+
+
+def asr_local_vad_filter() -> bool:
+    """Whether Faster-Whisper applies Silero VAD filtering (default True)."""
+    return _parse_bool_env("ASR_LOCAL_VAD_FILTER", DEFAULT_ASR_LOCAL_VAD_FILTER)
+
+
+def asr_local_vad_threshold() -> float:
+    """Silero VAD speech probability threshold for Faster-Whisper (default 0.3)."""
+    return _parse_float_env(
+        "ASR_LOCAL_VAD_THRESHOLD",
+        DEFAULT_ASR_LOCAL_VAD_THRESHOLD,
+        min_val=0.0,
+        max_val=1.0,
+        strict_min=True,
+        strict_max=True,
+    )
+
+
+def quality_gate_config() -> dict[str, Any]:
+    """Read and validate quality gate thresholds from environment variables."""
+    min_wps = _parse_float_env(
+        "ASR_MIN_WORDS_PER_SECOND",
+        DEFAULT_MIN_WORDS_PER_SECOND,
+        min_val=0.0,
+    )
+    max_nsp = _parse_float_env(
+        "ASR_MAX_NO_SPEECH_PROB",
+        DEFAULT_MAX_NO_SPEECH_PROB,
+        min_val=0.0,
+        max_val=1.0,
+    )
+    min_lp = _parse_float_env(
+        "ASR_MIN_AVG_LOGPROB",
+        DEFAULT_MIN_AVG_LOGPROB,
+        max_val=0.0,
+        strict_max=True,
+    )
+    max_cr = _parse_float_env(
+        "ASR_MAX_COMPRESSION_RATIO",
+        DEFAULT_MAX_COMPRESSION_RATIO,
+        min_val=0.0,
+        strict_min=True,
+    )
+    raw_phrases = os.getenv("ASR_HALLUCINATION_PHRASES")
+    if raw_phrases is None:
+        phrases = DEFAULT_HALLUCINATION_PHRASES
+    else:
+        phrases = tuple(p.strip().lower() for p in raw_phrases.split(",") if p.strip())
+    return {
+        "fallback_on_empty": asr_fallback_on_empty(),
+        "min_words_per_second": min_wps,
+        "max_no_speech_prob": max_nsp,
+        "min_avg_logprob": min_lp,
+        "max_compression_ratio": max_cr,
+        "hallucination_phrases": phrases,
+    }
+
+
+def compute_fallback_timeout(elapsed_seconds: float) -> float:
+    """Remaining time budget for Deepgram fallback: min(4.5s, 10s - elapsed - 1.5s)."""
+    budget = _parse_float_env(
+        "ASR_LATENCY_BUDGET_SECONDS",
+        DEFAULT_LATENCY_BUDGET_SECONDS,
+        min_val=0.0,
+        strict_min=True,
+    )
+    max_timeout = _parse_float_env(
+        "ASR_FALLBACK_MAX_TIMEOUT_SECONDS",
+        DEFAULT_FALLBACK_MAX_TIMEOUT_SECONDS,
+        min_val=0.0,
+        strict_min=True,
+    )
+    reserve = _parse_float_env(
+        "ASR_POST_ASR_RESERVE_SECONDS",
+        DEFAULT_POST_ASR_RESERVE_SECONDS,
+        min_val=0.0,
+    )
+    remaining = budget - max(0.0, float(elapsed_seconds)) - reserve
+    return min(max_timeout, remaining)
+
+
+def evaluate_asr_quality(
+    result: dict[str, Any],
+    config: dict[str, Any] | None = None,
+) -> tuple[bool, str | None]:
+    """Decide whether a local Whisper transcription is acceptable or needs fallback.
+
+    Returns ``(passed, reason)`` where ``reason`` is ``None`` when ``passed`` is True.
+    """
+    cfg = config if config is not None else quality_gate_config()
+    transcript = str(result.get("transcript") or "").strip()
+    if not transcript:
+        if cfg["fallback_on_empty"]:
+            return False, "empty_transcript"
+        return True, None
+
+    lower_text = transcript.lower()
+    for phrase in cfg["hallucination_phrases"]:
+        if phrase and phrase.lower() in lower_text:
+            return False, "hallucination_phrase"
+
+    wps: float | None = None
+    raw_wps = result.get("words_per_second")
+    if (
+        isinstance(raw_wps, int | float)
+        and not isinstance(raw_wps, bool)
+        and math.isfinite(raw_wps)
+    ):
+        wps = float(raw_wps)
+    else:
+        raw_dur = result.get("audio_seconds")
+        if (
+            isinstance(raw_dur, int | float)
+            and not isinstance(raw_dur, bool)
+            and math.isfinite(raw_dur)
+            and raw_dur > 0
+        ):
+            wps = len(transcript.split()) / float(raw_dur)
+    if wps is not None and wps < float(cfg["min_words_per_second"]):
+        return False, "low_words_per_second"
+
+    segments = result.get("segments")
+    if isinstance(segments, list) and segments:
+        nsps = [
+            float(s["no_speech_prob"])
+            for s in segments
+            if isinstance(s, dict) and s.get("no_speech_prob") is not None
+        ]
+        if nsps and max(nsps) > float(cfg["max_no_speech_prob"]):
+            return False, "high_no_speech_prob"
+
+        lps = [
+            float(s["avg_logprob"])
+            for s in segments
+            if isinstance(s, dict) and s.get("avg_logprob") is not None
+        ]
+        if lps and min(lps) < float(cfg["min_avg_logprob"]):
+            return False, "low_avg_logprob"
+
+        crs = [
+            float(s["compression_ratio"])
+            for s in segments
+            if isinstance(s, dict) and s.get("compression_ratio") is not None
+        ]
+        if crs and max(crs) > float(cfg["max_compression_ratio"]):
+            return False, "high_compression_ratio"
+
+    return True, None
+
+
 @lru_cache(maxsize=1)
 def _local_asr_model() -> Any:
     """Faster-Whisper is expensive to load, so only this one is cached.
@@ -108,6 +415,9 @@ def _local_asr_model() -> Any:
     It is an optional extra, absent from the production image. Asking for it without the
     extra fails with an actionable message instead of a bare ``ModuleNotFoundError``.
     """
+    model_name = asr_local_model()
+    vad_filter = asr_local_vad_filter()
+    vad_threshold = asr_local_vad_threshold()
     if importlib.util.find_spec("faster_whisper") is None:
         raise RuntimeError(
             "ASR_PROVIDER=faster-whisper needs the optional extra "
@@ -115,7 +425,63 @@ def _local_asr_model() -> Any:
         )
     from spikes.transcribe import Transcriber
 
-    return Transcriber("small", offline=True)
+    vad_params = {"threshold": vad_threshold} if vad_filter else None
+    try:
+        return Transcriber(
+            model_name,
+            offline=True,
+            vad_filter=vad_filter,
+            vad_parameters=vad_params,
+        )
+    except OSError as exc:
+        raise RuntimeError(
+            f"Faster-Whisper model '{model_name}' could not be loaded offline: {exc}"
+        ) from None
+
+
+# CTranslate2 (faster-whisper) spawns a C++ std::thread inside ReplicaPool on init.
+# POSIX os.fork() does not clone background threads into the child process, so using a
+# parent WhisperModel instance inside a forked child deadlocks waiting on the missing
+# C++ worker thread, and destroying it in the child hangs on std::thread::join().
+# If _local_asr_model was cached before fork(), detach the parent reference in the child
+# so it is neither called nor destroyed, and let the child initialize its own pool.
+_FORK_DETACHED_ASR_MODELS: list[Any] = []
+
+
+def _detach_local_asr_after_fork() -> None:
+    if (
+        not hasattr(_local_asr_model, "_mock_name")
+        and hasattr(_local_asr_model, "cache_info")
+        and _local_asr_model.cache_info().currsize > 0
+    ):
+        _FORK_DETACHED_ASR_MODELS.append(_local_asr_model())
+        _local_asr_model.cache_clear()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_detach_local_asr_after_fork)
+
+
+def _get_local_asr() -> Any:
+    """Validate local ASR settings and invalidate cache if model/VAD settings changed."""
+    target_model = asr_local_model()
+    target_vad = asr_local_vad_filter()
+    target_threshold = asr_local_vad_threshold()
+    if (
+        not hasattr(_local_asr_model, "_mock_name")
+        and hasattr(_local_asr_model, "cache_info")
+        and _local_asr_model.cache_info().currsize > 0
+    ):
+        cached = _local_asr_model()
+        cached_params = getattr(cached, "vad_parameters", None)
+        expected_params = {"threshold": target_threshold} if target_vad else None
+        if (
+            getattr(cached, "model", target_model) != target_model
+            or getattr(cached, "vad_filter", target_vad) != target_vad
+            or cached_params != expected_params
+        ):
+            _local_asr_model.cache_clear()
+    return _local_asr_model()
 
 
 def asr_model() -> Any:
@@ -126,14 +492,25 @@ def asr_model() -> Any:
     key and timeout are then always the current ones, and a missing key fails here,
     before any network request.
 
-    There is no fallback between providers: a Deepgram misconfiguration must surface as
-    a failed job, never as a transcript silently produced by another engine.
+    There is no silent fallback on configuration errors: a missing key or uninstalled extra
+    must surface immediately as a failed job, never masked by another engine.
     """
     if asr_provider() == "deepgram":
         from deepgram_transcriber import DeepgramTranscriber
 
         return DeepgramTranscriber()
-    return _local_asr_model()
+    fallback = asr_fallback_provider()
+    if fallback == "deepgram":
+        from deepgram_transcriber import _read_key
+
+        _read_key()
+    return _get_local_asr()
+
+
+def _build_fallback_transcriber(timeout: float) -> Any:
+    from deepgram_transcriber import DeepgramTranscriber
+
+    return DeepgramTranscriber(timeout=timeout)
 
 
 def _asr_version(asr: Any) -> str:
@@ -143,17 +520,201 @@ def _asr_version(asr: Any) -> str:
 
 
 @lru_cache(maxsize=1)
-def similarity_model() -> Any:
-    from spikes.similarity import SimilarityModel
+def _cached_similarity_model(backend: str, vocab_mode: str) -> Any:
+    if backend == "torch":
+        from spikes.similarity import SimilarityModel
 
-    try:
-        return SimilarityModel(SIM_REVISION, offline=True)
-    except OSError:
+        try:
+            return SimilarityModel(SIM_REVISION, offline=True)
+        except OSError:
+            raise RuntimeError(
+                "Similarity model could not be loaded offline. Prepare the pinned model "
+                "and mount its cache at SIMILARITY_CACHE_DIR (default: models). "
+                "No model download was attempted."
+            ) from None
+
+    if (
+        importlib.util.find_spec("onnxruntime") is None
+        or importlib.util.find_spec("tokenizers") is None
+    ):
         raise RuntimeError(
-            "Similarity model could not be loaded offline. Prepare the pinned model "
-            "and mount its cache at SIMILARITY_CACHE_DIR (default: models). "
-            "No model download was attempted."
+            f"SIMILARITY_BACKEND={backend} requires 'onnxruntime' and 'tokenizers' to be installed."
+        )
+    from spikes.similarity import OnnxSimilarityModel
+
+    variant = "int8" if backend == "onnx-int8" else "fp32"
+    try:
+        return OnnxSimilarityModel(
+            SIM_REVISION,
+            variant=variant,
+            vocab_mode=vocab_mode,
+            offline=True,
+        )
+    except OSError as exc:
+        raise RuntimeError(
+            f"ONNX similarity model ({backend}, vocab={vocab_mode}) could not be loaded "
+            f"offline: {exc}"
         ) from None
+
+
+def similarity_model() -> Any:
+    return _cached_similarity_model(similarity_backend(), similarity_onnx_vocab())
+
+
+similarity_model.cache_clear = _cached_similarity_model.cache_clear  # type: ignore[attr-defined]
+similarity_model.cache_info = _cached_similarity_model.cache_info  # type: ignore[attr-defined]
+
+
+def detect_memory_limit_bytes(
+    cgroup_v2_path: Path = CGROUP_V2_MEMORY_MAX,
+    cgroup_v1_path: Path = CGROUP_V1_MEMORY_LIMIT,
+) -> int | None:
+    """Read container memory limit from cgroup v2 (`memory.max`) or v1, or None if unlimited."""
+    for candidate in (cgroup_v2_path, cgroup_v1_path):
+        if candidate.is_file():
+            try:
+                raw = candidate.read_text(encoding="utf-8").strip()
+            except OSError:
+                continue
+            if not raw or raw == "max":
+                return None
+            try:
+                val = int(raw)
+            except ValueError:
+                continue
+            # cgroup v1 reports ~2^63-1 when unlimited.
+            if 0 < val < (1 << 50):
+                return val
+    return None
+
+
+def _required_memory_for(
+    sim_backend: str,
+    provider: str,
+    local_model: str | None,
+) -> tuple[int, str]:
+    """Return (required_bytes, reason) for the given similarity backend and ASR engine."""
+    if sim_backend == "onnx-int8":
+        if provider == "deepgram":
+            return (
+                MIN_MEM_DEEPGRAM_WITH_ONNX_INT8_BYTES,
+                "ASR_PROVIDER=deepgram + OnnxSimilarityModel(onnx-int8) "
+                "(measured peak ~225 MiB RSS with es_en vocab)",
+            )
+        if local_model == "tiny":
+            return (
+                MIN_MEM_WHISPER_TINY_WITH_ONNX_INT8_BYTES,
+                "ASR_PROVIDER=faster-whisper (tiny) + OnnxSimilarityModel(onnx-int8) "
+                "(measured peak ~435 MiB RSS with es_en vocab)",
+            )
+        if local_model == "base":
+            return (
+                MIN_MEM_WHISPER_BASE_WITH_ONNX_INT8_BYTES,
+                "ASR_PROVIDER=faster-whisper (base) + OnnxSimilarityModel(onnx-int8) "
+                "(measured peak ~545 MiB RSS)",
+            )
+        return (
+            MIN_MEM_WHISPER_SMALL_WITH_ONNX_INT8_BYTES,
+            "ASR_PROVIDER=faster-whisper (small) + OnnxSimilarityModel(onnx-int8) "
+            "(measured peak ~980 MiB RSS)",
+        )
+
+    if sim_backend == "onnx-fp32":
+        if provider == "deepgram":
+            return (
+                MIN_MEM_DEEPGRAM_WITH_ONNX_FP32_BYTES,
+                "ASR_PROVIDER=deepgram + OnnxSimilarityModel(onnx-fp32) "
+                "(measured peak ~485 MiB RSS with es_en vocab)",
+            )
+        if local_model == "small":
+            return (
+                MIN_MEM_WHISPER_SMALL_WITH_ONNX_FP32_BYTES,
+                "ASR_PROVIDER=faster-whisper (small) + OnnxSimilarityModel(onnx-fp32) "
+                "(measured peak ~1210 MiB RSS)",
+            )
+        return (
+            MIN_MEM_WHISPER_TINY_BASE_WITH_ONNX_FP32_BYTES,
+            f"ASR_PROVIDER=faster-whisper ({local_model}) + OnnxSimilarityModel(onnx-fp32) "
+            "(measured peak ~720-820 MiB RSS)",
+        )
+
+    # Default: SIMILARITY_BACKEND=torch
+    if provider == "deepgram":
+        return (
+            MIN_MEM_DEEPGRAM_WITH_SIM_BYTES,
+            "ASR_PROVIDER=deepgram + SimilarityModel(torch) (measured peak ~1124 MiB RSS)",
+        )
+    if local_model == "small":
+        return (
+            MIN_MEM_WHISPER_SMALL_WITH_SIM_BYTES,
+            "ASR_PROVIDER=faster-whisper (small) + SimilarityModel(torch) "
+            "(measured peak ~1698 MiB RSS)",
+        )
+    return (
+        MIN_MEM_WHISPER_TINY_BASE_WITH_SIM_BYTES,
+        f"ASR_PROVIDER=faster-whisper ({local_model}) + SimilarityModel(torch) "
+        "(measured peak ~1331 MiB RSS)",
+    )
+
+
+def check_memory_budget(limit_bytes: int | None = None) -> dict[str, Any]:
+    """Compare container memory limit against measured RSS requirements per backend & engine."""
+    detected = detect_memory_limit_bytes() if limit_bytes is None else limit_bytes
+    provider = asr_provider()
+    local_model = asr_local_model() if provider == "faster-whisper" else None
+    fallback = asr_fallback_provider() if provider == "faster-whisper" else "none"
+    sim_backend = similarity_backend()
+    enforce = asr_enforce_memory_budget()
+
+    if provider == "deepgram":
+        mode = "remote-deepgram"
+    else:
+        mode = "local-with-deepgram-fallback" if fallback == "deepgram" else "local-only"
+
+    required, reason = _required_memory_for(sim_backend, provider, local_model)
+    sufficient = detected is None or detected >= required
+    det_mib = round(detected / (1024 * 1024), 2) if detected is not None else None
+    req_mib = round(required / (1024 * 1024), 2)
+    warning = (
+        None
+        if sufficient
+        else (
+            f"Insufficient container memory: detected cgroup limit {det_mib} MiB is below "
+            f"the required {req_mib} MiB for {reason}."
+        )
+    )
+    return {
+        "asr_provider": provider,
+        "asr_local_model": local_model,
+        "asr_fallback_provider": fallback,
+        "asr_mode": mode,
+        "similarity_backend": sim_backend,
+        "memory_enforce": enforce,
+        "memory_limit_bytes": detected,
+        "memory_limit_mib": det_mib,
+        "required_memory_bytes": required,
+        "required_memory_mib": req_mib,
+        "memory_sufficient": sufficient,
+        "warning": warning,
+        "reason": reason,
+    }
+
+
+def enforce_memory_budget(limit_bytes: int | None = None) -> dict[str, Any]:
+    """Warn on startup if container memory is below threshold; fail fast only if enforced."""
+    status = check_memory_budget(limit_bytes)
+    if not status["memory_sufficient"]:
+        msg = str(status["warning"])
+        if status["memory_enforce"]:
+            raise RuntimeError(
+                f"{msg} Failing fast because ASR_ENFORCE_MEMORY_BUDGET=true "
+                "to prevent kernel OOM kill (exit 137)."
+            )
+        logger.warning(
+            "%s Set ASR_ENFORCE_MEMORY_BUDGET=true to make this check fatal on startup.",
+            msg,
+        )
+    return status
 
 
 class AasistScorer:
@@ -207,7 +768,13 @@ def synthetic_model() -> AasistScorer | None:
 def measure_audio(path: Path, question: str | None) -> dict[str, Any]:
     from spikes.synthetic_voice import decode_audio
 
+    started = perf_counter()
+    path = Path(path)
     waveform = decode_audio(path)  # Bounds duration/decoded memory before ASR.
+    provider = asr_provider()
+    fallback = asr_fallback_provider() if provider == "faster-whisper" else "none"
+    gate_cfg = quality_gate_config() if provider == "faster-whisper" else None
+
     asr = asr_model()
     model = None
     sin_modelo: str | None = None
@@ -230,20 +797,77 @@ def measure_audio(path: Path, question: str | None) -> dict[str, Any]:
             logger.warning("Similitud no disponible: %s", fallo)
             sin_modelo = str(fallo)
     detector = synthetic_model()
-    transcript = str(asr.transcribe(path)["transcript"])
+
+    primary_version = _asr_version(asr)
+    asr_version_str = primary_version
+    skip_analysis = False
+
+    if provider == "deepgram":
+        transcript = str(asr.transcribe(path)["transcript"])
+    else:
+        try:
+            asr_res = asr.transcribe(path)
+            transcript = str(asr_res.get("transcript", ""))
+            gate_passed, fallback_reason = evaluate_asr_quality(asr_res, gate_cfg)
+        except (RuntimeError, ValueError, OSError) as exc:
+            if fallback != "deepgram":
+                raise
+            logger.warning("Local Faster-Whisper failed (%s); triggering Deepgram fallback", exc)
+            transcript = ""
+            gate_passed = False
+            fallback_reason = "exception_or_timeout"
+
+        if not gate_passed and fallback_reason is not None:
+            if fallback == "deepgram":
+                elapsed = perf_counter() - started
+                fb_timeout = compute_fallback_timeout(elapsed)
+                if fb_timeout <= 0:
+                    logger.warning(
+                        "Skipping Deepgram fallback (reason=%s): remaining budget %.2fs <= 0s",
+                        fallback_reason,
+                        fb_timeout,
+                    )
+                    transcript = ""
+                    skip_analysis = True
+                    asr_version_str = (
+                        f"{primary_version};fallback_skipped=budget_exhausted;"
+                        f"reason={fallback_reason}"
+                    )
+                else:
+                    fb_asr = _build_fallback_transcriber(timeout=fb_timeout)
+                    fb_res = fb_asr.transcribe(path)
+                    transcript = str(fb_res["transcript"])
+                    asr_version_str = (
+                        f"{_asr_version(fb_asr)};fallback_from={primary_version};"
+                        f"reason={fallback_reason}"
+                    )
+            else:
+                asr_version_str = f"{primary_version};quality_gate={fallback_reason};fallback=none"
+                if not transcript.strip():
+                    skip_analysis = True
+
     similarity = None
-    versions: dict[str, str] = {"asr": _asr_version(asr), "sim": "not-applicable"}
+    versions: dict[str, str] = {"asr": asr_version_str, "sim": "not-applicable"}
     if sin_modelo is not None:
         versions["sim"] = "unavailable:model-not-loaded"
         versions["sim_error"] = sin_modelo[:200]
-    if model is not None:
+    if model is not None and not skip_analysis and transcript.strip():
         try:
             similarity = model.score(question, transcript)
-            versions["sim"] = f"multilingual-MiniLM-L12-v2@{SIM_REVISION}"
+            model_ver = getattr(model, "version", None)
+            if isinstance(model_ver, str) and model_ver:
+                versions["sim"] = model_ver
+            else:
+                sim_bg = similarity_backend()
+                versions["sim"] = (
+                    f"multilingual-MiniLM-L12-v2@{SIM_REVISION}"
+                    if sim_bg == "torch"
+                    else f"multilingual-MiniLM-L12-v2@{SIM_REVISION};backend={sim_bg}"
+                )
         except ValueError:
             # Long texts must not be silently truncated to manufacture similarity.
             versions["sim"] = "unavailable:input-outside-model-context"
-    score = detector.score(waveform) if detector else None
+    score = detector.score(waveform) if (detector and not skip_analysis) else None
     versions["tts_det"] = detector.version if detector else "disabled:awaiting-dataset-validation"
     for number in (similarity, score):
         if number is not None and (not math.isfinite(number) or not 0 <= number <= 1):
