@@ -79,7 +79,13 @@ FROM base-uv AS builder-ligero
 # similitud ONNX; `face-opencv` solo anade opencv. No hace falta compilador.
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --extra asr-local --extra face-opencv
-RUN /app/.venv/bin/python -c "from faster_whisper import WhisperModel; WhisperModel('tiny', device='cpu', compute_type='int8', download_root='/app/models', local_files_only=False)"
+# Que Whisper se mete en la imagen ligera. `tiny` es lo que cabe en los 512 MB
+# de Render. En un servidor con memoria (Contabo) se construye con
+# ASR_MODELO=small: transcribe mejor y, con la similitud ONNX, pide ~1 GB en vez
+# de los 1,7 GB del perfil completo. El worker carga sin red, asi que
+# ASR_LOCAL_MODEL tiene que coincidir con lo que se descargo aqui.
+ARG ASR_MODELO=tiny
+RUN /app/.venv/bin/python -c "from faster_whisper import WhisperModel; WhisperModel('${ASR_MODELO}', device='cpu', compute_type='int8', download_root='/app/models', local_files_only=False)"
 COPY --from=exportador /app/models/onnx_minilm_experiment /app/models/onnx_minilm_experiment
 
 # Solo se construye la cadena del perfil pedido: BuildKit salta las demas.
@@ -161,11 +167,12 @@ ENV ASR_PROVIDER=faster-whisper \
     FACE_ENGINE=insightface
 
 FROM runtime AS final-ligero
+ARG ASR_MODELO=tiny
 # Valores por defecto, no imposiciones: una variable del panel los sigue
 # pisando. Un solo proceso sin fork (SimpleWorker) para que los modelos se
 # carguen una vez y no se dupliquen en memoria por cada trabajo.
 ENV ASR_PROVIDER=faster-whisper \
-    ASR_LOCAL_MODEL=tiny \
+    ASR_LOCAL_MODEL=${ASR_MODELO} \
     ASR_FALLBACK_PROVIDER=none \
     SIMILARITY_BACKEND=onnx-int8 \
     SIMILARITY_ONNX_VOCAB=es_en \

@@ -9,7 +9,7 @@
         { "key": "Cross-Origin-Embedder-Policy", "value": "credentialless" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://uzuysjmymvtpoxfrdxnm.supabase.co; media-src 'self' blob: https://uzuysjmymvtpoxfrdxnm.supabase.co; font-src 'self' data:; connect-src 'self' https://uzuysjmymvtpoxfrdxnm.supabase.co wss://uzuysjmymvtpoxfrdxnm.supabase.co https://proctoring-api-gbqk.onrender.com; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+          "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://uzuysjmymvtpoxfrdxnm.supabase.co; media-src 'self' blob: https://uzuysjmymvtpoxfrdxnm.supabase.co; font-src 'self' data:; connect-src 'self' https://uzuysjmymvtpoxfrdxnm.supabase.co wss://uzuysjmymvtpoxfrdxnm.supabase.co https://proctoring-api-gbqk.onrender.com https://api.86-48-18-81.sslip.io; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
         },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
