@@ -42,6 +42,13 @@ export class DetectorHabla implements Detector {
   private oidas = 0
   private enviadas = 0
   private descartadas = 0
+  /**
+   * En qué paso del arranque va. Cuando el arranque se agota por tiempo, quien
+   * corta es `prepararDetectores` desde fuera y aquí no salta ninguna
+   * excepción: sin esto, «no arrancó en 90000 ms» no decía si se quedó bajando
+   * el código, creando el VAD o abriendo la pista.
+   */
+  private etapa = 'sin empezar'
 
   constructor(settings: AjustesVoz = {}) {
     this.minimoMs = settings.min_duration_ms ?? 500
@@ -100,7 +107,7 @@ export class DetectorHabla implements Detector {
 
   /** Lo que `prepararDetectores` pregunta cuando se agota el tiempo. */
   diagnostico(): string {
-    return `${this.entorno(this.context)} oidas=${this.oidas} enviadas=${this.enviadas} descartadas=${this.descartadas}`
+    return `etapa=${this.etapa.replaceAll(' ', '_')} ${this.entorno(this.context)} oidas=${this.oidas} enviadas=${this.enviadas} descartadas=${this.descartadas}`
   }
 
   async preparar(context?: DetectorContext): Promise<void> {
@@ -111,19 +118,35 @@ export class DetectorHabla implements Detector {
     this.context = context
     this.stopped = false
     this.sampleRate = context.stream.getAudioTracks()[0].getSettings().sampleRate ?? 0
+    this.etapa = 'bajando el código'
     const { MicVAD } = await import('@ricky0123/vad-web')
     if (this.stopped || generation !== this.generation) return
 
     // Cada etapa por separado: «no arrancó» no dice lo mismo si se quedó
     // cargando el modelo que si se quedó al abrir la pista de audio, y hasta
     // ahora las dos daban el mismo mensaje.
-    let etapa = 'cargando el modelo'
+    this.etapa = 'cargando el modelo'
     try {
       const vad = await MicVAD.new({
         model: 'v5',
         startOnLoad: false,
         baseAssetPath: '/vad/',
         onnxWASMBasePath: '/vad/',
+        // Un solo hilo, a propósito (BU-009).
+        //
+        // Con más de uno, ONNX Runtime levanta hilos auxiliares cargando su
+        // propio script como Worker. Si alguno de esos Workers no llega a
+        // cargar, `MicVAD.new` no falla: se queda esperándolos para siempre.
+        // Medido el 11/11/2026 con los Workers bloqueados: con hilos, colgado
+        // sin error; con `numThreads = 1`, listo en 0,5 s. Era el síntoma del
+        // examen real: «no arrancó en 90000 ms» con el micrófono en orden.
+        //
+        // No se pierde nada: Silero pesa 2 MB y procesa cada fotograma de 32 ms
+        // en torno a un milisegundo; con un hilo siguió el audio en tiempo real
+        // (263 fotogramas en 9 s). Y deja de competir por núcleos con MediaPipe.
+        ortConfig: (ort) => {
+          ort.env.wasm.numThreads = 1
+        },
         getStream: async () => new MediaStream(context.stream.getAudioTracks()),
         pauseStream: async () => {},
         resumeStream: async () => new MediaStream(context.stream.getAudioTracks()),
@@ -156,11 +179,12 @@ export class DetectorHabla implements Detector {
         return
       }
       this.vad = vad
-      etapa = 'abriendo la pista de audio'
+      this.etapa = 'abriendo la pista de audio'
       await vad.start()
+      this.etapa = 'escuchando'
     } catch (fallo) {
       const causa = fallo instanceof Error ? fallo.message : String(fallo)
-      throw new Error(`${etapa}: ${causa} [${this.entorno(context)}]`)
+      throw new Error(`${this.etapa}: ${causa} [${this.entorno(context)}]`)
     }
   }
 
