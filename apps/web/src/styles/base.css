@@ -992,7 +992,9 @@ input[type='file']::file-selector-button:hover {
 }
 
 .pantalla-reconectando > div { padding: 2rem; }
-.pantalla-reconectando h1 { margin: 1rem 0 .5rem; }
+/* El color va explícito: el tema oscuro pinta los títulos en claro, y sobre
+   este fondo blanco «Reconectando…» no se leía. */
+.pantalla-reconectando h1 { margin: 1rem 0 .5rem; color: #172033; }
 .pantalla-reconectando p { color: #596579; }
 .indicador-reconectando {
   display: inline-block;
