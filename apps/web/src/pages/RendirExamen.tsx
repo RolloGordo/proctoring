@@ -20,6 +20,8 @@ import { AvisoSupervision } from '../components/AvisoSupervision'
 import { GestorDeAvisos, type AvisoVisible } from '../supervision/avisos'
 import { recordNetworkDiagnostic } from '../supervision/diagnostics'
 import { supabase } from '../lib/supabase'
+import { EstadoConexion, SONDEO_CAIDO_MS, SONDEO_SANO_MS } from '../lib/conexion'
+import { conMargen } from '../lib/sondeo'
 
 /**
  * Pantalla del examen del estudiante.
@@ -174,7 +176,7 @@ export function RendirExamen() {
     return () => {
       cancelado = true
     }
-  }, [id, token])
+  }, [id, token, userId])
 
   const { guardar, reintentarGuardado, vaciarPendientes, limpiarPendientes } = useGuardadoDiferido(
     id,
@@ -187,6 +189,8 @@ export function RendirExamen() {
   useEffect(() => {
     let cancelado = false
     let comprobando = false
+    let temporizador: number | undefined
+    const estado = new EstadoConexion()
     const registrar = (code: 'network_disconnected' | 'network_reconnected', durationMs?: number) => {
       if (!userId) return
       void recordNetworkDiagnostic(supabase, {
@@ -201,53 +205,57 @@ export function RendirExamen() {
         }
       })
     }
-    const perderConexion = () => {
-      if (desconexionInicio.current !== null) return
+    const cayo = () => {
       desconexionInicio.current = Date.now()
       setConectado(false)
       registrar('network_disconnected')
     }
+    const programar = () => {
+      window.clearTimeout(temporizador)
+      if (cancelado) return
+      // Con margen aleatorio: sin él, todos los que entraron a la vez sondean
+      // en el mismo instante cada vez.
+      const base = estado.conectado ? SONDEO_SANO_MS : SONDEO_CAIDO_MS
+      temporizador = window.setTimeout(() => void comprobar(), conMargen(base))
+    }
     const comprobar = async () => {
-      if (comprobando || !navigator.onLine) {
-        if (!navigator.onLine) perderConexion()
+      if (comprobando) return
+      if (!navigator.onLine) {
+        if (estado.sinRed()) cayo()
+        programar()
         return
       }
       comprobando = true
-      const apiDisponible = await api.probe()
-      let supabaseDisponible = true
-      if (apiDisponible && supabase && userId) {
-        const { error: falloSupabase } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', userId)
-          .limit(1)
-          .abortSignal(AbortSignal.timeout(1500))
-        supabaseDisponible = !falloSupabase
-      }
+      // Solo la API: es por donde viajan las respuestas. Sondear también
+      // Supabase desde cada estudiante gastaba su cupo sin proteger nada más.
+      const respondio = await api.probe()
       comprobando = false
       if (cancelado) return
-      if (!apiDisponible || !supabaseDisponible) {
-        perderConexion()
-        return
-      }
-      if (desconexionInicio.current !== null) {
-        const duracion = Date.now() - desconexionInicio.current
+      const cambio = estado.sondeo(respondio)
+      if (cambio === 'cayo') cayo()
+      if (cambio === 'volvio') {
+        const duracion = Date.now() - (desconexionInicio.current ?? Date.now())
         desconexionInicio.current = null
+        setConectado(true)
         registrar('network_reconnected', duracion)
-        reintentarGuardado()
       }
-      setConectado(true)
-      reintentarGuardado()
+      // Lo que quedó pendiente (de un corte o de una recarga) se reintenta
+      // cada vez que la API responde.
+      if (respondio) reintentarGuardado()
+      programar()
     }
-    const alDesconectar = () => perderConexion()
-    window.addEventListener('online', comprobar)
+    const alDesconectar = () => {
+      if (estado.sinRed()) cayo()
+      programar()
+    }
+    const alConectar = () => void comprobar()
+    window.addEventListener('online', alConectar)
     window.addEventListener('offline', alDesconectar)
     void comprobar()
-    const temporizador = window.setInterval(() => void comprobar(), 2000)
     return () => {
       cancelado = true
-      window.clearInterval(temporizador)
-      window.removeEventListener('online', comprobar)
+      window.clearTimeout(temporizador)
+      window.removeEventListener('online', alConectar)
       window.removeEventListener('offline', alDesconectar)
     }
   }, [id, userId, reintentarGuardado])

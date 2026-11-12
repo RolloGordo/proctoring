@@ -132,3 +132,22 @@ No se guardan capturas ni audio en esta cola: contiene únicamente las respuesta
 - Los escritorios virtuales de Windows no se enumeran explícitamente. La app existente registra `focus_lost` cuando la ventana pierde el foco; queda pendiente comprobar en un equipo Windows si cambiar de escritorio virtual genera esa pérdida de foco y registra la duración esperada.
 - La duración oficial del examen sigue dependiendo de la hora de cierre del servidor; esta implementación no pausa ni amplía el examen automáticamente por una interrupción de red.
 
+
+## 8. Ajustes al integrarlo (Héctor, 11/11/2026)
+
+Se integró sobre `develop` tal como se entregó, y encima se cambiaron tres cosas:
+
+1. **La clave solo se entrega cuando el examen terminó para todos**, no en cuanto entrega cada
+   estudiante. Si no, quien entrega a los cinco minutos puede pasarle las respuestas a quienes siguen
+   rindiendo. La API responde 403 con el motivo y la pantalla del estudiante lo muestra.
+2. **Un sondeo lento ya no bloquea el examen.** Hacen falta dos fallos seguidos de `/health` (con 4 s de
+   espera cada uno) para mostrar «Reconectando…»; quedarse sin red según el navegador sigue siendo
+   inmediato. Con la API cargada, un único sondeo de 1,5 s habría puesto en blanco a todo el salón.
+3. **Se sondea cada 15 s y solo a la API**, no cada 2 s a la API y a Supabase. Con 1.000 estudiantes eran
+   500 peticiones por segundo a cada uno solo para comprobar la conexión. Mientras está caída sí se
+   reintenta cada 2 s.
+
+Además: el caso de uso se separó en `execute` (sin clave) y `review` (con clave) para que los tipos
+no mezclen las dos respuestas, y se añadieron 6 pruebas de la API y 3 de la web.
+
+La migración quedó aplicada en Supabase producción el 11/11/2026.

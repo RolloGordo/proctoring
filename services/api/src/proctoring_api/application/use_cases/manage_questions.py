@@ -385,26 +385,57 @@ class GetSubmittedExamQuestions:
         participants: ParticipantRepository | None = None,
         dev_student_id: UUID = DEFAULT_DEV_STUDENT_ID,
         banks: QuestionBankRepository | None = None,
+        clock: Clock | None = None,
     ) -> None:
         self._questions = questions
         self._sessions = sessions
         self._participants = participants
         self._dev_student_id = dev_student_id
         self._banks = banks
+        self._clock = clock
 
     def execute(
-        self,
-        session_id: UUID,
-        *,
-        actor: AuthenticatedUser | None = None,
-        include_answers: bool = False,
-    ) -> Sequence[Question | ExamQuestion]:
-        """Devuelve preguntas tras entregar y respuestas solo con permiso docente.
+        self, session_id: UUID, *, actor: AuthenticatedUser | None = None
+    ) -> Sequence[ExamQuestion]:
+        """Devuelve el examen entregado, sin respuestas correctas.
 
         Raises:
             AuthorizationError: si lo pide un docente, si la sesion no existe,
                 si no esta matriculado, o si todavia no ha entregado.
         """
+        _, preguntas = self._entregadas(session_id, actor)
+        return [pregunta.for_student() for pregunta in preguntas]
+
+    def review(
+        self, session_id: UUID, *, actor: AuthenticatedUser | None = None
+    ) -> Sequence[Question]:
+        """Devuelve el examen entregado **con** la clave (avance de Rider).
+
+        Tres condiciones, y las tres hacen falta:
+
+        - el docente lo habilito para este examen (apagado por defecto);
+        - quien pregunta ya entrego;
+        - **el examen ya termino para todos.** Sin esto, quien entrega a los
+          cinco minutos recibe la clave mientras sus companeros siguen
+          rindiendo, y se la puede pasar. Por lo mismo `execute` no la trae.
+
+        Raises:
+            AuthorizationError: si falta cualquiera de las tres, o lo que ya
+                rechaza `execute`.
+        """
+        sesion, preguntas = self._entregadas(session_id, actor)
+        if not sesion.show_answers_after_submission:
+            raise AuthorizationError("El docente no habilito la revision de respuestas correctas")
+        if self._clock is None or self._clock.now() < sesion.ends_at:
+            raise AuthorizationError(
+                "Las respuestas correctas se podran ver cuando el examen termine para todos."
+            )
+        return preguntas
+
+    def _entregadas(
+        self, session_id: UUID, actor: AuthenticatedUser | None
+    ) -> tuple[ExamSession, Sequence[Question]]:
+        """La sesion y sus preguntas completas, solo para quien ya entrego."""
         if actor is not None and actor.is_teacher:
             raise AuthorizationError(
                 "Un docente revisa el examen de un estudiante desde su panel, no por aqui"
@@ -413,9 +444,6 @@ class GetSubmittedExamQuestions:
         sesion = self._sessions.find_by_id(session_id)
         if sesion is None:
             raise AuthorizationError("No tienes acceso a este examen")
-
-        if include_answers and not sesion.show_answers_after_submission:
-            raise AuthorizationError("El docente no habilito la revision de respuestas correctas")
 
         quien = actor.id if actor is not None else self._dev_student_id
         participante = (
@@ -437,4 +465,4 @@ class GetSubmittedExamQuestions:
         else:
             preguntas = questions_for(sesion, participante.id, self._questions, self._banks)
 
-        return preguntas if include_answers else [pregunta.for_student() for pregunta in preguntas]
+        return sesion, preguntas

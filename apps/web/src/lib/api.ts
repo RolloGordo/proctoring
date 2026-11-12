@@ -6,6 +6,8 @@
  * request.
  */
 
+import { ESPERA_SONDEO_MS } from './conexion'
+
 const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
 
 export type EventType =
@@ -588,7 +590,7 @@ export const api = {
     try {
       const response = await fetch(`${BASE}/health`, {
         cache: 'no-store',
-        signal: AbortSignal.timeout(1500)
+        signal: AbortSignal.timeout(ESPERA_SONDEO_MS)
       })
       return response.ok
     } catch {

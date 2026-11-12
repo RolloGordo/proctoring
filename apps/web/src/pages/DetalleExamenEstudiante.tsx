@@ -17,6 +17,8 @@ interface Detalle {
   exam: MyExam
   questions: ExamQuestion[]
   reviewQuestions: Question[] | null
+  /** Por qué no hay clave, tal como lo dice la API. */
+  reviewNote: string | null
   answers: Answer[]
   events: ProctoringEvent[]
   decision: Decision | null
@@ -54,12 +56,18 @@ export function DetalleExamenEstudiante() {
     Promise.all([
       api.myExams(token),
       api.submittedExamQuestions(id, token),
-      api.submittedExamReview(id, token).catch(() => null),
+      api
+        .submittedExamReview(id, token)
+        .then((preguntas) => ({ preguntas, nota: null as string | null }))
+        .catch((fallo: unknown) => ({
+          preguntas: null,
+          nota: fallo instanceof Error ? fallo.message : null
+        })),
       api.myAnswers(id, token),
       api.listEvents(id, token),
       api.myDecision(id, token)
     ])
-      .then(([exams, questions, reviewQuestions, answers, events, decision]) => {
+      .then(([exams, questions, review, answers, events, decision]) => {
         if (cancelado) return
         const exam = exams.find((item) => item.session_id === id)
         if (!exam) {
@@ -70,7 +78,15 @@ export function DetalleExamenEstudiante() {
           setError('El detalle estará disponible cuando entregues el examen.')
           return
         }
-        setDetalle({ exam, questions, reviewQuestions, answers, events, decision })
+        setDetalle({
+          exam,
+          questions,
+          reviewQuestions: review.preguntas,
+          reviewNote: review.nota,
+          answers,
+          events,
+          decision
+        })
       })
       .catch((fallo: Error) => !cancelado && setError(fallo.message))
 
@@ -168,8 +184,8 @@ export function DetalleExamenEstudiante() {
         )}
         <p className="ayuda">
           {detalle.reviewQuestions
-            ? 'El docente habilitó la revisión de respuestas correctas después de entregar.'
-            : 'El docente no habilitó la revisión de respuestas correctas.'}
+            ? 'Tu docente habilitó ver las respuestas correctas de este examen.'
+            : (detalle.reviewNote ?? 'La clave de respuestas no está disponible para este examen.')}
         </p>
       </section>
 
