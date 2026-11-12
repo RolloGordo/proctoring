@@ -978,6 +978,33 @@ input[type='file']::file-selector-button:hover {
   margin: 0 auto;
 }
 
+.pantalla-reconectando {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  color: #172033;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pantalla-reconectando > div { padding: 2rem; }
+.pantalla-reconectando h1 { margin: 1rem 0 .5rem; }
+.pantalla-reconectando p { color: #596579; }
+.indicador-reconectando {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid #d9e0ea;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: giro-reconectando .8s linear infinite;
+}
+@keyframes giro-reconectando { to { transform: rotate(360deg); } }
+
 /* Pegada arriba: el estudiante siempre ve cuanto respondio y el boton de
    entregar sin tener que buscarlo al final de un examen largo. */
 .barra-examen {

@@ -75,6 +75,7 @@ def create_exam_session(
             shuffle_options=payload.shuffle_options,
             allow_back_navigation=payload.allow_back_navigation,
             reveal_code_at_start=payload.reveal_code_at_start,
+            show_answers_after_submission=payload.show_answers_after_submission,
             max_score=payload.max_score,
             modules=payload.modules or {},
         ),

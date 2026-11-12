@@ -381,6 +381,7 @@ export type Database = {
           preset: Database["public"]["Enums"]["supervision_preset"]
           question_pool_size: number | null
           reveal_code_at_start: boolean
+          show_answers_after_submission: boolean
           show_answers_at: string | null
           shuffle_options: boolean
           shuffle_questions: boolean
@@ -403,6 +404,7 @@ export type Database = {
           preset?: Database["public"]["Enums"]["supervision_preset"]
           question_pool_size?: number | null
           reveal_code_at_start?: boolean
+          show_answers_after_submission?: boolean
           show_answers_at?: string | null
           shuffle_options?: boolean
           shuffle_questions?: boolean
@@ -425,6 +427,7 @@ export type Database = {
           preset?: Database["public"]["Enums"]["supervision_preset"]
           question_pool_size?: number | null
           reveal_code_at_start?: boolean
+          show_answers_after_submission?: boolean
           show_answers_at?: string | null
           shuffle_options?: boolean
           shuffle_questions?: boolean

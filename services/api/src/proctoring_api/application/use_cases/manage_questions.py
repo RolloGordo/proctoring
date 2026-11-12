@@ -393,9 +393,13 @@ class GetSubmittedExamQuestions:
         self._banks = banks
 
     def execute(
-        self, session_id: UUID, *, actor: AuthenticatedUser | None = None
-    ) -> Sequence[ExamQuestion]:
-        """Devuelve el examen entregado, sin respuestas correctas.
+        self,
+        session_id: UUID,
+        *,
+        actor: AuthenticatedUser | None = None,
+        include_answers: bool = False,
+    ) -> Sequence[Question | ExamQuestion]:
+        """Devuelve preguntas tras entregar y respuestas solo con permiso docente.
 
         Raises:
             AuthorizationError: si lo pide un docente, si la sesion no existe,
@@ -409,6 +413,9 @@ class GetSubmittedExamQuestions:
         sesion = self._sessions.find_by_id(session_id)
         if sesion is None:
             raise AuthorizationError("No tienes acceso a este examen")
+
+        if include_answers and not sesion.show_answers_after_submission:
+            raise AuthorizationError("El docente no habilito la revision de respuestas correctas")
 
         quien = actor.id if actor is not None else self._dev_student_id
         participante = (
@@ -430,4 +437,4 @@ class GetSubmittedExamQuestions:
         else:
             preguntas = questions_for(sesion, participante.id, self._questions, self._banks)
 
-        return [pregunta.for_student() for pregunta in preguntas]
+        return preguntas if include_answers else [pregunta.for_student() for pregunta in preguntas]

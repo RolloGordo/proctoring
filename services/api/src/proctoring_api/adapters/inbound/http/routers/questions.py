@@ -34,6 +34,7 @@ from proctoring_api.adapters.inbound.http.schemas import (
     UpdateQuestionRequest,
 )
 from proctoring_api.application.use_cases.edit_questions import QuestionChanges
+from proctoring_api.domain.question import Question
 
 router = APIRouter(prefix="/api/v1", tags=["questions"])
 
@@ -138,6 +139,24 @@ def get_submitted_exam_questions(
     return [
         ExamQuestionResponse.from_entity(pregunta)
         for pregunta in use_case.execute(session_id, actor=current_user)
+    ]
+
+
+@router.get(
+    "/exam/{session_id}/submitted-review",
+    response_model=list[QuestionResponse],
+    summary="Respuestas correctas tras entregar, si el docente las habilito",
+    responses=AUTH_RESPONSES,
+)
+def get_submitted_exam_review(
+    session_id: UUID,
+    use_case: GetSubmittedExamQuestionsDep,
+    current_user: CurrentUserDep,
+) -> list[QuestionResponse]:
+    return [
+        QuestionResponse.from_entity(pregunta)
+        for pregunta in use_case.execute(session_id, actor=current_user, include_answers=True)
+        if isinstance(pregunta, Question)
     ]
 
 

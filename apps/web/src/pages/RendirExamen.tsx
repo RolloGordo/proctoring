@@ -18,6 +18,8 @@ import type { AjustesMonitoreo } from '../supervision/monitoreo'
 import { useSupervision } from '../supervision/useSupervision'
 import { AvisoSupervision } from '../components/AvisoSupervision'
 import { GestorDeAvisos, type AvisoVisible } from '../supervision/avisos'
+import { recordNetworkDiagnostic } from '../supervision/diagnostics'
+import { supabase } from '../lib/supabase'
 
 /**
  * Pantalla del examen del estudiante.
@@ -45,6 +47,7 @@ export function RendirExamen() {
   const [entregando, setEntregando] = useState(false)
   const [observado, setObservado] = useState(false)
   const [conectado, setConectado] = useState(() => navigator.onLine)
+  const desconexionInicio = useRef<number | null>(null)
   const [ahora, setAhora] = useState(() => Date.now())
   // El gestor decide cuando se ve un aviso: silencia la repeticion, junta lo
   // simultaneo y lo retira solo. Vive en un ref para que no se reinicie en
@@ -149,7 +152,12 @@ export function RendirExamen() {
     ])
       .then(([delExamen, yaRespondidas, mia, misExamenes]) => {
         if (cancelado) return
-        const previas = indexar(yaRespondidas)
+        const previas = {
+          ...indexar(yaRespondidas),
+          ...Object.fromEntries(
+            respuestasLocales(id, userId ?? null).map((answer) => [answer.question_id, answer])
+          )
+        }
         setPreguntas(delExamen)
         setRespuestas(previas)
         setMatricula(mia)
@@ -168,31 +176,114 @@ export function RendirExamen() {
     }
   }, [id, token])
 
-  const { guardar, reintentarGuardado, vaciarPendientes } = useGuardadoDiferido(
+  const { guardar, reintentarGuardado, vaciarPendientes, limpiarPendientes } = useGuardadoDiferido(
     id,
     token,
+    userId ?? null,
     setGuardado,
     setError
   )
 
   useEffect(() => {
-    const alConectar = (): void => {
-      setConectado(true)
-      if (guardado === 'error') reintentarGuardado()
+    let cancelado = false
+    let comprobando = false
+    const registrar = (code: 'network_disconnected' | 'network_reconnected', durationMs?: number) => {
+      if (!userId) return
+      void recordNetworkDiagnostic(supabase, {
+        session_id: id,
+        student_id: userId,
+        code,
+        occurred_at: new Date().toISOString(),
+        module: 'network',
+        details: {
+          occurred_at: new Date().toISOString(),
+          ...(durationMs === undefined ? {} : { duration_ms: durationMs })
+        }
+      })
     }
-    const alDesconectar = (): void => setConectado(false)
-    window.addEventListener('online', alConectar)
+    const perderConexion = () => {
+      if (desconexionInicio.current !== null) return
+      desconexionInicio.current = Date.now()
+      setConectado(false)
+      registrar('network_disconnected')
+    }
+    const comprobar = async () => {
+      if (comprobando || !navigator.onLine) {
+        if (!navigator.onLine) perderConexion()
+        return
+      }
+      comprobando = true
+      const apiDisponible = await api.probe()
+      let supabaseDisponible = true
+      if (apiDisponible && supabase && userId) {
+        const { error: falloSupabase } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', userId)
+          .limit(1)
+          .abortSignal(AbortSignal.timeout(1500))
+        supabaseDisponible = !falloSupabase
+      }
+      comprobando = false
+      if (cancelado) return
+      if (!apiDisponible || !supabaseDisponible) {
+        perderConexion()
+        return
+      }
+      if (desconexionInicio.current !== null) {
+        const duracion = Date.now() - desconexionInicio.current
+        desconexionInicio.current = null
+        registrar('network_reconnected', duracion)
+        reintentarGuardado()
+      }
+      setConectado(true)
+      reintentarGuardado()
+    }
+    const alDesconectar = () => perderConexion()
+    window.addEventListener('online', comprobar)
     window.addEventListener('offline', alDesconectar)
+    void comprobar()
+    const temporizador = window.setInterval(() => void comprobar(), 2000)
     return () => {
-      window.removeEventListener('online', alConectar)
+      cancelado = true
+      window.clearInterval(temporizador)
+      window.removeEventListener('online', comprobar)
       window.removeEventListener('offline', alDesconectar)
     }
-  }, [guardado, reintentarGuardado])
+  }, [id, userId, reintentarGuardado])
 
   useEffect(() => {
     const temporizador = setInterval(() => setAhora(Date.now()), 1000)
     return () => clearInterval(temporizador)
   }, [])
+
+  useEffect(() => {
+    if (conectado) return
+    document.getSelection()?.removeAllRanges()
+    const bloquearAtajo = (event: KeyboardEvent): void => {
+      const tecla = event.key.toLowerCase()
+      if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'x', 'v'].includes(tecla)) {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+      }
+    }
+    const bloquearPortapapeles = (event: Event): void => {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+    window.addEventListener('keydown', bloquearAtajo, true)
+    window.addEventListener('copy', bloquearPortapapeles, true)
+    window.addEventListener('cut', bloquearPortapapeles, true)
+    window.addEventListener('paste', bloquearPortapapeles, true)
+    window.addEventListener('contextmenu', bloquearPortapapeles, true)
+    return () => {
+      window.removeEventListener('keydown', bloquearAtajo, true)
+      window.removeEventListener('copy', bloquearPortapapeles, true)
+      window.removeEventListener('cut', bloquearPortapapeles, true)
+      window.removeEventListener('paste', bloquearPortapapeles, true)
+      window.removeEventListener('contextmenu', bloquearPortapapeles, true)
+    }
+  }, [conectado])
 
   // La supervisión se enciende aquí y no antes: el consentimiento se da en la
   // sala, y observar a alguien que todavía no aceptó sería justo lo que el
@@ -262,6 +353,7 @@ export function RendirExamen() {
   )
 
   async function entregar(): Promise<void> {
+    if (!conectado || !navigator.onLine) return
     setError(undefined)
     setEntregando(true)
 
@@ -278,6 +370,12 @@ export function RendirExamen() {
       setEntregando(false)
     }
 
+    // La conexión pudo caer mientras esperábamos el último guardado.
+    if (!navigator.onLine || !(await api.probe())) {
+      setConectado(false)
+      return
+    }
+
     const faltantes = unansweredCount(total, respondidas)
     const sobreFaltantes =
       faltantes === 0
@@ -290,7 +388,9 @@ export function RendirExamen() {
     if (!window.confirm(confirmacion)) return
     setEntregando(true)
     try {
-      setMatricula(await api.submitExam(id, token))
+      const entregada = await api.submitExam(id, token)
+      limpiarPendientes()
+      setMatricula(entregada)
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo entregar')
     } finally {
@@ -309,6 +409,7 @@ export function RendirExamen() {
 
   if (matricula?.submitted_at)
     return <Entregado cuando={matricula.submitted_at} sessionId={id} />
+  if (!conectado) return <PantallaReconectando />
   if (error && !preguntas) return <NoSePuede mensaje={error} />
   if (!preguntas) return <p className="tenue">Cargando examen…</p>
 
@@ -369,12 +470,6 @@ export function RendirExamen() {
         </div>
       )}
 
-      {!conectado && (
-        <p className="aviso">
-          Sin conexión. Las respuestas guardadas anteriormente permanecen en el servidor, pero los
-          cambios recientes no se guardarán hasta recuperar la conexión.
-        </p>
-      )}
       {guardado === 'error' && (
         <p className="aviso">
           No se guardó la última respuesta. Comprueba la conexión y vuelve a intentarlo.
@@ -502,6 +597,18 @@ export function RendirExamen() {
         </>
       )}
     </div>
+  )
+}
+
+function PantallaReconectando() {
+  return (
+    <main className="pantalla-reconectando" role="alert" aria-live="assertive">
+      <div>
+        <span className="indicador-reconectando" aria-hidden="true" />
+        <h1>Reconectando…</h1>
+        <p>El examen está temporalmente bloqueado mientras se recupera la conexión.</p>
+      </div>
+    </main>
   )
 }
 
@@ -707,6 +814,35 @@ function textoGuardado(estado: EstadoGuardado): string {
   }
 }
 
+function almacenamientoLocal(): Storage | undefined {
+  try {
+    return window.localStorage
+  } catch {
+    return undefined
+  }
+}
+
+function respuestasLocales(sessionId: string, studentId: string | null): NewAnswer[] {
+  const storage = almacenamientoLocal()
+  if (!storage) return []
+  try {
+    const value: unknown = JSON.parse(
+      storage.getItem(`proctoring.pending-answers:${sessionId}:${studentId ?? 'guest'}`) ?? '[]'
+    )
+    return Array.isArray(value)
+      ? value.filter(
+          (answer): answer is NewAnswer =>
+            typeof answer === 'object' &&
+            answer !== null &&
+            'question_id' in answer &&
+            typeof answer.question_id === 'string'
+        )
+      : []
+  } catch {
+    return []
+  }
+}
+
 /**
  * Guarda con un pequeño retraso y agrupando.
  *
@@ -717,6 +853,7 @@ function textoGuardado(estado: EstadoGuardado): string {
 function useGuardadoDiferido(
   sessionId: string,
   token: string | undefined,
+  studentId: string | null,
   setGuardado: (estado: EstadoGuardado) => void,
   setError: (mensaje: string | undefined) => void
 ): {
@@ -724,6 +861,7 @@ function useGuardadoDiferido(
   reintentarGuardado: () => void
   /** Manda lo pendiente y dice si quedó algo sin guardar. */
   vaciarPendientes: () => Promise<boolean>
+  limpiarPendientes: () => void
 } {
   // La lógica vive en `ColaDeGuardado`, fuera de React. Es el camino por el que
   // se pierden o no se pierden las respuestas de alguien en un examen, y dentro
@@ -752,7 +890,10 @@ function useGuardadoDiferido(
           ? fallo.message
           : 'Se perdió la conexión. Tu última respuesta no se guardó.'
       )
-    }
+    },
+    500,
+    almacenamientoLocal(),
+    `proctoring.pending-answers:${sessionId}:${studentId ?? 'guest'}`
   )
 
   // Al desmontar se manda lo que quede: cerrar la pestaña no debería perder la
@@ -768,8 +909,8 @@ function useGuardadoDiferido(
   const guardar = useCallback((respuesta: NewAnswer) => cola.current?.encolar(respuesta), [])
   const reintentarGuardado = useCallback(() => void cola.current?.enviar(), [])
   const vaciarPendientes = useCallback(async () => (await cola.current?.vaciar()) ?? true, [])
-
-  return { guardar, reintentarGuardado, vaciarPendientes }
+  const limpiarPendientes = useCallback(() => cola.current?.limpiar(), [])
+  return { guardar, reintentarGuardado, vaciarPendientes, limpiarPendientes }
 }
 
 function indexar(respuestas: Answer[]): Record<string, NewAnswer> {

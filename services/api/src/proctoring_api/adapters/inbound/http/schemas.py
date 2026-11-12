@@ -211,6 +211,7 @@ class ExamSessionRequest(BaseModel):
     #: puede leer con dos dias de antelacion es un codigo que circula con dos
     #: dias de antelacion.
     reveal_code_at_start: bool = False
+    show_answers_after_submission: bool = False
     #: Cuantas preguntas recibe cada estudiante. Solo aplica con bancos
     #: atados; sin ellos el examen usa sus propias preguntas, todas.
     question_pool_size: int | None = Field(default=None, gt=0, le=500)
@@ -274,6 +275,7 @@ class ExamSessionResponse(BaseModel):
     shuffle_options: bool
     allow_back_navigation: bool
     reveal_code_at_start: bool
+    show_answers_after_submission: bool
     question_pool_size: int | None
     max_score: Decimal
     cancelled_at: datetime | None
@@ -303,6 +305,7 @@ class ExamSessionResponse(BaseModel):
             shuffle_options=session.shuffle_options,
             allow_back_navigation=session.allow_back_navigation,
             reveal_code_at_start=session.reveal_code_at_start,
+            show_answers_after_submission=session.show_answers_after_submission,
             question_pool_size=session.question_pool_size,
             max_score=session.max_score,
             cancelled_at=session.cancelled_at,
@@ -1200,6 +1203,7 @@ class UpdateExamSessionRequest(BaseModel):
     shuffle_options: bool | None = None
     allow_back_navigation: bool | None = None
     reveal_code_at_start: bool | None = None
+    show_answers_after_submission: bool | None = None
     #: Los modulos elegidos a mano. Solo con `preset = custom`; los umbrales que
     #: no se envien los pone la API.
     modules: dict[SupervisionModule, dict[str, Any]] | None = None
@@ -1223,6 +1227,7 @@ class UpdateExamSessionRequest(BaseModel):
             shuffle_options=self.shuffle_options,
             allow_back_navigation=self.allow_back_navigation,
             reveal_code_at_start=self.reveal_code_at_start,
+            show_answers_after_submission=self.show_answers_after_submission,
             modules=self.modules,
             clear_description=self.clear_description,
             clear_course=self.clear_course,
