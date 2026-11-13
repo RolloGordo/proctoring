@@ -31,7 +31,9 @@ from audio_runtime import (
     asr_provider,
     check_memory_budget,
     enforce_memory_budget,
+    parakeet_runtime_status,
     similarity_model,
+    validate_asr_configuration,
 )
 from salud import avisos_configuracion_asr, servir_salud
 
@@ -98,6 +100,17 @@ def precargar_modelos(*, fork_worker: bool | None = None) -> dict[str, Any]:
                 "Modelo ASR local precargado en el proceso padre (SimpleWorker) en %.3f s",
                 resultado["asr_load_seconds"],
             )
+        elif asr_provider() == "parakeet" and not usa_fork:
+            from audio_runtime import asr_model
+
+            t0 = perf_counter()
+            asr_model()
+            resultado["asr_preloaded"] = True
+            resultado["asr_load_seconds"] = round(perf_counter() - t0, 4)
+            resultado["asr_load_strategy"] = "preloaded-simple-worker"
+        elif asr_provider() == "parakeet":
+            resultado["asr_load_strategy"] = "lazy-after-fork"
+            logger.info("Parakeet se cargará dentro del proceso hijo tras fork")
     except Exception as exc:  # noqa: BLE001
         logger.warning("No se pudo precargar el modelo ASR local al arrancar: %s", exc)
 
@@ -118,6 +131,7 @@ def precargar_modelos(*, fork_worker: bool | None = None) -> dict[str, Any]:
 
 def main() -> int:
     try:
+        validate_asr_configuration()
         mem_status = enforce_memory_budget()
         if mem_status["memory_sufficient"]:
             logger.info(
@@ -246,6 +260,7 @@ def _estado(connection: Redis) -> dict[str, object]:
         "memory_limit_mib": mem_info["memory_limit_mib"],
         "required_memory_mib": mem_info["required_memory_mib"],
         "memory_sufficient": mem_info["memory_sufficient"],
+        **parakeet_runtime_status(),
         "face_model": dict(MOTOR_FACIAL),
     }
 

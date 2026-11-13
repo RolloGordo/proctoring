@@ -141,6 +141,23 @@ def get_submitted_exam_questions(
     ]
 
 
+@router.get(
+    "/exam/{session_id}/submitted-review",
+    response_model=list[QuestionResponse],
+    summary="Respuestas correctas, si el docente las habilito y el examen ya termino",
+    responses=AUTH_RESPONSES,
+)
+def get_submitted_exam_review(
+    session_id: UUID,
+    use_case: GetSubmittedExamQuestionsDep,
+    current_user: CurrentUserDep,
+) -> list[QuestionResponse]:
+    return [
+        QuestionResponse.from_entity(pregunta)
+        for pregunta in use_case.review(session_id, actor=current_user)
+    ]
+
+
 @router.patch(
     "/questions/{question_id}",
     response_model=QuestionResponse,

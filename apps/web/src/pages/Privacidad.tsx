@@ -182,8 +182,9 @@ export function Privacidad() {
             <li>La sesión de tu cuenta, para que no tengas que entrar en cada página.</li>
             <li>Que ya cerraste el aviso sobre este almacenamiento, para no repetírtelo.</li>
             <li>
-              Durante un examen, una copia de tus respuestas y el ajuste de la cámara. Se borran
-              solos al cerrar la ventana.
+              Durante un examen, una copia local temporal de las respuestas pendientes y el ajuste
+              de la cámara. Las respuestas se borran al confirmarse en el servidor; si se corta la
+              conexión, se conservan hasta recuperar la red y reenviarse.
             </li>
           </ul>
           <p>

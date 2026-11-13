@@ -28,12 +28,14 @@ const DESCARGA = 'https://github.com/RolloGordo/proctoring/releases/latest'
 /**
  * Lo que observa, y en qué estado está **en producción**.
  *
- * La consulta a una IA va por separado del habla, y en desarrollo: el habla se
- * detecta, se transcribe y llega al docente con su fragmento, pero la alerta de
- * consulta exige además la similitud con la pregunta y una voz sintética, y en
- * producción todavía no se calcula ninguna de las dos. Identidad igual: se
- * guarda la foto de referencia, pero ninguna verificación ha terminado aún de
- * punta a punta.
+ * La consulta a una IA va por separado del habla, y sigue en desarrollo: el
+ * habla se detecta, se transcribe y llega al docente con su fragmento, y la
+ * similitud con la pregunta ya se calcula en producción, pero la alerta exige
+ * además una voz sintética, y ese detector todavía no corre en producción.
+ *
+ * Identidad ya está: el 11/11/2026 una verificación facial terminó de punta a
+ * punta en el servidor (coincidencia 0,87 con SFace), y quien no es reconocido
+ * lo admite el docente a mano.
  */
 const FAMILIAS = [
   {
@@ -64,7 +66,7 @@ const FAMILIAS = [
     nombre: 'Identidad',
     texto:
       'Verificación por rostro al entrar. Si la cámara no reconoce a alguien, el docente lo admite a mano.',
-    listo: false
+    listo: true
   }
 ]
 

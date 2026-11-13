@@ -19,10 +19,17 @@ from typing import Any
 
 from proctoring_api.domain.errors import DomainError
 
-#: Mismo valor que `DEFAULT_MODULE_SETTINGS[FACE_VERIFICATION]`. **Punto de
-#: partida razonado, no medido:** calibrarlo con pares reales e impostores, y
-#: reportar FAR/FRR, es parte del trabajo de SPEC-005.
-DEFAULT_SIMILARITY_THRESHOLD = 0.45
+#: Mismo valor que `DEFAULT_MODULE_SETTINGS[FACE_VERIFICATION]`.
+#:
+#: Calibrado para el motor de producción, SFace (OpenCV Zoo), por Jesús Limay.
+#: 0,363 de coseno es el umbral que publican los autores del modelo en su
+#: implementación de referencia (opencv_zoo, models/face_recognition_sface/
+#: sface.py: `_threshold_cosine = 0.363`), medido en LFW, donde la versión int8
+#: que usamos acierta el 99,32 %. El 0,45 anterior venía de ArcFace (InsightFace),
+#: que mide en otra escala: con SFace dejaba como «no coincide» a estudiantes
+#: que sí eran ellos. Confirmarlo con pares propios, con
+#: `services/ai/spikes/face_verify.py`, sigue siendo parte de SPEC-005.
+DEFAULT_SIMILARITY_THRESHOLD = 0.363
 
 
 class InvalidIdentityCheckError(DomainError):

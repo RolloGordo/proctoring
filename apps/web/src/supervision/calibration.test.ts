@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { estimateCalibration } from './calibration'
+import {
+  estimateCalibration,
+  combinarMuestras,
+  validarPaso,
+  EYE_DOWN_PLAUSIBLE,
+  EYE_DOWN_MAX,
+  EYE_SIDE_DEFAULT
+} from './calibration'
 
 describe('TA-073 gaze calibration', () => {
   const sample = (yaw: number) => ({ faceCount: 1, yaw, pitch: 0 })
@@ -32,5 +39,56 @@ describe('calibración de los ojos (Jesús)', () => {
   it('una calibración sin datos de ojos sigue valiendo', () => {
     const r = estimateCalibration([0, 1, 2, 3, 4].map((y) => ({ faceCount: 1, yaw: y, pitch: 0 })))
     expect(r.eyeDownThreshold).toBeUndefined()
+  })
+})
+
+describe('calibración con varios fotogramas por paso (Jesús)', () => {
+  const m = (eyeDown: number, eyeBlink = 0.1, faceCount = 1, eyeSide = 0.1) => ({
+    faceCount,
+    yaw: 0,
+    pitch: 0,
+    eyeDown,
+    eyeBlink,
+    eyeSide
+  })
+
+  it('un parpadeo en medio del paso no falsea la medición', () => {
+    // Seis fotogramas; en uno el estudiante parpadea (párpado 0,95, vista 0,6).
+    const r = combinarMuestras([m(0.12), m(0.11), m(0.6, 0.95), m(0.13), m(0.12), m(0.12)])
+    expect(r?.eyeDown).toBeCloseTo(0.12)
+    expect(r?.eyeBlink).toBeCloseTo(0.1)
+  })
+
+  it('si en menos de cuatro fotogramas se ve un solo rostro, el paso no vale', () => {
+    expect(
+      combinarMuestras([m(0.1), m(0.1), m(0.1, 0.1, 0), m(0.1, 0.1, 2), m(0.1, 0.1, 0), m(0.1)])
+    ).toBeNull()
+  })
+
+  it('rechaza una esquina inferior que en realidad mira por debajo de la pantalla', () => {
+    const centro = m(0.1)
+    expect(validarPaso(3, m(0.8), centro)).toMatch(/por debajo de la pantalla/)
+    expect(validarPaso(3, m(0.45), centro)).toBeNull()
+    expect(validarPaso(0, m(0.9))).toBeNull()
+  })
+
+  it('un paso aceptado nunca deja el umbral de ojos sobre el tope', () => {
+    expect(EYE_DOWN_PLAUSIBLE + 0.15).toBeCloseTo(EYE_DOWN_MAX)
+  })
+
+  it('calibra también la mirada lateral con las cuatro esquinas', () => {
+    const pasos = [
+      m(0.1, 0.1, 1, 0.05),
+      m(0.1, 0.1, 1, 0.5),
+      m(0.1, 0.1, 1, 0.55),
+      m(0.3, 0.1, 1, 0.5),
+      m(0.3, 0.1, 1, 0.6)
+    ]
+    expect(estimateCalibration(pasos).eyeSideThreshold).toBeCloseTo(0.75)
+  })
+
+  it('la mirada lateral nunca queda más estricta que el valor por defecto', () => {
+    const pasos = [0, 1, 2, 3, 4].map(() => m(0.1, 0.1, 1, 0.1))
+    expect(estimateCalibration(pasos).eyeSideThreshold).toBe(EYE_SIDE_DEFAULT)
   })
 })

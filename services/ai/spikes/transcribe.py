@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 import platform
 import sys
 from datetime import UTC, datetime
@@ -36,7 +37,7 @@ class Transcriber:
             device="cpu",
             compute_type="int8",
             cpu_threads=threads,
-            download_root="models",
+            download_root=os.getenv("ASR_LOCAL_MODEL_CACHE_DIR", "models"),
             local_files_only=offline,
         )
         self.load_seconds = perf_counter() - started

@@ -22,14 +22,41 @@ SIM_REVISION = "e8f8c211226b894fcb81acc59f3b34ba3efd5f42"
 MAX_AUDIO_BYTES = 8_000_000
 
 DEFAULT_ASR_PROVIDER = "faster-whisper"
-ASR_PROVIDERS = ("deepgram", "faster-whisper")
+ASR_PROVIDERS = ("deepgram", "faster-whisper", "parakeet")
 LOCAL_ASR_EXTRA = "asr-local"
+PARAKEET_ASR_EXTRA = "asr-parakeet"
+PARAKEET_QUALITY_CALIBRATION_SOURCE = (
+    "results/quality-gate-parakeet.json (Parakeet INT8 outputs, speaker P01)"
+)
+PARAKEET_ENGLISH_MARKERS = frozenset(
+    {
+        "what",
+        "is",
+        "it",
+        "why",
+        "never",
+        "looking",
+        "okay",
+        "my",
+        "that",
+        "now",
+        "not",
+        "going",
+        "to",
+        "be",
+        "idea",
+        "theyre",
+        "they",
+        "big",
+        "side",
+    }
+)
 
 DEFAULT_ASR_LOCAL_MODEL = "small"
 ASR_LOCAL_MODELS = ("tiny", "base", "small")
 
 DEFAULT_ASR_FALLBACK_PROVIDER = "none"
-ASR_FALLBACK_PROVIDERS = ("deepgram", "none")
+ASR_FALLBACK_PROVIDERS = ("deepgram", "faster-whisper", "none")
 
 DEFAULT_SIMILARITY_BACKEND = "torch"
 SIMILARITY_BACKENDS = ("torch", "onnx-int8", "onnx-fp32")
@@ -90,6 +117,13 @@ MIN_MEM_WHISPER_SMALL_WITH_ONNX_INT8_BYTES = 1_150 * 1024 * 1024
 MIN_MEM_DEEPGRAM_WITH_ONNX_FP32_BYTES = 640 * 1024 * 1024
 MIN_MEM_WHISPER_TINY_BASE_WITH_ONNX_FP32_BYTES = 900 * 1024 * 1024
 MIN_MEM_WHISPER_SMALL_WITH_ONNX_FP32_BYTES = 1_400 * 1024 * 1024
+
+# Existing Docker evidence measured Parakeet FP32 + PyTorch similarity at a 3,171.4 MB
+# cgroup peak, while FP32 OOMed under 2 GiB. Four GiB is the conservative minimum that
+# keeps that observed peak below the 85% operating margin. The ONNX-int8 combination has
+# not been measured separately, so it temporarily uses the same conservative bound.
+MIN_MEM_PARAKEET_FP32_WITH_SIM_BYTES = 4 * 1024 * 1024 * 1024
+MIN_MEM_PARAKEET_INT8_WITH_SIM_BYTES = 1_280 * 1024 * 1024
 
 CGROUP_V2_MEMORY_MAX = Path("/sys/fs/cgroup/memory.max")
 CGROUP_V1_MEMORY_LIMIT = Path("/sys/fs/cgroup/memory/memory.limit_in_bytes")
@@ -228,6 +262,117 @@ def asr_fallback_provider() -> str:
     return name
 
 
+def parakeet_settings() -> tuple[str, Path, int]:
+    from parakeet_transcriber import (
+        parakeet_model_dir,
+        parakeet_num_threads,
+        parakeet_precision,
+    )
+
+    return parakeet_precision(), parakeet_model_dir(), parakeet_num_threads()
+
+
+def validate_asr_configuration() -> None:
+    """Validate selected provider, local artifacts, and only the credentials it needs."""
+    provider = asr_provider()
+    fallback = asr_fallback_provider()
+    if provider == "deepgram":
+        if fallback == "faster-whisper":
+            raise ValueError(
+                "ASR_FALLBACK_PROVIDER=faster-whisper is supported only when ASR_PROVIDER=parakeet"
+            )
+        from deepgram_transcriber import _read_key
+
+        _read_key()
+        return
+    if provider == "parakeet":
+        if fallback == "deepgram":
+            raise ValueError(
+                "Parakeet supports only ASR_FALLBACK_PROVIDER=faster-whisper or none; "
+                "select a local fallback explicitly"
+            )
+        from parakeet_transcriber import validate_parakeet_installation
+
+        precision, model_dir, threads = parakeet_settings()
+        validate_parakeet_installation(model_dir, precision, threads)
+        if fallback == "faster-whisper":
+            asr_local_model()
+            if importlib.util.find_spec("faster_whisper") is None:
+                raise ValueError(
+                    "ASR_FALLBACK_PROVIDER=faster-whisper needs the optional extra "
+                    f"'{LOCAL_ASR_EXTRA}' (uv sync --extra {LOCAL_ASR_EXTRA})"
+                )
+        return
+    if provider == "faster-whisper":
+        if fallback == "faster-whisper":
+            raise ValueError("ASR_FALLBACK_PROVIDER=faster-whisper cannot fall back to itself")
+        asr_local_model()
+        # Que el extra este instalado lo comprueba `_local_asr_model` al cargar,
+        # con el mismo mensaje y como RuntimeError, que es lo que el worker y
+        # sus pruebas esperan. Repetirlo aqui lo convertia en ValueError y
+        # rompia todo camino que sustituye el modelo por un doble.
+        if fallback == "deepgram":
+            from deepgram_transcriber import _read_key
+
+            _read_key()
+        return
+    if fallback == "faster-whisper":
+        raise ValueError(
+            "ASR_FALLBACK_PROVIDER=faster-whisper is valid only when ASR_PROVIDER=parakeet"
+        )
+    if fallback == "deepgram":
+        from deepgram_transcriber import _read_key
+
+        _read_key()
+
+
+def parakeet_runtime_status() -> dict[str, Any]:
+    """Non-loading status for /health; never checks or returns credential values."""
+    try:
+        provider = asr_provider()
+    except ValueError as exc:
+        return {
+            "asr_precision": None,
+            "asr_model_dir": None,
+            "asr_model_revision": None,
+            "asr_model_loaded": False,
+            "asr_model_files_verified": False,
+            "asr_load_strategy": None,
+            "asr_configuration_error": f"invalid-config:{exc}",
+        }
+    if provider != "parakeet":
+        return {
+            "asr_precision": None,
+            "asr_model_dir": None,
+            "asr_model_revision": None,
+            "asr_model_loaded": False,
+            "asr_model_files_verified": False,
+            "asr_load_strategy": None,
+        }
+    from parakeet_transcriber import ARTIFACTS, _cached_model, validate_model_files
+
+    try:
+        precision, model_dir, threads = parakeet_settings()
+        loaded = _cached_model.cache_info().currsize > 0
+        validate_model_files(str(model_dir), precision)
+        files_verified = True
+        error = None
+    except (ValueError, OSError) as exc:
+        precision, model_dir, threads, loaded = None, None, None, False
+        files_verified = False
+        error = f"invalid-config:{exc}"
+    return {
+        "asr_precision": precision,
+        "asr_model_dir": str(model_dir) if model_dir else None,
+        "asr_model_revision": ARTIFACTS[precision].revision if precision else None,
+        "asr_model_loaded": loaded,
+        "asr_model_files_verified": files_verified,
+        "asr_num_threads": threads,
+        "asr_load_strategy": "preloaded-in-process" if loaded else "lazy-after-fork",
+        "asr_configuration_error": error,
+    }
+
+
 def asr_fallback_on_empty() -> bool:
     """Whether an empty Whisper transcript triggers fallback when fallback is enabled."""
     return _parse_bool_env("ASR_FALLBACK_ON_EMPTY", True)
@@ -314,6 +459,54 @@ def quality_gate_config() -> dict[str, Any]:
         "max_compression_ratio": max_cr,
         "hallucination_phrases": phrases,
     }
+
+
+def parakeet_quality_gate_config() -> dict[str, Any]:
+    min_wps = _parse_float_env(
+        "PARAKEET_MIN_WORDS_PER_SECOND",
+        DEFAULT_MIN_WORDS_PER_SECOND,
+        min_val=0.0,
+    )
+    raw_markers = os.getenv("PARAKEET_MIN_ENGLISH_MARKERS", "2").strip()
+    try:
+        min_markers = int(raw_markers)
+    except ValueError:
+        raise ValueError("PARAKEET_MIN_ENGLISH_MARKERS must be a positive integer") from None
+    if min_markers < 1:
+        raise ValueError("PARAKEET_MIN_ENGLISH_MARKERS must be a positive integer")
+    return {
+        "min_words_per_second": min_wps,
+        "min_english_markers": min_markers,
+        "hallucination_phrases": DEFAULT_HALLUCINATION_PHRASES,
+        "calibration_source": PARAKEET_QUALITY_CALIBRATION_SOURCE,
+        "calibration_precision": "int8",
+    }
+
+
+def evaluate_parakeet_quality(result: dict[str, Any], config: dict[str, Any]) -> list[str]:
+    """Return informational confidence reasons only; never selects another provider."""
+    transcript = str(result.get("transcript") or "").strip()
+    reasons: list[str] = []
+    if not transcript:
+        reasons.append("empty_transcript")
+        return reasons
+    words = transcript.split()
+    duration = result.get("audio_seconds")
+    if isinstance(duration, int | float) and not isinstance(duration, bool) and duration > 0:
+        words_per_second = len(words) / float(duration)
+        if words_per_second < float(config["min_words_per_second"]):
+            reasons.append("low_words_per_second")
+    from spikes.metrics import normalize
+
+    normalized_words = set(normalize(transcript))
+    if len(normalized_words.intersection(PARAKEET_ENGLISH_MARKERS)) >= int(
+        config["min_english_markers"]
+    ):
+        reasons.append("foreign_language_heuristic")
+    folded = transcript.casefold()
+    if any(phrase.casefold() in folded for phrase in config["hallucination_phrases"]):
+        reasons.append("known_hallucination_phrase")
+    return reasons
 
 
 def compute_fallback_timeout(elapsed_seconds: float) -> float:
@@ -495,16 +688,39 @@ def asr_model() -> Any:
     There is no silent fallback on configuration errors: a missing key or uninstalled extra
     must surface immediately as a failed job, never masked by another engine.
     """
-    if asr_provider() == "deepgram":
+    validate_asr_configuration()
+    provider = asr_provider()
+    if provider == "deepgram":
         from deepgram_transcriber import DeepgramTranscriber
 
         return DeepgramTranscriber()
-    fallback = asr_fallback_provider()
-    if fallback == "deepgram":
-        from deepgram_transcriber import _read_key
-
-        _read_key()
+    if provider == "parakeet":
+        return _get_parakeet_asr()
     return _get_local_asr()
+
+
+def _get_parakeet_asr() -> Any:
+    from parakeet_transcriber import _cached_model
+
+    precision, model_dir, threads = parakeet_settings()
+    from parakeet_transcriber import ParakeetConfigurationError, ParakeetRuntimeError
+
+    try:
+        return _cached_model(str(model_dir), precision, threads)
+    except ParakeetConfigurationError:
+        raise
+    except ParakeetRuntimeError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - normalize native initialization failures
+        raise ParakeetRuntimeError(
+            f"Parakeet runtime initialization failed ({type(exc).__name__})"
+        ) from None
+
+
+def clear_parakeet_model_cache() -> None:
+    from parakeet_transcriber import _cached_model
+
+    _cached_model.cache_clear()
 
 
 def _build_fallback_transcriber(timeout: float) -> Any:
@@ -525,7 +741,11 @@ def _cached_similarity_model(backend: str, vocab_mode: str) -> Any:
         from spikes.similarity import SimilarityModel
 
         try:
-            return SimilarityModel(SIM_REVISION, offline=True)
+            return SimilarityModel(
+                SIM_REVISION,
+                offline=True,
+                cache_dir=os.getenv("SIMILARITY_CACHE_DIR", "models"),
+            )
         except OSError:
             raise RuntimeError(
                 "Similarity model could not be loaded offline. Prepare the pinned model "
@@ -549,6 +769,7 @@ def _cached_similarity_model(backend: str, vocab_mode: str) -> Any:
             variant=variant,
             vocab_mode=vocab_mode,
             offline=True,
+            cache_dir=os.getenv("SIMILARITY_CACHE_DIR", "models"),
         )
     except OSError as exc:
         raise RuntimeError(
@@ -594,6 +815,24 @@ def _required_memory_for(
     local_model: str | None,
 ) -> tuple[int, str]:
     """Return (required_bytes, reason) for the given similarity backend and ASR engine."""
+    if provider == "parakeet":
+        from parakeet_transcriber import parakeet_precision
+
+        precision = parakeet_precision()
+        required = (
+            MIN_MEM_PARAKEET_FP32_WITH_SIM_BYTES
+            if precision == "fp32"
+            else MIN_MEM_PARAKEET_INT8_WITH_SIM_BYTES
+        )
+        evidence = (
+            "P02 Docker evidence: Parakeet FP32 peak cgroup 3,171.4 MB with torch similarity; "
+            "FP32 with ONNX similarity has not been measured and uses this conservative bound"
+            if precision == "fp32"
+            else "previous Docker evidence measured Parakeet INT8 near 1 GiB; "
+            "the 85% margin sets the 1,280 MiB minimum"
+        )
+        return required, f"Parakeet {precision} + {sim_backend} ({evidence})"
+
     if sim_backend == "onnx-int8":
         if provider == "deepgram":
             return (
@@ -662,12 +901,19 @@ def check_memory_budget(limit_bytes: int | None = None) -> dict[str, Any]:
     detected = detect_memory_limit_bytes() if limit_bytes is None else limit_bytes
     provider = asr_provider()
     local_model = asr_local_model() if provider == "faster-whisper" else None
-    fallback = asr_fallback_provider() if provider == "faster-whisper" else "none"
+    fallback = asr_fallback_provider() if provider in {"faster-whisper", "parakeet"} else "none"
+    parakeet_info = parakeet_runtime_status() if provider == "parakeet" else {}
     sim_backend = similarity_backend()
     enforce = asr_enforce_memory_budget()
 
     if provider == "deepgram":
         mode = "remote-deepgram"
+    elif provider == "parakeet":
+        mode = (
+            "local-parakeet-with-local-fallback"
+            if fallback == "faster-whisper"
+            else "local-parakeet"
+        )
     else:
         mode = "local-with-deepgram-fallback" if fallback == "deepgram" else "local-only"
 
@@ -697,6 +943,7 @@ def check_memory_budget(limit_bytes: int | None = None) -> dict[str, Any]:
         "memory_sufficient": sufficient,
         "warning": warning,
         "reason": reason,
+        **parakeet_info,
     }
 
 
@@ -772,10 +1019,9 @@ def measure_audio(path: Path, question: str | None) -> dict[str, Any]:
     path = Path(path)
     waveform = decode_audio(path)  # Bounds duration/decoded memory before ASR.
     provider = asr_provider()
-    fallback = asr_fallback_provider() if provider == "faster-whisper" else "none"
+    fallback = asr_fallback_provider() if provider in {"faster-whisper", "parakeet"} else "none"
     gate_cfg = quality_gate_config() if provider == "faster-whisper" else None
-
-    asr = asr_model()
+    parakeet_gate_cfg = parakeet_quality_gate_config() if provider == "parakeet" else None
     model = None
     sin_modelo: str | None = None
     if question is not None and question.strip():
@@ -798,56 +1044,108 @@ def measure_audio(path: Path, question: str | None) -> dict[str, Any]:
             sin_modelo = str(fallo)
     detector = synthetic_model()
 
-    primary_version = _asr_version(asr)
-    asr_version_str = primary_version
+    asr_quality_status = "ok"
+    asr_quality_reasons: list[str] = []
+    asr_quality_details: dict[str, str] = {}
     skip_analysis = False
 
     if provider == "deepgram":
+        asr = asr_model()
         transcript = str(asr.transcribe(path)["transcript"])
+        asr_version_str = _asr_version(asr)
+    elif provider == "parakeet":
+        from parakeet_transcriber import ParakeetConfigurationError, ParakeetRuntimeError
+
+        try:
+            asr = asr_model()
+            asr_res = asr.transcribe(path, waveform=waveform)
+        except ParakeetConfigurationError:
+            raise
+        except ParakeetRuntimeError as exc:
+            if fallback != "faster-whisper":
+                raise
+            primary_version = (
+                f"parakeet-tdt-0.6b-v3-{parakeet_settings()[0]};"
+                "runtime_initialization_or_inference_failed"
+            )
+            logger.exception(
+                "Parakeet runtime failed; switching to configured local faster-whisper fallback"
+            )
+            clear_parakeet_model_cache()
+            asr = _get_local_asr()
+            asr_res = asr.transcribe(path)
+            transcript = str(asr_res.get("transcript", ""))
+            gate_passed, reason = evaluate_asr_quality(asr_res, gate_cfg)
+            if not gate_passed and reason:
+                asr_quality_status = "low_confidence"
+                asr_quality_reasons.append(reason)
+                logger.warning("ASR low confidence provider=faster-whisper reason=%s", reason)
+            asr_version_str = (
+                f"{_asr_version(asr)};fallback_from={primary_version};"
+                f"reason=parakeet_runtime_error:{type(exc).__name__}"
+            )
+        else:
+            transcript = str(asr_res.get("transcript", ""))
+            asr_version_str = _asr_version(asr)
+            asr_quality_reasons = evaluate_parakeet_quality(asr_res, parakeet_gate_cfg or {})
+            if asr_quality_reasons:
+                asr_quality_status = "low_confidence"
+                logger.warning(
+                    "ASR low confidence provider=parakeet reasons=%s calibration_precision=int8",
+                    ",".join(asr_quality_reasons),
+                )
+            mean_log_prob = asr_res.get("mean_ys_log_prob")
+            asr_quality_details = {
+                "asr_quality_calibrated_on": "parakeet-int8",
+                "asr_quality_words_per_second": f"{asr_res.get('words_per_second', 0.0):.6f}",
+                "asr_quality_token_count": str(len(asr_res.get("tokens", []))),
+                "asr_quality_timestamp_count": str(len(asr_res.get("timestamps", []))),
+                "asr_quality_mean_ys_log_prob": (
+                    f"{mean_log_prob:.6f}"
+                    if isinstance(mean_log_prob, int | float)
+                    else "unavailable"
+                ),
+            }
     else:
+        asr = asr_model()
+        primary_version = _asr_version(asr)
         try:
             asr_res = asr.transcribe(path)
             transcript = str(asr_res.get("transcript", ""))
-            gate_passed, fallback_reason = evaluate_asr_quality(asr_res, gate_cfg)
         except (RuntimeError, ValueError, OSError) as exc:
             if fallback != "deepgram":
                 raise
-            logger.warning("Local Faster-Whisper failed (%s); triggering Deepgram fallback", exc)
-            transcript = ""
-            gate_passed = False
-            fallback_reason = "exception_or_timeout"
-
-        if not gate_passed and fallback_reason is not None:
-            if fallback == "deepgram":
-                elapsed = perf_counter() - started
-                fb_timeout = compute_fallback_timeout(elapsed)
-                if fb_timeout <= 0:
-                    logger.warning(
-                        "Skipping Deepgram fallback (reason=%s): remaining budget %.2fs <= 0s",
-                        fallback_reason,
-                        fb_timeout,
-                    )
-                    transcript = ""
-                    skip_analysis = True
-                    asr_version_str = (
-                        f"{primary_version};fallback_skipped=budget_exhausted;"
-                        f"reason={fallback_reason}"
-                    )
-                else:
-                    fb_asr = _build_fallback_transcriber(timeout=fb_timeout)
-                    fb_res = fb_asr.transcribe(path)
-                    transcript = str(fb_res["transcript"])
-                    asr_version_str = (
-                        f"{_asr_version(fb_asr)};fallback_from={primary_version};"
-                        f"reason={fallback_reason}"
-                    )
-            else:
-                asr_version_str = f"{primary_version};quality_gate={fallback_reason};fallback=none"
-                if not transcript.strip():
-                    skip_analysis = True
+            logger.warning(
+                "Local Faster-Whisper runtime failed (%s); triggering Deepgram fallback",
+                type(exc).__name__,
+            )
+            elapsed = perf_counter() - started
+            fb_timeout = compute_fallback_timeout(elapsed)
+            if fb_timeout <= 0:
+                raise RuntimeError(
+                    "Local Faster-Whisper failed and Deepgram fallback budget is exhausted"
+                ) from None
+            fb_asr = _build_fallback_transcriber(timeout=fb_timeout)
+            fb_res = fb_asr.transcribe(path)
+            transcript = str(fb_res["transcript"])
+            asr_version_str = (
+                f"{_asr_version(fb_asr)};fallback_from={primary_version};"
+                f"reason=runtime_error:{type(exc).__name__}"
+            )
+        else:
+            asr_version_str = primary_version
+            gate_passed, reason = evaluate_asr_quality(asr_res, gate_cfg)
+            if not gate_passed and reason:
+                asr_quality_status = "low_confidence"
+                asr_quality_reasons.append(reason)
+                logger.warning("ASR low confidence provider=faster-whisper reason=%s", reason)
 
     similarity = None
     versions: dict[str, str] = {"asr": asr_version_str, "sim": "not-applicable"}
+    versions["asr_quality_status"] = asr_quality_status
+    if asr_quality_reasons:
+        versions["asr_quality_reasons"] = ",".join(asr_quality_reasons)
+    versions.update(asr_quality_details)
     if sin_modelo is not None:
         versions["sim"] = "unavailable:model-not-loaded"
         versions["sim_error"] = sin_modelo[:200]

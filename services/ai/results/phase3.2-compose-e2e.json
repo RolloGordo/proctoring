@@ -1,0 +1,20 @@
+{
+  "compose_file": "docker-compose.vps.yml",
+  "profile": "e2e",
+  "services": ["redis", "api-sim", "storage-sim", "ai-worker"],
+  "worker_mode": "SimpleWorker; Parakeet FP32 + ONNX int8; no DEEPGRAM_API_KEY",
+  "worker_memory_limit_bytes": 10737418240,
+  "worker_cpu_limit": 4,
+  "health": {"endpoint": "http://127.0.0.1:8080/health", "queue": true, "asr_model_loaded": true},
+  "runs": [
+    {"enqueued": 1, "finished": 1},
+    {"enqueued": 1, "finished": 1, "simulated_first_post_503": true, "retries": 1},
+    {"enqueued": 30, "finished": 30},
+    {"enqueued": 200, "finished": 200}
+  ],
+  "aggregate_api_results": 232,
+  "aggregate_retry_count": 1,
+  "worker_cgroup_memory_peak_bytes": 4528955392,
+  "published_ports": {"worker_health": "127.0.0.1:8080", "redis": [], "api_sim": [], "storage_sim": []},
+  "limitations": "The E2E harness uses a fake API/storage and a local Redis container. It verifies job delivery, retries, results and internal-only Redis/mock networking; it does not establish connectivity to a live API or external object storage."
+}

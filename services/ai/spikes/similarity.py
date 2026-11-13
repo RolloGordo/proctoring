@@ -151,7 +151,9 @@ def load_pairs(path: Path) -> list[dict[str, Any]]:
 class SimilarityModel:
     backend = "torch"
 
-    def __init__(self, revision: str, offline: bool = False) -> None:
+    def __init__(
+        self, revision: str, offline: bool = False, cache_dir: Path | str = "models"
+    ) -> None:
         configure_model_downloads()
         if len(revision) != 40 or any(c not in "0123456789abcdef" for c in revision):
             raise ValueError("Pass a pinned 40-character model commit, not main")
@@ -159,7 +161,11 @@ class SimilarityModel:
 
         self.revision = revision
         self.engine = SentenceTransformer(
-            MODEL, revision=revision, device="cpu", cache_folder="models", local_files_only=offline
+            MODEL,
+            revision=revision,
+            device="cpu",
+            cache_folder=str(cache_dir),
+            local_files_only=offline,
         )
 
     def score(self, question: str, transcript: str) -> float:

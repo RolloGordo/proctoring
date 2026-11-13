@@ -1,0 +1,6 @@
+{
+  "image": "proctoring-ai-worker:vps",
+  "image_id": "sha256:e2717ffd1e27ef1e836ed90b570b52cb42bfc9ba7e9467d0d0e1e44099f9c9f5",
+  "size_bytes": 3012124371,
+  "contains_model_weights": false
+}

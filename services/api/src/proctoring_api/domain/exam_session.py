@@ -207,7 +207,8 @@ DEFAULT_MODULE_SETTINGS: dict[SupervisionModule, dict[str, Any]] = {
     SupervisionModule.FOCUS_LOSS: {"min_duration_ms": 5000},
     SupervisionModule.GAZE: {"yaw_degrees": 25, "min_duration_ms": 3000},
     SupervisionModule.EXTRA_PERSON: {"min_faces": 2},
-    SupervisionModule.FACE_VERIFICATION: {"similarity_threshold": 0.45},
+    # SFace (motor de producción): ver DEFAULT_SIMILARITY_THRESHOLD en identity.py.
+    SupervisionModule.FACE_VERIFICATION: {"similarity_threshold": 0.363},
     SupervisionModule.FACE_REVERIFICATION: {"interval_minutes": 10},
     SupervisionModule.MULTI_MONITOR: {"max_displays": 1},
     SupervisionModule.AI_VOICE: {"similarity_threshold": 0.6, "synthetic_threshold": 0.5},
@@ -288,6 +289,8 @@ class ExamSession:
     #: devuelve antes de empezar: ocultarlo solo en la pantalla no serviria de
     #: nada, porque viene en el JSON.
     reveal_code_at_start: bool = False
+    #: Muestra la clave al estudiante solamente despues de entregar.
+    show_answers_after_submission: bool = False
     #: Sobre cuanto se califica. Los puntos de las preguntas se reparten
     #: proporcionalmente sobre esta nota, asi que el docente puede poner 2 puntos
     #: a una pregunta y 1 a otra sin hacer cuentas para que sumen 20.
@@ -314,6 +317,7 @@ class ExamSession:
         shuffle_options: bool = True,
         allow_back_navigation: bool = True,
         reveal_code_at_start: bool = False,
+        show_answers_after_submission: bool = False,
         max_score: Decimal = DEFAULT_MAX_SCORE,
         modules: Mapping[SupervisionModule, Mapping[str, Any] | None] | None = None,
         session_id: UUID | None = None,
@@ -373,6 +377,7 @@ class ExamSession:
             shuffle_options=shuffle_options,
             allow_back_navigation=allow_back_navigation,
             reveal_code_at_start=reveal_code_at_start,
+            show_answers_after_submission=show_answers_after_submission,
             max_score=max_score,
             modules=resolved,
         )
@@ -487,6 +492,7 @@ class ExamSession:
         shuffle_options: bool | None = None,
         allow_back_navigation: bool | None = None,
         reveal_code_at_start: bool | None = None,
+        show_answers_after_submission: bool | None = None,
         modules: Mapping[SupervisionModule, Mapping[str, Any]] | None = None,
         clear_description: bool = False,
         clear_course: bool = False,
@@ -570,6 +576,11 @@ class ExamSession:
                 reveal_code_at_start
                 if reveal_code_at_start is not None
                 else self.reveal_code_at_start
+            ),
+            show_answers_after_submission=(
+                show_answers_after_submission
+                if show_answers_after_submission is not None
+                else self.show_answers_after_submission
             ),
             max_score=max_score if max_score is not None else self.max_score,
             modules=modulos,

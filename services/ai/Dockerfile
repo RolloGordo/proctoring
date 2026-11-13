@@ -123,7 +123,8 @@ COPY --from=elegido --chown=proctoring:proctoring /app/models /app/models
 #   spikes/synthetic_voice.py  de aqui sale `decode_audio`
 #   spikes/transcribe.py  save_json, y el ASR local
 COPY --chown=proctoring:proctoring \
-    tasks.py worker_stub.py salud.py audio_runtime.py deepgram_transcriber.py face_pipeline.py ./
+    tasks.py worker_stub.py salud.py audio_runtime.py deepgram_transcriber.py face_pipeline.py \
+    parakeet_transcriber.py ./
 COPY --chown=proctoring:proctoring spikes/__init__.py spikes/metrics.py spikes/network.py \
     spikes/similarity.py spikes/synthetic_voice.py spikes/transcribe.py ./spikes/
 

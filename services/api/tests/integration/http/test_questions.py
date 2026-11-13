@@ -433,3 +433,104 @@ class TestRepasarUnExamenEntregado:
 
         assert respuesta.status_code == 200
         assert len(respuesta.json()) == 1
+
+
+class TestVerLaClaveTrasEntregar:
+    """`GET /exam/{id}/submitted-review` (avance de Rider).
+
+    La clave solo sale con tres condiciones a la vez: el docente lo habilito,
+    quien pregunta ya entrego, y el examen ya termino para todos.
+    """
+
+    def sesion(self, app: Any, *, habilitada: bool, empezo_hace: timedelta) -> str:
+        sesion = ExamSession.create(
+            teacher_id=TEACHER_ID,
+            title="Parcial con revision",
+            starts_at=NOW - empezo_hace,
+            duration_minutes=90,
+            show_answers_after_submission=habilitada,
+        )
+        app.state.session_repository.save(sesion)
+        return str(sesion.id)
+
+    def entregado(self, app: Any, session_id: str) -> None:
+        participante = (
+            SessionParticipant.enroll(
+                session_id=UUID(session_id),
+                student_id=DEFAULT_DEV_STUDENT_ID,
+                consented_at=NOW,
+            )
+            .verified(NOW)
+            .submitted(NOW)
+        )
+        app.state.participant_repository.save(participante)
+
+    def preparar(self, client: TestClient, app: Any, **kw: Any) -> str:
+        sesion = self.sesion(app, **kw)
+        client.post(f"/api/v1/sessions/{sesion}/questions", json={"questions": [UNA_PREGUNTA]})
+        return sesion
+
+    def test_con_todo_cumplido_llega_la_clave(self, client: TestClient, app: Any) -> None:
+        sesion = self.preparar(client, app, habilitada=True, empezo_hace=timedelta(days=1))
+        self.entregado(app, sesion)
+
+        respuesta = client.get(f"/api/v1/exam/{sesion}/submitted-review")
+
+        assert respuesta.status_code == 200
+        assert "is_correct" in json.dumps(respuesta.json())
+
+    def test_apagado_por_defecto(self, client: TestClient, app: Any) -> None:
+        sesion = self.preparar(client, app, habilitada=False, empezo_hace=timedelta(days=1))
+        self.entregado(app, sesion)
+
+        respuesta = client.get(f"/api/v1/exam/{sesion}/submitted-review")
+
+        assert respuesta.status_code == 403
+        assert "is_correct" not in json.dumps(respuesta.json())
+
+    def test_sin_entregar_no_hay_clave(self, client: TestClient, app: Any) -> None:
+        sesion = self.preparar(client, app, habilitada=True, empezo_hace=timedelta(days=1))
+        matricular_verificado(app, sesion)
+
+        assert client.get(f"/api/v1/exam/{sesion}/submitted-review").status_code == 403
+
+    def test_mientras_otros_siguen_rindiendo_no_hay_clave(
+        self, client: TestClient, app: Any
+    ) -> None:
+        # Quien entrega a los diez minutos no puede pasarle la clave a los que
+        # siguen dentro: el examen dura 90 y empezo hace 10.
+        sesion = self.preparar(client, app, habilitada=True, empezo_hace=timedelta(minutes=10))
+        self.entregado(app, sesion)
+
+        respuesta = client.get(f"/api/v1/exam/{sesion}/submitted-review")
+
+        assert respuesta.status_code == 403
+        assert "termine" in respuesta.json()["detail"]
+        assert "is_correct" not in json.dumps(respuesta.json())
+
+    def test_el_repaso_normal_sigue_sin_clave_aunque_este_habilitada(
+        self, client: TestClient, app: Any
+    ) -> None:
+        sesion = self.preparar(client, app, habilitada=True, empezo_hace=timedelta(days=1))
+        self.entregado(app, sesion)
+
+        crudo = json.dumps(client.get(f"/api/v1/exam/{sesion}/submitted-questions").json())
+
+        assert "is_correct" not in crudo
+
+    def test_la_opcion_se_guarda_y_se_edita(self, client: TestClient) -> None:
+        creada = client.post(
+            "/api/v1/sessions",
+            json={
+                "title": "Con revision",
+                "starts_at": (NOW + timedelta(days=1)).isoformat(),
+                "duration_minutes": 60,
+                "show_answers_after_submission": True,
+            },
+        ).json()
+        assert creada["show_answers_after_submission"] is True
+
+        editada = client.patch(
+            f"/api/v1/sessions/{creada['id']}", json={"show_answers_after_submission": False}
+        ).json()
+        assert editada["show_answers_after_submission"] is False

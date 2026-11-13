@@ -1,14 +1,22 @@
 /** Detectores de SPEC-007. Sin grabación continua ni eventos por fotograma. */
 import type { FaceLandmarker } from '@mediapipe/tasks-vision'
 import type { Detector, Observacion, Veredicto } from '../tipos'
+import { ANCHO_ROSTRO, fotogramaReducido } from './fotograma'
 import {
-  angulosDesdeMatriz,
+  cargarRemoto,
+  remotoActivo,
+  siCaeElRemoto,
+  solicitarCuadro,
+  ultimoRostro
+} from './motorRemoto'
+import {
   capacidadParaUmbralRostros,
+  compactarRostro,
+  medicionDesdeRostro,
   LIMITES_OJOS_POR_DEFECTO,
-  ojosDesdeBlendshapes,
   reglaOjos,
   reglasVision,
-  type Ojos
+  type MedicionRostro
 } from './vision-core'
 
 export interface AjustesMirada {
@@ -37,14 +45,7 @@ export interface AjustesPersonaExtra {
   min_duration_ms?: number
 }
 
-interface Medicion {
-  caras: number
-  yaw: number | null
-  pitch: number | null
-  inferenceMs: number
-  mouthOpenRatio: number | null
-  ojos: Ojos | null
-}
+type Medicion = MedicionRostro
 
 /** Modelo compartido: la biblioteca se importa solo al activar supervisión visual.
  * Si una sesión exige min_faces=3, el modelo debe ser capaz de detectar 3 caras.
@@ -91,35 +92,54 @@ async function motor(rostrosNecesarios = 2): Promise<void> {
   }
 }
 
-function medicionDe({ video, ahoraMs }: Observacion): Medicion | null {
-  if (!video || !instancia || video.readyState < 2 || !video.videoWidth) return null
-  // AhoraMs viene de Date.now() en la aplicación. Es común para los tres detectores
-  // de cada ciclo, y MediaPipe necesita marcas monótonas para detectForVideo.
+/**
+ * Rostros que debe poder ver el motor en segundo plano. Si el worker se cae, el
+ * motor local se carga con la misma capacidad.
+ */
+let capacidadRemota = 0
+let capacidadDeseada = 2
+siCaeElRemoto(() => {
+  capacidadRemota = 0
+  void motor(capacidadDeseada).catch(() => {})
+})
+
+/**
+ * Prepara el modelo de rostro: primero en segundo plano (`motor.worker.ts`);
+ * si el worker no está disponible, en el hilo principal como antes.
+ */
+async function prepararRostro(rostrosNecesarios = 2): Promise<void> {
+  const requeridos = capacidadParaUmbralRostros(rostrosNecesarios)
+  capacidadDeseada = Math.max(capacidadDeseada, requeridos)
+  if (await cargarRemoto('rostro', { numFaces: capacidadDeseada })) {
+    capacidadRemota = capacidadDeseada
+    return
+  }
+  await motor(capacidadDeseada)
+}
+
+/**
+ * La medición del ciclo. `local` obliga a medir en el hilo principal: lo usan
+ * la calibración y la comprobación de la foto, que necesitan la respuesta del
+ * fotograma que están mirando y no la del ciclo anterior.
+ */
+function medicionDe({ video, ahoraMs }: Observacion, local = false): Medicion | null {
+  if (!video || video.readyState < 2 || !video.videoWidth) return null
+  if (!local && remotoActivo()) {
+    solicitarCuadro(video, ahoraMs)
+    const r = ultimoRostro(ahoraMs)
+    return r ? medicionDesdeRostro(r.datos, r.ms ?? 0) : null
+  }
+  if (!instancia) {
+    // Si el worker se cayó en pleno examen, el motor local se está cargando.
+    return null
+  }
+  // AhoraMs es común para los tres detectores de cada ciclo, y MediaPipe
+  // necesita marcas monótonas para detectForVideo.
   if (ultima?.video === video && ultima.frame === ahoraMs) return ultima.medicion
   const start = performance.now()
-  const resultado = instancia.detectForVideo(video, start)
-  const inferenceMs = performance.now() - start
-  const caras = resultado.faceLandmarks.length
-  const angulos = caras === 1 ? angulosDesdeMatriz(resultado.facialTransformationMatrixes[0]) : null
-  // Mouth openness is only an observable signal. It cannot prove speaking, a call,
-  // or an unseen telephone; no accusation/event is derived from it.
-  const landmarks = caras === 1 ? resultado.faceLandmarks[0] : undefined
-  const upper = landmarks?.[13]
-  const lower = landmarks?.[14]
-  const left = landmarks?.[61]
-  const right = landmarks?.[291]
-  const width = left && right ? Math.hypot(left.x - right.x, left.y - right.y) : 0
-  const mouthOpenRatio = width > 0 && upper && lower
-    ? Math.hypot(upper.x - lower.x, upper.y - lower.y) / width : null
-  const ojos = caras === 1 ? ojosDesdeBlendshapes(resultado.faceBlendshapes?.[0]?.categories) : null
-  const medicion = {
-    caras,
-    yaw: angulos?.yaw ?? null,
-    pitch: angulos?.pitch ?? null,
-    inferenceMs,
-    mouthOpenRatio,
-    ojos
-  }
+  // Entrada reducida (fotograma.ts): mismo resultado normalizado, menos copia.
+  const resultado = instancia.detectForVideo(fotogramaReducido(video, ahoraMs, ANCHO_ROSTRO), start)
+  const medicion = medicionDesdeRostro(compactarRostro(resultado), performance.now() - start)
   ultima = { video, frame: ahoraMs, medicion }
   return medicion
 }
@@ -156,7 +176,7 @@ export class DetectorMirada implements Detector {
     }
   }
 
-  async preparar(): Promise<void> { await motor() }
+  async preparar(): Promise<void> { await prepararRostro() }
 
   observar(observacion: Observacion): Veredicto {
     const m = medicionDe(observacion)
@@ -204,7 +224,7 @@ export class DetectorRostroAusente implements Detector {
   readonly minimoMs: number
 
   constructor(ajustes: AjustesRostro = {}) { this.minimoMs = ajustes.min_duration_ms ?? 5000 }
-  async preparar(): Promise<void> { await motor() }
+  async preparar(): Promise<void> { await prepararRostro() }
 
   observar(observacion: Observacion): Veredicto {
     const m = medicionDe(observacion)
@@ -226,7 +246,7 @@ export class DetectorPersonaExtra implements Detector {
     this.minimoMs = ajustes.min_duration_ms ?? 2000
     this.minimoRostros = ajustes.min_faces ?? 2
   }
-  async preparar(): Promise<void> { await motor(this.minimoRostros) }
+  async preparar(): Promise<void> { await prepararRostro(this.minimoRostros) }
 
   observar(observacion: Observacion): Veredicto {
     const m = medicionDe(observacion)
@@ -235,7 +255,7 @@ export class DetectorPersonaExtra implements Detector {
       activa: m.caras >= this.minimoRostros,
       metadata: {
         source: 'mediapipe', faces_detected: m.caras,
-        min_faces: this.minimoRostros, model_num_faces: capacidad,
+        min_faces: this.minimoRostros, model_num_faces: remotoActivo() ? capacidadRemota : capacidad,
         inference_ms: Math.round(m.inferenceMs * 10) / 10,
         min_duration_ms: this.minimoMs
       }
@@ -249,7 +269,7 @@ export class DetectorPersonaExtra implements Detector {
  */
 export async function contarRostrosEnCamara(video: HTMLVideoElement): Promise<number> {
   await motor(2)
-  const result = medicionDe({ video, ahoraMs: Date.now() })
+  const result = medicionDe({ video, ahoraMs: Date.now() }, true)
   if (!result) throw new Error('MediaPipe no pudo evaluar la imagen de la cámara.')
   return result.caras
 }
@@ -261,15 +281,17 @@ export async function measureHeadPose(video: HTMLVideoElement): Promise<{
   pitch: number | null
   eyeDown: number | null
   eyeBlink: number | null
+  eyeSide: number | null
 }> {
   await motor(2)
-  const result = medicionDe({ video, ahoraMs: Date.now() })
+  const result = medicionDe({ video, ahoraMs: Date.now() }, true)
   if (!result) throw new Error('La cámara todavía no entrega una imagen válida.')
   return {
     faceCount: result.caras,
     yaw: result.yaw,
     pitch: result.pitch,
     eyeDown: result.ojos?.abajo ?? null,
-    eyeBlink: result.ojos?.parpado ?? null
+    eyeBlink: result.ojos?.parpado ?? null,
+    eyeSide: result.ojos?.lado ?? null
   }
 }

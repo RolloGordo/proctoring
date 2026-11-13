@@ -669,6 +669,7 @@ def create_app(
         participant_repository,
         settings.dev_student_id,
         bank_repository,
+        clock,
     )
     app.state.bank_repository = bank_repository
     app.state.update_session = UpdateExamSession(

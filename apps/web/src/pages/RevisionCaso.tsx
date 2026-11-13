@@ -34,7 +34,9 @@ const DIAGNOSTIC_LABELS: Record<string, string> = {
   audio_segment_lost: 'Fragmento de audio perdido',
   image_evidence_lost: 'Captura no disponible',
   signal_rejected: 'Señal rechazada por el servidor',
-  signal_queue_stuck: 'Las señales no se estaban registrando'
+  signal_queue_stuck: 'Las señales no se estaban registrando',
+  network_disconnected: 'Conexión interrumpida',
+  network_reconnected: 'Conexión recuperada'
 }
 
 /**
@@ -75,6 +77,11 @@ function detalleDiagnostico(d: {
   if (d.code === 'signal_queue_stuck') {
     const pendientes = Number(det.pending ?? 0)
     return `${pendientes} señales esperando tras ${Number(det.attempts ?? 0)} intentos.`
+  }
+  if (d.code === 'network_disconnected') return 'El estudiante perdió conexión; el examen quedó bloqueado.'
+  if (d.code === 'network_reconnected') {
+    const segundos = Math.max(0, Number(det.duration_ms ?? 0) / 1000)
+    return `Conexión recuperada tras ${segundos.toFixed(1)} s.`
   }
   const motivo = det.reason
   return typeof motivo === 'string' && motivo ? motivo : null
