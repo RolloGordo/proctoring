@@ -8,7 +8,7 @@ revisar diez veces un código que está bien.
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -501,6 +501,7 @@ class TestPersonalizado:
             "metadata": {"process_name": "AnyDesk.exe"},
             "evidence_path": None,
         }
+        matricular(cast(FastAPI, authed_client.app), examen["id"])
 
         rechazado = authed_client.post("/api/v1/events", json=evento, headers=bearer(STUDENT_TOKEN))
         aceptado = authed_client.post(

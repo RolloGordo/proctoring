@@ -205,3 +205,18 @@ def authed_app(clock: FixedClock, identify_user: IdentifyUser) -> FastAPI:
 def authed_client(authed_app: FastAPI) -> Iterator[TestClient]:
     with TestClient(authed_app) as test_client:
         yield test_client
+
+
+def matricular(app: Any, session_id: Any, student_id: UUID = CONTRACT_STUDENT_ID) -> None:
+    """Matricula y consiente a un estudiante, como lo deja `/exam/{id}/enroll`.
+
+    Desde SEC-07 (13/11/2026) solo reporta senales quien esta matriculado en el
+    examen: las pruebas que mandan eventos tienen que matricularlo antes.
+    """
+    from proctoring_api.domain.participant import SessionParticipant
+
+    app.state.participant_repository.save(
+        SessionParticipant.enroll(
+            session_id=UUID(str(session_id)), student_id=student_id, consented_at=NOW
+        )
+    )

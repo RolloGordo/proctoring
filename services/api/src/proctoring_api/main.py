@@ -559,6 +559,8 @@ def create_app(
         bank_repository if settings.event_repository == "supabase" else None,
         # Para descartar lo que el docente no activo en un examen personalizado.
         session_repository,
+        # Para exigir que quien reporta este matriculado en ese examen (SEC-07).
+        participant_repository,
     )
     app.state.list_session_events = ListSessionEvents(event_repository, session_repository)
     app.state.list_session_alerts = ListSessionAlerts(alert_repository, session_repository)
