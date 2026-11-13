@@ -307,11 +307,10 @@ def validate_asr_configuration() -> None:
         if fallback == "faster-whisper":
             raise ValueError("ASR_FALLBACK_PROVIDER=faster-whisper cannot fall back to itself")
         asr_local_model()
-        if importlib.util.find_spec("faster_whisper") is None:
-            raise ValueError(
-                "ASR_PROVIDER=faster-whisper needs the optional extra "
-                f"'{LOCAL_ASR_EXTRA}' (uv sync --extra {LOCAL_ASR_EXTRA})"
-            )
+        # Que el extra este instalado lo comprueba `_local_asr_model` al cargar,
+        # con el mismo mensaje y como RuntimeError, que es lo que el worker y
+        # sus pruebas esperan. Repetirlo aqui lo convertia en ValueError y
+        # rompia todo camino que sustituye el modelo por un doble.
         if fallback == "deepgram":
             from deepgram_transcriber import _read_key
 

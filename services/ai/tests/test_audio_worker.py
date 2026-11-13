@@ -219,7 +219,9 @@ def test_faster_whisper_without_its_extra_fails_with_an_actionable_message(asr_e
     asr_env.setattr(audio_runtime.importlib.util, "find_spec", find_spec)
     audio_runtime._local_asr_model.cache_clear()
     try:
-        with pytest.raises(ValueError, match="uv sync --extra asr-local"):
+        # La comprueba el cargador del modelo local (RuntimeError), no la
+        # validacion de configuracion: asi los dobles del modelo siguen sirviendo.
+        with pytest.raises(RuntimeError, match="uv sync --extra asr-local"):
             audio_runtime.asr_model()
     finally:
         audio_runtime._local_asr_model.cache_clear()
