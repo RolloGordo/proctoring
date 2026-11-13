@@ -1,0 +1,789 @@
+{
+  "processes": 1,
+  "jobs": 50,
+  "cpu_quota_per_worker": 6.0,
+  "mode": "RQ Worker with fork",
+  "batch_seconds": 219.86431081000046,
+  "jobs_per_minute": 13.644779313876466,
+  "job_runner": {
+    "batch_seconds": 217.9242222360008,
+    "enqueued": 50,
+    "event_ids": [
+      "76679c7d-800d-4791-9fdb-99b5775d67e2",
+      "61a03cbb-a4f3-4b61-a6f2-a65a8a8b127d",
+      "efd986a7-10e3-4727-a8f5-f1ef6ac81890",
+      "ac1c0d06-55e3-4d67-bb70-e447cc55c79a",
+      "7390957f-c46e-4113-b116-2f76c2a5aedf",
+      "0a02c952-213e-469c-b1cd-6d0419038df9",
+      "7e925616-2d99-4e29-9fb0-4032acbfc69a",
+      "2ef37b47-1fab-463a-8572-add17cc5bb6c",
+      "d20a110d-b91a-4c90-a097-e3120a16783b",
+      "2e5ad4f8-dc50-42aa-8bf6-46aa1bb0b35b",
+      "6200621e-48c3-49db-8809-78d96bc2e381",
+      "af544143-7d77-472c-828a-726d8a6bb0d5",
+      "183b03ab-4828-4ee5-a9f5-558d45d859d6",
+      "6855e458-abfd-4a7c-b5cc-595578aae9b1",
+      "d73d9bc4-a442-49fc-8b86-bf62f78f4f58",
+      "11b2128b-1337-4f96-b10d-4da31f9d1c1f",
+      "08ca3506-c5fe-4a67-bde8-1649b353533d",
+      "727a06f0-a524-4a8c-a8b9-253c67b1df24",
+      "bcde44cf-9bc2-4bbf-a344-eb94fe059ee0",
+      "3a4cf33a-6912-4134-add5-50b1751cf12a",
+      "24b0d8cb-93e6-4608-baca-43530fa4f07e",
+      "47597e16-8841-4c93-bbe2-56ab399d2748",
+      "eb362d1c-347e-42da-8e65-c3a08747b2d7",
+      "99e0b2ff-e3a6-4c17-81a8-d442de381b75",
+      "a6c41606-14d2-48d0-a8a5-0eccf01f141e",
+      "36898b2a-838d-44d6-9edd-e42d9b6b1228",
+      "ae5d2c40-54e5-40bb-9100-69a538cc5d72",
+      "3cb4e586-af22-40a7-a614-6d30ddf32551",
+      "4e669ed6-1e5b-407f-85d5-d40b8d08e416",
+      "828a7f29-69c1-4dcc-bce8-317315a2a73b",
+      "512f8207-d25e-4e0c-b7b6-fa7daad3c70f",
+      "3844ca43-11d1-4b51-ab55-e83805d4efb8",
+      "54874066-8532-463a-8954-b74090170f7f",
+      "672ec3f4-de87-418c-95eb-8d1e0ce218b0",
+      "6c1f4b79-2e19-4ed4-abda-db4c521c3706",
+      "8b2ea6a3-70dd-4a5f-ac6f-341bc2021240",
+      "8d3dd436-35ff-4070-a484-5ec9366fcfb6",
+      "5ce3abcc-6422-4fdd-a557-1ee671870347",
+      "190ac79b-ecce-4541-874a-2e0a6997027e",
+      "4f6ac3a2-6473-4e13-8519-3dee3549b278",
+      "c2845036-1659-463a-9990-9a2b79963d41",
+      "d7ad5298-cc48-4199-a0f7-7786fdc588e9",
+      "7d40399b-db06-4c12-b007-198614156311",
+      "32d99203-a984-4976-ade4-ed7bea18c390",
+      "e998b668-b4e0-4e99-9275-dbd81f983022",
+      "80c5f619-765d-4c5b-b015-396d5ce98ff1",
+      "7726f052-9180-40bb-a02e-e356c26c5a37",
+      "8f22227b-91c9-446f-9f32-401e8d566c54",
+      "97b0e3e9-7220-4d5d-8d47-87fee78b8cfc",
+      "29107eeb-2063-4b26-979a-72f1ad270ea3"
+    ],
+    "job_statuses": {
+      "finished": 50
+    }
+  },
+  "api_processing_ms": {
+    "sample_count": 50,
+    "first_enqueued_job_ms": 8065,
+    "subsequent_p50_ms": 3960.0,
+    "subsequent_p90_ms": 4171.8,
+    "all_samples_ms": [
+      8065,
+      6954,
+      5403,
+      3756,
+      3658,
+      3591,
+      4081,
+      4155,
+      4041,
+      3984,
+      3965,
+      3989,
+      4158,
+      3892,
+      4028,
+      3821,
+      4010,
+      3760,
+      3902,
+      4055,
+      4003,
+      3975,
+      4053,
+      4188,
+      4164,
+      3838,
+      3898,
+      3820,
+      3985,
+      4020,
+      4179,
+      3817,
+      3875,
+      3947,
+      3933,
+      3996,
+      3780,
+      3798,
+      3821,
+      3885,
+      3873,
+      3960,
+      3865,
+      4137,
+      3815,
+      3890,
+      4253,
+      3798,
+      4170,
+      3682
+    ],
+    "subsequent_sample_count": 49
+  },
+  "cgroup_peak_bytes_by_worker": {
+    "ai-worker-bench-1": 4698435584
+  },
+  "docker_stats_samples": [
+    {
+      "elapsed_seconds": 2.0484242390011786,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "218.4MiB / 11.46GiB",
+      "cpu_percent": "3.35%"
+    },
+    {
+      "elapsed_seconds": 4.062071115000435,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "281.1MiB / 11.46GiB",
+      "cpu_percent": "82.44%"
+    },
+    {
+      "elapsed_seconds": 6.072420184998919,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.921GiB / 11.46GiB",
+      "cpu_percent": "66.46%"
+    },
+    {
+      "elapsed_seconds": 8.105945843999507,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.469GiB / 11.46GiB",
+      "cpu_percent": "356.49%"
+    },
+    {
+      "elapsed_seconds": 10.096464899001148,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "316.4MiB / 11.46GiB",
+      "cpu_percent": "118.38%"
+    },
+    {
+      "elapsed_seconds": 12.111394096998993,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.073GiB / 11.46GiB",
+      "cpu_percent": "37.72%"
+    },
+    {
+      "elapsed_seconds": 14.121041525999317,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.111GiB / 11.46GiB",
+      "cpu_percent": "63.05%"
+    },
+    {
+      "elapsed_seconds": 16.131330870997772,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "280.1MiB / 11.46GiB",
+      "cpu_percent": "416.09%"
+    },
+    {
+      "elapsed_seconds": 18.140871937997872,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "826.9MiB / 11.46GiB",
+      "cpu_percent": "62.60%"
+    },
+    {
+      "elapsed_seconds": 20.153963277000003,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.755GiB / 11.46GiB",
+      "cpu_percent": "44.30%"
+    },
+    {
+      "elapsed_seconds": 22.164197426998726,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "335.4MiB / 11.46GiB",
+      "cpu_percent": "283.07%"
+    },
+    {
+      "elapsed_seconds": 24.174344999999448,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.849GiB / 11.46GiB",
+      "cpu_percent": "99.03%"
+    },
+    {
+      "elapsed_seconds": 26.184219937000307,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.6MiB / 11.46GiB",
+      "cpu_percent": "272.14%"
+    },
+    {
+      "elapsed_seconds": 28.193668281997816,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.116GiB / 11.46GiB",
+      "cpu_percent": "148.30%"
+    },
+    {
+      "elapsed_seconds": 30.218186992999108,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.8MiB / 11.46GiB",
+      "cpu_percent": "192.10%"
+    },
+    {
+      "elapsed_seconds": 32.23377039399929,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.491GiB / 11.46GiB",
+      "cpu_percent": "153.76%"
+    },
+    {
+      "elapsed_seconds": 34.23881854299907,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "306.1MiB / 11.46GiB",
+      "cpu_percent": "118.79%"
+    },
+    {
+      "elapsed_seconds": 36.250986441998975,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.491GiB / 11.46GiB",
+      "cpu_percent": "193.82%"
+    },
+    {
+      "elapsed_seconds": 38.269518749999406,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.7MiB / 11.46GiB",
+      "cpu_percent": "200.28%"
+    },
+    {
+      "elapsed_seconds": 40.278077808998205,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.241GiB / 11.46GiB",
+      "cpu_percent": "99.56%"
+    },
+    {
+      "elapsed_seconds": 42.28859359700073,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305MiB / 11.46GiB",
+      "cpu_percent": "356.99%"
+    },
+    {
+      "elapsed_seconds": 44.30074837400025,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.846GiB / 11.46GiB",
+      "cpu_percent": "99.59%"
+    },
+    {
+      "elapsed_seconds": 46.31231734099856,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "224.2MiB / 11.46GiB",
+      "cpu_percent": "422.62%"
+    },
+    {
+      "elapsed_seconds": 48.322294280998904,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.435GiB / 11.46GiB",
+      "cpu_percent": "99.87%"
+    },
+    {
+      "elapsed_seconds": 50.336055583000416,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.494GiB / 11.46GiB",
+      "cpu_percent": "469.63%"
+    },
+    {
+      "elapsed_seconds": 52.34111205999943,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.247GiB / 11.46GiB",
+      "cpu_percent": "99.18%"
+    },
+    {
+      "elapsed_seconds": 54.36841210499915,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.493GiB / 11.46GiB",
+      "cpu_percent": "425.61%"
+    },
+    {
+      "elapsed_seconds": 56.37320071800059,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1000MiB / 11.46GiB",
+      "cpu_percent": "99.37%"
+    },
+    {
+      "elapsed_seconds": 58.38403011099945,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.501GiB / 11.46GiB",
+      "cpu_percent": "427.74%"
+    },
+    {
+      "elapsed_seconds": 60.39394176499991,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "546MiB / 11.46GiB",
+      "cpu_percent": "98.68%"
+    },
+    {
+      "elapsed_seconds": 62.406409433999215,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.498GiB / 11.46GiB",
+      "cpu_percent": "254.26%"
+    },
+    {
+      "elapsed_seconds": 64.41493446599998,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "306.1MiB / 11.46GiB",
+      "cpu_percent": "119.19%"
+    },
+    {
+      "elapsed_seconds": 66.42968864299837,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.491GiB / 11.46GiB",
+      "cpu_percent": "205.55%"
+    },
+    {
+      "elapsed_seconds": 68.436759876,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.6MiB / 11.46GiB",
+      "cpu_percent": "119.29%"
+    },
+    {
+      "elapsed_seconds": 70.44999658699817,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.496GiB / 11.46GiB",
+      "cpu_percent": "164.15%"
+    },
+    {
+      "elapsed_seconds": 72.47193413700006,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.7MiB / 11.46GiB",
+      "cpu_percent": "231.38%"
+    },
+    {
+      "elapsed_seconds": 74.48273013300059,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.341GiB / 11.46GiB",
+      "cpu_percent": "107.23%"
+    },
+    {
+      "elapsed_seconds": 76.49847348999901,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "306.3MiB / 11.46GiB",
+      "cpu_percent": "238.58%"
+    },
+    {
+      "elapsed_seconds": 78.50518163200104,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.181GiB / 11.46GiB",
+      "cpu_percent": "99.33%"
+    },
+    {
+      "elapsed_seconds": 80.51931286699983,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305MiB / 11.46GiB",
+      "cpu_percent": "331.27%"
+    },
+    {
+      "elapsed_seconds": 82.5272581270001,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.006GiB / 11.46GiB",
+      "cpu_percent": "99.43%"
+    },
+    {
+      "elapsed_seconds": 84.53801422499964,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.2MiB / 11.46GiB",
+      "cpu_percent": "323.20%"
+    },
+    {
+      "elapsed_seconds": 86.54891405099988,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.974GiB / 11.46GiB",
+      "cpu_percent": "99.33%"
+    },
+    {
+      "elapsed_seconds": 88.56000385299922,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.3MiB / 11.46GiB",
+      "cpu_percent": "353.94%"
+    },
+    {
+      "elapsed_seconds": 90.56937261300118,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.661GiB / 11.46GiB",
+      "cpu_percent": "104.76%"
+    },
+    {
+      "elapsed_seconds": 92.57904965299895,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "224.6MiB / 11.46GiB",
+      "cpu_percent": "421.15%"
+    },
+    {
+      "elapsed_seconds": 94.58981400999983,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.465GiB / 11.46GiB",
+      "cpu_percent": "98.64%"
+    },
+    {
+      "elapsed_seconds": 96.61537502899955,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.494GiB / 11.46GiB",
+      "cpu_percent": "465.06%"
+    },
+    {
+      "elapsed_seconds": 98.6171491319983,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.056GiB / 11.46GiB",
+      "cpu_percent": "99.92%"
+    },
+    {
+      "elapsed_seconds": 100.63701808299811,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.492GiB / 11.46GiB",
+      "cpu_percent": "424.77%"
+    },
+    {
+      "elapsed_seconds": 102.64269763199991,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "963.6MiB / 11.46GiB",
+      "cpu_percent": "99.41%"
+    },
+    {
+      "elapsed_seconds": 104.662270498,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.492GiB / 11.46GiB",
+      "cpu_percent": "383.16%"
+    },
+    {
+      "elapsed_seconds": 106.66865389599843,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "492.9MiB / 11.46GiB",
+      "cpu_percent": "98.95%"
+    },
+    {
+      "elapsed_seconds": 108.68262871999832,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.491GiB / 11.46GiB",
+      "cpu_percent": "270.63%"
+    },
+    {
+      "elapsed_seconds": 110.69103457399979,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.9MiB / 11.46GiB",
+      "cpu_percent": "117.87%"
+    },
+    {
+      "elapsed_seconds": 112.7013327679997,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.363GiB / 11.46GiB",
+      "cpu_percent": "135.82%"
+    },
+    {
+      "elapsed_seconds": 114.71513636300006,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "306.1MiB / 11.46GiB",
+      "cpu_percent": "302.44%"
+    },
+    {
+      "elapsed_seconds": 116.72562557600031,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.162GiB / 11.46GiB",
+      "cpu_percent": "99.41%"
+    },
+    {
+      "elapsed_seconds": 118.73734888599938,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.4MiB / 11.46GiB",
+      "cpu_percent": "311.54%"
+    },
+    {
+      "elapsed_seconds": 120.74767423600133,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.99GiB / 11.46GiB",
+      "cpu_percent": "133.03%"
+    },
+    {
+      "elapsed_seconds": 122.7596158439992,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.7MiB / 11.46GiB",
+      "cpu_percent": "339.46%"
+    },
+    {
+      "elapsed_seconds": 124.77023784099947,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.943GiB / 11.46GiB",
+      "cpu_percent": "99.08%"
+    },
+    {
+      "elapsed_seconds": 126.77983711200068,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.4MiB / 11.46GiB",
+      "cpu_percent": "343.49%"
+    },
+    {
+      "elapsed_seconds": 128.78996678099793,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.818GiB / 11.46GiB",
+      "cpu_percent": "99.10%"
+    },
+    {
+      "elapsed_seconds": 130.80262670999946,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "244.8MiB / 11.46GiB",
+      "cpu_percent": "385.70%"
+    },
+    {
+      "elapsed_seconds": 132.81221267399815,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.567GiB / 11.46GiB",
+      "cpu_percent": "99.45%"
+    },
+    {
+      "elapsed_seconds": 134.82899280399943,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.217GiB / 11.46GiB",
+      "cpu_percent": "446.67%"
+    },
+    {
+      "elapsed_seconds": 136.83788931899835,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.094GiB / 11.46GiB",
+      "cpu_percent": "99.03%"
+    },
+    {
+      "elapsed_seconds": 138.85298304200114,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.492GiB / 11.46GiB",
+      "cpu_percent": "397.08%"
+    },
+    {
+      "elapsed_seconds": 140.85891522100064,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "807.3MiB / 11.46GiB",
+      "cpu_percent": "99.54%"
+    },
+    {
+      "elapsed_seconds": 142.87201677899793,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.492GiB / 11.46GiB",
+      "cpu_percent": "353.94%"
+    },
+    {
+      "elapsed_seconds": 144.8789634370005,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "686.9MiB / 11.46GiB",
+      "cpu_percent": "99.39%"
+    },
+    {
+      "elapsed_seconds": 146.89112269399993,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.492GiB / 11.46GiB",
+      "cpu_percent": "322.39%"
+    },
+    {
+      "elapsed_seconds": 148.90120564699828,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "594.4MiB / 11.46GiB",
+      "cpu_percent": "99.40%"
+    },
+    {
+      "elapsed_seconds": 150.91395371399994,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.492GiB / 11.46GiB",
+      "cpu_percent": "345.62%"
+    },
+    {
+      "elapsed_seconds": 152.92366408700036,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "398.6MiB / 11.46GiB",
+      "cpu_percent": "119.98%"
+    },
+    {
+      "elapsed_seconds": 154.93796414299868,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.492GiB / 11.46GiB",
+      "cpu_percent": "262.65%"
+    },
+    {
+      "elapsed_seconds": 156.9470302109985,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "306.1MiB / 11.46GiB",
+      "cpu_percent": "118.45%"
+    },
+    {
+      "elapsed_seconds": 158.95761612600108,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.491GiB / 11.46GiB",
+      "cpu_percent": "189.60%"
+    },
+    {
+      "elapsed_seconds": 160.97523438200005,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "306.1MiB / 11.46GiB",
+      "cpu_percent": "174.48%"
+    },
+    {
+      "elapsed_seconds": 163.0019073609983,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.492GiB / 11.46GiB",
+      "cpu_percent": "145.94%"
+    },
+    {
+      "elapsed_seconds": 165.01236210299976,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "306MiB / 11.46GiB",
+      "cpu_percent": "156.19%"
+    },
+    {
+      "elapsed_seconds": 167.03346039999815,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.491GiB / 11.46GiB",
+      "cpu_percent": "148.74%"
+    },
+    {
+      "elapsed_seconds": 169.04447934400014,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.7MiB / 11.46GiB",
+      "cpu_percent": "165.96%"
+    },
+    {
+      "elapsed_seconds": 171.06567394000012,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.493GiB / 11.46GiB",
+      "cpu_percent": "153.94%"
+    },
+    {
+      "elapsed_seconds": 173.08103937600026,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "306.2MiB / 11.46GiB",
+      "cpu_percent": "179.65%"
+    },
+    {
+      "elapsed_seconds": 175.09014796599877,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.363GiB / 11.46GiB",
+      "cpu_percent": "134.87%"
+    },
+    {
+      "elapsed_seconds": 177.11264480599857,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "306MiB / 11.46GiB",
+      "cpu_percent": "223.66%"
+    },
+    {
+      "elapsed_seconds": 179.12024897100127,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.275GiB / 11.46GiB",
+      "cpu_percent": "99.64%"
+    },
+    {
+      "elapsed_seconds": 181.1378320570002,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "306.5MiB / 11.46GiB",
+      "cpu_percent": "317.02%"
+    },
+    {
+      "elapsed_seconds": 183.14866376400096,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.116GiB / 11.46GiB",
+      "cpu_percent": "99.53%"
+    },
+    {
+      "elapsed_seconds": 185.16080209699794,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.2MiB / 11.46GiB",
+      "cpu_percent": "328.82%"
+    },
+    {
+      "elapsed_seconds": 187.16926816100022,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.984GiB / 11.46GiB",
+      "cpu_percent": "99.74%"
+    },
+    {
+      "elapsed_seconds": 189.18618498199794,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "342.8MiB / 11.46GiB",
+      "cpu_percent": "330.97%"
+    },
+    {
+      "elapsed_seconds": 191.19411434300127,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.693GiB / 11.46GiB",
+      "cpu_percent": "99.71%"
+    },
+    {
+      "elapsed_seconds": 193.206426449,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.519GiB / 11.46GiB",
+      "cpu_percent": "456.15%"
+    },
+    {
+      "elapsed_seconds": 195.21505957800036,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.37GiB / 11.46GiB",
+      "cpu_percent": "99.06%"
+    },
+    {
+      "elapsed_seconds": 197.2259418270005,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.11GiB / 11.46GiB",
+      "cpu_percent": "464.70%"
+    },
+    {
+      "elapsed_seconds": 199.23503256500044,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1.303GiB / 11.46GiB",
+      "cpu_percent": "99.76%"
+    },
+    {
+      "elapsed_seconds": 201.25915667699883,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.493GiB / 11.46GiB",
+      "cpu_percent": "448.73%"
+    },
+    {
+      "elapsed_seconds": 203.26824282099915,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "1000MiB / 11.46GiB",
+      "cpu_percent": "99.43%"
+    },
+    {
+      "elapsed_seconds": 205.3229206649994,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.492GiB / 11.46GiB",
+      "cpu_percent": "394.73%"
+    },
+    {
+      "elapsed_seconds": 207.2945149469997,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "606.7MiB / 11.46GiB",
+      "cpu_percent": "99.61%"
+    },
+    {
+      "elapsed_seconds": 209.31005711399848,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.499GiB / 11.46GiB",
+      "cpu_percent": "307.88%"
+    },
+    {
+      "elapsed_seconds": 211.31931702300062,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "442.1MiB / 11.46GiB",
+      "cpu_percent": "136.52%"
+    },
+    {
+      "elapsed_seconds": 213.3302649190009,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.492GiB / 11.46GiB",
+      "cpu_percent": "251.65%"
+    },
+    {
+      "elapsed_seconds": 215.3401695709981,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "305.9MiB / 11.46GiB",
+      "cpu_percent": "130.30%"
+    },
+    {
+      "elapsed_seconds": 217.3533737580001,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "2.492GiB / 11.46GiB",
+      "cpu_percent": "166.82%"
+    },
+    {
+      "elapsed_seconds": 219.36377130799883,
+      "name": "ai-worker-bench-1",
+      "memory_usage": "214.8MiB / 11.46GiB",
+      "cpu_percent": "16.60%"
+    }
+  ],
+  "docker_stats_sample_count": 109,
+  "worker_container_names_seen": [
+    "ai-worker-bench-1"
+  ]
+}

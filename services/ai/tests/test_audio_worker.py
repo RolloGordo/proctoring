@@ -219,6 +219,8 @@ def test_faster_whisper_without_its_extra_fails_with_an_actionable_message(asr_e
     asr_env.setattr(audio_runtime.importlib.util, "find_spec", find_spec)
     audio_runtime._local_asr_model.cache_clear()
     try:
+        # La comprueba el cargador del modelo local (RuntimeError), no la
+        # validacion de configuracion: asi los dobles del modelo siguen sirviendo.
         with pytest.raises(RuntimeError, match="uv sync --extra asr-local"):
             audio_runtime.asr_model()
     finally:
@@ -483,7 +485,7 @@ def test_whisper_acceptable_passes_without_calling_fallback(measure_env):
     fb_mock.assert_not_called()
 
 
-def test_empty_output_triggers_deepgram_fallback(measure_env):
+def test_empty_output_marks_low_confidence_without_fallback(measure_env):
     measure_env.setenv("ASR_PROVIDER", "faster-whisper")
     measure_env.setenv("ASR_FALLBACK_PROVIDER", "deepgram")
     measure_env.setenv("DEEPGRAM_API_KEY", FAKE_KEY)
@@ -504,12 +506,10 @@ def test_empty_output_triggers_deepgram_fallback(measure_env):
 
     measure_env.setattr(audio_runtime, "_build_fallback_transcriber", build_fb)
     measured = audio_runtime.measure_audio(Path("unused"), None)
-    assert measured["transcript"] == "transcripcion de respaldo"
-    assert (
-        measured["model_versions"]["asr"]
-        == "deepgram-nova-3-es;fallback_from=faster-whisper-small-cpu-int8;reason=empty_transcript"
-    )
-    assert len(timeouts) == 1 and 0 < timeouts[0] <= 4.5
+    assert measured["transcript"] == "   "
+    assert measured["model_versions"]["asr_quality_status"] == "low_confidence"
+    assert measured["model_versions"]["asr_quality_reasons"] == "empty_transcript"
+    assert timeouts == []
 
 
 def test_whisper_exception_triggers_deepgram_fallback(measure_env):
@@ -534,7 +534,7 @@ def test_whisper_exception_triggers_deepgram_fallback(measure_env):
     assert (
         measured["model_versions"]["asr"]
         == "deepgram-nova-3-es;fallback_from=faster-whisper-small-cpu-int8;"
-        "reason=exception_or_timeout"
+        "reason=runtime_error:RuntimeError"
     )
 
 
@@ -546,7 +546,7 @@ def test_whisper_exception_triggers_deepgram_fallback(measure_env):
         "Subtítulos realizados por Amara.org",
     ],
 )
-def test_known_hallucination_triggers_deepgram_fallback(measure_env, hallucination):
+def test_known_hallucination_marks_low_confidence_without_fallback(measure_env, hallucination):
     measure_env.setenv("ASR_PROVIDER", "faster-whisper")
     measure_env.setenv("ASR_FALLBACK_PROVIDER", "deepgram")
     measure_env.setenv("DEEPGRAM_API_KEY", FAKE_KEY)
@@ -571,12 +571,9 @@ def test_known_hallucination_triggers_deepgram_fallback(measure_env, hallucinati
     )
     measure_env.setattr(audio_runtime, "_build_fallback_transcriber", lambda timeout: fb_instance)
     measured = audio_runtime.measure_audio(Path("unused"), None)
-    assert measured["transcript"] == "texto real limpio"
-    assert (
-        measured["model_versions"]["asr"]
-        == "deepgram-nova-3-es;fallback_from=faster-whisper-small-cpu-int8;"
-        "reason=hallucination_phrase"
-    )
+    assert measured["transcript"] == hallucination
+    assert measured["model_versions"]["asr_quality_status"] == "low_confidence"
+    assert measured["model_versions"]["asr_quality_reasons"] == "hallucination_phrase"
 
 
 @pytest.mark.parametrize(
@@ -604,7 +601,7 @@ def test_known_hallucination_triggers_deepgram_fallback(measure_env, hallucinati
         ),
     ],
 )
-def test_segment_quality_thresholds_trigger_fallback(
+def test_segment_quality_thresholds_only_mark_low_confidence(
     measure_env, segment_override, wps, expected_reason
 ):
     measure_env.setenv("ASR_PROVIDER", "faster-whisper")
@@ -624,11 +621,9 @@ def test_segment_quality_thresholds_trigger_fallback(
     )
     measure_env.setattr(audio_runtime, "_build_fallback_transcriber", lambda timeout: fb_instance)
     measured = audio_runtime.measure_audio(Path("unused"), None)
-    assert measured["transcript"] == "texto desde deepgram"
-    expected_ver = (
-        f"deepgram-nova-3-es;fallback_from=faster-whisper-small-cpu-int8;reason={expected_reason}"
-    )
-    assert measured["model_versions"]["asr"] == expected_ver
+    assert measured["transcript"] == "texto ruidoso dudoso"
+    assert measured["model_versions"]["asr_quality_status"] == "low_confidence"
+    assert measured["model_versions"]["asr_quality_reasons"] == expected_reason
 
 
 def test_fallback_none_never_calls_deepgram_and_reports_empty_without_analysis(measure_env):
@@ -646,15 +641,14 @@ def test_fallback_none_never_calls_deepgram_and_reports_empty_without_analysis(m
     measured = audio_runtime.measure_audio(Path("unused"), "Pregunta del examen")
     assert measured["transcript"] == ""
     assert measured["similarity"] is None
-    assert (
-        measured["model_versions"]["asr"]
-        == "faster-whisper-small-cpu-int8;quality_gate=empty_transcript;fallback=none"
-    )
+    assert measured["model_versions"]["asr"] == "faster-whisper-small-cpu-int8"
+    assert measured["model_versions"]["asr_quality_status"] == "low_confidence"
+    assert measured["model_versions"]["asr_quality_reasons"] == "empty_transcript"
     sim_mock.score.assert_not_called()
     fb_mock.assert_not_called()
 
 
-def test_exhausted_latency_budget_skips_deepgram_and_reports_without_analysis(measure_env):
+def test_empty_output_does_not_start_deepgram_when_budget_would_be_exhausted(measure_env):
     measure_env.setenv("ASR_PROVIDER", "faster-whisper")
     measure_env.setenv("ASR_FALLBACK_PROVIDER", "deepgram")
     measure_env.setenv("DEEPGRAM_API_KEY", FAKE_KEY)
@@ -674,10 +668,9 @@ def test_exhausted_latency_budget_skips_deepgram_and_reports_without_analysis(me
     measured = audio_runtime.measure_audio(Path("unused"), "Pregunta del examen")
     assert measured["transcript"] == ""
     assert measured["similarity"] is None
-    assert (
-        measured["model_versions"]["asr"]
-        == "faster-whisper-small-cpu-int8;fallback_skipped=budget_exhausted;reason=empty_transcript"
-    )
+    assert measured["model_versions"]["asr"] == "faster-whisper-small-cpu-int8"
+    assert measured["model_versions"]["asr_quality_status"] == "low_confidence"
+    assert measured["model_versions"]["asr_quality_reasons"] == "empty_transcript"
     fb_mock.assert_not_called()
     sim_mock.score.assert_not_called()
 
@@ -762,9 +755,10 @@ def test_similarity_backend_selection_and_cache(asr_env, monkeypatch, backend):
     assert audio_runtime.similarity_backend() == norm
 
     class FakeTorchSim:
-        def __init__(self, revision, offline=True):
+        def __init__(self, revision, offline=True, cache_dir="models"):
             self.revision = revision
             self.offline = offline
+            self.cache_dir = cache_dir
 
         def score(self, q, t):
             return 0.75

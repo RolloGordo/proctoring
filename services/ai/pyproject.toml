@@ -36,6 +36,11 @@ asr-local = [
     "huggingface-hub>=1,<2",
     "truststore>=0.10,<1",
 ]
+asr-parakeet = [
+    "sherpa-onnx==2.0.1",
+    "huggingface-hub>=1,<2",
+    "truststore>=0.10,<1",
+]
 similarity = [
     "huggingface-hub>=1,<2",
     "sentence-transformers>=3,<6",
@@ -125,5 +130,9 @@ module = [
     # Solo los usa spikes/network.py, para descargar pesos.
     "huggingface_hub.*",
     "truststore.*",
+    # Motores experimentales opcionales, ausentes en el entorno ligero de CI.
+    "sherpa_onnx",
+    "moonshine_voice",
+    "moonshine_voice.*",
 ]
 ignore_missing_imports = true

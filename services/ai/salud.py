@@ -71,13 +71,14 @@ def _handler(estado: Callable[[], dict[str, Any]]) -> type[BaseHTTPRequestHandle
 
 def avisos_configuracion_asr() -> list[str]:
     """Devuelve avisos no fatales sobre el respaldo ASR y memoria sin exponer ningún secreto."""
-    from audio_runtime import asr_fallback_provider, check_memory_budget
+    from audio_runtime import asr_fallback_provider, asr_provider, check_memory_budget
 
     avisos: list[str] = []
     fallback = asr_fallback_provider()
+    provider = asr_provider()
     tiene_clave = bool(os.environ.get("DEEPGRAM_API_KEY", "").strip())
-    if fallback == "deepgram" and not tiene_clave:
-        avisos.append("ASR_FALLBACK_PROVIDER=deepgram configured without DEEPGRAM_API_KEY")
+    if (provider == "deepgram" or fallback == "deepgram") and not tiene_clave:
+        avisos.append("Deepgram is configured without DEEPGRAM_API_KEY")
     try:
         mem_status = check_memory_budget()
         if not mem_status["memory_sufficient"] and mem_status.get("warning"):

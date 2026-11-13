@@ -282,3 +282,26 @@ El módulo de audio (`audio_runtime.py`) soporta dos motores de transcripción y
   - Con `SIMILARITY_BACKEND=onnx-int8` (`SIMILARITY_ONNX_VOCAB=es_en`): Deepgram baja a `~225 MiB` de RSS (cabe en **512 MB**), `faster-whisper tiny` a `~435 MiB` (cabe en **512 MB**), `base` a `~545 MiB` (cabe en **1 GB**) y `small` a `~980 MiB` (cabe en **2 GB**).
   - Al arrancar, `worker_stub.py` lee `/sys/fs/cgroup/memory.max` y compara contra el mínimo según `(SIMILARITY_BACKEND, ASR_PROVIDER)`: por defecto emite un aviso en logs y en `/health`, y solo aborta el arranque si `ASR_ENFORCE_MEMORY_BUDGET=true`.
 
+
+
+## Parakeet ASR (experimental integration)
+
+Install `uv sync --extra asr-parakeet`; add `--extra asr-local` to enable the local
+faster-whisper small runtime fallback. Download pinned model files with
+`uv run --extra asr-parakeet python scripts/download_parakeet.py --precision fp32 --output /models/parakeet-fp32`.
+Set `ASR_PROVIDER=parakeet`, `PARAKEET_MODEL_DIR=/models/parakeet-fp32`,
+`PARAKEET_PRECISION=fp32`, and optionally `PARAKEET_NUM_THREADS=4`. FP32 is the
+primary precision. INT8 is experimental and emits a warning. Its P02 measurement
+was 58.44% WER with 8/30 empty outputs and 2/30 foreign-language heuristic matches.
+The quality-gate thresholds were calibrated on Parakeet INT8 outputs (P01), not
+FP32; the gate records low confidence in logs and `model_versions` and never routes
+to another provider.
+
+Parakeet configuration, missing files, checksum mismatch, and unavailable extras
+fail without fallback. Only runtime initialization/inference failures can cascade
+locally to faster-whisper small when explicitly configured. RQ's fork worker loads
+Parakeet lazily in its child; measured fork trials are recorded in
+`results/parakeet-fork-safety.json`. SimpleWorker may load in its own process.
+The memory check warns below its budget and becomes fatal only with
+`ASR_ENFORCE_MEMORY_BUDGET=true`; the FP32 ONNX similarity combination uses a
+conservative bound pending a direct measurement.

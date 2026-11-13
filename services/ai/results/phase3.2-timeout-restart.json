@@ -1,0 +1,26 @@
+{
+  "rq_worker_fork_mode": {
+    "job_timeout_seconds": 2,
+    "hang_job_status": "failed",
+    "following_noop_status": "finished",
+    "parent_worker_survived": true
+  },
+  "rq_simple_worker_mode": {
+    "job_timeout_seconds": 2,
+    "hang_job_status": "failed",
+    "following_noop_status": "finished",
+    "worker_process_survived": true
+  },
+  "simple_worker_fatal_crash": {
+    "crash_exit_code": 42,
+    "docker_restart_policy": "unless-stopped",
+    "container_restart_count": 1,
+    "interrupted_job_after_restart": "started; not automatically requeued",
+    "manual_started_registry_requeue": "failed: no registry entry"
+  },
+  "rq_worker_fatal_crash": {
+    "workhorse_exit_code": 42,
+    "worker_restart_action": "detected dead workhorse and stored the job in scheduled retry registry",
+    "automatic_retry_execution": "not observed because worker.work(with_scheduler=False)"
+  }
+}

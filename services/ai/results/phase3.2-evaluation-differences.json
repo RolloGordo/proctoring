@@ -1,0 +1,32 @@
+{
+  "p01": {
+    "integrated_exact_20": {
+      "sample_count": 20,
+      "reference_words": 520,
+      "word_edits": 92,
+      "micro_wer": 0.17692307692307693
+    },
+    "prior": {
+      "sample_count": 20,
+      "reference_words": 520,
+      "word_edits": 90,
+      "micro_wer": 0.173077
+    },
+    "difference_wer_pp": 0.38460769230769243
+  },
+  "p02": {
+    "integrated": {
+      "sample_count": 30,
+      "reference_words": 770,
+      "word_edits": 168,
+      "micro_wer": 0.21818181818181817
+    },
+    "prior": {
+      "sample_count": 30,
+      "reference_words": 770,
+      "word_edits": 171,
+      "micro_wer": 0.222078
+    },
+    "difference_wer_pp": -0.38961818181818264
+  }
+}

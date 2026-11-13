@@ -1,0 +1,1241 @@
+{
+  "schema_version": 1,
+  "provider_path": "audio_runtime.measure_audio",
+  "provider_revision": "5fcc0122fe87e8365e339e467af90c67b746218f",
+  "similarity_backend": "onnx-int8",
+  "thresholds_changed": false,
+  "p01_exact_prior_comparison_set": {
+    "note": "The prior 28-row set contains 20 stage_a_own P01 samples and 8 MediaSpeech samples.",
+    "integrated": {
+      "sample_count": 28,
+      "reference_words": 838,
+      "word_edits": 138,
+      "micro_wer": 0.16467780429594273,
+      "empty_transcripts": 0,
+      "mean_runtime_seconds": 2.490682956000325
+    },
+    "prior_faster_whisper_small": {
+      "sample_count": 28,
+      "reference_words": 838,
+      "word_edits": 352,
+      "micro_wer": 0.4200477326968974,
+      "audio_seconds": 392.3679375,
+      "inference_seconds": 51.62125742499484,
+      "aggregate_real_time_factor": 0.13156339367050052,
+      "empty_reference_samples": 0,
+      "empty_reference_inserted_words": 0
+    },
+    "prior_parakeet_fp32_by_speaker": {
+      "sample_count": 20,
+      "by_condition": {
+        "bajaylejos": {
+          "sample_count": 4,
+          "reference_words": 104,
+          "word_edits": 19,
+          "micro_wer": 0.182692,
+          "empty_transcripts": 0,
+          "foreign_language_outputs": 0,
+          "known_hallucination_phrase_outputs": 0,
+          "sim_reference_count_ge_0_60": 4,
+          "sim_reference_percent_ge_0_60": 100.0,
+          "canonical_negative_bank": {
+            "out_of_domain": {
+              "comparison_count": 23,
+              "count_ge_0_60": 0,
+              "percent_ge_0_60": 0.0
+            },
+            "same_subject": {
+              "comparison_count": 24,
+              "count_ge_0_60": 1,
+              "percent_ge_0_60": 4.1667
+            }
+          }
+        },
+        "base": {
+          "sample_count": 4,
+          "reference_words": 104,
+          "word_edits": 4,
+          "micro_wer": 0.038462,
+          "empty_transcripts": 0,
+          "foreign_language_outputs": 0,
+          "known_hallucination_phrase_outputs": 0,
+          "sim_reference_count_ge_0_60": 4,
+          "sim_reference_percent_ge_0_60": 100.0,
+          "canonical_negative_bank": {
+            "out_of_domain": {
+              "comparison_count": 23,
+              "count_ge_0_60": 0,
+              "percent_ge_0_60": 0.0
+            },
+            "same_subject": {
+              "comparison_count": 24,
+              "count_ge_0_60": 2,
+              "percent_ge_0_60": 8.3333
+            }
+          }
+        },
+        "lejos": {
+          "sample_count": 4,
+          "reference_words": 104,
+          "word_edits": 8,
+          "micro_wer": 0.076923,
+          "empty_transcripts": 0,
+          "foreign_language_outputs": 0,
+          "known_hallucination_phrase_outputs": 0,
+          "sim_reference_count_ge_0_60": 4,
+          "sim_reference_percent_ge_0_60": 100.0,
+          "canonical_negative_bank": {
+            "out_of_domain": {
+              "comparison_count": 23,
+              "count_ge_0_60": 0,
+              "percent_ge_0_60": 0.0
+            },
+            "same_subject": {
+              "comparison_count": 24,
+              "count_ge_0_60": 2,
+              "percent_ge_0_60": 8.3333
+            }
+          }
+        },
+        "ruido": {
+          "sample_count": 4,
+          "reference_words": 104,
+          "word_edits": 29,
+          "micro_wer": 0.278846,
+          "empty_transcripts": 0,
+          "foreign_language_outputs": 0,
+          "known_hallucination_phrase_outputs": 0,
+          "sim_reference_count_ge_0_60": 4,
+          "sim_reference_percent_ge_0_60": 100.0,
+          "canonical_negative_bank": {
+            "out_of_domain": {
+              "comparison_count": 23,
+              "count_ge_0_60": 0,
+              "percent_ge_0_60": 0.0
+            },
+            "same_subject": {
+              "comparison_count": 24,
+              "count_ge_0_60": 3,
+              "percent_ge_0_60": 12.5
+            }
+          }
+        },
+        "voz baja": {
+          "sample_count": 4,
+          "reference_words": 104,
+          "word_edits": 30,
+          "micro_wer": 0.288462,
+          "empty_transcripts": 0,
+          "foreign_language_outputs": 0,
+          "known_hallucination_phrase_outputs": 0,
+          "sim_reference_count_ge_0_60": 3,
+          "sim_reference_percent_ge_0_60": 75.0,
+          "canonical_negative_bank": {
+            "out_of_domain": {
+              "comparison_count": 23,
+              "count_ge_0_60": 0,
+              "percent_ge_0_60": 0.0
+            },
+            "same_subject": {
+              "comparison_count": 24,
+              "count_ge_0_60": 0,
+              "percent_ge_0_60": 0.0
+            }
+          }
+        }
+      },
+      "overall": {
+        "sample_count": 20,
+        "reference_words": 520,
+        "word_edits": 90,
+        "micro_wer": 0.173077,
+        "empty_transcripts": 0,
+        "foreign_language_outputs": 0,
+        "known_hallucination_phrase_outputs": 0,
+        "sim_reference_count_ge_0_60": 19,
+        "sim_reference_percent_ge_0_60": 95.0,
+        "canonical_negative_bank": {
+          "out_of_domain": {
+            "comparison_count": 115,
+            "count_ge_0_60": 0,
+            "percent_ge_0_60": 0.0
+          },
+          "same_subject": {
+            "comparison_count": 120,
+            "count_ge_0_60": 8,
+            "percent_ge_0_60": 6.6667
+          }
+        }
+      }
+    },
+    "samples": [
+      {
+        "sample_id": "dce9e72f-77f7-48ae-bc86-39ea510a3968",
+        "condition": "mediaspeech_es",
+        "audio_sha256": "2ff20b3952f079f0010010505c86ff0955b7ae2f2d94e2246030677204983bec",
+        "audio_seconds": 14.8,
+        "reference_words": 43,
+        "word_edits": 7,
+        "wer": 0.16279069767441862,
+        "transcript_nonempty": true,
+        "similarity": 0.9689769744873047,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 9.080202157001622
+      },
+      {
+        "sample_id": "7cb30906-a831-4349-b72f-89f1cdeb4ae6",
+        "condition": "mediaspeech_es",
+        "audio_sha256": "5a4a8581cfba27638a92e6dec67f255d1dce8b77615ab9ca6c3dcfd9c76548fd",
+        "audio_seconds": 14.9,
+        "reference_words": 36,
+        "word_edits": 10,
+        "wer": 0.2777777777777778,
+        "transcript_nonempty": true,
+        "similarity": 0.8334381580352783,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.9910458239992295
+      },
+      {
+        "sample_id": "16d02f33-67f3-4cac-b055-4c6479643d8e",
+        "condition": "mediaspeech_es",
+        "audio_sha256": "c9c0edb2758609a51bd197b390a42ecafdd6d1c890e1e98ab054a570847170f1",
+        "audio_seconds": 14.6,
+        "reference_words": 44,
+        "word_edits": 4,
+        "wer": 0.09090909090909091,
+        "transcript_nonempty": true,
+        "similarity": 0.8567191362380981,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 3.186973175001185
+      },
+      {
+        "sample_id": "3cedc890-6886-4344-bfdb-c54700697f2f",
+        "condition": "mediaspeech_es",
+        "audio_sha256": "58a8d4f38d4abb0e3e7eb03ea72d30d66e46f85f964990d860b90ecc1fcaf30b",
+        "audio_seconds": 14.8,
+        "reference_words": 43,
+        "word_edits": 6,
+        "wer": 0.13953488372093023,
+        "transcript_nonempty": true,
+        "similarity": 0.8670332431793213,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 3.1830648129998735
+      },
+      {
+        "sample_id": "fe2b5ae1-7672-4ce5-b641-86a50ed1ab7f",
+        "condition": "mediaspeech_es",
+        "audio_sha256": "4c586f62e02fa110a94ae89462159bc3f7c89834eb590e665cf0c6ddd2fab79e",
+        "audio_seconds": 14.9,
+        "reference_words": 47,
+        "word_edits": 5,
+        "wer": 0.10638297872340426,
+        "transcript_nonempty": true,
+        "similarity": 0.9539055824279785,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.806318183998883
+      },
+      {
+        "sample_id": "e17fb1c3-0351-4ec8-bd3a-4a9aaab969f6",
+        "condition": "mediaspeech_es",
+        "audio_sha256": "498389bfcc27ebb5567cc3ad6d00feeb517a0e8aa57d3dd686b57dbb0c372e93",
+        "audio_seconds": 13.9,
+        "reference_words": 35,
+        "word_edits": 6,
+        "wer": 0.17142857142857143,
+        "transcript_nonempty": true,
+        "similarity": 0.8898931741714478,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.45431314400048
+      },
+      {
+        "sample_id": "f5332df9-9074-4047-a6d2-09d2b21c720c",
+        "condition": "mediaspeech_es",
+        "audio_sha256": "cc818db8683e3955a2519883a1aaa95a178cecb385210cbb9e2f99756fd56024",
+        "audio_seconds": 14.5,
+        "reference_words": 40,
+        "word_edits": 7,
+        "wer": 0.175,
+        "transcript_nonempty": true,
+        "similarity": 0.9073479175567627,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.739298033999148
+      },
+      {
+        "sample_id": "d4ec9549-0143-4047-be07-0a7992f2aca2",
+        "condition": "mediaspeech_es",
+        "audio_sha256": "34e57f0dd54df796863c51f7b2b824af2050b13f5157a965ebcf7666547ba5aa",
+        "audio_seconds": 13.6,
+        "reference_words": 30,
+        "word_edits": 1,
+        "wer": 0.03333333333333333,
+        "transcript_nonempty": true,
+        "similarity": 0.9615490436553955,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.3976277180008765
+      },
+      {
+        "sample_id": "P01_A1_bajaylejos",
+        "condition": "bajaylejos",
+        "audio_sha256": "4203dba67da109dac502b7c40e18a72454fe6da1ed537532e03a992f5d703e7c",
+        "audio_seconds": 14.7826875,
+        "reference_words": 30,
+        "word_edits": 4,
+        "wer": 0.13333333333333333,
+        "transcript_nonempty": true,
+        "similarity": 0.9775712490081787,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 3.1360336300003837
+      },
+      {
+        "sample_id": "P01_A1_base",
+        "condition": "base",
+        "audio_sha256": "1c9cc68aec0a65bd734209363ab6f70ccb416b7fabc2d6de6e9b099e8c8a1e5e",
+        "audio_seconds": 13.7586875,
+        "reference_words": 30,
+        "word_edits": 0,
+        "wer": 0.0,
+        "transcript_nonempty": true,
+        "similarity": 0.9999998807907104,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.7166071380015637
+      },
+      {
+        "sample_id": "P01_A1_lejos",
+        "condition": "lejos",
+        "audio_sha256": "21d2897fc60807f577a230e78c9341e575337483f87be30c3725f325b2800932",
+        "audio_seconds": 14.612,
+        "reference_words": 30,
+        "word_edits": 2,
+        "wer": 0.06666666666666667,
+        "transcript_nonempty": true,
+        "similarity": 0.9786304235458374,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.4868835390007007
+      },
+      {
+        "sample_id": "P01_A1_ruido",
+        "condition": "ruido",
+        "audio_sha256": "2bc1d52a7d1822b605b1c4841c6fb18688dcc21ac903f95c2818f1f1dc21d875",
+        "audio_seconds": 14.612,
+        "reference_words": 30,
+        "word_edits": 3,
+        "wer": 0.1,
+        "transcript_nonempty": true,
+        "similarity": 0.928290605545044,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.9027135860014823
+      },
+      {
+        "sample_id": "P01_A1_voz_baja",
+        "condition": "baja",
+        "audio_sha256": "ebecda425a7c71bf0c4a22b45ce54e28029e6da72854aaee28ce6fb8b5c00cc8",
+        "audio_seconds": 13.588,
+        "reference_words": 30,
+        "word_edits": 17,
+        "wer": 0.5666666666666667,
+        "transcript_nonempty": true,
+        "similarity": 0.37597233057022095,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.0041356700003234
+      },
+      {
+        "sample_id": "P01_A2_bajaylejos",
+        "condition": "bajaylejos",
+        "audio_sha256": "1957c8d13ec8b72f08bed52c257f672ba3ed8a3b977aefa9fa897ee42eb4421c",
+        "audio_seconds": 17.0013125,
+        "reference_words": 31,
+        "word_edits": 5,
+        "wer": 0.16129032258064516,
+        "transcript_nonempty": true,
+        "similarity": 0.8641505837440491,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.4332696900000883
+      },
+      {
+        "sample_id": "P01_A2_base",
+        "condition": "base",
+        "audio_sha256": "865d293b0d413a497067c61b70f6170cbb58d8807e70723e42c813ce1eda9a19",
+        "audio_seconds": 15.2093125,
+        "reference_words": 31,
+        "word_edits": 2,
+        "wer": 0.06451612903225806,
+        "transcript_nonempty": true,
+        "similarity": 0.9890888929367065,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.013295149001351
+      },
+      {
+        "sample_id": "P01_A2_lejos",
+        "condition": "lejos",
+        "audio_sha256": "f7489612c6f7fe270dd2d471084a709a2e307f5ad83432bb905815917af153af",
+        "audio_seconds": 18.8786875,
+        "reference_words": 31,
+        "word_edits": 1,
+        "wer": 0.03225806451612903,
+        "transcript_nonempty": true,
+        "similarity": 0.9916613101959229,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 3.716391461000967
+      },
+      {
+        "sample_id": "P01_A2_ruido",
+        "condition": "ruido",
+        "audio_sha256": "c1e9567bb9e5d6df20c61a41d24e65f53bb38f9eb67f16f2fba861cc149d4b6f",
+        "audio_seconds": 14.1853125,
+        "reference_words": 31,
+        "word_edits": 16,
+        "wer": 0.5161290322580645,
+        "transcript_nonempty": true,
+        "similarity": 0.7426434755325317,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.985777584999596
+      },
+      {
+        "sample_id": "P01_A2_voz_baja",
+        "condition": "baja",
+        "audio_sha256": "f9e071417078d97ed7fc501f7d55c23dd2cfea69e4e5e1958101c74a58ced76d",
+        "audio_seconds": 15.0386875,
+        "reference_words": 31,
+        "word_edits": 6,
+        "wer": 0.1935483870967742,
+        "transcript_nonempty": true,
+        "similarity": 0.8762220144271851,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.8039053890006471
+      },
+      {
+        "sample_id": "P01_A3_bajaylejos",
+        "condition": "bajaylejos",
+        "audio_sha256": "40109cf3530149e648ad9d3cc99cb99425c18a09a15d14dfebc63e84c52c18d7",
+        "audio_seconds": 16.4893125,
+        "reference_words": 24,
+        "word_edits": 7,
+        "wer": 0.2916666666666667,
+        "transcript_nonempty": true,
+        "similarity": 0.778744101524353,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.9869929359992966
+      },
+      {
+        "sample_id": "P01_A3_base",
+        "condition": "base",
+        "audio_sha256": "f88c6f7b345723651adf4aef9dd02ff787a490a0115929e0d4f2412c3ea560c3",
+        "audio_seconds": 12.6493125,
+        "reference_words": 24,
+        "word_edits": 2,
+        "wer": 0.08333333333333333,
+        "transcript_nonempty": true,
+        "similarity": 0.9921312928199768,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.793629473000692
+      },
+      {
+        "sample_id": "P01_A3_lejos",
+        "condition": "lejos",
+        "audio_sha256": "dd8cedc88926bd203549ccb0e907892f2cceaa105d92066c16537d50e04e4010",
+        "audio_seconds": 15.124,
+        "reference_words": 24,
+        "word_edits": 3,
+        "wer": 0.125,
+        "transcript_nonempty": true,
+        "similarity": 0.969637393951416,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.3673961219992634
+      },
+      {
+        "sample_id": "P01_A3_ruido",
+        "condition": "ruido",
+        "audio_sha256": "ba0aeb3af18376a7f5fc7f6064e8e9d71394f14d5248b52353ef2d58433bec5e",
+        "audio_seconds": 14.7826875,
+        "reference_words": 24,
+        "word_edits": 7,
+        "wer": 0.2916666666666667,
+        "transcript_nonempty": true,
+        "similarity": 0.9392849206924438,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.021271372999763
+      },
+      {
+        "sample_id": "P01_A3_voz_baja",
+        "condition": "baja",
+        "audio_sha256": "9d358bc6e154806c53d4dcc511163eea7df311e6d831f6260c63246c1e6e46b1",
+        "audio_seconds": 13.1613125,
+        "reference_words": 24,
+        "word_edits": 6,
+        "wer": 0.25,
+        "transcript_nonempty": true,
+        "similarity": 0.6289402842521667,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.0710994000000937
+      },
+      {
+        "sample_id": "P01_A4_bajaylejos",
+        "condition": "bajaylejos",
+        "audio_sha256": "413b57e138348c14052e8d40b47993c964b7c93f80f8939d43ca35864e1b59b1",
+        "audio_seconds": 11.028,
+        "reference_words": 19,
+        "word_edits": 2,
+        "wer": 0.10526315789473684,
+        "transcript_nonempty": true,
+        "similarity": 0.9913069009780884,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.7657419189999928
+      },
+      {
+        "sample_id": "P01_A4_base",
+        "condition": "base",
+        "audio_sha256": "c838539fec3dbef7a03ecccda5ba28f7fb994bd2a6677e70bd36a40ee1e62b62",
+        "audio_seconds": 9.8333125,
+        "reference_words": 19,
+        "word_edits": 0,
+        "wer": 0.0,
+        "transcript_nonempty": true,
+        "similarity": 0.9999999403953552,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.3156344580002042
+      },
+      {
+        "sample_id": "P01_A4_lejos",
+        "condition": "lejos",
+        "audio_sha256": "a937f946bd9d6273ec86f0fa46fd4f216b53bfa347037c13c2113aba96d93586",
+        "audio_seconds": 12.052,
+        "reference_words": 19,
+        "word_edits": 2,
+        "wer": 0.10526315789473684,
+        "transcript_nonempty": true,
+        "similarity": 0.9913069009780884,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.3878206690005754
+      },
+      {
+        "sample_id": "P01_A4_ruido",
+        "condition": "ruido",
+        "audio_sha256": "7dd4c6c03371feb335b0fda3504bb28dc8a2bffd98bf3e0fb888e9bcb9dedbdd",
+        "audio_seconds": 10.26,
+        "reference_words": 19,
+        "word_edits": 6,
+        "wer": 0.3157894736842105,
+        "transcript_nonempty": true,
+        "similarity": 0.6464406251907349,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.4165385169999354
+      },
+      {
+        "sample_id": "P01_A4_voz_baja",
+        "condition": "baja",
+        "audio_sha256": "cb9b033a5b5dca65b5342bbcd34d8d1e33dc19c66989f5878c4280bc902c6c2e",
+        "audio_seconds": 9.3213125,
+        "reference_words": 19,
+        "word_edits": 1,
+        "wer": 0.05263157894736842,
+        "transcript_nonempty": true,
+        "similarity": 0.9807051420211792,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.5751420150008926
+      }
+    ]
+  },
+  "p02": {
+    "integrated": {
+      "sample_count": 30,
+      "reference_words": 770,
+      "word_edits": 168,
+      "micro_wer": 0.21818181818181817,
+      "empty_transcripts": 0,
+      "mean_runtime_seconds": 1.8769044398330759
+    },
+    "prior_parakeet_fp32_by_speaker": {
+      "sample_count": 30,
+      "by_condition": {
+        "bajaylejos": {
+          "sample_count": 6,
+          "reference_words": 154,
+          "word_edits": 26,
+          "micro_wer": 0.168831,
+          "empty_transcripts": 0,
+          "foreign_language_outputs": 0,
+          "known_hallucination_phrase_outputs": 0,
+          "sim_reference_count_ge_0_60": 6,
+          "sim_reference_percent_ge_0_60": 100.0,
+          "canonical_negative_bank": {
+            "out_of_domain": {
+              "comparison_count": 35,
+              "count_ge_0_60": 0,
+              "percent_ge_0_60": 0.0
+            },
+            "same_subject": {
+              "comparison_count": 36,
+              "count_ge_0_60": 0,
+              "percent_ge_0_60": 0.0
+            }
+          }
+        },
+        "base": {
+          "sample_count": 6,
+          "reference_words": 154,
+          "word_edits": 10,
+          "micro_wer": 0.064935,
+          "empty_transcripts": 0,
+          "foreign_language_outputs": 0,
+          "known_hallucination_phrase_outputs": 0,
+          "sim_reference_count_ge_0_60": 6,
+          "sim_reference_percent_ge_0_60": 100.0,
+          "canonical_negative_bank": {
+            "out_of_domain": {
+              "comparison_count": 35,
+              "count_ge_0_60": 1,
+              "percent_ge_0_60": 2.8571
+            },
+            "same_subject": {
+              "comparison_count": 36,
+              "count_ge_0_60": 3,
+              "percent_ge_0_60": 8.3333
+            }
+          }
+        },
+        "lejos": {
+          "sample_count": 6,
+          "reference_words": 154,
+          "word_edits": 16,
+          "micro_wer": 0.103896,
+          "empty_transcripts": 0,
+          "foreign_language_outputs": 0,
+          "known_hallucination_phrase_outputs": 0,
+          "sim_reference_count_ge_0_60": 6,
+          "sim_reference_percent_ge_0_60": 100.0,
+          "canonical_negative_bank": {
+            "out_of_domain": {
+              "comparison_count": 35,
+              "count_ge_0_60": 1,
+              "percent_ge_0_60": 2.8571
+            },
+            "same_subject": {
+              "comparison_count": 36,
+              "count_ge_0_60": 3,
+              "percent_ge_0_60": 8.3333
+            }
+          }
+        },
+        "ruido": {
+          "sample_count": 6,
+          "reference_words": 154,
+          "word_edits": 23,
+          "micro_wer": 0.149351,
+          "empty_transcripts": 0,
+          "foreign_language_outputs": 0,
+          "known_hallucination_phrase_outputs": 0,
+          "sim_reference_count_ge_0_60": 6,
+          "sim_reference_percent_ge_0_60": 100.0,
+          "canonical_negative_bank": {
+            "out_of_domain": {
+              "comparison_count": 35,
+              "count_ge_0_60": 1,
+              "percent_ge_0_60": 2.8571
+            },
+            "same_subject": {
+              "comparison_count": 36,
+              "count_ge_0_60": 3,
+              "percent_ge_0_60": 8.3333
+            }
+          }
+        },
+        "voz baja": {
+          "sample_count": 6,
+          "reference_words": 154,
+          "word_edits": 96,
+          "micro_wer": 0.623377,
+          "empty_transcripts": 0,
+          "foreign_language_outputs": 0,
+          "known_hallucination_phrase_outputs": 0,
+          "sim_reference_count_ge_0_60": 2,
+          "sim_reference_percent_ge_0_60": 33.3333,
+          "canonical_negative_bank": {
+            "out_of_domain": {
+              "comparison_count": 35,
+              "count_ge_0_60": 0,
+              "percent_ge_0_60": 0.0
+            },
+            "same_subject": {
+              "comparison_count": 36,
+              "count_ge_0_60": 1,
+              "percent_ge_0_60": 2.7778
+            }
+          }
+        }
+      },
+      "overall": {
+        "sample_count": 30,
+        "reference_words": 770,
+        "word_edits": 171,
+        "micro_wer": 0.222078,
+        "empty_transcripts": 0,
+        "foreign_language_outputs": 0,
+        "known_hallucination_phrase_outputs": 0,
+        "sim_reference_count_ge_0_60": 26,
+        "sim_reference_percent_ge_0_60": 86.6667,
+        "canonical_negative_bank": {
+          "out_of_domain": {
+            "comparison_count": 175,
+            "count_ge_0_60": 3,
+            "percent_ge_0_60": 1.7143
+          },
+          "same_subject": {
+            "comparison_count": 180,
+            "count_ge_0_60": 10,
+            "percent_ge_0_60": 5.5556
+          }
+        }
+      }
+    },
+    "by_condition": {
+      "bajaylejos": {
+        "sample_count": 6,
+        "reference_words": 154,
+        "word_edits": 24,
+        "micro_wer": 0.15584415584415584,
+        "empty_transcripts": 0,
+        "mean_runtime_seconds": 1.9943206388331116
+      },
+      "base": {
+        "sample_count": 6,
+        "reference_words": 154,
+        "word_edits": 10,
+        "micro_wer": 0.06493506493506493,
+        "empty_transcripts": 0,
+        "mean_runtime_seconds": 1.775996949666478
+      },
+      "lejos": {
+        "sample_count": 6,
+        "reference_words": 154,
+        "word_edits": 16,
+        "micro_wer": 0.1038961038961039,
+        "empty_transcripts": 0,
+        "mean_runtime_seconds": 2.1865990358328418
+      },
+      "ruido": {
+        "sample_count": 6,
+        "reference_words": 154,
+        "word_edits": 23,
+        "micro_wer": 0.14935064935064934,
+        "empty_transcripts": 0,
+        "mean_runtime_seconds": 1.7901150618329968
+      },
+      "voz baja": {
+        "sample_count": 6,
+        "reference_words": 154,
+        "word_edits": 95,
+        "micro_wer": 0.6168831168831169,
+        "empty_transcripts": 0,
+        "mean_runtime_seconds": 1.6374905129999509
+      }
+    },
+    "samples": [
+      {
+        "sample_id": "P02_A1_bajaylejos",
+        "condition": "bajaylejos",
+        "audio_sha256": "5dbf0e4eb5cdba6a493399a4b2d0de2d6b49c072c7e1951d11ea40a303bf1c07",
+        "audio_seconds": 14.544,
+        "reference_words": 30,
+        "word_edits": 6,
+        "wer": 0.2,
+        "transcript_nonempty": true,
+        "similarity": 0.868054986000061,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.171297955999762
+      },
+      {
+        "sample_id": "P02_A1_base",
+        "condition": "base",
+        "audio_sha256": "1bff610e61eec9749376ea88b1e455a2ccbef11cf4d900c2b8096c8b67396d8d",
+        "audio_seconds": 13.128,
+        "reference_words": 30,
+        "word_edits": 0,
+        "wer": 0.0,
+        "transcript_nonempty": true,
+        "similarity": 0.9999998807907104,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.826962088000073
+      },
+      {
+        "sample_id": "P02_A1_lejos",
+        "condition": "lejos",
+        "audio_sha256": "7ad1077c833cb760fc2f83e4e956ab5ea006f6bef32ec8c42bceb1effc2f0eda",
+        "audio_seconds": 13.896,
+        "reference_words": 30,
+        "word_edits": 5,
+        "wer": 0.16666666666666666,
+        "transcript_nonempty": true,
+        "similarity": 0.9792701005935669,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 3.3025285009989602
+      },
+      {
+        "sample_id": "P02_A1_ruido",
+        "condition": "ruido",
+        "audio_sha256": "8f5ed0adafeb172e4f2f0bd576af7ea34bc79c1e0e0d26f26c2c243c80666938",
+        "audio_seconds": 10.944,
+        "reference_words": 30,
+        "word_edits": 3,
+        "wer": 0.1,
+        "transcript_nonempty": true,
+        "similarity": 0.9924912452697754,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.5151524960001552
+      },
+      {
+        "sample_id": "P02_A1_voz_baja",
+        "condition": "voz baja",
+        "audio_sha256": "8e4f07b1e12e8e2e879e466a900c341cd3c435cd7f034ddda08df573cfb88525",
+        "audio_seconds": 13.008,
+        "reference_words": 30,
+        "word_edits": 30,
+        "wer": 1.0,
+        "transcript_nonempty": true,
+        "similarity": 0.08371155709028244,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.9911902120002196
+      },
+      {
+        "sample_id": "P02_A2_bajaylejos",
+        "condition": "bajaylejos",
+        "audio_sha256": "05a5f03a903e958eabf42b9a43e60c8988866a53533075368cf53ed0294043c8",
+        "audio_seconds": 15.504,
+        "reference_words": 31,
+        "word_edits": 3,
+        "wer": 0.0967741935483871,
+        "transcript_nonempty": true,
+        "similarity": 0.9486788511276245,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.199061436998818
+      },
+      {
+        "sample_id": "P02_A2_base",
+        "condition": "base",
+        "audio_sha256": "8c806dbed5a299647b2f051ef8a5385e910f25c25aae04fdab482ef0bfd2006e",
+        "audio_seconds": 12.264,
+        "reference_words": 31,
+        "word_edits": 2,
+        "wer": 0.06451612903225806,
+        "transcript_nonempty": true,
+        "similarity": 0.9930793046951294,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.7778518630002509
+      },
+      {
+        "sample_id": "P02_A2_lejos",
+        "condition": "lejos",
+        "audio_sha256": "72e3ebe1ea189395fba963d5e34bdd6d9ca02dcaed2e37393824f06c5c8e4f8a",
+        "audio_seconds": 15.024,
+        "reference_words": 31,
+        "word_edits": 2,
+        "wer": 0.06451612903225806,
+        "transcript_nonempty": true,
+        "similarity": 0.9728867411613464,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.0662604269982694
+      },
+      {
+        "sample_id": "P02_A2_ruido",
+        "condition": "ruido",
+        "audio_sha256": "8b23002986cd0915aba4e816d12fffa3fd01b641b3c63187107bf0144b27078b",
+        "audio_seconds": 14.76,
+        "reference_words": 31,
+        "word_edits": 7,
+        "wer": 0.22580645161290322,
+        "transcript_nonempty": true,
+        "similarity": 0.9628954529762268,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.8169570800000656
+      },
+      {
+        "sample_id": "P02_A2_voz_baja",
+        "condition": "voz baja",
+        "audio_sha256": "1fc28344869ff5ee4aab204372fdbabe2c105de0c80b8894197799c8b0184559",
+        "audio_seconds": 11.712,
+        "reference_words": 31,
+        "word_edits": 21,
+        "wer": 0.6774193548387096,
+        "transcript_nonempty": true,
+        "similarity": 0.40642428398132324,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.7792035420006869
+      },
+      {
+        "sample_id": "P02_A3_bajaylejos",
+        "condition": "bajaylejos",
+        "audio_sha256": "14e9db87768c5e7a6fd09f1c5c7bb84eb9035221a70f2b4a2b6d1957904546d0",
+        "audio_seconds": 14.784,
+        "reference_words": 24,
+        "word_edits": 6,
+        "wer": 0.25,
+        "transcript_nonempty": true,
+        "similarity": 0.8982013463973999,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.0899231869989308
+      },
+      {
+        "sample_id": "P02_A3_base",
+        "condition": "base",
+        "audio_sha256": "6dbfdaa887d56611190a7aa89f5cf76e56437b2465b55c1d846b73cdadf59fe8",
+        "audio_seconds": 11.544,
+        "reference_words": 24,
+        "word_edits": 2,
+        "wer": 0.08333333333333333,
+        "transcript_nonempty": true,
+        "similarity": 0.9822168946266174,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.7894727529983356
+      },
+      {
+        "sample_id": "P02_A3_lejos",
+        "condition": "lejos",
+        "audio_sha256": "3bb7b92d3fd5234623ce4718dc606141bd52bcc31330ae7374b1d31d2e2ce5c7",
+        "audio_seconds": 13.608,
+        "reference_words": 24,
+        "word_edits": 2,
+        "wer": 0.08333333333333333,
+        "transcript_nonempty": true,
+        "similarity": 0.9822168946266174,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.988961252000081
+      },
+      {
+        "sample_id": "P02_A3_ruido",
+        "condition": "ruido",
+        "audio_sha256": "0cd2f7e79bafc58b51745215cf422fbcc4a2f9dac68d8fbcdb84d5cae1687d7d",
+        "audio_seconds": 12.24,
+        "reference_words": 24,
+        "word_edits": 2,
+        "wer": 0.08333333333333333,
+        "transcript_nonempty": true,
+        "similarity": 0.984935998916626,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.0170051929999318
+      },
+      {
+        "sample_id": "P02_A3_voz_baja",
+        "condition": "voz baja",
+        "audio_sha256": "61a270f1b3c1c39b7f92096e300ed4d462421f82b9b26cce3c3a1feaf49e5619",
+        "audio_seconds": 12.24,
+        "reference_words": 24,
+        "word_edits": 11,
+        "wer": 0.4583333333333333,
+        "transcript_nonempty": true,
+        "similarity": 0.8645581007003784,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.7203679969989025
+      },
+      {
+        "sample_id": "P02_A4_bajaylejos",
+        "condition": "bajaylejos",
+        "audio_sha256": "23852b985813836e3b9f606a133ea6e0aeabdae2e6aa77f8738ae311d105df26",
+        "audio_seconds": 10.536,
+        "reference_words": 19,
+        "word_edits": 0,
+        "wer": 0.0,
+        "transcript_nonempty": true,
+        "similarity": 0.9999999403953552,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.3037376669999503
+      },
+      {
+        "sample_id": "P02_A4_base",
+        "condition": "base",
+        "audio_sha256": "7c761ccf61123756cc1897b40d9d77128960bc70567382864f37ffd2d4fa4ba8",
+        "audio_seconds": 12.696,
+        "reference_words": 19,
+        "word_edits": 0,
+        "wer": 0.0,
+        "transcript_nonempty": true,
+        "similarity": 0.9999999403953552,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.413001744000212
+      },
+      {
+        "sample_id": "P02_A4_lejos",
+        "condition": "lejos",
+        "audio_sha256": "a2bb084d121cc662838154db28c3b4ddd7f598d4e74bba626e445b5974ff690b",
+        "audio_seconds": 10.344,
+        "reference_words": 19,
+        "word_edits": 1,
+        "wer": 0.05263157894736842,
+        "transcript_nonempty": true,
+        "similarity": 0.9934386014938354,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.4952799449984013
+      },
+      {
+        "sample_id": "P02_A4_ruido",
+        "condition": "ruido",
+        "audio_sha256": "073179492c031ec858e04f2dc460338ea3e4003adace0b9a93d75b25a418479c",
+        "audio_seconds": 9.0,
+        "reference_words": 19,
+        "word_edits": 2,
+        "wer": 0.10526315789473684,
+        "transcript_nonempty": true,
+        "similarity": 0.9913069009780884,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.1860816339994926
+      },
+      {
+        "sample_id": "P02_A4_voz_baja",
+        "condition": "voz baja",
+        "audio_sha256": "63cc75872d13f4ff4a08aae235fbbf325f80866c5a0aa2a29656d86523435aff",
+        "audio_seconds": 9.936,
+        "reference_words": 19,
+        "word_edits": 1,
+        "wer": 0.05263157894736842,
+        "transcript_nonempty": true,
+        "similarity": 0.830089807510376,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.2256603149999137
+      },
+      {
+        "sample_id": "P02_B1_bajaylejos",
+        "condition": "bajaylejos",
+        "audio_sha256": "a12aec24ad1bb9918f847ce81543c73c3b9ea1cb8dc71633419d10c8697f293f",
+        "audio_seconds": 16.32,
+        "reference_words": 23,
+        "word_edits": 7,
+        "wer": 0.30434782608695654,
+        "transcript_nonempty": true,
+        "similarity": 0.6708225607872009,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.9188515000005282
+      },
+      {
+        "sample_id": "P02_B1_base",
+        "condition": "base",
+        "audio_sha256": "3f8fcb2df77724ed038dd715f4c8d861702d67425501728e31c2206332ed204d",
+        "audio_seconds": 12.96,
+        "reference_words": 23,
+        "word_edits": 1,
+        "wer": 0.043478260869565216,
+        "transcript_nonempty": true,
+        "similarity": 0.9510054588317871,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.779013376999501
+      },
+      {
+        "sample_id": "P02_B1_lejos",
+        "condition": "lejos",
+        "audio_sha256": "c6c420db61fc2ac3eebe2604195617f1e8ae95a5196138fc9931eb79bc44865d",
+        "audio_seconds": 15.624,
+        "reference_words": 23,
+        "word_edits": 2,
+        "wer": 0.08695652173913043,
+        "transcript_nonempty": true,
+        "similarity": 0.9068930149078369,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.396338709000702
+      },
+      {
+        "sample_id": "P02_B1_ruido",
+        "condition": "ruido",
+        "audio_sha256": "8a8c224d193bc1d1df1bbb129ab4b8cd2d413084285f1cc73d6766d78d1f3769",
+        "audio_seconds": 10.44,
+        "reference_words": 23,
+        "word_edits": 4,
+        "wer": 0.17391304347826086,
+        "transcript_nonempty": true,
+        "similarity": 0.9009255170822144,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.5228582529998675
+      },
+      {
+        "sample_id": "P02_B1_voz_baja",
+        "condition": "voz baja",
+        "audio_sha256": "7f20522d0ed9e646dc037226b378c80cda3b3c16d23ff82a50305ae4f2e66973",
+        "audio_seconds": 9.576,
+        "reference_words": 23,
+        "word_edits": 18,
+        "wer": 0.782608695652174,
+        "transcript_nonempty": true,
+        "similarity": 0.5499590039253235,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.4129517519995716
+      },
+      {
+        "sample_id": "P02_B2_bajaylejos",
+        "condition": "bajaylejos",
+        "audio_sha256": "a4a85cec03c02ae05fcf53da314e41c974c0ba025ab867aa6208af4c2a5b006d",
+        "audio_seconds": 13.632,
+        "reference_words": 27,
+        "word_edits": 2,
+        "wer": 0.07407407407407407,
+        "transcript_nonempty": true,
+        "similarity": 0.8608626127243042,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.28305208600068
+      },
+      {
+        "sample_id": "P02_B2_base",
+        "condition": "base",
+        "audio_sha256": "c1fe4f69a87aae09b645cae8cf44d611085d7ca53a551b94133efa318a7a4fb0",
+        "audio_seconds": 11.76,
+        "reference_words": 27,
+        "word_edits": 5,
+        "wer": 0.18518518518518517,
+        "transcript_nonempty": true,
+        "similarity": 0.9088326096534729,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 2.0696798730004957
+      },
+      {
+        "sample_id": "P02_B2_lejos",
+        "condition": "lejos",
+        "audio_sha256": "67a7e932e4b1d96225666f90803483a3f199f0c30f6eb418fd238db67ddd199f",
+        "audio_seconds": 13.776,
+        "reference_words": 27,
+        "word_edits": 4,
+        "wer": 0.14814814814814814,
+        "transcript_nonempty": true,
+        "similarity": 0.9063601493835449,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.8702253810006368
+      },
+      {
+        "sample_id": "P02_B2_ruido",
+        "condition": "ruido",
+        "audio_sha256": "b6d6e5e6a11f686ba2bec4899cc74eec468f49f223e32ab9c051aeeeab842087",
+        "audio_seconds": 11.16,
+        "reference_words": 27,
+        "word_edits": 5,
+        "wer": 0.18518518518518517,
+        "transcript_nonempty": true,
+        "similarity": 0.8977491855621338,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.6826357149984688
+      },
+      {
+        "sample_id": "P02_B2_voz_baja",
+        "condition": "voz baja",
+        "audio_sha256": "e7bbda9a07a578c302feeb62cd978d82d148d457c1f0094cf059ad1c5204414c",
+        "audio_seconds": 10.944,
+        "reference_words": 27,
+        "word_edits": 14,
+        "wer": 0.5185185185185185,
+        "transcript_nonempty": true,
+        "similarity": 0.4821324944496155,
+        "quality_status": "ok",
+        "quality_reasons": null,
+        "asr_version": "parakeet-tdt-0.6b-v3-fp32;sherpa-onnx=2.0.1;revision=5fcc0122fe87e8365e339e467af90c67b746218f",
+        "runtime_seconds": 1.6955692600004113
+      }
+    ]
+  }
+}

@@ -1,0 +1,119 @@
+services:
+  ai-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        EXTRAS: --extra asr-local --extra asr-parakeet --extra similarity --extra face
+        DOWNLOAD_ASR_MODEL: "false"
+    image: proctoring-ai-worker:vps
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: ${REDIS_URL:?Set REDIS_URL in .env}
+      PROCTORING_API_URL: ${PROCTORING_API_URL:?Set PROCTORING_API_URL in .env}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Set INTERNAL_API_TOKEN in .env}
+      PORT: "8080"
+      PARAKEET_MODEL_DIR: /models/parakeet-fp32
+      ASR_LOCAL_MODEL_CACHE_DIR: /models
+      SIMILARITY_CACHE_DIR: /models
+      SIMILARITY_ONNX_VOCAB: es_en
+      ASR_LOCAL_MODEL: small
+      WORKER_PRELOAD_MODELS: "true"
+      WORKER_USE_SIMPLE_WORKER: ${WORKER_USE_SIMPLE_WORKER:-false}
+    volumes:
+      - ${MODELS_HOST_DIR:-/srv/proctoring/models}:/models:ro
+      - ${MODELS_HOST_DIR:-/srv/proctoring/models}:/app/models:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    mem_limit: 10g
+    cpus: 4.0
+    stop_grace_period: 90s
+
+  redis:
+    image: redis:7-alpine
+    profiles: [e2e]
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    expose: ["6379"]
+
+  api-sim:
+    image: python:3.12-slim-bookworm
+    profiles: [e2e]
+    command: ["python", "/opt/mock_e2e_services.py", "--role", "api", "--port", "8000"]
+    environment:
+      MOCK_FAIL_FIRST_POST: ${MOCK_FAIL_FIRST_POST:-false}
+      MOCK_RESULT_PATH: /state/results.json
+    volumes:
+      - ./scripts/mock_e2e_services.py:/opt/mock_e2e_services.py:ro
+      - e2e-state:/state
+    expose: ["8000"]
+
+  storage-sim:
+    image: python:3.12-slim-bookworm
+    profiles: [e2e]
+    command: ["python", "/opt/mock_e2e_services.py", "--role", "storage", "--port", "8001"]
+    environment:
+      MOCK_AUDIO_FILE: ${MOCK_AUDIO_FILE:-P02_A1_base.mp3}
+    volumes:
+      - ./scripts/mock_e2e_services.py:/opt/mock_e2e_services.py:ro
+      - ./datasets/validation_new/audio:/audio:ro
+    expose: ["8001"]
+
+  worker-bench:
+    image: proctoring-ai-worker:vps
+    profiles: [e2e]
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: ${REDIS_URL:?Set REDIS_URL in .env}
+      PROCTORING_API_URL: ${PROCTORING_API_URL:?Set PROCTORING_API_URL in .env}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Set INTERNAL_API_TOKEN in .env}
+      PORT: "8081"
+      PARAKEET_MODEL_DIR: /models/parakeet-fp32
+      ASR_LOCAL_MODEL_CACHE_DIR: /models
+      SIMILARITY_CACHE_DIR: /models
+      SIMILARITY_ONNX_VOCAB: es_en
+      ASR_PROVIDER: ${ASR_PROVIDER:-parakeet}
+      ASR_FALLBACK_PROVIDER: ${ASR_FALLBACK_PROVIDER:-faster-whisper}
+      SIMILARITY_BACKEND: ${SIMILARITY_BACKEND:-onnx-int8}
+      ASR_LOCAL_MODEL: small
+      WORKER_PRELOAD_MODELS: "true"
+      WORKER_USE_SIMPLE_WORKER: ${WORKER_USE_SIMPLE_WORKER:-true}
+    volumes:
+      - ${MODELS_HOST_DIR:-/srv/proctoring/models}:/models:ro
+      - ${MODELS_HOST_DIR:-/srv/proctoring/models}:/app/models:ro
+      - ./scripts:/app/scripts:ro
+    mem_limit: 12g
+    cpus: ${WORKER_CPU_QUOTA:-6.0}
+    stop_grace_period: 90s
+
+  e2e-runner:
+    image: proctoring-ai-worker:vps
+    profiles: [e2e]
+    entrypoint: ["python", "/opt/enqueue_e2e.py"]
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./scripts/enqueue_e2e.py:/opt/enqueue_e2e.py:ro
+      - ./scripts/enqueue_mixed_e2e.py:/opt/enqueue_mixed_e2e.py:ro
+      - ./scripts/measure_rq_process_rss.py:/opt/measure_rq_process_rss.py:ro
+      - ./scripts/probe_worker_faults.py:/opt/probe_worker_faults.py:ro
+      - ./scripts/worker_fault_probe.py:/app/scripts/worker_fault_probe.py:ro
+
+  fault-runner:
+    image: proctoring-ai-worker:vps
+    profiles: [e2e]
+    entrypoint: ["python", "/opt/probe_worker_faults.py"]
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./scripts/probe_worker_faults.py:/opt/probe_worker_faults.py:ro
+
+volumes:
+  e2e-state:

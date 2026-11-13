@@ -1,0 +1,18 @@
+{
+  "model": "Parakeet TDT 0.6B v3 FP32",
+  "revision": "5fcc0122fe87e8365e339e467af90c67b746218f",
+  "runtime": "sherpa-onnx 2.0.1; Linux fork; 4 inference threads",
+  "audio": "P02_A1_base.wav; 16 kHz mono",
+  "trials": 5,
+  "parent_preloaded_inherited": {
+    "successes": 5,
+    "decode_seconds": [2.20191, 2.16229, 2.18297, 2.17302, 2.19002]
+  },
+  "child_load_after_fork": {
+    "successes": 5,
+    "load_seconds": [3.04770, 2.32132, 2.23754, 2.30659, 2.39978],
+    "decode_seconds": [0.77902, 0.75362, 0.73419, 0.80092, 0.73166]
+  },
+  "decision": "Do not preload the Parakeet recognizer before RQ fork. Load it in the child; SimpleWorker may preload in its own process.",
+  "caveat": "The inherited recognizer succeeded in all 5 observed trials, but Python emitted its multithreaded-fork deadlock warning. These trials do not establish fork safety."
+}
