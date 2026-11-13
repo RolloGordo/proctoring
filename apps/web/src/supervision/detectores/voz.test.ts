@@ -91,3 +91,22 @@ it('caps a long utterance and resets the VAD buffer', async () => {
   expect(vad.pause).toHaveBeenCalled()
   detector.detener()
 })
+
+it('runs ONNX on a single thread so a blocked helper worker cannot hang the start (BU-009)', async () => {
+  const { detector } = await setup()
+  const ort = { env: { wasm: { numThreads: 4 } } }
+  ;(vad.options as unknown as { ortConfig: (o: typeof ort) => void }).ortConfig(ort)
+  expect(ort.env.wasm.numThreads).toBe(1)
+  detector.detener()
+})
+
+it('says which start-up stage it reached', async () => {
+  // `diagnostico` describe el entorno del navegador; aquí no hay navegador.
+  vi.stubGlobal('self', { crossOriginIsolated: true })
+  vi.stubGlobal('navigator', { hardwareConcurrency: 8 })
+  const detector = new DetectorHabla({ min_duration_ms: 100 })
+  expect(detector.diagnostico()).toContain('etapa=sin_empezar')
+  const { detector: listo } = await setup()
+  expect(listo.diagnostico()).toContain('etapa=escuchando')
+  listo.detener()
+})
