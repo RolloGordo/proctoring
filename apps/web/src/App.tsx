@@ -1,5 +1,13 @@
 import { Suspense, lazy, useEffect, type ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigationType,
+  useParams
+} from 'react-router-dom'
 import { CapaExamen, CapaPanel, CapaPublica } from './components/Capas'
 import { RequireDesktopExam } from './components/RequireDesktopExam'
 import { ProveedorAuth } from './lib/auth'
@@ -115,6 +123,70 @@ function TituloRuta() {
   return null
 }
 
+/**
+ * Cada página nueva empieza arriba.
+ *
+ * El navegador no lo hace solo en una SPA: al ir de la portada, ya
+ * desplazada hasta el pie, a «Iniciar sesión», el acceso se abría desplazado
+ * hasta abajo (visto el 13/11/2026). Con un ancla (`/#como-funciona`) se va a
+ * ella, aunque la sección tarde en existir.
+ */
+function ScrollAlCambiarDePagina() {
+  const { pathname, hash } = useLocation()
+  const tipo = useNavigationType()
+
+  useEffect(() => {
+    // Atrás y adelante sin ancla: el navegador ya devuelve cada página a donde
+    // estaba. Con ancla sí se busca, también al abrir la página desde fuera
+    // (que React Router cuenta como `POP`): el salto nativo del navegador llega
+    // antes de que exista la sección y no hace nada.
+    if (tipo === 'POP' && !hash) return
+    if (!hash) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      return
+    }
+    // La página de destino puede cargarse aparte (la portada es un trozo
+    // propio): el ancla todavía no existe cuando cambia la ruta. Se la busca en
+    // cada fotograma hasta 3 s, y si nunca aparece se queda arriba.
+    // Y una vez encontrada se la mantiene alineada 1,5 s, porque lo de arriba
+    // (fotos, la burbuja) cambia de alto mientras carga y la dejaba corrida.
+    // Si la persona hace scroll, se la suelta.
+    const id = decodeURIComponent(hash.slice(1))
+    const inicio = performance.now()
+    let encontrada: number | null = null
+    let cuadro = 0
+    let soltar = false
+    const alTocar = () => {
+      soltar = true
+    }
+    window.addEventListener('wheel', alTocar, { passive: true, once: true })
+    window.addEventListener('touchstart', alTocar, { passive: true, once: true })
+    window.addEventListener('keydown', alTocar, { once: true })
+    const buscar = () => {
+      if (soltar) return
+      const ahora = performance.now()
+      const destino = document.getElementById(id)
+      if (destino) {
+        encontrada ??= ahora
+        if (Math.abs(destino.getBoundingClientRect().top) > 4) destino.scrollIntoView()
+        if (ahora - encontrada < 1500) cuadro = requestAnimationFrame(buscar)
+      } else if (ahora - inicio < 3000) {
+        cuadro = requestAnimationFrame(buscar)
+      }
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    buscar()
+    return () => {
+      cancelAnimationFrame(cuadro)
+      window.removeEventListener('wheel', alTocar)
+      window.removeEventListener('touchstart', alTocar)
+      window.removeEventListener('keydown', alTocar)
+    }
+  }, [pathname, hash, tipo])
+
+  return null
+}
+
 function RedirigirSeccionExamen({ vista }: { vista: 'contenido' | 'participantes' | 'entregas' | 'actividad' | 'ajustes' }) {
   const { id = '' } = useParams()
   return <Navigate to={`/sesiones/${id}/editar?vista=${vista}`} replace />
@@ -124,6 +196,7 @@ function Aplicacion() {
   return (
     <BrowserRouter>
       <TituloRuta />
+      <ScrollAlCambiarDePagina />
       <Routes>
         {/* Público */}
         <Route path="/" element={<Portada />} />
