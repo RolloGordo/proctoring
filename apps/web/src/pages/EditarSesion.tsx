@@ -60,6 +60,7 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
   const [cantidadBancos, setCantidadBancos] = useState(0)
   const [descripcion, setDescripcion] = useState('')
   const [guardarCodigo, setGuardarCodigo] = useState(false)
+  const [mostrarRespuestasCorrectas, setMostrarRespuestasCorrectas] = useState(false)
   /** Si ya entró alguien, el nivel de supervisión deja de poderse cambiar. */
   const [hayEstudiantes, setHayEstudiantes] = useState(false)
 
@@ -90,6 +91,7 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
         setCantidadPreguntas(datos.question_pool_size === null ? '' : String(datos.question_pool_size))
         setDescripcion(datos.description ?? '')
         setGuardarCodigo(datos.reveal_code_at_start)
+        setMostrarRespuestasCorrectas(datos.show_answers_after_submission)
       })
       .catch((fallo: Error) => setError(fallo.message))
   }, [id, token])
@@ -128,6 +130,9 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
         duration_minutes: duracion,
         entry_tolerance_minutes: tolerancia,
         reveal_code_at_start: guardarCodigo,
+        ...(sesion && mostrarRespuestasCorrectas !== sesion.show_answers_after_submission
+          ? { show_answers_after_submission: mostrarRespuestasCorrectas }
+          : {}),
         // Vaciar la descripción necesita el `clear_`: con `undefined` el
         // backend entiende "no lo cambies".
         ...(descripcion.trim()
@@ -328,6 +333,20 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
                 </label>
                 <p className="ayuda">
                   Hasta la hora de inicio no se muestra en ninguna pantalla, tampoco en la tuya.
+                </p>
+              </div>
+
+              <div className="campo">
+                <label className="casilla">
+                  <input
+                    type="checkbox"
+                    checked={mostrarRespuestasCorrectas}
+                    onChange={(e) => setMostrarRespuestasCorrectas(e.target.checked)}
+                  />
+                  <span>Permitir revisar respuestas correctas después de entregar</span>
+                </label>
+                <p className="ayuda">
+                  La clave solo estará disponible cuando cada estudiante haya entregado el examen.
                 </p>
               </div>
 

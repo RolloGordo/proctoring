@@ -5,6 +5,7 @@ import {
   type Answer,
   type Decision,
   type ExamQuestion,
+  type Question,
   type MyExam,
   type ProctoringEvent
 } from '../lib/api'
@@ -15,6 +16,9 @@ import { NotaDestacada } from '../components/NotaDestacada'
 interface Detalle {
   exam: MyExam
   questions: ExamQuestion[]
+  reviewQuestions: Question[] | null
+  /** Por qué no hay clave, tal como lo dice la API. */
+  reviewNote: string | null
   answers: Answer[]
   events: ProctoringEvent[]
   decision: Decision | null
@@ -52,11 +56,18 @@ export function DetalleExamenEstudiante() {
     Promise.all([
       api.myExams(token),
       api.submittedExamQuestions(id, token),
+      api
+        .submittedExamReview(id, token)
+        .then((preguntas) => ({ preguntas, nota: null as string | null }))
+        .catch((fallo: unknown) => ({
+          preguntas: null,
+          nota: fallo instanceof Error ? fallo.message : null
+        })),
       api.myAnswers(id, token),
       api.listEvents(id, token),
       api.myDecision(id, token)
     ])
-      .then(([exams, questions, answers, events, decision]) => {
+      .then(([exams, questions, review, answers, events, decision]) => {
         if (cancelado) return
         const exam = exams.find((item) => item.session_id === id)
         if (!exam) {
@@ -67,7 +78,15 @@ export function DetalleExamenEstudiante() {
           setError('El detalle estará disponible cuando entregues el examen.')
           return
         }
-        setDetalle({ exam, questions, answers, events, decision })
+        setDetalle({
+          exam,
+          questions,
+          reviewQuestions: review.preguntas,
+          reviewNote: review.nota,
+          answers,
+          events,
+          decision
+        })
       })
       .catch((fallo: Error) => !cancelado && setError(fallo.message))
 
@@ -89,6 +108,9 @@ export function DetalleExamenEstudiante() {
   if (!detalle) return <p className="tenue">Cargando el detalle…</p>
 
   const answers = new Map(detalle.answers.map((answer) => [answer.question_id, answer]))
+  const reviewQuestions = new Map(
+    (detalle.reviewQuestions ?? []).map((question) => [question.id, question])
+  )
 
   return (
     <>
@@ -129,13 +151,41 @@ export function DetalleExamenEstudiante() {
                 <div className="tarjeta-cuerpo">
                   <h3>{question.statement}</h3>
                   <p>{respuestaTexto(question, answers.get(question.id)) || 'Sin respuesta'}</p>
+                  {question.options.length > 0 && (
+                    <ul className="opciones-examen">
+                      {question.options.map((option) => {
+                        const answer = answers.get(question.id)
+                        const seleccionada = answer?.selected_option_id === option.id ||
+                          answer?.selected_option_ids.includes(option.id)
+                        const correcta = reviewQuestions
+                          .get(question.id)
+                          ?.options.find((item) => item.id === option.id)?.is_correct
+                        return (
+                          <li key={option.id}>
+                            <span>
+                              {seleccionada ? 'Tu selección: ' : ''}{option.option_text}
+                              {correcta ? ' · Correcta' : ''}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                  {reviewQuestions.get(question.id)?.correct_numeric_answer != null && (
+                    <p><strong>Respuesta correcta:</strong> {reviewQuestions.get(question.id)?.correct_numeric_answer}</p>
+                  )}
+                  {reviewQuestions.get(question.id)?.correct_text_answer && (
+                    <p><strong>Respuesta esperada:</strong> {reviewQuestions.get(question.id)?.correct_text_answer}</p>
+                  )}
                 </div>
               </li>
             ))}
           </ol>
         )}
         <p className="ayuda">
-          Este resumen muestra tus respuestas, no revela la clave de respuestas correctas.
+          {detalle.reviewQuestions
+            ? 'Tu docente habilitó ver las respuestas correctas de este examen.'
+            : (detalle.reviewNote ?? 'La clave de respuestas no está disponible para este examen.')}
         </p>
       </section>
 

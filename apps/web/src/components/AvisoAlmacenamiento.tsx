@@ -42,7 +42,7 @@ export function AvisoAlmacenamiento() {
     <section className="aviso-almacenamiento" aria-label="Aviso sobre el almacenamiento">
       <p>
         <strong>No usamos cookies.</strong> Solo guardamos en tu navegador tu sesión y, durante un
-        examen, una copia de tus respuestas. Nada de publicidad ni de seguimiento.{' '}
+        examen, una copia temporal de las respuestas que aún no llegaron al servidor. Nada de publicidad ni de seguimiento.{' '}
         <Link to="/privacidad#cookies">Más detalles</Link>
       </p>
       <button type="button" onClick={cerrar}>

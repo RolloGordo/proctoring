@@ -6,6 +6,8 @@
  * request.
  */
 
+import { ESPERA_SONDEO_MS } from './conexion'
+
 const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
 
 export type EventType =
@@ -72,6 +74,8 @@ export interface ExamSession extends ExamSessionSummary {
   allow_back_navigation: boolean
   /** Guarda el código de acceso hasta la hora de inicio. */
   reveal_code_at_start: boolean
+  /** Permite ver la clave una vez que el estudiante haya entregado. */
+  show_answers_after_submission: boolean
   question_pool_size: number | null
   /** Sobre cuánto se califica. 20 por defecto: la escala peruana. */
   max_score: string
@@ -393,6 +397,7 @@ export interface NewExamSession {
   max_score?: string | number | null
   /** Guarda el código de acceso hasta la hora de inicio. */
   reveal_code_at_start?: boolean
+  show_answers_after_submission?: boolean
   /** Solo con `preset: 'custom'`: los módulos que eligió el docente. */
   modules?: ChosenModules
 }
@@ -418,6 +423,7 @@ export interface ExamSessionChanges {
   shuffle_options?: boolean
   allow_back_navigation?: boolean
   reveal_code_at_start?: boolean
+  show_answers_after_submission?: boolean
   /** Solo con `preset: 'custom'`. */
   modules?: ChosenModules
   clear_description?: boolean
@@ -580,6 +586,17 @@ async function describeError(response: Response): Promise<string> {
 export const api = {
   health: (): Promise<{ status: string; env: string; version: string; auth: string }> =>
     request('/health'),
+  probe: async (): Promise<boolean> => {
+    try {
+      const response = await fetch(`${BASE}/health`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(ESPERA_SONDEO_MS)
+      })
+      return response.ok
+    } catch {
+      return false
+    }
+  },
 
   listSessions: (token?: string): Promise<ExamSessionSummary[]> =>
     request('/api/v1/sessions', undefined, token),
@@ -813,6 +830,8 @@ export const api = {
    *  de consultar. Sigue sin traer las respuestas correctas. */
   submittedExamQuestions: (sessionId: string, token?: string): Promise<ExamQuestion[]> =>
     request(`/api/v1/exam/${sessionId}/submitted-questions`, undefined, token),
+  submittedExamReview: (sessionId: string, token?: string): Promise<Question[]> =>
+    request(`/api/v1/exam/${sessionId}/submitted-review`, undefined, token),
 
   enroll: (sessionId: string, acceptsSupervision: boolean, token?: string): Promise<Participant> =>
     request(

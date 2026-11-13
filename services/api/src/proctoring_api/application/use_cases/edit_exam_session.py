@@ -64,6 +64,7 @@ class ExamSessionChanges:
     shuffle_options: bool | None = None
     allow_back_navigation: bool | None = None
     reveal_code_at_start: bool | None = None
+    show_answers_after_submission: bool | None = None
     #: Los modulos elegidos a mano. Solo valen con el preset `custom`; los
     #: umbrales que no se envien los completa el dominio.
     modules: Mapping[SupervisionModule, Mapping[str, Any]] | None = None
@@ -192,6 +193,7 @@ class UpdateExamSession:
             shuffle_options=changes.shuffle_options,
             allow_back_navigation=changes.allow_back_navigation,
             reveal_code_at_start=changes.reveal_code_at_start,
+            show_answers_after_submission=changes.show_answers_after_submission,
             modules=changes.modules,
             clear_description=changes.clear_description,
             clear_course=changes.clear_course,

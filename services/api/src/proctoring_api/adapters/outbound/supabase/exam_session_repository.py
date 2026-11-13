@@ -30,7 +30,7 @@ COLUMNS = (
     "id, course_id, teacher_id, title, description, starts_at, duration_minutes, "
     "entry_tolerance_minutes, access_code, preset, max_attempts, shuffle_questions, "
     "shuffle_options, allow_back_navigation, reveal_code_at_start, "
-    "question_pool_size, max_score, "
+    "question_pool_size, max_score, show_answers_after_submission, "
     "cancelled_at, status"
 )
 
@@ -238,6 +238,7 @@ def _to_row(session: ExamSession) -> dict[str, Any]:
         "shuffle_options": session.shuffle_options,
         "allow_back_navigation": session.allow_back_navigation,
         "reveal_code_at_start": session.reveal_code_at_start,
+        "show_answers_after_submission": session.show_answers_after_submission,
         "status": session.status.value,
     }
 
@@ -268,5 +269,6 @@ def _to_entity(
         shuffle_options=row["shuffle_options"],
         allow_back_navigation=row["allow_back_navigation"],
         reveal_code_at_start=row["reveal_code_at_start"],
+        show_answers_after_submission=row.get("show_answers_after_submission", False),
         modules=modules,
     )

@@ -57,6 +57,7 @@ export function NuevaSesion({
   const [duracion, setDuracion] = useState(90)
   const [tolerancia, setTolerancia] = useState(10)
   const [guardarCodigo, setGuardarCodigo] = useState(false)
+  const [mostrarRespuestasCorrectas, setMostrarRespuestasCorrectas] = useState(false)
   const [preset, setPreset] = useState<SupervisionPreset>('standard')
   // Lo que se elige con «Personalizada». Empieza con lo del nivel que estaba
   // marcado: casi siempre se quiere ajustar uno, no partir de cero.
@@ -168,7 +169,8 @@ export function NuevaSesion({
           course_id: cursoId || null,
           // Vacío significa "todas las del banco".
           question_pool_size: cuantas ? Number(cuantas) : null,
-          reveal_code_at_start: guardarCodigo
+          reveal_code_at_start: guardarCodigo,
+          show_answers_after_submission: mostrarRespuestasCorrectas
         },
         token
       )
@@ -401,6 +403,20 @@ export function NuevaSesion({
               <p className="ayuda">
                 Si marcas esta opción, el código no se mostrará antes de la hora de inicio, tampoco
                 en tu pantalla.
+              </p>
+            </div>
+
+            <div className="campo">
+              <label className="casilla">
+                <input
+                  type="checkbox"
+                  checked={mostrarRespuestasCorrectas}
+                  onChange={(e) => setMostrarRespuestasCorrectas(e.target.checked)}
+                />
+                <span>Permitir revisar respuestas correctas después de entregar</span>
+              </label>
+              <p className="ayuda">
+                La clave solo estará disponible cuando el estudiante haya entregado el examen.
               </p>
             </div>
 

@@ -22,17 +22,42 @@ export class ColaDeGuardado {
   private pendientes = new Map<string, NewAnswer>()
   private temporizador?: ReturnType<typeof setTimeout>
   private enVuelo: Promise<void> | null = null
-
   constructor(
     private readonly enviarLote: (lote: NewAnswer[]) => Promise<void>,
     private readonly alCambiarEstado: (estado: 'guardando' | 'guardado' | 'error') => void,
     private readonly alFallar: (fallo: unknown) => void,
-    private readonly esperaMs = 500
-  ) {}
+    private readonly esperaMs = 500,
+    private readonly almacenamiento?: Storage,
+    private readonly claveAlmacenamiento?: string
+  ) {
+    if (claveAlmacenamiento && almacenamiento) {
+      try {
+        const guardadas = JSON.parse(almacenamiento.getItem(claveAlmacenamiento) ?? '[]') as NewAnswer[]
+        for (const respuesta of guardadas) {
+          if (respuesta && typeof respuesta.question_id === 'string') {
+            this.pendientes.set(respuesta.question_id, respuesta)
+          }
+        }
+      } catch {
+        almacenamiento.removeItem(claveAlmacenamiento)
+      }
+    }
+  }
+
+  private persistir(): void {
+    if (!this.almacenamiento || !this.claveAlmacenamiento) return
+    try {
+      if (this.pendientes.size === 0) this.almacenamiento.removeItem(this.claveAlmacenamiento)
+      else this.almacenamiento.setItem(this.claveAlmacenamiento, JSON.stringify([...this.pendientes.values()]))
+    } catch (fallo) {
+      console.error('[exam] could not persist pending answers locally', fallo)
+    }
+  }
 
   /** Encola una respuesta. La última de cada pregunta es la que vale. */
   encolar(respuesta: NewAnswer): void {
     this.pendientes.set(respuesta.question_id, respuesta)
+    this.persistir()
     clearTimeout(this.temporizador)
     this.temporizador = setTimeout(() => void this.enviar(), this.esperaMs)
   }
@@ -56,6 +81,7 @@ export class ColaDeGuardado {
     this.enVuelo = (async () => {
       try {
         await this.enviarLote(lote)
+        this.persistir()
         this.alCambiarEstado(this.pendientes.size > 0 ? 'guardando' : 'guardado')
       } catch (fallo) {
         // Vuelve a la cola lo que no llegó, sin pisar nada más reciente: si el
@@ -65,6 +91,7 @@ export class ColaDeGuardado {
             this.pendientes.set(respuesta.question_id, respuesta)
           }
         }
+        this.persistir()
         this.alCambiarEstado('error')
         this.alFallar(fallo)
       } finally {
@@ -93,6 +120,18 @@ export class ColaDeGuardado {
   /** Cuántas respuestas siguen sin guardarse. Para las pruebas y el estado. */
   get sinGuardar(): number {
     return this.pendientes.size
+  }
+
+  /** Pending local answers, used to restore the form after a reload. */
+  respuestasPendientes(): NewAnswer[] {
+    return [...this.pendientes.values()]
+  }
+
+  /** Drop stale offline copies after the server accepted final submission. */
+  limpiar(): void {
+    clearTimeout(this.temporizador)
+    this.pendientes.clear()
+    this.persistir()
   }
 
   /** Al desmontar: cancela el temporizador pendiente. */
