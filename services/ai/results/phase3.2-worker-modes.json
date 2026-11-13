@@ -1,0 +1,32 @@
+{
+  "runtime": "Docker, host limit 12 GiB, per-run total CPU quota 6; 50 consecutive RQ jobs; P02_A1_base mock audio; Parakeet FP32 rev 5fcc0122fe87e8365e339e467af90c67b746218f + ONNX int8",
+  "mode_a_rq_worker_fork": {
+    "jobs": 50,
+    "batch_seconds": 219.86431081000046,
+    "throughput_jobs_per_minute": 13.644779313876466,
+    "first_job_processing_ms": 8065,
+    "subsequent_job_p50_ms": 3960.0,
+    "subsequent_job_p90_ms": 4171.8,
+    "all_finished": true,
+    "cgroup_peak_bytes": 4698435584,
+    "timeout": "Job timed out; parent remained available",
+    "fatal_crash": "Workhorse termination stored as scheduled retry; scheduler was disabled so automatic execution was not verified",
+    "worker_child_rss_hwm_bytes": 2846552064,
+    "rss_measurement_method": "RUSAGE_SELF high-water returned by one RQ job; separately from parent container cgroup peak"
+  },
+  "mode_b_simple_worker": {
+    "jobs": 50,
+    "batch_seconds": 73.21614899500128,
+    "throughput_jobs_per_minute": 40.97456696615962,
+    "first_job_processing_ms": 930,
+    "subsequent_job_p50_ms": 1322.0,
+    "subsequent_job_p90_ms": 1677.2000000000003,
+    "all_finished": true,
+    "cgroup_peak_bytes": 3124047872,
+    "timeout": "Job timed out; same process completed the following noop",
+    "fatal_crash": "Restart count 1; interrupted job stayed started and was not requeued",
+    "worker_process_rss_hwm_bytes": 2990006272,
+    "rss_measurement_method": "RUSAGE_SELF high-water returned by one RQ job in the already model-loaded SimpleWorker process"
+  },
+  "recommendation": "RQ Worker with fork for isolation/retry tracking; enable and test scheduler or explicit recovery before claiming automatic retry. SimpleWorker has lower measured latency and loads once, but process crash stranded an in-flight job. If SimpleWorker is deployed, warn that severe crash restarts whole process and requires a verified recovery mechanism."
+}

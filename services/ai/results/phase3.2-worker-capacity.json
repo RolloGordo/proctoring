@@ -1,0 +1,67 @@
+{
+  "host_physical_memory_bytes": 12309565440,
+  "ram_limit_75_percent_bytes": 9232174080,
+  "cpu_total_quota": 6,
+  "mode": "RQ Worker with fork",
+  "capacity_runs": [
+    {
+      "processes": 1,
+      "jobs": 50,
+      "jobs_per_minute": 13.644779313876466,
+      "batch_seconds": 219.86431081000046,
+      "aggregate_peak_worker_memory_bytes": 4698435584,
+      "under_75_percent": true,
+      "per_container_cgroup_peak_bytes": {
+        "ai-worker-bench-1": 4698435584
+      },
+      "api_job_ms": {
+        "sample_count": 50,
+        "first_enqueued_job_ms": 8065,
+        "subsequent_sample_count": 49,
+        "subsequent_p50_ms": 3960.0,
+        "subsequent_p90_ms": 4171.8
+      }
+    },
+    {
+      "processes": 2,
+      "jobs": 30,
+      "jobs_per_minute": 14.587527203827511,
+      "batch_seconds": 123.39308608300053,
+      "aggregate_peak_worker_memory_bytes": 5508295557,
+      "under_75_percent": true,
+      "per_container_cgroup_peak_bytes": {
+        "ai-worker-bench-1": 4361453568,
+        "ai-worker-bench-2": 3441807360
+      },
+      "api_job_ms": {
+        "sample_count": 30,
+        "first_enqueued_job_ms": 5716,
+        "subsequent_sample_count": 29,
+        "subsequent_p50_ms": 6870.0,
+        "subsequent_p90_ms": 10790.599999999999
+      }
+    },
+    {
+      "processes": 3,
+      "jobs": 30,
+      "jobs_per_minute": 6.892416323462273,
+      "batch_seconds": 261.1565981399981,
+      "aggregate_peak_worker_memory_bytes": 7653631720,
+      "under_75_percent": true,
+      "per_container_cgroup_peak_bytes": {
+        "ai-worker-bench-1": 3337498624,
+        "ai-worker-bench-2": 4262047744,
+        "ai-worker-bench-3": 3150458880
+      },
+      "api_job_ms": {
+        "sample_count": 30,
+        "first_enqueued_job_ms": 24018,
+        "subsequent_sample_count": 29,
+        "subsequent_p50_ms": 24017.0,
+        "subsequent_p90_ms": 33594.8
+      }
+    }
+  ],
+  "recommendation": "2 RQ Worker processes at 3 CPU quota each; measured aggregate peak is under 75% physical RAM and highest measured throughput among 1/2/3. Reserve headroom for Redis, OS and API clients; do not assume production service memory equals mocks.",
+  "forced_fallback_3_process_run": "phase3.2-capacity-rq-3-fallback.json; 1 forced local fallback + 2 normal tasks all finished; full simultaneous worker cgroup peaks are included there."
+}

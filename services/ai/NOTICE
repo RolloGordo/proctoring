@@ -1,0 +1,13 @@
+Parakeet TDT 0.6B v3 weights and sherpa-onnx model exports
+
+The model weights and model files downloaded by scripts/download_parakeet.py are
+published by csukuangfj at:
+https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3
+https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8
+
+The model cards attribute the original Parakeet model to NVIDIA and license the
+model under Creative Commons Attribution 4.0 International (CC-BY-4.0):
+https://creativecommons.org/licenses/by/4.0/
+
+This repository does not include model weights. Revisions and SHA-256 digests are
+pinned in parakeet_transcriber.py and verified by scripts/download_parakeet.py.
