@@ -14,9 +14,9 @@ import { RESPALDOS } from './fotos-portada'
  * Entonces importan dos marcas más dentro de `raiz`: `data-burbuja-evita` (lo
  * que no pisa; con el valor `lado`, tampoco pasa de su borde izquierdo) y
  * `data-burbuja-refracta` (el texto que se ve a través de ella). A ese texto
- * se suman la cabecera, el aviso y el pie, y por encima de ellos pasa
- * cualquier burbuja, vacía o con foto, como la de ThoughtLab: por detrás, su
- * fondo la cortaba en recto.
+ * se suman el aviso y el pie, y por encima de ellos pasa cualquier burbuja.
+ * La cabecera no: es el techo, la burbuja no sube a ella y sus botones se
+ * quedan como son.
  */
 export function useBurbuja(
   raiz: RefObject<HTMLDivElement | null>,
@@ -36,7 +36,7 @@ export function useBurbuja(
     const bordes = capa
       ? Array.from(
           capa.querySelectorAll<HTMLElement>(
-            ':scope > .cabecera, :scope > .aviso-almacenamiento, :scope > .pie-publico'
+            ':scope > .aviso-almacenamiento, :scope > .pie-publico'
           )
         )
       : []
@@ -50,7 +50,14 @@ export function useBurbuja(
       anclas,
       (src) => RESPALDOS.get(src),
       () => nodo.classList.remove('pub-con-burbuja'),
-      { sinMovimiento, conCursor, evita, refracta, bordes }
+      {
+        sinMovimiento,
+        conCursor,
+        evita,
+        refracta,
+        bordes,
+        techo: capa?.querySelector<HTMLElement>(':scope > .cabecera') ?? null
+      }
     )
     if (!desmontar) return
     nodo.classList.add('pub-con-burbuja')
