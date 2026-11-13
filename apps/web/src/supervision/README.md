@@ -206,3 +206,11 @@ sin tope. Detalle del atributo: [`docs/guias/jesus-disponibilidad.md`](../../../
   registra `framing_lost` durante el examen.
 
 Detalle: [`docs/guias/jesus-camara-encuadre-y-mirada.md`](../../../../docs/guias/jesus-camara-encuadre-y-mirada.md).
+
+## Motor de visión en segundo plano (Jesús)
+
+Los modelos de rostro, objetos y pose corren en un Web Worker (`detectores/motor.worker.ts`); la
+página solo pide un fotograma por ciclo y lee el último resultado (`detectores/motorRemoto.ts`).
+Si el worker no arranca o deja de responder, los detectores vuelven solos al hilo principal.
+Medido: hilo principal del 86 % al 6 % ocupado y la interfaz de 18 a 60 fps. Detalle y cómo
+repetir la medición: [`docs/guias/jesus-rendimiento-y-calibracion.md`](../../../../docs/guias/jesus-rendimiento-y-calibracion.md).

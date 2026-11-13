@@ -1,5 +1,7 @@
 import type { ObjectDetector } from '@mediapipe/tasks-vision'
 import type { Detector, Observacion, Veredicto } from '../tipos'
+import { ANCHO_OBJETOS, fotogramaReducido, tomarTurnoPesado } from './fotograma'
+import { cargarRemoto, remotoActivo, solicitarCuadro, ultimosObjetos } from './motorRemoto'
 
 export interface AjustesObjeto {
   min_duration_ms?: number
@@ -20,6 +22,28 @@ function esCelular(nombre: string): boolean {
 let detector: ObjectDetector | undefined
 let preparando: Promise<void> | undefined
 
+async function prepararLocal(umbral: number): Promise<void> {
+  if (detector) return
+  if (preparando) return preparando
+  preparando = (async () => {
+    const { FilesetResolver, ObjectDetector } = await import('@mediapipe/tasks-vision')
+    const wasm = await FilesetResolver.forVisionTasks('/mediapipe/wasm')
+    detector = await ObjectDetector.createFromOptions(wasm, {
+      baseOptions: { modelAssetPath: MODELO },
+      runningMode: 'VIDEO',
+      scoreThreshold: umbral,
+      maxResults: 10
+      // No restringir por allowlist: distintas versiones del modelo usan
+      // "cell phone" o "mobile phone". Filtramos las etiquetas al observar.
+    })
+  })()
+  try {
+    await preparando
+  } finally {
+    preparando = undefined
+  }
+}
+
 /** Busca celulares; solo informa cuando la detección se mantiene durante el mínimo configurado. */
 export class DetectorObjetoProhibido implements Detector {
   readonly nombre = 'objeto-prohibido'
@@ -38,33 +62,22 @@ export class DetectorObjetoProhibido implements Detector {
   }
 
   async preparar(): Promise<void> {
-    if (detector) return
-    if (preparando) return preparando
-    preparando = (async () => {
-      const { FilesetResolver, ObjectDetector } = await import('@mediapipe/tasks-vision')
-      const wasm = await FilesetResolver.forVisionTasks('/mediapipe/wasm')
-      detector = await ObjectDetector.createFromOptions(wasm, {
-        baseOptions: { modelAssetPath: MODELO },
-        runningMode: 'VIDEO',
-        scoreThreshold: this.umbral,
-        maxResults: 10,
-        // No restringir por allowlist: distintas versiones del modelo usan
-        // "cell phone" o "mobile phone". Filtramos las etiquetas al observar.
-      })
-    })()
-    try {
-      await preparando
-    } finally {
-      preparando = undefined
-    }
+    // Primero en segundo plano (motor.worker.ts); si no, en el hilo principal.
+    if (await cargarRemoto('objetos', { umbral: this.umbral })) return
+    await prepararLocal(this.umbral)
   }
 
   observar({ video, ahoraMs }: Observacion): Veredicto {
+    if (video && remotoActivo()) return this.observarRemoto(video, ahoraMs)
+    if (video && !detector && !preparando) void prepararLocal(this.umbral).catch(() => {})
     if (!video || !detector || video.readyState < 2 || !video.videoWidth) {
       return { activa: false, metadata: { source: 'mediapipe', available: false } }
     }
-    if (ahoraMs - this.ultimaInferencia >= INTERVALO_INFERENCIA_MS) {
-      const resultado = detector.detectForVideo(video, performance.now())
+    // Turno pesado (fotograma.ts): objetos y pose no corren en el mismo ciclo.
+    if (ahoraMs - this.ultimaInferencia >= INTERVALO_INFERENCIA_MS && tomarTurnoPesado(ahoraMs)) {
+      // EfficientDet-Lite0 reduce por dentro a 320x320: no necesita 960x540.
+      const fuente = fotogramaReducido(video, ahoraMs, ANCHO_OBJETOS)
+      const resultado = detector.detectForVideo(fuente, performance.now())
       const coincidencia = resultado.detections
         .flatMap((deteccion) => deteccion.categories)
         .filter((categoria) => esCelular(categoria.categoryName || categoria.displayName || ''))
@@ -83,6 +96,27 @@ export class DetectorObjetoProhibido implements Detector {
       this.ultimaInferencia = ahoraMs
     }
     return this.ultimoResultado
+  }
+
+  /** Lee el último resultado del motor en segundo plano (mismo filtro y umbral). */
+  private observarRemoto(video: HTMLVideoElement, ahoraMs: number): Veredicto {
+    solicitarCuadro(video, ahoraMs)
+    const r = ultimosObjetos(ahoraMs)
+    if (!r) return { activa: false, metadata: { source: 'mediapipe', available: false } }
+    const coincidencia = r.datos
+      .filter((c) => esCelular(c.nombre))
+      .sort((a, b) => b.score - a.score)[0]
+    return coincidencia
+      ? {
+          activa: coincidencia.score >= this.umbral,
+          metadata: {
+            source: 'mediapipe',
+            object_name: coincidencia.nombre,
+            score: coincidencia.score,
+            score_threshold: this.umbral
+          }
+        }
+      : { activa: false, metadata: { source: 'mediapipe', available: true } }
   }
 
   detener(): void {

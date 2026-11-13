@@ -12,6 +12,8 @@
  */
 import type { PoseLandmarker } from '@mediapipe/tasks-vision'
 import type { Detector, Observacion, Veredicto } from '../tipos'
+import { ANCHO_POSE, fotogramaReducido, tomarTurnoPesado } from './fotograma'
+import { cargarRemoto, remotoActivo, solicitarCuadro, ultimaPoseRemota } from './motorRemoto'
 import {
   evaluarEncuadre,
   nivelDe,
@@ -56,11 +58,16 @@ export async function motorPose(): Promise<void> {
   }
 }
 
-function inferir(video: HTMLVideoElement, nivel: NivelEncuadre): ResultadoEncuadre | null {
+function inferir(
+  video: HTMLVideoElement,
+  nivel: NivelEncuadre,
+  ahoraMs: number = performance.now()
+): ResultadoEncuadre | null {
   if (!instancia || video.readyState < 2 || !video.videoWidth) return null
   // performance.now() es monótono: MediaPipe lo exige en modo VIDEO, también
   // cuando la sala de espera y el examen usan la misma instancia.
-  const resultado = instancia.detectForVideo(video, performance.now())
+  const fuente = fotogramaReducido(video, ahoraMs, ANCHO_POSE)
+  const resultado = instancia.detectForVideo(fuente, performance.now())
   return evaluarEncuadre(resultado.landmarks, nivel)
 }
 
@@ -92,6 +99,8 @@ export class DetectorEncuadre implements Detector {
   }
 
   async preparar(): Promise<void> {
+    // Primero en segundo plano (motor.worker.ts); si no, en el hilo principal.
+    if (await cargarRemoto('pose')) return
     await motorPose()
   }
 
@@ -101,10 +110,24 @@ export class DetectorEncuadre implements Detector {
 
   observar({ video, ahoraMs }: Observacion): Veredicto {
     if (!video) return { activa: false, metadata: { source: 'mediapipe-pose', available: false } }
+    if (remotoActivo()) {
+      // Motor en segundo plano (motor.worker.ts): se lee su último resultado.
+      solicitarCuadro(video, ahoraMs)
+      const remota = ultimaPoseRemota(ahoraMs)
+      return this.veredicto(remota ? evaluarEncuadre(remota.datos, this.nivel) : null)
+    }
+    // Si el worker se cayó en pleno examen, el motor local se carga aquí.
+    if (!instancia && !preparando) void motorPose().catch(() => {})
     if (ahoraMs - this.ultimaInferencia < INTERVALO_INFERENCIA_MS) return this.ultimo
+    // Si objetos ya usó el turno pesado de este ciclo, se mide en el siguiente.
+    if (!tomarTurnoPesado(ahoraMs)) return this.ultimo
     this.ultimaInferencia = ahoraMs
-    const r = inferir(video, this.nivel)
-    this.ultimo = r
+    this.ultimo = this.veredicto(inferir(video, this.nivel, ahoraMs))
+    return this.ultimo
+  }
+
+  private veredicto(r: ResultadoEncuadre | null): Veredicto {
+    return r
       ? {
           // `no_person` ya lo cubre `face_absent`: no se cuenta dos veces.
           activa: !r.ok && r.motivo !== 'no_person',
@@ -117,7 +140,6 @@ export class DetectorEncuadre implements Detector {
           }
         }
       : { activa: false, metadata: { source: 'mediapipe-pose', available: false } }
-    return this.ultimo
   }
 
   detener(): void {

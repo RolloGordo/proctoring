@@ -207,7 +207,8 @@ DEFAULT_MODULE_SETTINGS: dict[SupervisionModule, dict[str, Any]] = {
     SupervisionModule.FOCUS_LOSS: {"min_duration_ms": 5000},
     SupervisionModule.GAZE: {"yaw_degrees": 25, "min_duration_ms": 3000},
     SupervisionModule.EXTRA_PERSON: {"min_faces": 2},
-    SupervisionModule.FACE_VERIFICATION: {"similarity_threshold": 0.45},
+    # SFace (motor de producción): ver DEFAULT_SIMILARITY_THRESHOLD en identity.py.
+    SupervisionModule.FACE_VERIFICATION: {"similarity_threshold": 0.363},
     SupervisionModule.FACE_REVERIFICATION: {"interval_minutes": 10},
     SupervisionModule.MULTI_MONITOR: {"max_displays": 1},
     SupervisionModule.AI_VOICE: {"similarity_threshold": 0.6, "synthetic_threshold": 0.5},

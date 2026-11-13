@@ -110,3 +110,76 @@ export function reglaOjos(ojos: Ojos | null, limites: LimitesOjos): MotivoOjos {
   if (ojos.lado >= limites.lado) return 'eyes_side'
   return null
 }
+
+// ---------------------------------------------------------------------------
+// Medición del rostro a partir del resultado compacto (Jesús Limay).
+//
+// La misma función sirve para el motor en el hilo principal y para el motor en
+// segundo plano (`motor.worker.ts`): las reglas no pueden dar otro resultado
+// según dónde corrió el modelo.
+// ---------------------------------------------------------------------------
+
+export interface PuntoNormalizado {
+  x: number
+  y: number
+}
+
+export interface RostroCompactoCore {
+  caras: number
+  matriz: ArrayLike<number> | null
+  boca: {
+    arriba?: PuntoNormalizado
+    abajo?: PuntoNormalizado
+    izquierda?: PuntoNormalizado
+    derecha?: PuntoNormalizado
+  } | null
+  blendshapes: CategoriaBlendshape[] | null
+}
+
+export interface MedicionRostro {
+  caras: number
+  yaw: number | null
+  pitch: number | null
+  inferenceMs: number
+  mouthOpenRatio: number | null
+  ojos: Ojos | null
+}
+
+/** Lo que devuelve FaceLandmarker, reducido a lo que usan las reglas. */
+export function compactarRostro(resultado: {
+  faceLandmarks: PuntoNormalizado[][]
+  facialTransformationMatrixes?: Array<{ data: ArrayLike<number> }>
+  faceBlendshapes?: Array<{ categories: CategoriaBlendshape[] }>
+}): RostroCompactoCore {
+  const caras = resultado.faceLandmarks.length
+  const puntos = caras === 1 ? resultado.faceLandmarks[0] : undefined
+  return {
+    caras,
+    matriz: caras === 1 ? (resultado.facialTransformationMatrixes?.[0]?.data ?? null) : null,
+    boca: puntos
+      ? { arriba: puntos[13], abajo: puntos[14], izquierda: puntos[61], derecha: puntos[291] }
+      : null,
+    blendshapes: caras === 1 ? (resultado.faceBlendshapes?.[0]?.categories ?? null) : null
+  }
+}
+
+export function medicionDesdeRostro(r: RostroCompactoCore, inferenceMs: number): MedicionRostro {
+  const angulos =
+    r.caras === 1 && r.matriz
+      ? angulosDesdeMatriz({ data: Array.from(r.matriz) } as MatrizFacial)
+      : null
+  // La apertura de boca es solo una señal observable: no prueba que hable.
+  const { arriba, abajo, izquierda, derecha } = r.boca ?? {}
+  const ancho =
+    izquierda && derecha ? Math.hypot(izquierda.x - derecha.x, izquierda.y - derecha.y) : 0
+  const mouthOpenRatio =
+    ancho > 0 && arriba && abajo ? Math.hypot(arriba.x - abajo.x, arriba.y - abajo.y) / ancho : null
+  return {
+    caras: r.caras,
+    yaw: angulos?.yaw ?? null,
+    pitch: angulos?.pitch ?? null,
+    inferenceMs,
+    mouthOpenRatio,
+    ojos: r.caras === 1 ? ojosDesdeBlendshapes(r.blendshapes ?? undefined) : null
+  }
+}

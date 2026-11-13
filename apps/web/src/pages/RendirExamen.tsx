@@ -320,6 +320,12 @@ export function RendirExamen() {
           eye_down_baseline: calibracion.baselineEyeDown,
           eye_blink_baseline: calibracion.baselineEyeBlink
         }),
+        ...(calibracion?.eyeSideThreshold !== undefined && {
+          eye_side_threshold: Math.max(
+            Number(config.gaze.eye_side_threshold) || 0,
+            calibracion.eyeSideThreshold
+          )
+        }),
         // Queda registrado si se calibró o no: una señal de mirada sin calibrar
         // vale menos, y el docente tiene que poder saberlo al revisar.
         calibration_status: calibracion ? 'calibrated' : 'default'
