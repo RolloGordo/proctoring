@@ -13,6 +13,7 @@ from proctoring_api.application.ports.clock import Clock
 from proctoring_api.application.ports.event_repository import EventRepository
 from proctoring_api.application.ports.exam_session_repository import ExamSessionRepository
 from proctoring_api.application.ports.job_queue import JobQueue
+from proctoring_api.application.ports.participant_repository import ParticipantRepository
 from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
 from proctoring_api.domain.alert import Alert, should_alert
@@ -57,6 +58,12 @@ class RegisterEventInput:
     evidence_path: str | None = None
 
 
+#: Cuanto se recuerda que alguien esta matriculado antes de volver a mirar.
+MATRICULA_VIGENTE = timedelta(minutes=5)
+#: Tope de matriculas recordadas: con mas, se olvidan todas y se vuelve a mirar.
+MATRICULAS_EN_MEMORIA = 20_000
+
+
 @dataclass(frozen=True, slots=True)
 class RegisterEventOutput:
     """Lo que el cliente necesita saber: que se guardo y con que severidad."""
@@ -77,6 +84,7 @@ class RegisterEvent:
         questions: QuestionRepository | None = None,
         banks: QuestionBankRepository | None = None,
         sessions: ExamSessionRepository | None = None,
+        participants: ParticipantRepository | None = None,
     ) -> None:
         self._events = events
         self._job_queue = job_queue
@@ -93,6 +101,12 @@ class RegisterEvent:
         # acepta todo, como antes de existir el preset `custom`.
         self._sessions = sessions
         self._session_cache: dict[UUID, tuple[datetime, ExamSession | None]] = {}
+        # Para exigir que quien reporta este matriculado en ese examen (SEC-07).
+        # `None` no comprueba, como en desarrollo sin base.
+        self._participants = participants
+        # Las matriculas ya vistas, para no consultar la base en cada senal: un
+        # examen manda muchas y una matricula no desaparece a mitad.
+        self._matriculados: dict[tuple[UUID, UUID], datetime] = {}
 
     def execute(
         self, data: RegisterEventInput, *, actor: AuthenticatedUser | None = None
@@ -111,6 +125,7 @@ class RegisterEvent:
         """
         if actor is not None:
             self._authorize(data, actor)
+            self._reject_if_not_enrolled(data.session_id, actor.id)
 
         self._reject_if_from_the_future(data.started_at)
         self._reject_if_not_watched(data.session_id, data.event_type)
@@ -163,6 +178,28 @@ class RegisterEvent:
 
         if actor.id != data.student_id:
             raise AuthorizationError("No puedes registrar eventos a nombre de otro estudiante")
+
+    def _reject_if_not_enrolled(self, session_id: UUID, student_id: UUID) -> None:
+        """Solo reporta senales quien esta matriculado en ese examen (SEC-07).
+
+        Antes bastaba con ser estudiante y saber el id de un examen: un
+        estudiante de otro curso, o alguien recien registrado, podia llenar de
+        alertas falsas la pantalla de un docente ajeno mientras sus alumnos
+        rendian. Las senales siguen siendo solo suyas (`_authorize`), pero ya no
+        de cualquier examen.
+        """
+        if self._participants is None:
+            return
+        clave = (session_id, student_id)
+        visto = self._matriculados.get(clave)
+        if visto is not None and self._clock.now() - visto < MATRICULA_VIGENTE:
+            return
+        participante = self._participants.find(session_id, student_id)
+        if participante is None or participante.consent_at is None:
+            raise AuthorizationError("No estas matriculado en este examen")
+        if len(self._matriculados) > MATRICULAS_EN_MEMORIA:
+            self._matriculados.clear()
+        self._matriculados[clave] = self._clock.now()
 
     def _reject_if_not_watched(self, session_id: UUID, event_type: EventType) -> None:
         """Descarta la senal de un modulo que el docente apago.

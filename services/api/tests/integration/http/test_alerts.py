@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import STUDENT_TOKEN, TEACHER_TOKEN
+from tests.conftest import STUDENT_TOKEN, TEACHER_TOKEN, matricular
 
 pytestmark = pytest.mark.integration
 
@@ -59,6 +59,7 @@ class TestWithAuth:
         self, authed_client: TestClient, contract_example: Any
     ) -> None:
         payload = contract_example("extra_person")
+        matricular(authed_client.app, payload["session_id"])
         authed_client.post("/api/v1/events", json=payload, headers=bearer(STUDENT_TOKEN))
 
         response = authed_client.get(
@@ -72,6 +73,7 @@ class TestWithAuth:
     def test_a_student_cannot(self, authed_client: TestClient, contract_example: Any) -> None:
         # Ver las alertas sobre si mismo le ensenaria que detecciones esquivar.
         payload = contract_example("extra_person")
+        matricular(authed_client.app, payload["session_id"])
         authed_client.post("/api/v1/events", json=payload, headers=bearer(STUDENT_TOKEN))
 
         response = authed_client.get(

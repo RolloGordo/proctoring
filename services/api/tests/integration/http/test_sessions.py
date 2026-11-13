@@ -157,3 +157,21 @@ def test_sessions_are_published_in_openapi(client: TestClient) -> None:
 
     assert "/api/v1/sessions" in paths
     assert "/api/v1/sessions/{session_id}" in paths
+
+
+def test_un_estudiante_no_lee_el_detalle_de_un_examen(authed_client: Any) -> None:
+    """SEC-07: con el id de un examen recibia su código de acceso y los umbrales."""
+    from tests.conftest import STUDENT_TOKEN, TEACHER_TOKEN
+
+    creada = authed_client.post(
+        "/api/v1/sessions",
+        json={"title": "Parcial", "starts_at": "2026-10-03T16:00:00+00:00", "duration_minutes": 30},
+        headers={"Authorization": f"Bearer {TEACHER_TOKEN}"},
+    ).json()
+
+    respuesta = authed_client.get(
+        f"/api/v1/sessions/{creada['id']}", headers={"Authorization": f"Bearer {STUDENT_TOKEN}"}
+    )
+
+    assert respuesta.status_code == 403
+    assert "access_code" not in respuesta.text

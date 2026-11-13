@@ -15,6 +15,7 @@ from tests.conftest import (
     OTHER_STUDENT_TOKEN,
     STUDENT_TOKEN,
     TEACHER_TOKEN,
+    matricular,
 )
 
 pytestmark = pytest.mark.integration
@@ -56,6 +57,7 @@ class TestAuthorization:
     def test_a_student_can_report_about_themselves(
         self, authed_client: TestClient, contract_example: Any
     ) -> None:
+        matricular(authed_client.app, contract_example("focus_lost")["session_id"])
         response = authed_client.post(
             "/api/v1/events",
             json=contract_example("focus_lost"),
@@ -77,6 +79,19 @@ class TestAuthorization:
         assert response.status_code == 403
         assert "otro estudiante" in response.json()["detail"]
 
+    def test_403_reporting_in_an_exam_where_they_are_not_enrolled(
+        self, authed_client: TestClient, contract_example: Any
+    ) -> None:
+        # SEC-07: antes bastaba con saber el id de un examen ajeno.
+        response = authed_client.post(
+            "/api/v1/events",
+            json=contract_example("focus_lost"),
+            headers=bearer(STUDENT_TOKEN),
+        )
+
+        assert response.status_code == 403
+        assert "matriculado" in response.json()["detail"]
+
     def test_403_when_a_teacher_registers_an_event(
         self, authed_client: TestClient, contract_example: Any
     ) -> None:
@@ -92,6 +107,7 @@ class TestAuthorization:
         self, authed_client: TestClient, contract_example: Any
     ) -> None:
         payload = contract_example("focus_lost")
+        matricular(authed_client.app, payload["session_id"])
         authed_client.post("/api/v1/events", json=payload, headers=bearer(STUDENT_TOKEN))
 
         session_id = payload["session_id"]
@@ -111,6 +127,7 @@ class TestAuthorization:
         self, authed_client: TestClient, contract_example: Any
     ) -> None:
         payload = contract_example("focus_lost")
+        matricular(authed_client.app, payload["session_id"])
         authed_client.post("/api/v1/events", json=payload, headers=bearer(STUDENT_TOKEN))
 
         response = authed_client.get(
