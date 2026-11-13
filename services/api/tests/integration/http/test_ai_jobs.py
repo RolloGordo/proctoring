@@ -17,6 +17,7 @@ from proctoring_api.domain.exam_session import (
     SupervisionModule,
     SupervisionPreset,
 )
+from proctoring_api.domain.identity import DEFAULT_SIMILARITY_THRESHOLD
 from proctoring_api.domain.participant import SessionParticipant
 from proctoring_api.domain.question import Question, QuestionType
 
@@ -366,7 +367,7 @@ class TestVerificacionDeIdentidad:
         cuerpo = respuesta.json()
         assert cuerpo["reference_path"] == datos["referencia"]
         assert cuerpo["capture_path"] == datos["captura"]
-        assert cuerpo["similarity_threshold"] == 0.45
+        assert cuerpo["similarity_threshold"] == DEFAULT_SIMILARITY_THRESHOLD
 
     def test_una_coincidencia_deja_al_estudiante_listo(self, client: TestClient, app: Any) -> None:
         datos = self.preparar(client, app)
@@ -428,7 +429,7 @@ class TestVerificacionDeIdentidad:
         assert len(checks) == 1
         # Los numeros se guardan tambien cuando pasa: sostienen el informe de FAR/FRR.
         assert checks[0].metadata["similarity"] == 0.81
-        assert checks[0].metadata["threshold"] == 0.45
+        assert checks[0].metadata["threshold"] == DEFAULT_SIMILARITY_THRESHOLD
         assert checks[0].metadata["latency_ms"] == 180
 
     def test_un_docente_no_registra_rostro_de_referencia(self, authed_client: TestClient) -> None:
