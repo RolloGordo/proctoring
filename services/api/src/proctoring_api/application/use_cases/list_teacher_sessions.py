@@ -45,10 +45,20 @@ class GetExamSession:
     def execute(self, session_id: UUID, *, actor: AuthenticatedUser | None = None) -> ExamSession:
         """Devuelve la sesion si el actor puede verla.
 
+        **Solo docentes** (SEC-07, prueba de seguridad del 13/11/2026). Antes
+        `ensure_teacher_owns_session` dejaba pasar a cualquier estudiante sin
+        comprobar nada, y con solo conocer el id de un examen, sin estar
+        matriculado, recibia su codigo de acceso y los umbrales de cada
+        detector: cuantos grados puede girar la cabeza o cuanto puede salir de
+        la ventana sin que salte nada. El estudiante tiene sus propias rutas
+        (`/exam/{id}/...`, `/me/exams`), y ninguna pantalla suya usa esta.
+
         Raises:
-            AuthorizationError: si no es suya, o si no existe. Se responde lo
-                mismo en ambos casos para no revelar que sesiones existen.
+            AuthorizationError: si no es docente, si no es suya o si no existe.
+                Se responde lo mismo para no revelar que sesiones existen.
         """
+        if actor is not None and not actor.is_teacher:
+            raise AuthorizationError("No tienes acceso a esta sesion de examen")
         ensure_teacher_owns_session(self._sessions, session_id, actor)
 
         session = self._sessions.find_by_id(session_id)
