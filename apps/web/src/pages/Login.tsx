@@ -245,12 +245,19 @@ function Tecleado({ texto }: { texto: string }) {
   return (
     <h1 className="pub-capitulo pub-tecleado" data-burbuja-refracta>
       <span className="sr-only">{texto}.</span>
+      {/* El texto entero ocupa su sitio desde el principio: lo que falta por
+          escribir está, pero invisible. Si solo se pintara lo escrito, cada
+          letra nueva ensancharía el título y movería lo que tiene debajo, y el
+          navegador lo cuenta como salto de diseño (CLS). */}
       <span aria-hidden="true">{texto.slice(0, escritas)}</span>
       <span
         aria-hidden="true"
         className={terminado ? 'pub-tecleado-punto pub-tecleado-espera' : 'pub-tecleado-punto'}
       >
         .
+      </span>
+      <span aria-hidden="true" className="pub-tecleado-resto">
+        {texto.slice(escritas)}
       </span>
     </h1>
   )
