@@ -108,6 +108,8 @@ html:has(.publica) {
 /* ---------- Cabecera ---------- */
 
 .publica .cabecera {
+  position: relative;
+  z-index: 30;
   height: var(--pub-alto-cabecera);
   background: var(--pub-lienzo);
 }
@@ -314,7 +316,9 @@ html:has(.publica) {
     position: absolute;
     top: clamp(0.5rem, 3vw, 3rem);
     right: var(--pub-margen);
-    width: clamp(22rem, 38vw, 40rem);
+    /* Más pequeña desde el 13/11: a 38vw tapaba demasiado del primer
+       pantallazo. */
+    width: clamp(18rem, 30vw, 31rem);
   }
 }
 
@@ -330,7 +334,7 @@ html:has(.publica) {
 
 .publica .pub-burbuja {
   justify-self: end;
-  width: min(100%, 36rem);
+  width: min(100%, 30rem);
   margin: 0;
 }
 

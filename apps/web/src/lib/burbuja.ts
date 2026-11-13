@@ -288,6 +288,12 @@ export type OpcionesBurbuja = {
    * por detrás, donde su fondo la cortaba en recto.
    */
   bordes?: HTMLElement[]
+  /**
+   * Lo que la burbuja que sigue al cursor no cruza nunca por arriba (la
+   * cabecera). Pedido en la revisión del 13/11: los botones de la cabecera
+   * son para usarse, y con la burbuja encima dejaban de verse normales.
+   */
+  techo?: HTMLElement | null
 }
 
 function entre(valor: number, minimo: number, maximo: number): number {
@@ -315,7 +321,8 @@ export function montarBurbuja(
     conCursor = false,
     evita = [],
     refracta = [],
-    bordes = []
+    bordes = [],
+    techo = null
   }: OpcionesBurbuja = {}
 ): (() => void) | null {
   const contexto = lienzo.getContext('webgl', { premultipliedAlpha: true, antialias: false })
@@ -754,9 +761,10 @@ export function montarBurbuja(
         return null
       if (lado && caja.bottom > 0 && caja.top < alto) tope = Math.min(tope, caja.left - r * 1.08)
     }
-    // Puede asomarse por los bordes de la ventana y subir sobre la cabecera,
-    // como la de ThoughtLab.
-    return { x: entre(puntero.x, -r * 0.4, tope), y: entre(puntero.y, r * 0.2, alto - r * 0.2) }
+    // Puede asomarse por los lados de la ventana, pero no sube a la cabecera:
+    // su borde de arriba se queda bajo ella, con un poco de aire.
+    const bajoTecho = techo ? techo.getBoundingClientRect().bottom + r * 1.05 : r * 0.2
+    return { x: entre(puntero.x, -r * 0.4, tope), y: entre(puntero.y, bajoTecho, alto - r * 0.2) }
   }
 
   function paso(ahora: number) {
