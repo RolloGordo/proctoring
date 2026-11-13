@@ -104,6 +104,21 @@ Lo que cuesta: `tiny` se equivoca más que `small` con audio ruidoso, y **con lo
 alerta de IA por voz tarda unos 40 s, cuatro veces el objetivo de 10 s**. Con 1 CPU tarda 2,3 s. El
 objetivo se cumple en local o en Oracle, no en el plan gratuito de Render, y así se reporta.
 
+### 4.2 Producción en Contabo (13/11/2026)
+
+El equipo contrató un VPS en Contabo (6 vCPU, 12 GB, decisión de la reunión del 07/11). La API, con 3
+réplicas, y el worker de IA corren ahí desde el 11/11. Medido sobre ese servidor
+([docs/carga/vps-contabo-2026-11-13.md](../carga/vps-contabo-2026-11-13.md)):
+
+- **Examen de 60:** 0 errores. Guardar respuesta p95 270 ms, entregar 430 ms (en Render gratis, 10 s).
+- **300 a la vez:** p95 3 s y 0,02 % de errores.
+- **1.000 a la vez:** el servidor se satura (CPU al 86–96 %). Con 4 réplicas el p95 queda en 9,9 s y
+  los errores en 0,12 %. No se cae, se pone lento.
+
+Para pasar de ~300 a 1.000 con p95 bajo hace falta un segundo nodo, no más réplicas en el mismo. Con
+la base en Supabase Cloud, el techo siguiente es de Supabase: 200 conexiones Realtime en el plan
+gratuito.
+
 ## Alternativas consideradas
 
 - **Escalar en vertical** (una instancia más grande). Más simple, pero tiene techo y deja un único punto
