@@ -15,6 +15,15 @@ El ritmo copia al cliente de verdad, no un bucle a todo gas:
   real de un examen, igual que el ingreso.
 - **Docente:** refresca la sala y las alertas cada 5 s y admite a quien espera.
 
+**Perfil «infracciones»** (`PERFIL=infracciones`, pedido del 14/11): cada
+estudiante manda señales de todos los módulos cada `SENAL_MIN_S`-`SENAL_MAX_S`
+segundos (2-6 por defecto), como un examen en que todos hacen trampa a la vez:
+foco perdido largo, mirada, rostro ausente, otra persona, procesos, monitores,
+voz, copia, objetos y encuadre. Muchas generan alerta. El docente refresca
+alertas, señales y semáforo cada 2 s, y se mide cuánto tarda cada alerta en
+verse en su lista («alerta visible al docente»; en producción llega antes, por
+Supabase Realtime, sin esperar al refresco).
+
 Presupuestos (salen con código 1 si se rompen, para el CI):
 `UMBRAL_P95_MS` (500) por endpoint, `UMBRAL_ENTREGA_P95_MS` (1500) para la
 entrega, que califica, y `UMBRAL_ERRORES` (0.01).
@@ -53,6 +62,31 @@ SONDEO_CON_MARGEN = os.environ.get("SONDEO_CON_MARGEN", "1") == "1"
 #: Con 30 por vuelta y un docente para tres exámenes, el límite de 120
 #: escrituras por minuto y persona lo cortaba con 429, y con razón.
 ADMITIR_POR_VUELTA = int(os.environ.get("ADMITIR_POR_VUELTA", "5"))
+#: «examen» (por defecto) o «infracciones»: todos mandan señales sin parar.
+PERFIL = os.environ.get("PERFIL", "examen")
+INFRACCIONES = PERFIL == "infracciones"
+SENAL_MIN_S = float(os.environ.get("SENAL_MIN_S", "2"))
+SENAL_MAX_S = float(os.environ.get("SENAL_MAX_S", "6"))
+#: La meta SMART: la alerta de navegador o cámara llega al docente en < 5 s.
+UMBRAL_ALERTA_MS = float(os.environ.get("UMBRAL_ALERTA_MS", "5000"))
+
+#: (tipo, duración mínima y máxima en ms). Las duraciones cruzan los umbrales
+#: de severidad del dominio (`severity.py`): unas quedan en baja, otras alertan.
+SENALES: list[tuple[str, int, int]] = [
+    ("focus_lost", 1_000, 45_000),
+    ("gaze_away", 2_000, 20_000),
+    ("face_absent", 2_000, 25_000),
+    ("extra_person", 1_000, 5_000),
+    ("suspicious_process", 0, 0),
+    ("extra_display", 0, 0),
+    ("speech_detected", 1_000, 8_000),
+    ("copy_attempt", 0, 0),
+    ("prohibited_object", 1_000, 5_000),
+    ("framing_lost", 5_000, 40_000),
+]
+
+#: Alertas mandadas que el docente todavía no vio: id del evento -> instante.
+_alertas_pendientes: dict[str, float] = {}
 
 _lock = threading.Lock()
 _estudiantes = itertools.cycle(
@@ -81,6 +115,8 @@ class Estudiante(HttpUser):
         # En la sala, el ritmo del sondeo; rindiendo, el de quien piensa y responde.
         if self.fase == "espera":
             return random.uniform(8, 12) if SONDEO_CON_MARGEN else 10.0
+        if INFRACCIONES:
+            return random.uniform(SENAL_MIN_S, SENAL_MAX_S)
         return random.uniform(8, 15)
 
     def on_start(self) -> None:
@@ -115,7 +151,8 @@ class Estudiante(HttpUser):
             if time.time() >= self.entrega_en:
                 self._entregar()
             else:
-                random.choices([self._guardar, self._senal, self._estado], weights=[70, 25, 5])[0]()
+                pesos = [20, 75, 5] if INFRACCIONES else [70, 25, 5]
+                random.choices([self._guardar, self._senal, self._estado], weights=pesos)[0]()
         else:
             raise StopUser()
 
@@ -146,19 +183,30 @@ class Estudiante(HttpUser):
         )
 
     def _senal(self) -> None:
-        self.client.post(
+        if INFRACCIONES:
+            tipo, minimo, maximo = random.choice(SENALES)
+            nombre = f"señal: {tipo}"
+        else:
+            tipo, minimo, maximo = "focus_lost", 500, 8000
+            nombre = "examen: señal de supervisión"
+        enviada = time.time()
+        r = self.client.post(
             "/api/v1/events",
             json={
                 "session_id": self.sid,
                 "student_id": self.yo,
                 "question_id": random.choice(self.preguntas)["id"] if self.preguntas else None,
-                "event_type": "focus_lost",
+                "event_type": tipo,
                 "started_at": _ahora(),
-                "duration_ms": random.randint(500, 8000),
+                "duration_ms": random.randint(minimo, maximo),
                 "metadata": {"carga": True},
             },
-            name="examen: señal de supervisión",
+            name=nombre,
         )
+        # Si generó alerta, el docente tiene que verla: se cronometra desde aquí.
+        if INFRACCIONES and r.ok and r.json().get("severity") in ("medium", "high"):
+            with _lock:
+                _alertas_pendientes[r.json()["id"]] = enviada
 
     def _estado(self) -> None:
         self.client.get(f"/api/v1/exam/{self.sid}/me", name="examen: mi estado")
@@ -173,7 +221,8 @@ class Docente(HttpUser):
 
     # Uno por examen: el escenario decide cuántos, no el reparto por pesos.
     fixed_count = len(ESCENARIO["examenes"])
-    wait_time = constant(5)
+    # En «infracciones», el ritmo de quien mira la actividad sin soltar la pantalla.
+    wait_time = constant(2 if INFRACCIONES else 5)
 
     def on_start(self) -> None:
         self.examen = _siguiente(_examenes)
@@ -193,7 +242,32 @@ class Docente(HttpUser):
                     json={"approve": True},
                     name="docente: admitir",
                 )
-        self.client.get(f"/api/v1/sessions/{self.sid}/alerts", name="docente: alertas")
+        alertas = self.client.get(f"/api/v1/sessions/{self.sid}/alerts", name="docente: alertas")
+        if not INFRACCIONES:
+            return
+        self.client.get(f"/api/v1/sessions/{self.sid}/events", name="docente: señales")
+        self.client.get(f"/api/v1/sessions/{self.sid}/risk", name="docente: semáforo")
+        if alertas.ok:
+            self._cronometrar(alertas.json())
+
+    def _cronometrar(self, alertas: list[dict[str, Any]]) -> None:
+        """Cuánto tardó cada alerta nueva, desde que se mandó hasta verla aquí."""
+        ahora = time.time()
+        with _lock:
+            vistas = [
+                (a["event_id"], _alertas_pendientes.pop(a["event_id"]))
+                for a in alertas
+                if a["event_id"] in _alertas_pendientes
+            ]
+        for _, enviada in vistas:
+            events.request.fire(
+                request_type="ALERTA",
+                name="alerta visible al docente",
+                response_time=(ahora - enviada) * 1000,
+                response_length=0,
+                exception=None,
+                context={},
+            )
 
 
 _ = between  # re-exportado para quien quiera cambiar el ritmo desde aquí
@@ -209,7 +283,13 @@ def _presupuestos(environment: Any, **_kw: Any) -> None:
     for entrada in stats.entries.values():
         if entrada.num_requests == 0:
             continue
-        umbral = UMBRAL_ENTREGA_P95_MS if entrada.name == "entrega" else UMBRAL_P95_MS
+        umbral = (
+            UMBRAL_ENTREGA_P95_MS
+            if entrada.name == "entrega"
+            else UMBRAL_ALERTA_MS
+            if entrada.name == "alerta visible al docente"
+            else UMBRAL_P95_MS
+        )
         p95 = entrada.get_response_time_percentile(0.95)
         if p95 > umbral:
             rotos.append(f"p95 de «{entrada.name}» {p95:.0f} ms > {umbral:.0f} ms")
