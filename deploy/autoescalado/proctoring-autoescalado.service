@@ -1,0 +1,26 @@
+# Autoescalador de la API en el VPS (deploy/autoescalado/README.md).
+#
+#   sudo cp proctoring-autoescalado.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now proctoring-autoescalado
+#
+# `api-m4kgbc` es el nombre del servicio de la API en Dokploy (Swarm).
+[Unit]
+Description=Autoescalador horizontal de la API de Proctoring
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=docker
+ExecStart=/usr/bin/python3 /home/ubuntu/autoescalado/autoescalador.py \
+  --patron api-m4kgbc. \
+  --min 2 --max 5 --subir 70 --bajar 25 --intervalo 15 \
+  --registro /home/ubuntu/autoescalado/produccion.csv \
+  --comando "docker service scale --detach api-m4kgbc={n}"
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -74,3 +74,26 @@ Con este servidor:
   de Supabase con más conexiones Realtime.
 
 Datos crudos (CSV de Locust y CPU por contenedor): `vps-carga.tgz`, fuera del repositorio.
+
+## Autoescalado (13/11/2026, segunda parte)
+
+Desde esta prueba el número de réplicas lo decide la carga (`deploy/autoescalado/`). Cada 15 s se mide la
+CPU de cada réplica y se añade una con más del 70 % sostenido 45 s, o se quita una con menos del 25 %
+durante 3 minutos, entre 2 y 5.
+
+Demostración con 540 estudiantes, arrancando con 2 réplicas:
+
+| Momento | Decisión | CPU media por réplica |
+|---|---|---:|
+| 85 s tras empezar la carga | 2 → 3 | 104 % |
+| 53 s después | 3 → 4 | 74 % |
+| Fin de la carga + 2 min en calma | 4 → 3 | 0 % |
+| 3,6 min después | 3 → 2 | 0 % |
+
+| 540 a la vez | Errores | p50 | p95 |
+|---|---:|---:|---:|
+| 3 réplicas fijas | 0,01 % | 1,9 s | 10,0 s |
+| Autoescalado (2 → 4) | 0 % | 350 ms | 8,3 s |
+
+No llegó a 5: con 4 réplicas la media por réplica ya no pasaba del 70 %, porque la máquina entera estaba
+llena. Es el límite de un solo servidor, el mismo que muestran las tablas de arriba.
