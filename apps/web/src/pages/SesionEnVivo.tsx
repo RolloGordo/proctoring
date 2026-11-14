@@ -24,6 +24,8 @@ import { CodigoAcceso } from '../components/CodigoAcceso'
 import { mergeAlerts } from '../lib/live-alerts'
 import { mergeEvents } from '../lib/live-events'
 import { agrupar, modulosVigilados } from '../lib/modulos'
+import { useListaAcotada } from '../lib/lista-acotada'
+import { FiltroCorreo, SinCoincidencias, VerMas } from '../components/ControlesLista'
 
 const CAMARAS_POR_PAGINA = 6
 
@@ -251,6 +253,20 @@ export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) 
     }
     return porId
   }, [participantes])
+  /** Correo y nombre de cada estudiante, para filtrar las listas. */
+  const buscableDe = useMemo(() => {
+    const porId = new Map<string, string>()
+    for (const participante of participantes) {
+      porId.set(
+        participante.student_id,
+        `${participante.student_email ?? ''} ${participante.student_name ?? ''}`
+      )
+    }
+    return porId
+  }, [participantes])
+  // Las listas vienen de la más nueva a la más vieja: se ven las 6 últimas.
+  const listaAlertas = useListaAcotada(alertas, (alerta) => buscableDe.get(alerta.student_id))
+  const listaEventos = useListaAcotada(eventos, (evento) => buscableDe.get(evento.student_id))
 
   const totalPaginasCamaras = Math.ceil(participantesActivos.length / CAMARAS_POR_PAGINA)
   const indicePagina = paginaCamaras.sessionId === id ? paginaCamaras.indice : 0
@@ -301,43 +317,45 @@ export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) 
             {actualizando ? 'Actualizando…' : 'Actualizar actividad'}
           </button>
         </div>
-      ) : <div className="encabezado-pagina">
-        <div>
-          <h1>{sesion.title}</h1>
-          <p className="subtitulo">
-            {fechaLarga(sesion.starts_at)} · {sesion.duration_minutes} min · supervisión{' '}
-            {nombrePreset(sesion.preset).toLowerCase()}
-          </p>
-          <QueSeVigila sesion={sesion} />
-        </div>
-        <div className="acciones-sesion">
-          <button
-            type="button"
-            className="boton boton-secundario"
-            onClick={actualizarDatos}
-            disabled={actualizando}
-          >
-            {actualizando ? 'Actualizando…' : 'Actualizar alertas y señales'}
-          </button>
-          <div style={{ textAlign: 'right' }}>
-            <CodigoAcceso codigo={sesion.access_code} />
+      ) : (
+        <div className="encabezado-pagina">
+          <div>
+            <h1>{sesion.title}</h1>
+            <p className="subtitulo">
+              {fechaLarga(sesion.starts_at)} · {sesion.duration_minutes} min · supervisión{' '}
+              {nombrePreset(sesion.preset).toLowerCase()}
+            </p>
+            <QueSeVigila sesion={sesion} />
           </div>
-          <div className="fila">
-            <Link to={`/sesiones/${id}/preguntas`} className="boton boton-secundario">
-              Preguntas
-            </Link>
-            <Link to={`/sesiones/${id}/editar`} className="boton boton-secundario">
-              Contenido
-            </Link>
-            <Link to={`/sesiones/${id}/participantes`} className="boton boton-secundario">
-              Participantes
-            </Link>
-            <Link to={`/sesiones/${id}/resultados`} className="boton boton-secundario">
-              Resultados
-            </Link>
+          <div className="acciones-sesion">
+            <button
+              type="button"
+              className="boton boton-secundario"
+              onClick={actualizarDatos}
+              disabled={actualizando}
+            >
+              {actualizando ? 'Actualizando…' : 'Actualizar alertas y señales'}
+            </button>
+            <div style={{ textAlign: 'right' }}>
+              <CodigoAcceso codigo={sesion.access_code} />
+            </div>
+            <div className="fila">
+              <Link to={`/sesiones/${id}/preguntas`} className="boton boton-secundario">
+                Preguntas
+              </Link>
+              <Link to={`/sesiones/${id}/editar`} className="boton boton-secundario">
+                Contenido
+              </Link>
+              <Link to={`/sesiones/${id}/participantes`} className="boton boton-secundario">
+                Participantes
+              </Link>
+              <Link to={`/sesiones/${id}/resultados`} className="boton boton-secundario">
+                Resultados
+              </Link>
+            </div>
           </div>
         </div>
-      </div>}
+      )}
 
       <div className="panel-resumen">
         <Dato valor={resumen.high} etiqueta="Alertas altas" tono="high" />
@@ -377,7 +395,9 @@ export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) 
                         sessionId={id}
                         studentId={participante.student_id}
                         teacherId={userId}
-                        nombre={participante.student_name ?? participante.student_email ?? undefined}
+                        nombre={
+                          participante.student_name ?? participante.student_email ?? undefined
+                        }
                       />
                     ))}
                   </div>
@@ -451,30 +471,42 @@ export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) 
                 </p>
               </div>
             ) : (
-              <ul className="lista-alertas">
-                {alertas.map((alerta) => (
-                  <li key={alerta.id}>
-                    <span className={`severidad severidad-${alerta.severity}`}>
-                      {nombreSeveridad(alerta.severity)}
-                    </span>
-                    <div>
-                      <p className="motivo">{alerta.reason}</p>
-                      <p className="ayuda">
-                        <Link to={`/sesiones/${id}/estudiantes/${alerta.student_id}`}>
-                          {comoSeLlama.get(alerta.student_id) ??
-                            `Estudiante ${alerta.student_id.slice(0, 8)}`}
-                        </Link>
-                      </p>
-                      {eventoPorId.get(alerta.event_id) && (
+              <>
+                <div className="controles-lista">
+                  <FiltroCorreo valor={listaAlertas.filtro} onCambio={listaAlertas.setFiltro} />
+                  <span className="ayuda">
+                    {listaAlertas.visibles.length} de {listaAlertas.coincidencias}
+                  </span>
+                </div>
+                {listaAlertas.visibles.length === 0 && (
+                  <SinCoincidencias filtro={listaAlertas.filtro} />
+                )}
+                <ul className="lista-alertas">
+                  {listaAlertas.visibles.map((alerta) => (
+                    <li key={alerta.id}>
+                      <span className={`severidad severidad-${alerta.severity}`}>
+                        {nombreSeveridad(alerta.severity)}
+                      </span>
+                      <div>
+                        <p className="motivo">{alerta.reason}</p>
                         <p className="ayuda">
-                          {detalleEvento(eventoPorId.get(alerta.event_id)!.metadata)}
+                          <Link to={`/sesiones/${id}/estudiantes/${alerta.student_id}`}>
+                            {comoSeLlama.get(alerta.student_id) ??
+                              `Estudiante ${alerta.student_id.slice(0, 8)}`}
+                          </Link>
                         </p>
-                      )}
-                    </div>
-                    <span className="hora">{soloHora(alerta.created_at)}</span>
-                  </li>
-                ))}
-              </ul>
+                        {eventoPorId.get(alerta.event_id) && (
+                          <p className="ayuda">
+                            {detalleEvento(eventoPorId.get(alerta.event_id)!.metadata)}
+                          </p>
+                        )}
+                      </div>
+                      <span className="hora">{soloHora(alerta.created_at)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <VerMas restantes={listaAlertas.restantes} onClick={listaAlertas.verMas} />
+              </>
             )}
           </div>
         </section>
@@ -491,42 +523,54 @@ export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) 
                 <p className="subtitulo">Aparecerá en cuanto un estudiante empiece el examen.</p>
               </div>
             ) : (
-              <table className="tabla">
-                <thead>
-                  <tr>
-                    <th>Señal</th>
-                    <th>Detalle</th>
-                    <th>Duración</th>
-                    <th>Nivel</th>
-                    <th>Hora</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {eventos.map((evento) => (
-                    <tr key={evento.id}>
-                      <td>
-                        {nombreEvento(evento.event_type)}
-                        <p className="ayuda">
-                          <Link to={`/sesiones/${id}/estudiantes/${evento.student_id}`}>
-                            {comoSeLlama.get(evento.student_id) ??
-                              `Estudiante ${evento.student_id.slice(0, 8)}`}
-                          </Link>
-                        </p>
-                      </td>
-                      <td className="tenue">{detalleEvento(evento.metadata) || '—'}</td>
-                      <td className="tenue">
-                        {evento.duration_ms > 0 ? duracion(evento.duration_ms) : '—'}
-                      </td>
-                      <td>
-                        <span className={`severidad severidad-${evento.severity}`}>
-                          {nombreSeveridad(evento.severity)}
-                        </span>
-                      </td>
-                      <td className="hora">{soloHora(evento.started_at)}</td>
+              <>
+                <div className="controles-lista">
+                  <FiltroCorreo valor={listaEventos.filtro} onCambio={listaEventos.setFiltro} />
+                  <span className="ayuda">
+                    {listaEventos.visibles.length} de {listaEventos.coincidencias}
+                  </span>
+                </div>
+                {listaEventos.visibles.length === 0 && (
+                  <SinCoincidencias filtro={listaEventos.filtro} />
+                )}
+                <table className="tabla">
+                  <thead>
+                    <tr>
+                      <th>Señal</th>
+                      <th>Detalle</th>
+                      <th>Duración</th>
+                      <th>Nivel</th>
+                      <th>Hora</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {listaEventos.visibles.map((evento) => (
+                      <tr key={evento.id}>
+                        <td>
+                          {nombreEvento(evento.event_type)}
+                          <p className="ayuda">
+                            <Link to={`/sesiones/${id}/estudiantes/${evento.student_id}`}>
+                              {comoSeLlama.get(evento.student_id) ??
+                                `Estudiante ${evento.student_id.slice(0, 8)}`}
+                            </Link>
+                          </p>
+                        </td>
+                        <td className="tenue">{detalleEvento(evento.metadata) || '—'}</td>
+                        <td className="tenue">
+                          {evento.duration_ms > 0 ? duracion(evento.duration_ms) : '—'}
+                        </td>
+                        <td>
+                          <span className={`severidad severidad-${evento.severity}`}>
+                            {nombreSeveridad(evento.severity)}
+                          </span>
+                        </td>
+                        <td className="hora">{soloHora(evento.started_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <VerMas restantes={listaEventos.restantes} onClick={listaEventos.verMas} />
+              </>
             )}
           </div>
         </section>

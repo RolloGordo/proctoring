@@ -7,6 +7,7 @@ import {
   type EventType,
   type ProctoringEvent
 } from '../lib/api'
+import { PorPasos } from '../components/ControlesLista'
 import { NotaDestacada } from '../components/NotaDestacada'
 import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
@@ -78,7 +79,8 @@ function detalleDiagnostico(d: {
     const pendientes = Number(det.pending ?? 0)
     return `${pendientes} señales esperando tras ${Number(det.attempts ?? 0)} intentos.`
   }
-  if (d.code === 'network_disconnected') return 'El estudiante perdió conexión; el examen quedó bloqueado.'
+  if (d.code === 'network_disconnected')
+    return 'El estudiante perdió conexión; el examen quedó bloqueado.'
   if (d.code === 'network_reconnected') {
     const segundos = Math.max(0, Number(det.duration_ms ?? 0) / 1000)
     return `Conexión recuperada tras ${segundos.toFixed(1)} s.`
@@ -353,32 +355,38 @@ export function RevisionCaso() {
               <h3>Sin señales</h3>
             </div>
           ) : (
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Hora</th>
-                  <th>Señal</th>
-                  <th>Detalle</th>
-                  <th>Duración</th>
-                  <th>Nivel</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((e) => (
-                  <tr key={e.id}>
-                    <td className="hora">{soloHora(e.started_at)}</td>
-                    <td>{nombreEvento(e.event_type)}</td>
-                    <td className="tenue">{detalleEvento(e.metadata) || '—'}</td>
-                    <td className="tenue">{e.duration_ms > 0 ? duracion(e.duration_ms) : '—'}</td>
-                    <td>
-                      <span className={`severidad severidad-${e.severity}`}>
-                        {nombreSeveridad(e.severity)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <PorPasos elementos={events}>
+              {(visibles) => (
+                <table className="tabla">
+                  <thead>
+                    <tr>
+                      <th>Hora</th>
+                      <th>Señal</th>
+                      <th>Detalle</th>
+                      <th>Duración</th>
+                      <th>Nivel</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibles.map((e) => (
+                      <tr key={e.id}>
+                        <td className="hora">{soloHora(e.started_at)}</td>
+                        <td>{nombreEvento(e.event_type)}</td>
+                        <td className="tenue">{detalleEvento(e.metadata) || '—'}</td>
+                        <td className="tenue">
+                          {e.duration_ms > 0 ? duracion(e.duration_ms) : '—'}
+                        </td>
+                        <td>
+                          <span className={`severidad severidad-${e.severity}`}>
+                            {nombreSeveridad(e.severity)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </PorPasos>
           )}
         </div>
       </section>
@@ -399,25 +407,29 @@ export function RevisionCaso() {
                     <summary>
                       {nombreEvento(tipo)} <span className="tenue">({capturas.length})</span>
                     </summary>
-                    <ul className="lista-evidencias">
-                      {capturas.map(({ evento, path }) => (
-                        <li key={evento.id} className="evidencia-item">
-                          <div>
-                            <strong>{soloHora(evento.started_at)}</strong>
-                            <p className="ayuda">
-                              {detalleEvento(evento.metadata) || 'Captura del evento'}
-                            </p>
-                          </div>
-                          <EvidenciaImagen
-                            sessionId={id}
-                            studentId={estudianteId}
-                            path={path}
-                            token={token}
-                            nombre={nombreEvento(evento.event_type)}
-                          />
-                        </li>
-                      ))}
-                    </ul>
+                    <PorPasos elementos={capturas}>
+                      {(visibles) => (
+                        <ul className="lista-evidencias">
+                          {visibles.map(({ evento, path }) => (
+                            <li key={evento.id} className="evidencia-item">
+                              <div>
+                                <strong>{soloHora(evento.started_at)}</strong>
+                                <p className="ayuda">
+                                  {detalleEvento(evento.metadata) || 'Captura del evento'}
+                                </p>
+                              </div>
+                              <EvidenciaImagen
+                                sessionId={id}
+                                studentId={estudianteId}
+                                path={path}
+                                token={token}
+                                nombre={nombreEvento(evento.event_type)}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </PorPasos>
                   </details>
                 ))}
               </div>
@@ -427,62 +439,68 @@ export function RevisionCaso() {
             {eventosHabla.length === 0 ? (
               <p className="tenue">No hay fragmentos de voz registrados.</p>
             ) : (
-              <ul className="lista-evidencias">
-                {eventosHabla.map((evento) => {
-                  const analisis = analisisPorEvento.get(evento.id)
-                  return (
-                    <li key={evento.id} className="evidencia-item evidencia-audio">
-                      <div>
-                        <strong>{soloHora(evento.started_at)}</strong>
-                        {analisis?.transcript && (
-                          <p className="justificacion">“{analisis.transcript}”</p>
-                        )}
-                        {!analisis ? (
-                          <p className="ayuda">
-                            {typeof evento.metadata.audio_evidence_error === 'string'
-                              ? `Se detectó habla, pero no se pudo guardar el audio: ${evento.metadata.audio_evidence_error}. No se realizó el análisis automático.`
-                              : 'No hay resultado de análisis disponible. El fragmento requiere revisión manual.'}
-                          </p>
-                        ) : (
-                          <>
-                            <p className="ayuda">
-                              Similitud con la pregunta: {porcentaje(analisis.similarity)} · Voz
-                              sintética: {porcentaje(analisis.synthetic_voice_score)}
-                            </p>
-                            {analisis.similarity === null ||
-                            analisis.synthetic_voice_score === null ? (
-                              <p className="aviso aviso-neutro">
-                                Análisis incompleto: no se midieron ambas condiciones y el sistema
-                                no puede confirmar ni descartar una consulta a IA.
-                              </p>
-                            ) : analisis.alerted ? (
-                              <p className="aviso">
-                                Se cumplieron ambas condiciones; el docente debe revisar el
-                                fragmento antes de decidir.
+              <PorPasos elementos={eventosHabla}>
+                {(visibles) => (
+                  <ul className="lista-evidencias">
+                    {visibles.map((evento) => {
+                      const analisis = analisisPorEvento.get(evento.id)
+                      return (
+                        <li key={evento.id} className="evidencia-item evidencia-audio">
+                          <div>
+                            <strong>{soloHora(evento.started_at)}</strong>
+                            {analisis?.transcript && (
+                              <p className="justificacion">“{analisis.transcript}”</p>
+                            )}
+                            {!analisis ? (
+                              <p className="ayuda">
+                                {typeof evento.metadata.audio_evidence_error === 'string'
+                                  ? `Se detectó habla, pero no se pudo guardar el audio: ${evento.metadata.audio_evidence_error}. No se realizó el análisis automático.`
+                                  : 'No hay resultado de análisis disponible. El fragmento requiere revisión manual.'}
                               </p>
                             ) : (
-                              <p className="ayuda">
-                                No se cumplieron ambas condiciones; hablar por sí solo no genera una
-                                alerta.
-                              </p>
+                              <>
+                                <p className="ayuda">
+                                  Similitud con la pregunta: {porcentaje(analisis.similarity)} · Voz
+                                  sintética: {porcentaje(analisis.synthetic_voice_score)}
+                                </p>
+                                {analisis.similarity === null ||
+                                analisis.synthetic_voice_score === null ? (
+                                  <p className="aviso aviso-neutro">
+                                    Análisis incompleto: no se midieron ambas condiciones y el
+                                    sistema no puede confirmar ni descartar una consulta a IA.
+                                  </p>
+                                ) : analisis.alerted ? (
+                                  <p className="aviso">
+                                    Se cumplieron ambas condiciones; el docente debe revisar el
+                                    fragmento antes de decidir.
+                                  </p>
+                                ) : (
+                                  <p className="ayuda">
+                                    No se cumplieron ambas condiciones; hablar por sí solo no genera
+                                    una alerta.
+                                  </p>
+                                )}
+                              </>
                             )}
-                          </>
-                        )}
-                      </div>
-                      {evento.evidence_path ? (
-                        <FragmentoAudio
-                          sessionId={id}
-                          studentId={estudianteId}
-                          path={evento.evidence_path}
-                          token={token}
-                        />
-                      ) : (
-                        <p className="ayuda">El fragmento no está disponible para reproducción.</p>
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
+                          </div>
+                          {evento.evidence_path ? (
+                            <FragmentoAudio
+                              sessionId={id}
+                              studentId={estudianteId}
+                              path={evento.evidence_path}
+                              token={token}
+                            />
+                          ) : (
+                            <p className="ayuda">
+                              El fragmento no está disponible para reproducción.
+                            </p>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </PorPasos>
             )}
           </div>
         </div>

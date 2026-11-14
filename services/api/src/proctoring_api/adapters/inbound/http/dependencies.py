@@ -88,6 +88,7 @@ from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.application.use_cases.review_case import (
     GetMyDecision,
     ListSessionDecisions,
+    ListSessionRisk,
     RecordDecision,
     ReviewStudentCase,
 )
@@ -267,6 +268,11 @@ def get_record_decision(request: Request) -> RecordDecision:
 
 def get_my_decision(request: Request) -> GetMyDecision:
     use_case: GetMyDecision = request.app.state.get_my_decision
+    return use_case
+
+
+def get_list_session_risk(request: Request) -> ListSessionRisk:
+    use_case: ListSessionRisk = request.app.state.list_session_risk
     return use_case
 
 
@@ -455,6 +461,7 @@ ListMyCoursesDep = Annotated[ListMyCourses, Depends(get_list_my_courses)]
 ReviewCaseDep = Annotated[ReviewStudentCase, Depends(get_review_case)]
 RecordDecisionDep = Annotated[RecordDecision, Depends(get_record_decision)]
 ListDecisionsDep = Annotated[ListSessionDecisions, Depends(get_list_decisions)]
+ListSessionRiskDep = Annotated[ListSessionRisk, Depends(get_list_session_risk)]
 MyDecisionDep = Annotated[GetMyDecision, Depends(get_my_decision)]
 GetAudioJobDep = Annotated[GetAudioJob, Depends(get_audio_job)]
 RecordAudioAnalysisDep = Annotated[RecordAudioAnalysis, Depends(get_record_audio_analysis)]

@@ -10,6 +10,7 @@ from proctoring_api.adapters.inbound.http.dependencies import (
     CurrentUserDep,
     EvidenceReadUrlDep,
     ListDecisionsDep,
+    ListSessionRiskDep,
     MyDecisionDep,
     RecordDecisionDep,
     ReviewCaseDep,
@@ -21,6 +22,7 @@ from proctoring_api.adapters.inbound.http.schemas import (
     ErrorResponse,
     EvidenceReadUrlRequest,
     EvidenceReadUrlResponse,
+    StudentRiskResponse,
 )
 from proctoring_api.application.use_cases.read_evidence import READ_EXPIRY_SECONDS
 
@@ -105,6 +107,31 @@ def my_decision(
     """
     decision = use_case.execute(session_id, actor=current_user)
     return DecisionResponse.from_entity(decision) if decision is not None else None
+
+
+@router.get(
+    "/sessions/{session_id}/risk",
+    response_model=list[StudentRiskResponse],
+    summary="Riesgo de cada estudiante de la sesión (solo docente dueño)",
+    responses=AUTH_RESPONSES,
+)
+def list_session_risk(
+    session_id: UUID, use_case: ListSessionRiskDep, current_user: CurrentUserDep
+) -> list[StudentRiskResponse]:
+    riesgos = use_case.execute(session_id, actor=current_user)
+    return sorted(
+        (
+            StudentRiskResponse(
+                student_id=alumno,
+                score=r.score,
+                level=r.level,
+                signal_count=sum(s.count for s in r.signals),
+                top_signal=r.signals[0].event_type if r.signals else None,
+            )
+            for alumno, r in riesgos.items()
+        ),
+        key=lambda x: -x.score,
+    )
 
 
 @router.get(

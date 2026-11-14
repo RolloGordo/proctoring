@@ -178,6 +178,33 @@ class ListSessionDecisions:
         return self._decisions.list_by_session(session_id)
 
 
+class ListSessionRisk:
+    """El riesgo de cada estudiante de una sesión, para el semáforo de Entregas.
+
+    Pedido del profesor (revisión del 14/11/2026): ver de un vistazo quién está
+    en verde, amarillo o rojo y abrir primero los casos más sospechosos, sin
+    revisar uno por uno. Es el mismo cálculo que el del caso (`assess_risk`),
+    con todos los eventos de la sesión en una sola consulta.
+    """
+
+    def __init__(
+        self, events: EventRepository, sessions: ExamSessionRepository | None = None
+    ) -> None:
+        self._events = events
+        self._sessions = sessions
+
+    def execute(
+        self, session_id: UUID, *, actor: AuthenticatedUser | None = None
+    ) -> dict[UUID, RiskAssessment]:
+        if actor is not None and not actor.is_teacher:
+            raise AuthorizationError("Solo el docente ve el riesgo de los estudiantes")
+        ensure_teacher_owns_session(self._sessions, session_id, actor)
+        por_estudiante: dict[UUID, list[ProctoringEvent]] = {}
+        for evento in self._events.list_by_session(session_id):
+            por_estudiante.setdefault(evento.student_id, []).append(evento)
+        return {alumno: assess_risk(eventos) for alumno, eventos in por_estudiante.items()}
+
+
 class GetMyDecision:
     """La decision del docente sobre **mi** caso, con su justificacion.
 
