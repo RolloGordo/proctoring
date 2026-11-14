@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type Decision, type ExamSession, type Participant, type Question } from '../lib/api'
+import {
+  api,
+  type Decision,
+  type ExamSession,
+  type Participant,
+  type Question,
+  type RiskLevel,
+  type StudentRisk
+} from '../lib/api'
+import { FiltroCorreo, SinCoincidencias, VerMas } from '../components/ControlesLista'
 import { useAuth } from '../lib/auth-context'
-import { fechaLarga, formatearNota, nombreDecision, soloHora } from '../lib/formato'
+import { fechaLarga, formatearNota, nombreDecision, nombreEvento, soloHora } from '../lib/formato'
+import { useListaAcotada } from '../lib/lista-acotada'
 import { latestDecisionByStudent, summarizeResults } from '../lib/resultados'
 
 export function Resultados() {
@@ -12,6 +22,8 @@ export function Resultados() {
   const [decisiones, setDecisiones] = useState<Decision[]>()
   const [sesion, setSesion] = useState<ExamSession>()
   const [preguntas, setPreguntas] = useState<Question[]>()
+  const [riesgos, setRiesgos] = useState<StudentRisk[]>()
+  const [nivel, setNivel] = useState<RiskLevel | 'todos'>('todos')
   const [error, setError] = useState<string>()
 
   useEffect(() => {
@@ -20,14 +32,16 @@ export function Resultados() {
       api.listParticipants(id, token),
       api.listDecisions(id, token),
       api.getSession(id, token),
-      api.listQuestions(id, token)
+      api.listQuestions(id, token),
+      api.listSessionRisk(id, token)
     ])
-      .then(([datosParticipantes, datosDecisiones, datosSesion, datosPreguntas]) => {
+      .then(([datosParticipantes, datosDecisiones, datosSesion, datosPreguntas, datosRiesgo]) => {
         if (cancelado) return
         setParticipantes(datosParticipantes)
         setDecisiones(datosDecisiones)
         setSesion(datosSesion)
         setPreguntas(datosPreguntas)
+        setRiesgos(datosRiesgo)
       })
       .catch((fallo: Error) => !cancelado && setError(fallo.message))
 
@@ -42,9 +56,34 @@ export function Resultados() {
   )
   const decisionesVigentes = useMemo(() => latestDecisionByStudent(decisiones ?? []), [decisiones])
   const hayDesarrollos = preguntas?.some((pregunta) => pregunta.question_type === 'essay') ?? false
+  const riesgoPorAlumno = useMemo(
+    () => new Map((riesgos ?? []).map((riesgo) => [riesgo.student_id, riesgo])),
+    [riesgos]
+  )
+  // De más a menos sospechoso: el docente empieza por los rojos y descarta los verdes.
+  const ordenados = useMemo(
+    () =>
+      [...(participantes ?? [])]
+        .filter((p) => nivel === 'todos' || nivelDe(riesgoPorAlumno.get(p.student_id)) === nivel)
+        .sort(
+          (a, b) =>
+            (riesgoPorAlumno.get(b.student_id)?.score ?? 0) -
+            (riesgoPorAlumno.get(a.student_id)?.score ?? 0)
+        ),
+    [participantes, riesgoPorAlumno, nivel]
+  )
+  const lista = useListaAcotada(
+    ordenados,
+    (p) => `${p.student_email ?? ''} ${p.student_name ?? ''}`
+  )
+  const conteo = useMemo(() => {
+    const cuenta: Record<RiskLevel, number> = { high: 0, medium: 0, low: 0 }
+    for (const p of participantes ?? []) cuenta[nivelDe(riesgoPorAlumno.get(p.student_id))] += 1
+    return cuenta
+  }, [participantes, riesgoPorAlumno])
 
   if (error) return <p className="aviso">{error}</p>
-  if (!participantes || !decisiones || !sesion || !preguntas || !resumen) {
+  if (!participantes || !decisiones || !sesion || !preguntas || !riesgos || !resumen) {
     return <p className="tenue">Cargando resultados…</p>
   }
 
@@ -77,6 +116,7 @@ export function Resultados() {
         <Dato valor={resumen.submittedCount} etiqueta="Entregaron" />
         <Dato valor={notaMedia} etiqueta="Nota media" />
         <Dato valor={resumen.pendingReviewCount} etiqueta="Casos por revisar" tono="medium" />
+        <Dato valor={conteo.high} etiqueta="En rojo" tono="high" />
       </div>
 
       {participantes.length === 0 ? (
@@ -88,9 +128,29 @@ export function Resultados() {
         </div>
       ) : (
         <div className="tarjeta">
+          <div className="controles-lista">
+            <FiltroCorreo valor={lista.filtro} onCambio={lista.setFiltro} />
+            <div className="filtro-nivel" role="group" aria-label="Filtrar por nivel de riesgo">
+              {(['todos', 'high', 'medium', 'low'] as const).map((opcion) => (
+                <button
+                  key={opcion}
+                  type="button"
+                  aria-pressed={nivel === opcion}
+                  className={opcion === 'todos' ? 'semaforo' : `semaforo semaforo-${opcion}`}
+                  onClick={() => setNivel(opcion)}
+                >
+                  {opcion === 'todos'
+                    ? `Todos (${participantes.length})`
+                    : `${NOMBRE_SEMAFORO[opcion]} (${conteo[opcion]})`}
+                </button>
+              ))}
+            </div>
+          </div>
+          {lista.visibles.length === 0 && <SinCoincidencias filtro={lista.filtro} />}
           <table className="tabla">
             <thead>
               <tr>
+                <th>Riesgo</th>
                 <th>Estudiante</th>
                 <th className="numero">Nota</th>
                 <th>Entregado</th>
@@ -99,10 +159,13 @@ export function Resultados() {
               </tr>
             </thead>
             <tbody>
-              {participantes.map((participante) => {
+              {lista.visibles.map((participante) => {
                 const decision = decisionesVigentes.get(participante.student_id)
                 return (
                   <tr key={participante.id}>
+                    <td>
+                      <Semaforo riesgo={riesgoPorAlumno.get(participante.student_id)} />
+                    </td>
                     <td>
                       {participante.student_name ? (
                         <>
@@ -149,6 +212,7 @@ export function Resultados() {
               })}
             </tbody>
           </table>
+          <VerMas restantes={lista.restantes} onClick={lista.verMas} />
         </div>
       )}
       {hayDesarrollos && (
@@ -161,6 +225,29 @@ export function Resultados() {
   )
 }
 
+const NOMBRE_SEMAFORO: Record<RiskLevel, string> = {
+  high: 'Rojo',
+  medium: 'Amarillo',
+  low: 'Verde'
+}
+
+function nivelDe(riesgo: StudentRisk | undefined): RiskLevel {
+  return riesgo?.level ?? 'low'
+}
+
+/** Verde, amarillo o rojo según el riesgo calculado. Orienta, no sentencia. */
+function Semaforo({ riesgo }: { riesgo: StudentRisk | undefined }) {
+  const nivel = nivelDe(riesgo)
+  const detalle = riesgo?.top_signal
+    ? `${riesgo.signal_count} señales · sobre todo ${nombreEvento(riesgo.top_signal).toLowerCase()}`
+    : 'Sin señales'
+  return (
+    <span className={`semaforo semaforo-${nivel}`} title={detalle}>
+      {NOMBRE_SEMAFORO[nivel]} · {riesgo?.score ?? 0}
+    </span>
+  )
+}
+
 function Dato({
   valor,
   etiqueta,
@@ -168,7 +255,7 @@ function Dato({
 }: {
   valor: string | number
   etiqueta: string
-  tono?: 'medium'
+  tono?: 'medium' | 'high'
 }) {
   return (
     <div className="tarjeta dato">

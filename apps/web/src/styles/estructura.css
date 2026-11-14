@@ -1839,3 +1839,87 @@
     overflow-x: auto;
   }
 }
+
+/* ===========================================================================
+   Listas acotadas (alertas, señales, entregas) y semáforo de riesgo
+   =========================================================================== */
+.filtro-lista {
+  width: 100%;
+  max-width: 22rem;
+  padding: var(--e2) var(--e3);
+  border: 1px solid var(--linea);
+  border-radius: 6px;
+  background: var(--papel);
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.ver-mas {
+  display: block;
+  margin: var(--e3) auto 0;
+}
+
+.controles-lista {
+  padding: var(--e3) var(--e4) 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e3);
+  margin-bottom: var(--e3);
+}
+
+/* El color acompaña a la palabra (Alto/Medio/Bajo), no la sustituye. */
+.semaforo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  padding: 2px var(--e2);
+  border: 1px solid;
+  border-radius: 999px;
+  font-family: var(--titulo);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.semaforo::before {
+  content: '';
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.semaforo-high {
+  color: var(--alta);
+  background: var(--alta-fondo);
+  border-color: var(--alta-linea);
+}
+
+.semaforo-medium {
+  color: var(--media);
+  background: var(--media-fondo);
+  border-color: var(--media-linea);
+}
+
+.semaforo-low {
+  color: var(--exito);
+  background: var(--exito-fondo);
+  border-color: currentColor;
+}
+
+.filtro-nivel {
+  display: inline-flex;
+  gap: var(--e1);
+}
+
+.filtro-nivel button[aria-pressed='true'] {
+  outline: 2px solid var(--tinta);
+  outline-offset: 1px;
+}
+
+.tarjeta > .tenue:only-of-type,
+.controles-lista + .tenue {
+  padding: 0 var(--e4);
+}

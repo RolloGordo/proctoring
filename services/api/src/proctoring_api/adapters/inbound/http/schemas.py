@@ -877,6 +877,17 @@ class RiskResponse(BaseModel):
         )
 
 
+class StudentRiskResponse(BaseModel):
+    """El riesgo de un estudiante en la lista de la sesión (semáforo de Entregas)."""
+
+    student_id: UUID
+    score: int
+    level: RiskLevel
+    #: Cuántas señales registró, y la que más pesa: lo que se lee junto al color.
+    signal_count: int
+    top_signal: EventType | None
+
+
 class CaseResponse(BaseModel):
     """Todo lo que el docente necesita para decidir sobre un estudiante."""
 

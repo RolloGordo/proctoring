@@ -151,6 +151,7 @@ from proctoring_api.application.use_cases.register_event import RegisterEvent
 from proctoring_api.application.use_cases.review_case import (
     GetMyDecision,
     ListSessionDecisions,
+    ListSessionRisk,
     RecordDecision,
     ReviewStudentCase,
 )
@@ -624,6 +625,7 @@ def create_app(
         settings.dev_teacher_id,
     )
     app.state.list_decisions = ListSessionDecisions(decision_repository, session_repository)
+    app.state.list_session_risk = ListSessionRisk(event_repository, session_repository)
     app.state.get_my_decision = GetMyDecision(
         decision_repository, participant_repository, settings.dev_student_id
     )

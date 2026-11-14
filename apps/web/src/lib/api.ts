@@ -283,6 +283,15 @@ export interface Risk {
   signals: SignalRisk[]
 }
 
+/** El riesgo de un estudiante dentro de una sesión (`GET /sessions/{id}/risk`). */
+export interface StudentRisk {
+  student_id: string
+  score: number
+  level: RiskLevel
+  signal_count: number
+  top_signal: EventType | null
+}
+
 /** Una decisión del docente. Es evidencia: no se edita, se agrega otra. */
 export interface Decision {
   id: string
@@ -689,6 +698,10 @@ export const api = {
       token
     ),
 
+  /** El riesgo de cada estudiante, de más a menos sospechoso: el semáforo de Entregas. */
+  listSessionRisk: (sessionId: string, token?: string): Promise<StudentRisk[]> =>
+    request(`/api/v1/sessions/${sessionId}/risk`, undefined, token),
+
   listDecisions: (sessionId: string, token?: string): Promise<Decision[]> =>
     request(`/api/v1/sessions/${sessionId}/decisions`, undefined, token),
 
@@ -713,7 +726,11 @@ export const api = {
     request('/api/v1/question-banks', { method: 'POST', body: JSON.stringify(data) }, token),
 
   updateBank: (id: string, changes: QuestionBankChanges, token?: string): Promise<QuestionBank> =>
-    request(`/api/v1/question-banks/${id}`, { method: 'PATCH', body: JSON.stringify(changes) }, token),
+    request(
+      `/api/v1/question-banks/${id}`,
+      { method: 'PATCH', body: JSON.stringify(changes) },
+      token
+    ),
 
   deleteBank: (bankId: string, token?: string): Promise<void> =>
     request(`/api/v1/question-banks/${bankId}`, { method: 'DELETE' }, token),
@@ -779,7 +796,10 @@ export const api = {
       `/api/v1/sessions/${sessionId}/bank-question-selection`,
       {
         method: 'PUT',
-        body: JSON.stringify({ excluded_question_ids: excludedQuestionIds, question_points: questionPoints })
+        body: JSON.stringify({
+          excluded_question_ids: excludedQuestionIds,
+          question_points: questionPoints
+        })
       },
       token
     ),
