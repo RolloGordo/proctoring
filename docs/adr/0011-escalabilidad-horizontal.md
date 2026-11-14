@@ -119,6 +119,13 @@ Para pasar de ~300 a 1.000 con p95 bajo hace falta un segundo nodo, no más rép
 la base en Supabase Cloud, el techo siguiente es de Supabase: 200 conexiones Realtime en el plan
 gratuito.
 
+### 4.3 Autoescalado (13/11/2026)
+
+El número de réplicas lo decide la carga: un autoescalador en el VPS (`deploy/autoescalado/`) sube una
+réplica con más del 70 % de CPU sostenido y baja una tras 3 minutos por debajo del 25 %, entre 2 y 5. Con
+540 estudiantes pasó solo de 2 a 4 réplicas en poco más de 2 minutos y volvió a 2 al terminar. La mediana
+bajó de 1,9 s a 350 ms frente a 3 réplicas fijas.
+
 ## Alternativas consideradas
 
 - **Escalar en vertical** (una instancia más grande). Más simple, pero tiene techo y deja un único punto

@@ -1412,3 +1412,9 @@ html:has(.publica) {
     flex-direction: column;
   }
 }
+
+/* Lo que falta por teclear del título del acceso: ocupa su sitio pero no se
+   ve, para que escribirlo no mueva nada (ver `Tecleado` en Login.tsx). */
+.publica .pub-tecleado-resto {
+  visibility: hidden;
+}

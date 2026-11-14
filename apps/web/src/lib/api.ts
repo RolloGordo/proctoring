@@ -516,7 +516,31 @@ function mensajeSinConexion(): string {
         'segundos y vuelve a intentarlo. Si sigue igual, avisa a quien la administra.'
 }
 
+/**
+ * Lecturas iguales en curso, compartidas.
+ *
+ * El editor del examen, sus pestañas y los avisos piden lo mismo a la vez al
+ * abrirse (los participantes salían tres veces y los bancos dos): con esto sale
+ * una sola petición por URL y token mientras la primera no termina. Cada quien
+ * recibe su propia copia, para que nadie modifique el resultado de otro. No
+ * guarda nada después: la siguiente lectura vuelve a preguntar.
+ */
+const lecturasEnCurso = new Map<string, Promise<unknown>>()
+
 async function request<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
+  const esLectura = !init?.method || init.method.toUpperCase() === 'GET'
+  if (!esLectura || init?.body !== undefined) return pedir<T>(path, init, token)
+  const clave = `${path}|${token ?? ''}`
+  let enCurso = lecturasEnCurso.get(clave) as Promise<T> | undefined
+  if (!enCurso) {
+    enCurso = pedir<T>(path, init, token).finally(() => lecturasEnCurso.delete(clave))
+    lecturasEnCurso.set(clave, enCurso)
+  }
+  const resultado = await enCurso
+  return resultado === undefined ? resultado : structuredClone(resultado)
+}
+
+async function pedir<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
   const headers = new Headers(init?.headers)
   // JSON salvo que quien llama diga otra cosa: la importación QTI manda el
   // archivo tal cual, y con `set` incondicional se anunciaba como JSON.

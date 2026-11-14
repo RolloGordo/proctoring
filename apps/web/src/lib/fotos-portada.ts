@@ -8,6 +8,9 @@
  * burbuja es cuadrada y recorta los lados, y sin él el estudiante de la
  * primera quedaba cortado. Cada una tiene un respaldo del repositorio por si
  * el fichero faltara: así la burbuja nunca queda vacía.
+ *
+ * En WebP desde el 13/11/2026: de 611 a 248 KB las seis, sin diferencia
+ * visible a ese tamaño. Los JPG originales siguen en `public/portada/`.
  */
 export type Foto = {
   src: string
@@ -20,7 +23,7 @@ export type Foto = {
 
 export const FOTOS = {
   rinde: {
-    src: '/portada/promo-rinde.jpg',
+    src: '/portada/promo-rinde.webp',
     respaldo: '/portada/foto-1.jpg',
     alt: 'Un estudiante con auriculares, concentrado frente a su portátil.',
     foco: 0.3,
@@ -28,7 +31,7 @@ export const FOTOS = {
     perfil: 'https://unsplash.com/@sickhews'
   },
   escribe: {
-    src: '/portada/promo-escribe.jpg',
+    src: '/portada/promo-escribe.webp',
     respaldo: '/portada/foto-2.jpg',
     alt: 'Un estudiante escribe en su portátil.',
     foco: 0.5,
@@ -36,7 +39,7 @@ export const FOTOS = {
     perfil: 'https://unsplash.com/@cvelitchkov'
   },
   casa: {
-    src: '/portada/promo-casa.jpg',
+    src: '/portada/promo-casa.webp',
     respaldo: '/portada/foto-3.jpg',
     alt: 'Un estudiante con auriculares rinde desde casa.',
     foco: 0.5,
@@ -44,7 +47,7 @@ export const FOTOS = {
     perfil: 'https://unsplash.com/@silverkblack'
   },
   camara: {
-    src: '/portada/promo-camara.jpg',
+    src: '/portada/promo-camara.webp',
     respaldo: '/portada/escena-senales.svg',
     alt: 'Una cámara web sobre el monitor.',
     foco: 0.45,
@@ -52,7 +55,7 @@ export const FOTOS = {
     perfil: 'https://unsplash.com/@emilianocicero'
   },
   docente: {
-    src: '/portada/promo-docente.jpg',
+    src: '/portada/promo-docente.webp',
     respaldo: '/portada/escena-docente.svg',
     alt: 'Una docente revisa en su portátil, frente a la pizarra.',
     foco: 0.5,
@@ -60,7 +63,7 @@ export const FOTOS = {
     perfil: 'https://unsplash.com/@silverkblack'
   },
   hoja: {
-    src: '/portada/promo-hoja.jpg',
+    src: '/portada/promo-hoja.webp',
     respaldo: '/portada/escena-estudiante.svg',
     alt: 'Una mano marca las respuestas de una hoja de examen.',
     foco: 0.6,

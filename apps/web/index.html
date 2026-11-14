@@ -19,6 +19,9 @@
       Van en `public/`, servidos por nosotros: ni un CDN, por lo mismo que las
       tipografias.
     -->
+    <!-- La fuente del texto, pedida en paralelo con el JS: sin esto llegaba
+         tarde y el texto saltaba al cambiar de la de respaldo (CLS). -->
+    <link rel="preload" href="/fuentes/archivo-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="icon" href="/icono.svg" type="image/svg+xml" />
     <link rel="icon" href="/icono-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/icono-180.png" />
