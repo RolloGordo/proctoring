@@ -10,11 +10,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, cast
+from typing import Any
 from uuid import UUID
 
 from supabase import Client
 
+from proctoring_api.adapters.outbound.supabase.paginas import todas_las_filas
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.severity import Severity
 
@@ -32,14 +33,15 @@ class SupabaseAlertRepository:
         self._client.table(TABLE).insert(_to_row(alert)).execute()
 
     def list_by_session(self, session_id: UUID, student_id: UUID | None = None) -> Sequence[Alert]:
-        query = self._client.table(TABLE).select(COLUMNS).eq("session_id", str(session_id))
-        if student_id is not None:
-            query = query.eq("student_id", str(student_id))
+        def consulta() -> Any:
+            query = self._client.table(TABLE).select(COLUMNS).eq("session_id", str(session_id))
+            if student_id is not None:
+                query = query.eq("student_id", str(student_id))
+            # El indice alerts_session_id_idx es (session_id, created_at).
+            return query.order("created_at", desc=True).order("id")
 
-        # El indice alerts_session_id_idx es (session_id, created_at).
-        response = query.order("created_at", desc=True).execute()
-        rows = cast("list[dict[str, Any]]", response.data)
-        return [_to_entity(row) for row in rows]
+        # Sin paginar, PostgREST corta en 1000 filas sin avisar (`paginas.py`).
+        return [_to_entity(row) for row in todas_las_filas(consulta)]
 
 
 def _to_row(alert: Alert) -> dict[str, Any]:

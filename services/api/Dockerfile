@@ -53,4 +53,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 # --factory: la app se construye al arrancar, no al importar el modulo, para que
 # los adaptadores se elijan con las variables de entorno del contenedor.
-CMD ["uvicorn", "proctoring_api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+# --timeout-keep-alive por encima del de los proxies (Traefik 90 s, nginx 60 s).
+# Con los 5 s de uvicorn, la API cerraba conexiones que el proxy aún reutilizaba:
+# en la carga del 14/11 esos «connection reset» dejaron sin réplicas al balanceador
+# 10 s (502). El proxy debe ser siempre quien cierre la conexión ociosa.
+CMD ["uvicorn", "proctoring_api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--timeout-keep-alive", "100"]

@@ -57,6 +57,12 @@ def main() -> int:
     p.add_argument("--duracion-examen", type=int, default=240, help="segundos rindiendo")
     p.add_argument("--margen-entrega", type=int, default=60)
     p.add_argument("--ingreso-por-segundo", type=int, default=50)
+    p.add_argument(
+        "--perfil",
+        choices=["examen", "infracciones"],
+        default="examen",
+        help="infracciones: todos mandan señales de los módulos cada 2-6 s",
+    )
     a = p.parse_args()
 
     RESULTADOS.mkdir(exist_ok=True)
@@ -85,6 +91,7 @@ def main() -> int:
         "PYTHONIOENCODING": "utf-8",
         "EXAMEN_SEGUNDOS": str(a.duracion_examen),
         "MARGEN_ENTREGA_SEGUNDOS": str(a.margen_entrega),
+        "PERFIL": a.perfil,
     }
     csv_recursos = RESULTADOS / f"{a.nombre}-recursos.csv"
     muestreo = subprocess.Popen(

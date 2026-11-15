@@ -17,6 +17,7 @@ from uuid import UUID
 
 from supabase import Client
 
+from proctoring_api.adapters.outbound.supabase.paginas import todas_las_filas
 from proctoring_api.domain.event import EventType, ProctoringEvent
 
 TABLE = "events"
@@ -48,16 +49,16 @@ class SupabaseEventRepository:
     def list_by_session(
         self, session_id: UUID, student_id: UUID | None = None
     ) -> Sequence[ProctoringEvent]:
-        query = self._client.table(TABLE).select(COLUMNS).eq("session_id", str(session_id))
-        if student_id is not None:
-            query = query.eq("student_id", str(student_id))
+        def consulta() -> Any:
+            query = self._client.table(TABLE).select(COLUMNS).eq("session_id", str(session_id))
+            if student_id is not None:
+                query = query.eq("student_id", str(student_id))
+            # El indice events_session_student_started_idx cubre este orden; el id
+            # desempata para que las paginas no se solapen ni dejen huecos.
+            return query.order("started_at", desc=False).order("id")
 
-        # El indice events_session_student_started_idx cubre exactamente este orden.
-        response = query.order("started_at", desc=False).execute()
-        # El SDK tipa `data` como JSON generico; un select sobre una tabla siempre
-        # devuelve filas, y el cast lo acota sin mentirle a mypy en el resto.
-        rows = cast("list[dict[str, Any]]", response.data)
-        return [_to_entity(row) for row in rows]
+        # Un examen pasa de 1000 senales enseguida: se leen todas (`paginas.py`).
+        return [_to_entity(row) for row in todas_las_filas(consulta)]
 
 
 def _to_row(event: ProctoringEvent) -> dict[str, Any]:
