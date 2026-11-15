@@ -8,6 +8,7 @@ import {
   type ProctoringEvent
 } from '../lib/api'
 import { PorPasos } from '../components/ControlesLista'
+import { descargar, nombreSeguro, senalesACsv } from '../lib/exportar'
 import { NotaDestacada } from '../components/NotaDestacada'
 import { useAuth } from '../lib/auth-context'
 import { supabase } from '../lib/supabase'
@@ -225,9 +226,27 @@ export function RevisionCaso() {
           <h1>{quien}</h1>
           <p className="subtitulo">{participant.student_email ?? 'Revisión de caso'}</p>
         </div>
-        <Link to={`/sesiones/${id}/participantes`} className="boton boton-secundario">
-          Volver a la sala de espera
-        </Link>
+        <div className="fila">
+          <button
+            type="button"
+            className="boton boton-secundario"
+            disabled={events.length === 0}
+            onClick={() =>
+              descargar(
+                nombreSeguro('senales', quien),
+                senalesACsv(events, () => ({
+                  nombre: participant.student_name,
+                  correo: participant.student_email
+                }))
+              )
+            }
+          >
+            Exportar a Excel
+          </button>
+          <Link to={`/sesiones/${id}/participantes`} className="boton boton-secundario">
+            Volver a la sala de espera
+          </Link>
+        </div>
       </div>
 
       <section className="bloque" aria-labelledby="nota-del-examen">

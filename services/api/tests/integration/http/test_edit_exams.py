@@ -530,3 +530,36 @@ class TestPersonalizado:
         )
 
         assert respuesta.status_code == 400, respuesta.text
+
+
+class TestTopeDeActividadesSospechosas:
+    """Reunión del 14/11: el docente fija cuántas advertencias tolera."""
+
+    def test_se_crea_se_cambia_y_se_quita(self, authed_client: TestClient) -> None:
+        examen = crear_examen(authed_client, suspicious_activity_limit=5)
+        assert examen["suspicious_activity_limit"] == 5
+
+        ruta = f"/api/v1/sessions/{examen['id']}"
+        cambiado = authed_client.patch(
+            ruta, json={"suspicious_activity_limit": 8}, headers=bearer(TEACHER_TOKEN)
+        )
+        assert cambiado.status_code == 200, cambiado.text
+        assert cambiado.json()["suspicious_activity_limit"] == 8
+
+        quitado = authed_client.patch(
+            ruta, json={"clear_suspicious_activity_limit": True}, headers=bearer(TEACHER_TOKEN)
+        )
+        assert quitado.json()["suspicious_activity_limit"] is None
+
+    def test_fuera_de_rango_es_422(self, authed_client: TestClient) -> None:
+        respuesta = authed_client.post(
+            "/api/v1/sessions",
+            json={
+                "title": "Tope",
+                "starts_at": NOW.isoformat(),
+                "duration_minutes": 60,
+                "suspicious_activity_limit": 0,
+            },
+            headers=bearer(TEACHER_TOKEN),
+        )
+        assert respuesta.status_code == 422

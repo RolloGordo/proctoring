@@ -625,7 +625,9 @@ def create_app(
         settings.dev_teacher_id,
     )
     app.state.list_decisions = ListSessionDecisions(decision_repository, session_repository)
-    app.state.list_session_risk = ListSessionRisk(event_repository, session_repository)
+    app.state.list_session_risk = ListSessionRisk(
+        event_repository, session_repository, alert_repository
+    )
     app.state.get_my_decision = GetMyDecision(
         decision_repository, participant_repository, settings.dev_student_id
     )

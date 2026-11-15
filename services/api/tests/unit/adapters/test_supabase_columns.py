@@ -59,6 +59,7 @@ EXAMEN = ExamSession.create(
     description="Unidades 1 a 4",
     preset=SupervisionPreset.STRICT,
     question_pool_size=20,
+    suspicious_activity_limit=5,
 )
 
 #: Un ejemplo por adaptador, con **todos** los campos opcionales puestos: un

@@ -57,6 +57,7 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
   const [modulos, setModulos] = useState<Set<SupervisionModule>>(new Set())
   const [notaMaxima, setNotaMaxima] = useState('20')
   const [cantidadPreguntas, setCantidadPreguntas] = useState('')
+  const [tope, setTope] = useState('')
   const [cantidadBancos, setCantidadBancos] = useState(0)
   const [descripcion, setDescripcion] = useState('')
   const [guardarCodigo, setGuardarCodigo] = useState(false)
@@ -88,7 +89,12 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
         setPreset(datos.preset)
         setModulos(modulosDe(datos))
         setNotaMaxima(String(Number(datos.max_score)))
-        setCantidadPreguntas(datos.question_pool_size === null ? '' : String(datos.question_pool_size))
+        setCantidadPreguntas(
+          datos.question_pool_size === null ? '' : String(datos.question_pool_size)
+        )
+        setTope(
+          datos.suspicious_activity_limit == null ? '' : String(datos.suspicious_activity_limit)
+        )
         setDescripcion(datos.description ?? '')
         setGuardarCodigo(datos.reveal_code_at_start)
         setMostrarRespuestasCorrectas(datos.show_answers_after_submission)
@@ -97,7 +103,8 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
   }, [id, token])
 
   useEffect(() => {
-    api.listSessionBanks(id, token)
+    api
+      .listSessionBanks(id, token)
       .then((bancos) => setCantidadBancos(bancos.length))
       .catch(() => setCantidadBancos(0))
   }, [id, token])
@@ -135,9 +142,7 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
           : {}),
         // Vaciar la descripción necesita el `clear_`: con `undefined` el
         // backend entiende "no lo cambies".
-        ...(descripcion.trim()
-          ? { description: descripcion.trim() }
-          : { clear_description: true }),
+        ...(descripcion.trim() ? { description: descripcion.trim() } : { clear_description: true }),
         ...(hayEstudiantes ? {} : supervision),
         ...(sesion && Number(notaMaxima) !== Number(sesion.max_score) && !hayEstudiantes
           ? { max_score: notaMaxima }
@@ -149,6 +154,15 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
           ? cantidadPreguntas.trim()
             ? { question_pool_size: Number(cantidadPreguntas) }
             : { clear_pool_size: true }
+          : {}),
+        // El tope se puede mover con el examen en curso: no cambia lo que se
+        // califica, solo cuándo se avisa.
+        ...(sesion &&
+        tope !==
+          (sesion.suspicious_activity_limit == null ? '' : String(sesion.suspicious_activity_limit))
+          ? tope.trim()
+            ? { suspicious_activity_limit: Number(tope) }
+            : { clear_suspicious_activity_limit: true }
           : {})
       }
       const actualizada = await api.updateSession(id, cambios, token)
@@ -198,24 +212,26 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
 
   return (
     <div className={enPanel ? 'configuracion-examen-panel' : 'configuracion-examen-pagina'}>
-      {!enPanel && <div className="encabezado-pagina">
-        <div>
-          <h1>Editar examen</h1>
-          <p className="subtitulo">
-            {sesion.access_code === null ? (
-              <>El código se genera automáticamente y se revela al empezar; no se puede editar.</>
-            ) : (
-              <>
-                Código generado automáticamente <strong>{sesion.access_code}</strong> — no se puede
-                editar, aunque cambies el resto del examen
-              </>
-            )}
-          </p>
+      {!enPanel && (
+        <div className="encabezado-pagina">
+          <div>
+            <h1>Editar examen</h1>
+            <p className="subtitulo">
+              {sesion.access_code === null ? (
+                <>El código se genera automáticamente y se revela al empezar; no se puede editar.</>
+              ) : (
+                <>
+                  Código generado automáticamente <strong>{sesion.access_code}</strong> — no se
+                  puede editar, aunque cambies el resto del examen
+                </>
+              )}
+            </p>
+          </div>
+          <Link to={`/sesiones/${id}`} className="boton boton-secundario">
+            Volver al examen
+          </Link>
         </div>
-        <Link to={`/sesiones/${id}`} className="boton boton-secundario">
-          Volver al examen
-        </Link>
-      </div>}
+      )}
 
       {error && <p className="aviso">{error}</p>}
       {aviso && <p className="aviso aviso-neutro">{aviso}</p>}
@@ -230,15 +246,17 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
         <div className="tarjeta-cuerpo">
           <form onSubmit={(e) => void guardar(e)} noValidate>
             <fieldset disabled={cancelado} style={{ border: 0, padding: 0, margin: 0 }}>
-              {!enPanel && <label className="campo">
-                <span>Título del examen</span>
-                <input
-                  value={titulo}
-                  onChange={(e) => setTitulo(e.target.value)}
-                  maxLength={200}
-                  required
-                />
-              </label>}
+              {!enPanel && (
+                <label className="campo">
+                  <span>Título del examen</span>
+                  <input
+                    value={titulo}
+                    onChange={(e) => setTitulo(e.target.value)}
+                    maxLength={200}
+                    required
+                  />
+                </label>
+              )}
 
               <div className="rejilla-campos rejilla-horario">
                 <label className="campo">
@@ -311,10 +329,29 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
                     placeholder="Todas las preguntas disponibles"
                   />
                   <span className="ayuda">
-                    Se sortean de los {cantidadBancos} banco{cantidadBancos === 1 ? '' : 's'} asociados en conjunto. Déjalo vacío para usar todas. Máximo 500.
+                    Se sortean de los {cantidadBancos} banco{cantidadBancos === 1 ? '' : 's'}{' '}
+                    asociados en conjunto. Déjalo vacío para usar todas. Máximo 500.
                   </span>
                 </label>
               )}
+
+              <label className="campo">
+                <span>Tope de actividades sospechosas por estudiante</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={tope}
+                  onChange={(e) => setTope(e.target.value)}
+                  placeholder="Sin tope"
+                />
+                <span className="ayuda">
+                  Cada señal que genera alerta cuenta como una advertencia y el estudiante ve
+                  cuántas lleva. Al llegar al tope recibes una alerta alta y pasa a rojo en
+                  Entregas. El examen no se cierra solo: decides tú. Déjalo vacío para no poner
+                  tope.
+                </span>
+              </label>
 
               <p className="ayuda" style={{ marginTop: 'calc(-1 * var(--e3))' }}>
                 Los puntos de cada pregunta se reparten sobre esta nota. Puedes poner 2 puntos a una
@@ -404,36 +441,38 @@ export function EditarSesion({ enPanel = false }: { enPanel?: boolean }) {
         </div>
       </div>
 
-      {!enPanel && <div className="tarjeta zona-peligro configuracion-examen-tarjeta">
-        <div className="tarjeta-cuerpo">
-          <h3>Retirar este examen</h3>
+      {!enPanel && (
+        <div className="tarjeta zona-peligro configuracion-examen-tarjeta">
+          <div className="tarjeta-cuerpo">
+            <h3>Retirar este examen</h3>
 
-          {!cancelado && (
-            <>
-              <p className="ayuda">
-                <strong>Cancelar</strong> retira el examen pero conserva todo: los eventos, las
-                alertas y lo que respondieron tus estudiantes. El código deja de servir y quien lo
-                use leerá que lo cancelaste.
-              </p>
-              <button
-                type="button"
-                className="boton boton-secundario"
-                onClick={() => void cancelar()}
-              >
-                Cancelar examen
-              </button>
-            </>
-          )}
+            {!cancelado && (
+              <>
+                <p className="ayuda">
+                  <strong>Cancelar</strong> retira el examen pero conserva todo: los eventos, las
+                  alertas y lo que respondieron tus estudiantes. El código deja de servir y quien lo
+                  use leerá que lo cancelaste.
+                </p>
+                <button
+                  type="button"
+                  className="boton boton-secundario"
+                  onClick={() => void cancelar()}
+                >
+                  Cancelar examen
+                </button>
+              </>
+            )}
 
-          <p className="ayuda" style={{ marginTop: 'var(--e4)' }}>
-            <strong>Borrar</strong> lo elimina para siempre, y solo funciona si todavía no entró
-            nadie. Es para el examen que acabas de crear con la fecha mal.
-          </p>
-          <button type="button" className="boton boton-peligro" onClick={() => void borrar()}>
-            Borrar examen
-          </button>
+            <p className="ayuda" style={{ marginTop: 'var(--e4)' }}>
+              <strong>Borrar</strong> lo elimina para siempre, y solo funciona si todavía no entró
+              nadie. Es para el examen que acabas de crear con la fecha mal.
+            </p>
+            <button type="button" className="boton boton-peligro" onClick={() => void borrar()}>
+              Borrar examen
+            </button>
+          </div>
         </div>
-      </div>}
+      )}
     </div>
   )
 }

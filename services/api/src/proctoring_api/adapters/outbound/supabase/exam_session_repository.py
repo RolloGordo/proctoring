@@ -30,7 +30,7 @@ COLUMNS = (
     "id, course_id, teacher_id, title, description, starts_at, duration_minutes, "
     "entry_tolerance_minutes, access_code, preset, max_attempts, shuffle_questions, "
     "shuffle_options, allow_back_navigation, reveal_code_at_start, "
-    "question_pool_size, max_score, show_answers_after_submission, "
+    "question_pool_size, max_score, show_answers_after_submission, suspicious_activity_limit, "
     "cancelled_at, status"
 )
 
@@ -233,6 +233,7 @@ def _to_row(session: ExamSession) -> dict[str, Any]:
         "max_attempts": session.max_attempts,
         "shuffle_questions": session.shuffle_questions,
         "question_pool_size": session.question_pool_size,
+        "suspicious_activity_limit": session.suspicious_activity_limit,
         "max_score": str(session.max_score),
         "cancelled_at": session.cancelled_at.isoformat() if session.cancelled_at else None,
         "shuffle_options": session.shuffle_options,
@@ -262,6 +263,7 @@ def _to_entity(
         max_attempts=row["max_attempts"],
         shuffle_questions=row["shuffle_questions"],
         question_pool_size=row.get("question_pool_size"),
+        suspicious_activity_limit=row.get("suspicious_activity_limit"),
         max_score=Decimal(str(row["max_score"]))
         if row.get("max_score") is not None
         else DEFAULT_MAX_SCORE,
