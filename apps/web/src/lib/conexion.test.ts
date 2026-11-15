@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EstadoConexion, FALLOS_PARA_CAER } from './conexion'
+import { EstadoConexion, FALLOS_PARA_CAER, SONDEO_CAIDO_MS, SONDEO_SANO_MS } from './conexion'
 
 describe('EstadoConexion', () => {
   it('un sondeo lento suelto no bloquea el examen', () => {
@@ -25,5 +25,16 @@ describe('EstadoConexion', () => {
     expect(estado.conectado).toBe(false)
     expect(estado.sondeo(true)).toBe('volvio')
     expect(estado.conectado).toBe(true)
+  })
+
+  it('tras un sondeo fallido el siguiente va al ritmo de la caída, no a los 15 s', () => {
+    const estado = new EstadoConexion()
+    expect(estado.proximoSondeoMs).toBe(SONDEO_SANO_MS)
+    estado.sondeo(false)
+    expect(estado.dudando).toBe(true)
+    expect(estado.proximoSondeoMs).toBe(SONDEO_CAIDO_MS)
+    estado.sondeo(true)
+    expect(estado.dudando).toBe(false)
+    expect(estado.proximoSondeoMs).toBe(SONDEO_SANO_MS)
   })
 })

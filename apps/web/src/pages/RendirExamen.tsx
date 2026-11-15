@@ -20,7 +20,7 @@ import { AvisoSupervision } from '../components/AvisoSupervision'
 import { GestorDeAvisos, type AvisoVisible } from '../supervision/avisos'
 import { recordNetworkDiagnostic } from '../supervision/diagnostics'
 import { supabase } from '../lib/supabase'
-import { EstadoConexion, SONDEO_CAIDO_MS, SONDEO_SANO_MS } from '../lib/conexion'
+import { EstadoConexion, EVENTO_FALLO_RED } from '../lib/conexion'
 import { conMargen } from '../lib/sondeo'
 
 /**
@@ -98,45 +98,51 @@ export function RendirExamen() {
       !modulosActivos.copy_paste_block ||
       !userId ||
       matricula?.submitted_at != null
-    ) return
+    )
+      return
     const estudianteId = userId
 
     function capturarAtajo(evento: KeyboardEvent): void {
       if (evento.repeat) return
       const tecla = evento.key.toLowerCase()
       const conModificador = evento.ctrlKey || evento.metaKey
-      const copiar = (tecla === 'c' && (conModificador || evento.altKey)) ||
+      const copiar =
+        (tecla === 'c' && (conModificador || evento.altKey)) ||
         (tecla === 'insert' && evento.ctrlKey)
-      const portapapeles = (conModificador && ['c', 'v', 'x'].includes(tecla)) ||
+      const portapapeles =
+        (conModificador && ['c', 'v', 'x'].includes(tecla)) ||
         (evento.ctrlKey && tecla === 'insert') ||
         (evento.shiftKey && tecla === 'insert')
 
       if (portapapeles) evento.preventDefault()
       if (!copiar) return
 
-      const atajo = tecla === 'insert'
-        ? 'Ctrl+Insert'
-        : evento.metaKey
-          ? 'Cmd+C'
-          : evento.altKey && !evento.ctrlKey
-            ? 'Alt+C'
-            : 'Ctrl+C'
+      const atajo =
+        tecla === 'insert'
+          ? 'Ctrl+Insert'
+          : evento.metaKey
+            ? 'Cmd+C'
+            : evento.altKey && !evento.ctrlKey
+              ? 'Alt+C'
+              : 'Ctrl+C'
 
-      void api.registerEvent(
-        {
-          session_id: id,
-          student_id: estudianteId,
-          question_id: preguntas?.[enCurso]?.id ?? null,
-          event_type: 'copy_attempt',
-          started_at: new Date().toISOString(),
-          duration_ms: 0,
-          metadata: { source: 'browser_input', shortcut: atajo },
-          evidence_path: null
-        },
-        token
-      ).catch((fallo: unknown) => {
-        console.error('[supervision] no se pudo registrar el atajo de copia', fallo)
-      })
+      void api
+        .registerEvent(
+          {
+            session_id: id,
+            student_id: estudianteId,
+            question_id: preguntas?.[enCurso]?.id ?? null,
+            event_type: 'copy_attempt',
+            started_at: new Date().toISOString(),
+            duration_ms: 0,
+            metadata: { source: 'browser_input', shortcut: atajo },
+            evidence_path: null
+          },
+          token
+        )
+        .catch((fallo: unknown) => {
+          console.error('[supervision] no se pudo registrar el atajo de copia', fallo)
+        })
     }
 
     window.addEventListener('keydown', capturarAtajo, true)
@@ -191,7 +197,10 @@ export function RendirExamen() {
     let comprobando = false
     let temporizador: number | undefined
     const estado = new EstadoConexion()
-    const registrar = (code: 'network_disconnected' | 'network_reconnected', durationMs?: number) => {
+    const registrar = (
+      code: 'network_disconnected' | 'network_reconnected',
+      durationMs?: number
+    ) => {
       if (!userId) return
       void recordNetworkDiagnostic(supabase, {
         session_id: id,
@@ -215,8 +224,7 @@ export function RendirExamen() {
       if (cancelado) return
       // Con margen aleatorio: sin él, todos los que entraron a la vez sondean
       // en el mismo instante cada vez.
-      const base = estado.conectado ? SONDEO_SANO_MS : SONDEO_CAIDO_MS
-      temporizador = window.setTimeout(() => void comprobar(), conMargen(base))
+      temporizador = window.setTimeout(() => void comprobar(), conMargen(estado.proximoSondeoMs))
     }
     const comprobar = async () => {
       if (comprobando) return
@@ -249,14 +257,18 @@ export function RendirExamen() {
       programar()
     }
     const alConectar = () => void comprobar()
+    // Guardar una respuesta falló por red: se comprueba ya, sin esperar turno.
+    const alFallarRed = () => void comprobar()
     window.addEventListener('online', alConectar)
     window.addEventListener('offline', alDesconectar)
+    window.addEventListener(EVENTO_FALLO_RED, alFallarRed)
     void comprobar()
     return () => {
       cancelado = true
       window.clearTimeout(temporizador)
       window.removeEventListener('online', alConectar)
       window.removeEventListener('offline', alDesconectar)
+      window.removeEventListener(EVENTO_FALLO_RED, alFallarRed)
     }
   }, [id, userId, reintentarGuardado])
 
@@ -421,8 +433,7 @@ export function RendirExamen() {
   // asi que el campo se deshabilita en vez de dejar que lo descubra chocandose.
   const bloqueada = !volverAtras && actual !== undefined && actual.id in respuestas
 
-  if (matricula?.submitted_at)
-    return <Entregado cuando={matricula.submitted_at} sessionId={id} />
+  if (matricula?.submitted_at) return <Entregado cuando={matricula.submitted_at} sessionId={id} />
   if (!conectado) return <PantallaReconectando />
   if (error && !preguntas) return <NoSePuede mensaje={error} />
   if (!preguntas) return <p className="tenue">Cargando examen…</p>
@@ -436,7 +447,8 @@ export function RendirExamen() {
             Pregunta {total > 0 ? enCurso + 1 : 0} de {total}
           </strong>
           <p className="ayuda">
-            {respondidas} {respondidas === 1 ? 'respondida' : 'respondidas'} · {faltantes} sin responder
+            {respondidas} {respondidas === 1 ? 'respondida' : 'respondidas'} · {faltantes} sin
+            responder
           </p>
           <p className="ayuda">{textoGuardado(guardado)}</p>
           {restante !== undefined && (
@@ -478,8 +490,8 @@ export function RendirExamen() {
             </strong>
           </p>
           <p className="ayuda">
-            Puedes seguir rindiendo. No es una infracción y no se te atribuye a ti, pero tu
-            docente verá que ese módulo no estuvo activo durante el examen.
+            Puedes seguir rindiendo. No es una infracción y no se te atribuye a ti, pero tu docente
+            verá que ese módulo no estuvo activo durante el examen.
           </p>
         </div>
       )}
@@ -512,9 +524,7 @@ export function RendirExamen() {
           {/* La etiqueta dice lo que pasa, no siempre «activa»: afirmar que la
               camara esta activa cuando se ha desconectado es la clase de
               mentira pequena que hace desconfiar de todo lo demas. */}
-          <span>
-            {supervision.tipo === 'fallo' ? '○ Cámara sin señal' : '● Cámara activa'}
-          </span>
+          <span>{supervision.tipo === 'fallo' ? '○ Cámara sin señal' : '● Cámara activa'}</span>
         </div>
       )}
 
@@ -529,7 +539,11 @@ export function RendirExamen() {
         <p className="aviso aviso-neutro">
           {supervision.mensaje} Puedes seguir rindiendo: quedará registrado que la supervisión no se
           pudo activar, y tu docente lo verá al revisar.
-          <button type="button" className="boton boton-secundario" onClick={() => setReintentoCamara((n) => n + 1)}>
+          <button
+            type="button"
+            className="boton boton-secundario"
+            onClick={() => setReintentoCamara((n) => n + 1)}
+          >
             Reintentar cámara
           </button>
         </p>
@@ -899,6 +913,7 @@ function useGuardadoDiferido(
     (fallo) => {
       // Un 403 aquí no es un fallo de red: el examen cerró o ya se entregó, y
       // el estudiante necesita saberlo con esas palabras.
+      if (!(fallo instanceof ApiError)) window.dispatchEvent(new Event(EVENTO_FALLO_RED))
       ajustes.current.setError(
         fallo instanceof ApiError
           ? fallo.message
