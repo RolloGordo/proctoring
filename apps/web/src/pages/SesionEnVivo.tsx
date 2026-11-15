@@ -25,6 +25,7 @@ import { mergeAlerts } from '../lib/live-alerts'
 import { mergeEvents } from '../lib/live-events'
 import { agrupar, modulosVigilados } from '../lib/modulos'
 import { useListaAcotada } from '../lib/lista-acotada'
+import { descargar, nombreSeguro, senalesACsv } from '../lib/exportar'
 import { FiltroCorreo, SinCoincidencias, VerMas } from '../components/ControlesLista'
 
 const CAMARAS_POR_PAGINA = 6
@@ -267,6 +268,17 @@ export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) 
   // Las listas vienen de la más nueva a la más vieja: se ven las 6 últimas.
   const listaAlertas = useListaAcotada(alertas, (alerta) => buscableDe.get(alerta.student_id))
   const listaEventos = useListaAcotada(eventos, (evento) => buscableDe.get(evento.student_id))
+  /** Todas las señales del examen a un CSV para Excel (no solo las visibles). */
+  const exportarSenales = () => {
+    const porId = new Map(participantes.map((p) => [p.student_id, p]))
+    descargar(
+      nombreSeguro('senales', sesion?.title ?? 'examen'),
+      senalesACsv(eventos, (studentId) => ({
+        nombre: porId.get(studentId)?.student_name,
+        correo: porId.get(studentId)?.student_email
+      }))
+    )
+  }
 
   const totalPaginasCamaras = Math.ceil(participantesActivos.length / CAMARAS_POR_PAGINA)
   const indicePagina = paginaCamaras.sessionId === id ? paginaCamaras.indice : 0
@@ -308,14 +320,24 @@ export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) 
         <div className="fila actividad-acciones" style={{ justifyContent: 'space-between' }}>
           {/* HU-031: en el editor también se ve qué vigila este examen. */}
           <QueSeVigila sesion={sesion} />
-          <button
-            type="button"
-            className="boton boton-secundario"
-            onClick={actualizarDatos}
-            disabled={actualizando}
-          >
-            {actualizando ? 'Actualizando…' : 'Actualizar actividad'}
-          </button>
+          <div className="fila">
+            <button
+              type="button"
+              className="boton boton-secundario"
+              disabled={eventos.length === 0}
+              onClick={exportarSenales}
+            >
+              Exportar a Excel
+            </button>
+            <button
+              type="button"
+              className="boton boton-secundario"
+              onClick={actualizarDatos}
+              disabled={actualizando}
+            >
+              {actualizando ? 'Actualizando…' : 'Actualizar actividad'}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="encabezado-pagina">
@@ -335,6 +357,14 @@ export function SesionEnVivo({ enLienzo = false }: { enLienzo?: boolean } = {}) 
               disabled={actualizando}
             >
               {actualizando ? 'Actualizando…' : 'Actualizar alertas y señales'}
+            </button>
+            <button
+              type="button"
+              className="boton boton-secundario"
+              disabled={eventos.length === 0}
+              onClick={exportarSenales}
+            >
+              Exportar a Excel
             </button>
             <div style={{ textAlign: 'right' }}>
               <CodigoAcceso codigo={sesion.access_code} />

@@ -32,6 +32,21 @@ export class EstadoConexion {
     return !this.caida
   }
 
+  /**
+   * Falló algún sondeo pero aún no los suficientes. Mientras dura la duda se
+   * sondea al ritmo de la caída: si no, el segundo sondeo esperaba los 15 s
+   * del ritmo sano y el examen tardaba en bloquearse (reunión del 14/11: 5-6 s
+   * desplegado, con el navegador creyendo que aún había red).
+   */
+  get dudando(): boolean {
+    return !this.caida && this.fallos > 0
+  }
+
+  /** Cuánto esperar al siguiente sondeo, sin el margen aleatorio. */
+  get proximoSondeoMs(): number {
+    return this.caida || this.fallos > 0 ? SONDEO_CAIDO_MS : SONDEO_SANO_MS
+  }
+
   /** El navegador dice que no hay red. Devuelve si esto cambió el estado. */
   sinRed(): boolean {
     this.fallos = FALLOS_PARA_CAER
@@ -56,3 +71,9 @@ export class EstadoConexion {
     return true
   }
 }
+
+/**
+ * Lo dispara quien nota un fallo de red fuera del sondeo (guardar una
+ * respuesta, por ejemplo) para que se compruebe la conexión en el acto.
+ */
+export const EVENTO_FALLO_RED = 'proctoring:fallo-red'
