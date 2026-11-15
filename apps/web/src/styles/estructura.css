@@ -1923,3 +1923,40 @@
 .controles-lista + .tenue {
   padding: 0 var(--e4);
 }
+
+.semaforo-celda {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--e1);
+}
+
+.tope {
+  font-size: 0.75rem;
+  color: var(--baja);
+}
+
+.tope-alcanzado {
+  color: var(--alta);
+  font-weight: 700;
+}
+
+/* El contador de advertencias que ve el estudiante durante el examen. */
+.aviso-advertencias {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 0 var(--e3);
+  padding: var(--e2) var(--e3);
+  border: 1px solid var(--media-linea);
+  border-radius: 6px;
+  background: var(--media-fondo);
+  color: var(--media);
+  font-weight: 600;
+}
+
+.aviso-advertencias.al-tope {
+  border-color: var(--alta-linea);
+  background: var(--alta-fondo);
+  color: var(--alta);
+}

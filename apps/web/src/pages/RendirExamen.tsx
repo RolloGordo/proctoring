@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import {
   ApiError,
   api,
+  EVENTO_ADVERTENCIAS,
+  type Advertencias,
   type Answer,
   type ExamQuestion,
   type NewAnswer,
@@ -44,6 +46,14 @@ export function RendirExamen() {
   const [modulosActivos, setModulosActivos] = useState<Record<string, Record<string, unknown>>>({})
   const [respuestas, setRespuestas] = useState<Record<string, NewAnswer>>({})
   const [error, setError] = useState<string>()
+  // Advertencias del tope del examen: llegan con la respuesta de cada señal.
+  const [advertencias, setAdvertencias] = useState<Advertencias>()
+  useEffect(() => {
+    const alRecibir = (evento: Event) =>
+      setAdvertencias((evento as CustomEvent<Advertencias>).detail)
+    window.addEventListener(EVENTO_ADVERTENCIAS, alRecibir)
+    return () => window.removeEventListener(EVENTO_ADVERTENCIAS, alRecibir)
+  }, [])
   const [guardado, setGuardado] = useState<EstadoGuardado>('limpio')
   /** Módulos de supervisión que no arrancaron. Se le dice al estudiante. */
   const [entregando, setEntregando] = useState(false)
@@ -441,6 +451,20 @@ export function RendirExamen() {
   return (
     <div className="pantalla-examen">
       <AvisoSupervision aviso={aviso} onCerrar={() => gestorAvisos.current?.descartar()} />
+      {advertencias && (
+        <p
+          className={
+            advertencias.advertencias >= advertencias.tope
+              ? 'aviso-advertencias al-tope'
+              : 'aviso-advertencias'
+          }
+          role="status"
+        >
+          {advertencias.advertencias >= advertencias.tope
+            ? `Llegaste al tope de ${advertencias.tope} advertencias. Tu docente ya fue avisado y revisará tu caso.`
+            : `Advertencia ${advertencias.advertencias} de ${advertencias.tope}. Al llegar al tope se avisa a tu docente.`}
+        </p>
+      )}
       <div className="barra-examen">
         <div>
           <strong>

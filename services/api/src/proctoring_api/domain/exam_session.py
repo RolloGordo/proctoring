@@ -21,6 +21,8 @@ from proctoring_api.domain.errors import DomainError, InvalidEventError
 from proctoring_api.domain.event import EventType
 
 MAX_TITLE_LENGTH = 200
+#: Mas alla de esto el tope deja de significar algo.
+MAX_SUSPICIOUS_ACTIVITY_LIMIT = 100
 MAX_DESCRIPTION_LENGTH = 2000
 
 #: Nota maxima por defecto. En Peru se califica sobre 20.
@@ -281,6 +283,12 @@ class ExamSession:
     question_pool_size: int | None = None
     shuffle_options: bool = True
     allow_back_navigation: bool = True
+    #: Tope de actividades sospechosas por estudiante (reunion del 14/11). Cada
+    #: senal que genera alerta cuenta como una advertencia; al llegar al tope el
+    #: docente recibe una alerta alta y el semaforo pasa a rojo. **No cierra el
+    #: examen**: el sistema es un auditor y la decision sigue siendo del docente.
+    #: `None` es "sin tope".
+    suspicious_activity_limit: int | None = None
     #: Si el codigo de acceso se guarda hasta la hora de inicio.
     #:
     #: Existe porque un codigo que el docente puede leer con dos dias de
@@ -318,6 +326,7 @@ class ExamSession:
         allow_back_navigation: bool = True,
         reveal_code_at_start: bool = False,
         show_answers_after_submission: bool = False,
+        suspicious_activity_limit: int | None = None,
         max_score: Decimal = DEFAULT_MAX_SCORE,
         modules: Mapping[SupervisionModule, Mapping[str, Any] | None] | None = None,
         session_id: UUID | None = None,
@@ -346,6 +355,12 @@ class ExamSession:
             raise InvalidExamSessionError("La tolerancia de ingreso no puede ser negativa")
         if max_attempts <= 0:
             raise InvalidExamSessionError("El numero de intentos debe ser mayor que cero")
+        if suspicious_activity_limit is not None and not (
+            1 <= suspicious_activity_limit <= MAX_SUSPICIOUS_ACTIVITY_LIMIT
+        ):
+            raise InvalidExamSessionError(
+                f"El tope de actividades sospechosas va de 1 a {MAX_SUSPICIOUS_ACTIVITY_LIMIT}"
+            )
         _validate_max_score(max_score)
 
         if starts_at.tzinfo is None or starts_at.utcoffset() is None:
@@ -378,6 +393,7 @@ class ExamSession:
             allow_back_navigation=allow_back_navigation,
             reveal_code_at_start=reveal_code_at_start,
             show_answers_after_submission=show_answers_after_submission,
+            suspicious_activity_limit=suspicious_activity_limit,
             max_score=max_score,
             modules=resolved,
         )
@@ -493,10 +509,12 @@ class ExamSession:
         allow_back_navigation: bool | None = None,
         reveal_code_at_start: bool | None = None,
         show_answers_after_submission: bool | None = None,
+        suspicious_activity_limit: int | None = None,
         modules: Mapping[SupervisionModule, Mapping[str, Any]] | None = None,
         clear_description: bool = False,
         clear_course: bool = False,
         clear_pool_size: bool = False,
+        clear_suspicious_activity_limit: bool = False,
     ) -> ExamSession:
         """El mismo examen con los campos que se cambian, revalidado.
 
@@ -581,6 +599,15 @@ class ExamSession:
                 show_answers_after_submission
                 if show_answers_after_submission is not None
                 else self.show_answers_after_submission
+            ),
+            suspicious_activity_limit=(
+                None
+                if clear_suspicious_activity_limit
+                else (
+                    suspicious_activity_limit
+                    if suspicious_activity_limit is not None
+                    else self.suspicious_activity_limit
+                )
             ),
             max_score=max_score if max_score is not None else self.max_score,
             modules=modulos,

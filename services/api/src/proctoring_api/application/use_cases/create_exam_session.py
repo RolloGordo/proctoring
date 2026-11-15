@@ -54,6 +54,8 @@ class CreateExamSessionInput:
     allow_back_navigation: bool = True
     reveal_code_at_start: bool = False
     show_answers_after_submission: bool = False
+    #: Tope de actividades sospechosas por estudiante. `None`: sin tope.
+    suspicious_activity_limit: int | None = None
     #: Sobre cuanto se califica. 20 por defecto, que es la escala peruana.
     max_score: Decimal = DEFAULT_MAX_SCORE
     #: Solo se usa con `preset = custom`.
@@ -100,6 +102,7 @@ class CreateExamSession:
             question_pool_size=data.question_pool_size,
             shuffle_options=data.shuffle_options,
             allow_back_navigation=data.allow_back_navigation,
+            suspicious_activity_limit=data.suspicious_activity_limit,
             reveal_code_at_start=data.reveal_code_at_start,
             show_answers_after_submission=data.show_answers_after_submission,
             max_score=data.max_score,
