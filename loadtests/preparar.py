@@ -249,9 +249,11 @@ def preparar_datos(examenes: int, por_examen: int, docentes: int) -> None:
                     "id": sid,
                     "codigo": sesion.json()["access_code"],
                     "docente_token": token_docente,
+                    "docente_email": f"docente{e % docentes}.{marca}@carga.test",
                     "estudiantes": [
                         {
                             "id": ids_estudiantes[n],
+                            "email": correos[n],
                             "token": firmador.token(ids_estudiantes[n], correos[n]),
                         }
                         for n in grupo
