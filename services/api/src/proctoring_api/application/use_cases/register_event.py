@@ -16,7 +16,12 @@ from proctoring_api.application.ports.job_queue import JobQueue
 from proctoring_api.application.ports.participant_repository import ParticipantRepository
 from proctoring_api.application.ports.question_bank_repository import QuestionBankRepository
 from proctoring_api.application.ports.question_repository import QuestionRepository
-from proctoring_api.domain.alert import Alert, should_alert
+from proctoring_api.domain.alert import (
+    Alert,
+    limit_reached_alert,
+    should_alert,
+    warnings_count,
+)
 from proctoring_api.domain.errors import AuthorizationError, InvalidEventError
 from proctoring_api.domain.event import EventType, ProctoringEvent
 from proctoring_api.domain.exam_session import ExamSession
@@ -70,6 +75,11 @@ class RegisterEventOutput:
 
     id: UUID
     severity: Severity
+    #: Advertencias que lleva el estudiante en este examen, si el examen tiene
+    #: tope. La app se lo muestra («Advertencia 3 de 5»): saber que se le
+    #: observa ya cambia la conducta (efecto Hawthorne, reunion del 14/11).
+    warnings: int | None = None
+    warning_limit: int | None = None
 
 
 class RegisterEvent:
@@ -150,15 +160,38 @@ class RegisterEvent:
         # publicada en Supabase Realtime, asi que la insercion llega sola a su
         # navegador (ADR-0007). Esto es lo que sostiene la meta de avisar en
         # menos de 5 s.
+        advertencias: int | None = None
+        tope: int | None = None
         if should_alert(severity):
             self._alerts.save(Alert.from_event(event, severity, self._clock.now()))
+            advertencias, tope = self._contar_advertencias(event)
 
         # El analisis de audio es lo caro: se encola y la peticion responde ya.
         # Solo despues de guardar, para que el worker siempre encuentre el evento.
         if event.needs_audio_analysis:
             self._job_queue.enqueue_audio_analysis(event.id)
 
-        return RegisterEventOutput(id=event.id, severity=severity)
+        return RegisterEventOutput(
+            id=event.id, severity=severity, warnings=advertencias, warning_limit=tope
+        )
+
+    def _contar_advertencias(self, event: ProctoringEvent) -> tuple[int | None, int | None]:
+        """Cuenta las advertencias y, justo al llegar al tope, avisa al docente.
+
+        Solo al llegar, no en cada una de las siguientes: un aviso por senal
+        despues del tope es ruido. **No cierra el examen**: el sistema es un
+        auditor y la decision es del docente.
+        """
+        sesion = self._session(event.session_id)
+        tope = sesion.suspicious_activity_limit if sesion is not None else None
+        if tope is None:
+            return None, None
+        advertencias = warnings_count(
+            self._alerts.list_by_session(event.session_id, event.student_id)
+        )
+        if advertencias == tope:
+            self._alerts.save(limit_reached_alert(event, tope, self._clock.now()))
+        return advertencias, tope
 
     @staticmethod
     def _authorize(data: RegisterEventInput, actor: AuthenticatedUser) -> None:

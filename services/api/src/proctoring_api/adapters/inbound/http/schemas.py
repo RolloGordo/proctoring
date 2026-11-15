@@ -103,6 +103,9 @@ class EventCreatedResponse(BaseModel):
 
     id: UUID
     severity: Severity
+    #: Advertencias que lleva en este examen y el tope; `None` si no hay tope.
+    warnings: int | None = None
+    warning_limit: int | None = None
 
 
 class EventResponse(BaseModel):
@@ -215,6 +218,8 @@ class ExamSessionRequest(BaseModel):
     #: Cuantas preguntas recibe cada estudiante. Solo aplica con bancos
     #: atados; sin ellos el examen usa sus propias preguntas, todas.
     question_pool_size: int | None = Field(default=None, gt=0, le=500)
+    #: Tope de actividades sospechosas por estudiante; `None` es sin tope.
+    suspicious_activity_limit: int | None = Field(default=None, ge=1, le=100)
     #: Sobre cuanto se califica. 20 por defecto, que es la escala peruana.
     max_score: Decimal = Field(default=DEFAULT_MAX_SCORE, gt=0, le=100)
     #: Solo se usa con `preset = custom`; con los demas manda el preset.
@@ -277,6 +282,7 @@ class ExamSessionResponse(BaseModel):
     reveal_code_at_start: bool
     show_answers_after_submission: bool
     question_pool_size: int | None
+    suspicious_activity_limit: int | None = None
     max_score: Decimal
     cancelled_at: datetime | None
     modules: dict[SupervisionModule, dict[str, Any]]
@@ -307,6 +313,7 @@ class ExamSessionResponse(BaseModel):
             reveal_code_at_start=session.reveal_code_at_start,
             show_answers_after_submission=session.show_answers_after_submission,
             question_pool_size=session.question_pool_size,
+            suspicious_activity_limit=session.suspicious_activity_limit,
             max_score=session.max_score,
             cancelled_at=session.cancelled_at,
             modules=session.modules,
@@ -886,6 +893,11 @@ class StudentRiskResponse(BaseModel):
     #: Cuántas señales registró, y la que más pesa: lo que se lee junto al color.
     signal_count: int
     top_signal: EventType | None
+    #: Advertencias (señales con alerta) y tope del examen; `None` sin tope.
+    warnings: int = 0
+    warning_limit: int | None = None
+    #: Llegó al tope que fijó el docente: va a rojo aunque sus puntos no alcancen.
+    over_limit: bool = False
 
 
 class CaseResponse(BaseModel):
@@ -1215,6 +1227,7 @@ class UpdateExamSessionRequest(BaseModel):
     allow_back_navigation: bool | None = None
     reveal_code_at_start: bool | None = None
     show_answers_after_submission: bool | None = None
+    suspicious_activity_limit: int | None = Field(default=None, ge=1, le=100)
     #: Los modulos elegidos a mano. Solo con `preset = custom`; los umbrales que
     #: no se envien los pone la API.
     modules: dict[SupervisionModule, dict[str, Any]] | None = None
@@ -1222,6 +1235,8 @@ class UpdateExamSessionRequest(BaseModel):
     clear_course: bool = False
     #: Vuelve a "todas las preguntas del banco".
     clear_pool_size: bool = False
+    #: Quita el tope de actividades sospechosas.
+    clear_suspicious_activity_limit: bool = False
 
     def to_changes(self) -> ExamSessionChanges:
         return ExamSessionChanges(
@@ -1239,10 +1254,12 @@ class UpdateExamSessionRequest(BaseModel):
             allow_back_navigation=self.allow_back_navigation,
             reveal_code_at_start=self.reveal_code_at_start,
             show_answers_after_submission=self.show_answers_after_submission,
+            suspicious_activity_limit=self.suspicious_activity_limit,
             modules=self.modules,
             clear_description=self.clear_description,
             clear_course=self.clear_course,
             clear_pool_size=self.clear_pool_size,
+            clear_suspicious_activity_limit=self.clear_suspicious_activity_limit,
         )
 
 

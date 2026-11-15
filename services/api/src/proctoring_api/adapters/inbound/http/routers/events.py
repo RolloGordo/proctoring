@@ -71,7 +71,12 @@ def register_event(
         ),
         actor=current_user,
     )
-    return EventCreatedResponse(id=result.id, severity=result.severity)
+    return EventCreatedResponse(
+        id=result.id,
+        severity=result.severity,
+        warnings=result.warnings,
+        warning_limit=result.warning_limit,
+    )
 
 
 @router.get(

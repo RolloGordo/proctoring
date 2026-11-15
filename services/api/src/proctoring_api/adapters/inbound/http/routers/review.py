@@ -123,14 +123,18 @@ def list_session_risk(
         (
             StudentRiskResponse(
                 student_id=alumno,
-                score=r.score,
+                score=r.assessment.score,
                 level=r.level,
-                signal_count=sum(s.count for s in r.signals),
-                top_signal=r.signals[0].event_type if r.signals else None,
+                signal_count=sum(s.count for s in r.assessment.signals),
+                top_signal=r.assessment.signals[0].event_type if r.assessment.signals else None,
+                warnings=r.warnings,
+                warning_limit=r.warning_limit,
+                over_limit=r.over_limit,
             )
             for alumno, r in riesgos.items()
         ),
-        key=lambda x: -x.score,
+        # Primero quien llegó al tope, luego por puntos.
+        key=lambda x: (not x.over_limit, -x.score),
     )
 
 

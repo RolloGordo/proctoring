@@ -19,13 +19,13 @@ from proctoring_api.application.ports.profile_repository import ProfileRepositor
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.application.use_cases.create_exam_session import DEFAULT_DEV_TEACHER_ID
 from proctoring_api.application.use_cases.manage_enrollment import DEFAULT_DEV_STUDENT_ID
-from proctoring_api.domain.alert import Alert
+from proctoring_api.domain.alert import Alert, warnings_count
 from proctoring_api.domain.audio_analysis import AudioAnalysis
 from proctoring_api.domain.decision import Decision, DecisionType
 from proctoring_api.domain.errors import AuthorizationError
 from proctoring_api.domain.event import ProctoringEvent
 from proctoring_api.domain.participant import SessionParticipant
-from proctoring_api.domain.risk import RiskAssessment, assess_risk
+from proctoring_api.domain.risk import RiskAssessment, RiskLevel, assess_risk
 from proctoring_api.domain.user import AuthenticatedUser, ProfileSummary
 
 
@@ -178,6 +178,25 @@ class ListSessionDecisions:
         return self._decisions.list_by_session(session_id)
 
 
+@dataclass(frozen=True, slots=True)
+class StudentSessionRisk:
+    """El riesgo de un estudiante y, si el examen tiene tope, sus advertencias."""
+
+    assessment: RiskAssessment
+    warnings: int = 0
+    warning_limit: int | None = None
+
+    @property
+    def over_limit(self) -> bool:
+        return self.warning_limit is not None and self.warnings >= self.warning_limit
+
+    @property
+    def level(self) -> RiskLevel:
+        # Quien llego al tope va a rojo aunque sus puntos no alcancen: es la
+        # regla que el docente fijo para este examen.
+        return RiskLevel.HIGH if self.over_limit else self.assessment.level
+
+
 class ListSessionRisk:
     """El riesgo de cada estudiante de una sesión, para el semáforo de Entregas.
 
@@ -188,21 +207,39 @@ class ListSessionRisk:
     """
 
     def __init__(
-        self, events: EventRepository, sessions: ExamSessionRepository | None = None
+        self,
+        events: EventRepository,
+        sessions: ExamSessionRepository | None = None,
+        alerts: AlertRepository | None = None,
     ) -> None:
         self._events = events
         self._sessions = sessions
+        self._alerts = alerts
 
     def execute(
         self, session_id: UUID, *, actor: AuthenticatedUser | None = None
-    ) -> dict[UUID, RiskAssessment]:
+    ) -> dict[UUID, StudentSessionRisk]:
         if actor is not None and not actor.is_teacher:
             raise AuthorizationError("Solo el docente ve el riesgo de los estudiantes")
         ensure_teacher_owns_session(self._sessions, session_id, actor)
         por_estudiante: dict[UUID, list[ProctoringEvent]] = {}
         for evento in self._events.list_by_session(session_id):
             por_estudiante.setdefault(evento.student_id, []).append(evento)
-        return {alumno: assess_risk(eventos) for alumno, eventos in por_estudiante.items()}
+
+        sesion = self._sessions.find_by_id(session_id) if self._sessions else None
+        tope = sesion.suspicious_activity_limit if sesion is not None else None
+        alertas: dict[UUID, list[Alert]] = {}
+        if tope is not None and self._alerts is not None:
+            for alerta in self._alerts.list_by_session(session_id):
+                alertas.setdefault(alerta.student_id, []).append(alerta)
+        return {
+            alumno: StudentSessionRisk(
+                assessment=assess_risk(eventos),
+                warnings=warnings_count(alertas.get(alumno, [])),
+                warning_limit=tope,
+            )
+            for alumno, eventos in por_estudiante.items()
+        }
 
 
 class GetMyDecision:

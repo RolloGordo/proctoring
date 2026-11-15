@@ -11,6 +11,7 @@ proyecto es codigo en ingles e interfaz en espanol.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -48,6 +49,38 @@ class Alert:
             reason=alert_reason(event.event_type, event.duration_ms),
             created_at=created_at,
         )
+
+
+#: Marca de la alerta que avisa del tope: no cuenta como advertencia.
+LIMIT_REASON_PREFIX = "Alcanzo el tope de"
+
+
+def limit_reached_alert(
+    event: ProctoringEvent, limit: int, created_at: datetime, alert_id: UUID | None = None
+) -> Alert:
+    """La alerta alta que avisa al docente de que un estudiante llego al tope.
+
+    Describe lo ocurrido sin sentenciar: llegar al tope no es haber copiado, y el
+    examen sigue abierto. Decide el docente.
+    """
+    return Alert(
+        id=alert_id if alert_id is not None else uuid4(),
+        event_id=event.id,
+        session_id=event.session_id,
+        student_id=event.student_id,
+        severity=Severity.HIGH,
+        reason=f"{LIMIT_REASON_PREFIX} {limit} actividades sospechosas; revisa su caso",
+        created_at=created_at,
+    )
+
+
+def is_limit_alert(alert: Alert) -> bool:
+    return alert.reason.startswith(LIMIT_REASON_PREFIX)
+
+
+def warnings_count(alerts: Iterable[Alert]) -> int:
+    """Cuantas advertencias lleva: las alertas, sin contar las del tope."""
+    return sum(1 for alert in alerts if not is_limit_alert(alert))
 
 
 def should_alert(severity: Severity) -> bool:

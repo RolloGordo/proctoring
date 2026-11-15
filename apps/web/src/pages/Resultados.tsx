@@ -65,11 +65,13 @@ export function Resultados() {
     () =>
       [...(participantes ?? [])]
         .filter((p) => nivel === 'todos' || nivelDe(riesgoPorAlumno.get(p.student_id)) === nivel)
-        .sort(
-          (a, b) =>
-            (riesgoPorAlumno.get(b.student_id)?.score ?? 0) -
-            (riesgoPorAlumno.get(a.student_id)?.score ?? 0)
-        ),
+        .sort((a, b) => {
+          const ra = riesgoPorAlumno.get(a.student_id)
+          const rb = riesgoPorAlumno.get(b.student_id)
+          // Primero quien llegó al tope que fijó el docente, luego por puntos.
+          const tope = Number(rb?.over_limit ?? false) - Number(ra?.over_limit ?? false)
+          return tope || (rb?.score ?? 0) - (ra?.score ?? 0)
+        }),
     [participantes, riesgoPorAlumno, nivel]
   )
   const lista = useListaAcotada(
@@ -242,8 +244,16 @@ function Semaforo({ riesgo }: { riesgo: StudentRisk | undefined }) {
     ? `${riesgo.signal_count} señales · sobre todo ${nombreEvento(riesgo.top_signal).toLowerCase()}`
     : 'Sin señales'
   return (
-    <span className={`semaforo semaforo-${nivel}`} title={detalle}>
-      {NOMBRE_SEMAFORO[nivel]} · {riesgo?.score ?? 0}
+    <span className="semaforo-celda">
+      <span className={`semaforo semaforo-${nivel}`} title={detalle}>
+        {NOMBRE_SEMAFORO[nivel]} · {riesgo?.score ?? 0}
+      </span>
+      {riesgo?.warning_limit != null && (
+        <span className={riesgo.over_limit ? 'tope tope-alcanzado' : 'tope'}>
+          {riesgo.over_limit ? 'Llegó al tope' : 'Advertencias'} {riesgo.warnings}/
+          {riesgo.warning_limit}
+        </span>
+      )}
     </span>
   )
 }

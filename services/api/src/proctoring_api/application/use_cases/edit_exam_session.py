@@ -65,12 +65,16 @@ class ExamSessionChanges:
     allow_back_navigation: bool | None = None
     reveal_code_at_start: bool | None = None
     show_answers_after_submission: bool | None = None
+    #: Se puede mover con el examen en curso: no cambia de que va el examen,
+    #: solo cuando se avisa al docente.
+    suspicious_activity_limit: int | None = None
     #: Los modulos elegidos a mano. Solo valen con el preset `custom`; los
     #: umbrales que no se envien los completa el dominio.
     modules: Mapping[SupervisionModule, Mapping[str, Any]] | None = None
     clear_description: bool = False
     clear_course: bool = False
     clear_pool_size: bool = False
+    clear_suspicious_activity_limit: bool = False
 
     def without_what_is_already_there(self, session: ExamSession) -> ExamSessionChanges:
         """Los mismos cambios, sin los campos que ya tienen ese valor.
@@ -194,10 +198,12 @@ class UpdateExamSession:
             allow_back_navigation=changes.allow_back_navigation,
             reveal_code_at_start=changes.reveal_code_at_start,
             show_answers_after_submission=changes.show_answers_after_submission,
+            suspicious_activity_limit=changes.suspicious_activity_limit,
             modules=changes.modules,
             clear_description=changes.clear_description,
             clear_course=changes.clear_course,
             clear_pool_size=changes.clear_pool_size,
+            clear_suspicious_activity_limit=changes.clear_suspicious_activity_limit,
         )
         self._sessions.save(corregida)
         return corregida

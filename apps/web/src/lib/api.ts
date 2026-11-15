@@ -77,6 +77,8 @@ export interface ExamSession extends ExamSessionSummary {
   /** Permite ver la clave una vez que el estudiante haya entregado. */
   show_answers_after_submission: boolean
   question_pool_size: number | null
+  /** Tope de actividades sospechosas por estudiante; `null` sin tope. */
+  suspicious_activity_limit?: number | null
   /** Sobre cuánto se califica. 20 por defecto: la escala peruana. */
   max_score: string
   /** Cuándo lo canceló el docente. `null` mientras siga en pie. */
@@ -283,6 +285,22 @@ export interface Risk {
   signals: SignalRisk[]
 }
 
+/** Respuesta de `POST /events`. `warnings` solo si el examen tiene tope. */
+export interface EventCreated {
+  id: string
+  severity: Severity
+  warnings?: number | null
+  warning_limit?: number | null
+}
+
+/** Cuántas advertencias lleva el estudiante y el tope del examen. */
+export interface Advertencias {
+  advertencias: number
+  tope: number
+}
+
+export const EVENTO_ADVERTENCIAS = 'proctoring:advertencias'
+
 /** El riesgo de un estudiante dentro de una sesión (`GET /sessions/{id}/risk`). */
 export interface StudentRisk {
   student_id: string
@@ -290,6 +308,11 @@ export interface StudentRisk {
   level: RiskLevel
   signal_count: number
   top_signal: EventType | null
+  /** Advertencias y tope del examen. Sin tope, `warning_limit` es `null`. */
+  warnings: number
+  warning_limit: number | null
+  /** Llegó al tope que fijó el docente. */
+  over_limit: boolean
 }
 
 /** Una decisión del docente. Es evidencia: no se edita, se agrega otra. */
@@ -428,6 +451,8 @@ export interface ExamSessionChanges {
   preset?: SupervisionPreset
   max_score?: string | number
   question_pool_size?: number
+  /** Tope de actividades sospechosas por estudiante (1 a 100). */
+  suspicious_activity_limit?: number
   shuffle_questions?: boolean
   shuffle_options?: boolean
   allow_back_navigation?: boolean
@@ -438,6 +463,7 @@ export interface ExamSessionChanges {
   clear_description?: boolean
   clear_course?: boolean
   clear_pool_size?: boolean
+  clear_suspicious_activity_limit?: boolean
 }
 
 /** Lo que se quiere cambiar de una pregunta. Las opciones van enteras o no van. */
@@ -956,8 +982,22 @@ export const api = {
       token
     ),
 
-  registerEvent: (evento: NewEvent, token?: string): Promise<{ id: string; severity: Severity }> =>
-    request('/api/v1/events', { method: 'POST', body: JSON.stringify(evento) }, token),
+  registerEvent: async (evento: NewEvent, token?: string): Promise<EventCreated> => {
+    const creado = await request<EventCreated>(
+      '/api/v1/events',
+      { method: 'POST', body: JSON.stringify(evento) },
+      token
+    )
+    // Si el examen tiene tope, la pantalla del examen muestra las advertencias.
+    if (creado.warnings != null && creado.warning_limit != null && typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent<Advertencias>(EVENTO_ADVERTENCIAS, {
+          detail: { advertencias: creado.warnings, tope: creado.warning_limit }
+        })
+      )
+    }
+    return creado
+  },
 
   listEvents: (sessionId: string, token?: string): Promise<ProctoringEvent[]> =>
     request(`/api/v1/sessions/${sessionId}/events`, undefined, token),
