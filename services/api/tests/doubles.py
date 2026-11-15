@@ -21,7 +21,11 @@ class FakeResponse:
 
 
 class FakeTable:
-    def __init__(self, rows: list[dict[str, Any]] | None = None) -> None:
+    def __init__(
+        self, rows: list[dict[str, Any]] | None = None, max_rows: int | None = None
+    ) -> None:
+        #: Como `max_rows` de PostgREST: recorta cada respuesta sin avisar.
+        self.max_rows = max_rows
         self.rows: list[dict[str, Any]] = [dict(row) for row in (rows or [])]
         #: Lo insertado, para comprobar la forma exacta de la fila.
         self.inserted: list[dict[str, Any]] = []
@@ -35,9 +39,9 @@ class FakeQueryBuilder:
     def __init__(self, table: FakeTable) -> None:
         self._table = table
         self._filters: list[tuple[str, Any]] = []
-        self._order: str | None = None
-        self._desc = False
+        self._orders: list[tuple[str, bool]] = []
         self._limit: int | None = None
+        self._range: tuple[int, int] | None = None
         self._insert: dict[str, Any] | None = None
 
     def select(self, columns: str = "*") -> FakeQueryBuilder:
@@ -57,8 +61,12 @@ class FakeQueryBuilder:
         return self
 
     def order(self, column: str, desc: bool = False) -> FakeQueryBuilder:
-        self._order = column
-        self._desc = desc
+        # Como PostgREST, cada order() añade un criterio de desempate.
+        self._orders.append((column, desc))
+        return self
+
+    def range(self, start: int, end: int) -> FakeQueryBuilder:
+        self._range = (start, end)
         return self
 
     def execute(self) -> FakeResponse:
@@ -74,20 +82,30 @@ class FakeQueryBuilder:
             # PostgREST compara en texto por la URL, asi que el doble hace lo mismo.
             if all(str(row.get(column)) == str(value) for column, value in self._filters)
         ]
-        if self._order is not None:
-            column = self._order
-            rows = sorted(rows, key=lambda row: str(row[column]), reverse=self._desc)
+        # Orden estable: del último criterio al primero.
+        for column, desc in reversed(self._orders):
+
+            def clave(row: dict[str, Any], c: str = column) -> str:
+                return str(row[c])
+
+            rows = sorted(rows, key=clave, reverse=desc)
+        if self._range is not None:
+            rows = rows[self._range[0] : self._range[1] + 1]
         if self._limit is not None:
             rows = rows[: self._limit]
+        if self._table.max_rows is not None:
+            rows = rows[: self._table.max_rows]
         return FakeResponse([dict(row) for row in rows])
 
 
 class FakeSupabaseClient:
     """Sustituye a `supabase.Client` en las pruebas."""
 
-    def __init__(self, tables: dict[str, list[dict[str, Any]]] | None = None) -> None:
+    def __init__(
+        self, tables: dict[str, list[dict[str, Any]]] | None = None, max_rows: int | None = None
+    ) -> None:
         self.tables: dict[str, FakeTable] = {
-            name: FakeTable(rows) for name, rows in (tables or {}).items()
+            name: FakeTable(rows, max_rows) for name, rows in (tables or {}).items()
         }
 
     def table(self, name: str) -> FakeQueryBuilder:
