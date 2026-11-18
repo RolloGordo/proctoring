@@ -25,7 +25,7 @@ from proctoring_api.domain.alert import (
 from proctoring_api.domain.errors import AuthorizationError, InvalidEventError
 from proctoring_api.domain.event import EventType, ProctoringEvent
 from proctoring_api.domain.exam_session import ExamSession
-from proctoring_api.domain.severity import Severity, default_severity
+from proctoring_api.domain.severity import SEVERITY_RANK, Severity, default_severity
 from proctoring_api.domain.user import AuthenticatedUser
 
 #: Margen que se le concede al reloj del cliente.
@@ -162,7 +162,7 @@ class RegisterEvent:
         # menos de 5 s.
         advertencias: int | None = None
         tope: int | None = None
-        if should_alert(severity):
+        if should_alert(severity) and self._raises_its_episode(event, severity):
             self._alerts.save(Alert.from_event(event, severity, self._clock.now()))
             advertencias, tope = self._contar_advertencias(event)
 
@@ -174,6 +174,27 @@ class RegisterEvent:
         return RegisterEventOutput(
             id=event.id, severity=severity, warnings=advertencias, warning_limit=tope
         )
+
+    def _raises_its_episode(self, event: ProctoringEvent, severity: Severity) -> bool:
+        """Si este informe sube la severidad de su episodio.
+
+        Una condicion larga se informa varias veces con el mismo `episode_id`
+        (ver `ProctoringEvent.episode_id`). Al docente se le avisa **una vez por
+        nivel**: al cruzar a media y al cruzar a alta, no en cada informe. Sin
+        esto, una ausencia de tres minutos serian una docena de alertas y
+        agotaria sola el tope de advertencias del examen.
+
+        Un evento sin episodio avisa siempre, como antes.
+        """
+        episode = event.episode_id
+        if episode is None:
+            return True
+        previous = (
+            default_severity(e.event_type, e.duration_ms)
+            for e in self._events.list_by_episode(event.session_id, event.student_id, episode)
+            if e.id != event.id and e.event_type is event.event_type
+        )
+        return all(SEVERITY_RANK[s] < SEVERITY_RANK[severity] for s in previous)
 
     def _contar_advertencias(self, event: ProctoringEvent) -> tuple[int | None, int | None]:
         """Cuenta las advertencias y, justo al llegar al tope, avisa al docente.

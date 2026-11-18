@@ -52,6 +52,23 @@ Las valida el dominio de la API y responden **400**, no 422:
 frame multiplica los falsos positivos y revienta la meta de FPR < 20 %. Cada cliente necesita un
 temporizador por condición (histéresis).
 
+**Un episodio largo se informa varias veces, con el mismo `metadata.episode_id`.** Esperar al
+cierre deja al docente sin alerta mientras la condición sigue, y emitir solo al cumplir el mínimo
+manda la duración del mínimo y nunca la real (fallo de la prueba de carga del 18/11/2026: tres
+minutos sin rostro llegaban como «3 s, leve»). Por eso las detecciones de cámara de la web
+(`apps/web/src/supervision/seguimiento.ts`) informan el episodio al cumplir el mínimo, cada 5 s
+hasta los 30 s, cada 30 s después y una última vez al cerrarse, siempre con:
+
+| Clave de `metadata` | Tipo | Significado |
+|---|---|---|
+| `episode_id` | texto (UUID, ≤ 64 caracteres) | Igual en todos los informes del mismo episodio |
+| `episode_closed` | booleano | `true` solo en el informe final |
+
+La API guarda **todos** los informes (los eventos son de solo inserción) pero cuenta cada episodio
+**una vez**: el riesgo usa su informe más largo, y al docente se le avisa solo cuando el episodio
+sube de severidad (a media y a alta, no en cada informe). Un evento sin `episode_id` cuenta solo,
+como siempre.
+
 Los instantáneos (`extra_display`, `suspicious_process`, `identity_check`) van con `duration_ms: 0`.
 
 ## Ejemplos

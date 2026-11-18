@@ -33,6 +33,15 @@ class InMemoryEventRepository:
         with self._lock:
             return next((e for e in self._events if e.id == event_id), None)
 
+    def list_by_episode(
+        self, session_id: UUID, student_id: UUID, episode_id: str
+    ) -> Sequence[ProctoringEvent]:
+        return [
+            event
+            for event in self.list_by_session(session_id, student_id)
+            if event.episode_id == episode_id
+        ]
+
     def list_by_session(
         self, session_id: UUID, student_id: UUID | None = None
     ) -> Sequence[ProctoringEvent]:

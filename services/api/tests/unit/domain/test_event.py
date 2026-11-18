@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 
 from proctoring_api.domain.errors import InvalidEventError
-from proctoring_api.domain.event import EventType, ProctoringEvent
+from proctoring_api.domain.event import EventType, ProctoringEvent, one_per_episode
 
 SESSION = uuid4()
 STUDENT = uuid4()
@@ -151,3 +151,36 @@ def test_event_type_values_match_the_shared_contract() -> None:
         "prohibited_object",
         "framing_lost",
     }
+
+
+class TestEpisodio:
+    @staticmethod
+    def con_metadata(metadata: dict[str, object]) -> ProctoringEvent:
+        return ProctoringEvent.create(
+            session_id=uuid4(),
+            student_id=uuid4(),
+            event_type=EventType.FACE_ABSENT,
+            started_at=datetime(2026, 11, 18, 15, 0, tzinfo=UTC),
+            metadata=metadata,
+        )
+
+    def test_lee_el_episode_id_de_la_metadata(self) -> None:
+        assert self.con_metadata({"episode_id": "ep-1"}).episode_id == "ep-1"
+
+    @pytest.mark.parametrize("valor", [None, "", 7, "x" * 65])
+    def test_un_valor_raro_se_ignora(self, valor: object) -> None:
+        assert self.con_metadata({"episode_id": valor}).episode_id is None
+
+    def test_one_per_episode_se_queda_con_el_mas_largo_y_respeta_el_orden(self) -> None:
+        suelto = self.con_metadata({})
+        corto = self.con_metadata({"episode_id": "ep-1"})
+        largo = ProctoringEvent.create(
+            session_id=corto.session_id,
+            student_id=corto.student_id,
+            event_type=EventType.FACE_ABSENT,
+            started_at=corto.started_at,
+            duration_ms=9_000,
+            metadata={"episode_id": "ep-1"},
+        )
+
+        assert one_per_episode([suelto, corto, largo]) == [suelto, largo]
