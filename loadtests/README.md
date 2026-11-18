@@ -82,10 +82,10 @@ el código dentro de la tolerancia de ingreso, que es de minutos), y el p95 de
 500 ms no se tocó: lo que bajó el p95 fue leer el examen con sus módulos en una
 sola consulta y no leerlo en cada sondeo de la sala de espera (EN-034).
 
-| CI, examen de 60, p95 | Antes (50/s) | EN-034 (50/s) |
-|---|---:|---:|
-| ingreso: código | 500 ms | 360 ms |
-| ingreso: matrícula | 530 ms | 270 ms |
+| CI, examen de 60, p95 | Antes (50/s) | EN-034 (50/s) | EN-034 (20/s, CI) |
+|---|---:|---:|---:|
+| ingreso: código | 500 ms | 360 ms | 130 ms |
+| ingreso: matrícula | 530 ms | 270 ms | 98 ms |
 
 Al terminar: `docker compose -f docker-compose.carga.yml -p carga down` y
 `npx -y supabase@2 stop`.
