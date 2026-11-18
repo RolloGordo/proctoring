@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -123,6 +123,86 @@ class TestConsentimiento:
 
         assert segunda.participant.id == primera.participant.id
         assert segunda.participant.consent_at == primera.participant.consent_at
+
+
+class SesionesQueCuentan(InMemoryExamSessionRepository):
+    """Cuenta las lecturas de sesión: cada una es una consulta a PostgREST."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.lecturas = 0
+
+    def find_by_id(self, session_id: UUID) -> ExamSession | None:
+        self.lecturas += 1
+        return super().find_by_id(session_id)
+
+
+class TestConsultasPorPeticion:
+    """La sala de espera sondea cada 10 s por estudiante (ADR-0011)."""
+
+    @pytest.fixture
+    def contadas(self) -> SesionesQueCuentan:
+        repositorio = SesionesQueCuentan()
+        repositorio.save(una_sesion())
+        return repositorio
+
+    def test_quien_ya_esta_matriculado_no_hace_leer_el_examen(
+        self,
+        participants: InMemoryParticipantRepository,
+        contadas: SesionesQueCuentan,
+        clock: FixedClock,
+    ) -> None:
+        caso = EnrollInExam(participants, contadas, clock)
+        sesion = contadas.list_by_teacher(DOCENTE.id)[0]
+        caso.execute(sesion.id, accepts_supervision=True, actor=ANA)
+        contadas.lecturas = 0
+
+        for _ in range(3):
+            caso.execute(sesion.id, accepts_supervision=False, actor=ANA)
+
+        assert contadas.lecturas == 0
+
+    def test_matricularse_lee_el_examen_una_vez(
+        self,
+        participants: InMemoryParticipantRepository,
+        contadas: SesionesQueCuentan,
+        clock: FixedClock,
+    ) -> None:
+        sesion = contadas.list_by_teacher(DOCENTE.id)[0]
+
+        EnrollInExam(participants, contadas, clock).execute(
+            sesion.id, accepts_supervision=True, actor=ANA
+        )
+
+        assert contadas.lecturas == 1
+
+    def test_la_matricula_de_otro_no_le_abre_la_puerta_a_nadie(
+        self,
+        participants: InMemoryParticipantRepository,
+        contadas: SesionesQueCuentan,
+        clock: FixedClock,
+    ) -> None:
+        """El atajo es por persona: Luis sin matrícula pasa por todas las reglas."""
+        caso = EnrollInExam(participants, contadas, clock)
+        sesion = contadas.list_by_teacher(DOCENTE.id)[0]
+        caso.execute(sesion.id, accepts_supervision=True, actor=ANA)
+
+        with pytest.raises(ConsentRequiredError):
+            caso.execute(sesion.id, accepts_supervision=False, actor=LUIS)
+        assert participants.find(sesion.id, LUIS.id) is None
+
+    def test_una_matricula_en_otra_sesion_no_sirve_para_esta(
+        self,
+        participants: InMemoryParticipantRepository,
+        contadas: SesionesQueCuentan,
+        clock: FixedClock,
+    ) -> None:
+        caso = EnrollInExam(participants, contadas, clock)
+        sesion = contadas.list_by_teacher(DOCENTE.id)[0]
+        caso.execute(sesion.id, accepts_supervision=True, actor=ANA)
+
+        with pytest.raises(AuthorizationError, match="No tienes acceso"):
+            caso.execute(uuid4(), accepts_supervision=True, actor=ANA)
 
 
 class TestVentanaDeIngreso:

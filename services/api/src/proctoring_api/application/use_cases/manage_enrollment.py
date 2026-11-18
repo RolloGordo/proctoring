@@ -21,7 +21,7 @@ from proctoring_api.application.ports.reference_face_repository import (
 from proctoring_api.application.session_access import ensure_teacher_owns_session
 from proctoring_api.application.use_cases.create_exam_session import DEFAULT_DEV_TEACHER_ID
 from proctoring_api.domain.errors import AuthorizationError, DomainError
-from proctoring_api.domain.exam_session import DEFAULT_MAX_SCORE, EntryState, ExamSession
+from proctoring_api.domain.exam_session import DEFAULT_MAX_SCORE, EntryState
 from proctoring_api.domain.grading import score_exam
 from proctoring_api.domain.participant import InvalidEnrollmentError, SessionParticipant
 from proctoring_api.domain.user import AuthenticatedUser, ProfileSummary
@@ -58,8 +58,13 @@ class ExamCancelledError(DomainError):
 
 @dataclass(frozen=True, slots=True)
 class EnrollmentResult:
+    """La matrícula del estudiante.
+
+    Antes traía también la sesión, que nadie leía y que obligaba a consultarla
+    aunque el estudiante ya estuviera matriculado.
+    """
+
     participant: SessionParticipant
-    session: ExamSession
 
 
 class EnrollInExam:
@@ -105,17 +110,23 @@ class EnrollInExam:
         # que solo existe con ENV local o test.
         quien = actor.id if actor is not None else (student_id or self._dev_student_id)
 
+        # Si ya estaba matriculado, volver a entrar no debe pedir el
+        # consentimiento otra vez ni reiniciar nada: se le devuelve su estado.
+        #
+        # Se mira **antes** que la sesión: es el camino de la sala de espera
+        # (`GET /exam/{id}/me`, cada 10 s por estudiante) y no necesita leer el
+        # examen ni sus módulos. Su matrícula ya prueba que tuvo acceso, y la
+        # clave foránea, que la sesión existe. Eran tres consultas por sondeo
+        # en pleno pico de ingreso (ADR-0011); ahora es una.
+        existente = self._participants.find(session_id, quien)
+        if existente is not None:
+            return EnrollmentResult(participant=existente)
+
         sesion = self._sessions.find_by_id(session_id)
         if sesion is None:
             raise AuthorizationError("No tienes acceso a este examen")
 
         ahora = self._clock.now()
-
-        # Si ya estaba matriculado, volver a entrar no debe pedir el
-        # consentimiento otra vez ni reiniciar nada: se le devuelve su estado.
-        existente = self._participants.find(session_id, quien)
-        if existente is not None:
-            return EnrollmentResult(participant=existente, session=sesion)
 
         if not accepts_supervision:
             raise ConsentRequiredError(
@@ -146,7 +157,7 @@ class EnrollInExam:
             session_id=session_id, student_id=quien, consented_at=ahora
         )
         self._participants.save(participante)
-        return EnrollmentResult(participant=participante, session=sesion)
+        return EnrollmentResult(participant=participante)
 
 
 class ListSessionParticipants:

@@ -14,8 +14,12 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from proctoring_api.adapters.outbound.supabase import exam_session_repository
 from proctoring_api.adapters.outbound.supabase.alert_repository import SupabaseAlertRepository
 from proctoring_api.adapters.outbound.supabase.event_repository import SupabaseEventRepository
+from proctoring_api.adapters.outbound.supabase.exam_session_repository import (
+    SupabaseExamSessionRepository,
+)
 from proctoring_api.adapters.outbound.supabase.profile_repository import (
     SupabaseProfileRepository,
 )
@@ -24,6 +28,7 @@ from proctoring_api.adapters.outbound.supabase.question_repository import (
 )
 from proctoring_api.domain.alert import Alert
 from proctoring_api.domain.event import EventType, ProctoringEvent
+from proctoring_api.domain.exam_session import ExamSession, SupervisionModule, SupervisionPreset
 from proctoring_api.domain.severity import Severity
 from proctoring_api.domain.user import UserRole
 
@@ -322,3 +327,82 @@ class TestQuestionRepository:
         owner = repository.find_owner(unknown)
         assert owner is not None
         assert owner.session_id == SESSION
+
+
+class TestExamSessionRepository:
+    """Una sesión con sus módulos sale de **una** consulta (ADR-0011)."""
+
+    @pytest.fixture
+    def sesion(self) -> ExamSession:
+        return ExamSession.create(
+            teacher_id=uuid4(),
+            title="Parcial",
+            starts_at=STARTED_AT,
+            duration_minutes=90,
+            access_code="ABC123",
+            preset=SupervisionPreset.STRICT,
+        )
+
+    @pytest.fixture
+    def fake(self, sesion: ExamSession) -> FakeSupabaseClient:
+        # Así responde PostgREST con el recurso embebido: los módulos van dentro
+        # de la fila de la sesión, en una lista.
+        fila = {
+            **exam_session_repository._to_row(sesion),
+            "session_modules": [
+                {"module": "gaze", "enabled": True, "settings": {"yaw_degrees": 25}},
+                {"module": "focus_loss", "enabled": True, "settings": None},
+                {"module": "ai_voice", "enabled": False, "settings": {}},
+            ],
+        }
+        return FakeSupabaseClient({"exam_sessions": [fila], "session_modules": []})
+
+    @pytest.fixture
+    def repository(self, fake: FakeSupabaseClient) -> SupabaseExamSessionRepository:
+        return SupabaseExamSessionRepository(as_client(fake))
+
+    def test_por_id_trae_los_modulos_en_la_misma_consulta(
+        self,
+        repository: SupabaseExamSessionRepository,
+        fake: FakeSupabaseClient,
+        sesion: ExamSession,
+    ) -> None:
+        encontrada = repository.find_by_id(sesion.id)
+
+        assert encontrada is not None
+        assert encontrada.modules == {
+            SupervisionModule.GAZE: {"yaw_degrees": 25},
+            SupervisionModule.FOCUS_LOSS: {},
+        }
+        assert fake.tables["exam_sessions"].select_count == 1
+        assert fake.tables["session_modules"].select_count == 0
+        assert "session_modules(module, enabled, settings)" in (
+            fake.tables["exam_sessions"].selected_columns or ""
+        )
+
+    def test_por_codigo_tambien(
+        self,
+        repository: SupabaseExamSessionRepository,
+        fake: FakeSupabaseClient,
+        sesion: ExamSession,
+    ) -> None:
+        encontrada = repository.find_by_access_code("ABC123")
+
+        assert encontrada is not None
+        assert encontrada.id == sesion.id
+        assert set(encontrada.modules) == {SupervisionModule.GAZE, SupervisionModule.FOCUS_LOSS}
+        assert fake.tables["exam_sessions"].select_count == 1
+        assert fake.tables["session_modules"].select_count == 0
+
+    def test_sin_modulos_embebidos_queda_sin_modulos(
+        self, fake: FakeSupabaseClient, sesion: ExamSession
+    ) -> None:
+        fake.tables["exam_sessions"].rows[0]["session_modules"] = []
+
+        encontrada = SupabaseExamSessionRepository(as_client(fake)).find_by_id(sesion.id)
+
+        assert encontrada is not None
+        assert encontrada.modules == {}
+
+    def test_codigo_desconocido(self, repository: SupabaseExamSessionRepository) -> None:
+        assert repository.find_by_access_code("ZZZ999") is None
