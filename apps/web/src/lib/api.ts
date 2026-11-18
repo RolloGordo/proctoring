@@ -86,8 +86,8 @@ export interface ExamSession extends ExamSessionSummary {
   modules: Record<string, Record<string, unknown>>
   /**
    * Todo lo que se registra: `modules` más lo que la app de escritorio vigila
-   * por su cuenta en los presets. Opcional porque la API (Render, de `develop`)
-   * y la web (Vercel, de `main`) se despliegan por separado.
+   * por su cuenta en los presets. Opcional porque una API anterior a este campo
+   * no lo manda (la API y la web se construyen por separado).
    */
   watched_modules?: SupervisionModule[]
 }

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { BotonTema } from './BotonTema'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth-context'
 import { AvisoAlmacenamiento } from './AvisoAlmacenamiento'
@@ -110,6 +111,7 @@ export function CapaPublica({
             <a href="/#principios" className="oculta-movil">
               Principios
             </a>
+            <BotonTema />
             {!enAcceso && (
               <Link to={destino} className="boton boton-compacto">
                 {texto}
@@ -171,6 +173,7 @@ export function CapaPanel({ rol, children }: { rol: Rol; children: ReactNode }) 
     <div className="app tema-oscuro">
       <header className="app-movil">
         <Marca a={inicio} />
+        <BotonTema className="boton-tema boton-tema-movil" />
         <button
           type="button"
           className="boton boton-texto"
@@ -206,6 +209,7 @@ export function CapaPanel({ rol, children }: { rol: Rol; children: ReactNode }) 
         </nav>
 
         <div className="lateral-pie">
+          <BotonTema />
           {authEnabled ? (
             <>
               {email && <p className="lateral-correo">{email}</p>}
@@ -243,9 +247,12 @@ export function CapaExamen({ children }: { children: ReactNode }) {
         <span className="marca">
           Proc<span>toring</span>
         </span>
-        <span className="examen-aviso">
-          <span className="punto punto-activo" aria-hidden />
-          Supervisión activa
+        <span className="examen-cabecera-lado">
+          <BotonTema />
+          <span className="examen-aviso">
+            <span className="punto punto-activo" aria-hidden />
+            Supervisión activa
+          </span>
         </span>
       </header>
       <main className="examen-cuerpo">{children}</main>
