@@ -72,5 +72,20 @@ contenedor. Sale con código 1 si se rompe un presupuesto:
 El CI corre el examen de 60 con dos réplicas en los PR a `main` que tocan la API
 (`.github/workflows/carga.yml`).
 
+**Ritmo de ingreso.** `--ingreso-por-segundo` (50 por defecto) es cuántos usuarios
+arranca Locust por segundo. Para mil estudiantes en 17 cursos son unos 3 por
+curso y segundo. En el CI, con un solo curso, se usa 20: los 60 entran en 3 s.
+Con 50 entraban en 1,2 s, que en un aula no pasa (cada uno inicia sesión y teclea
+el código dentro de la tolerancia de ingreso, que es de minutos), y el p95 de
+«ingreso» medía sobre todo la cola de ese segundo: 400-560 ms con mínimos de
+40 ms (18/11). 20/s sigue siendo mucho más duro que lo real. El presupuesto de
+500 ms no se tocó: lo que bajó el p95 fue leer el examen con sus módulos en una
+sola consulta y no leerlo en cada sondeo de la sala de espera (EN-034).
+
+| CI, examen de 60, p95 | Antes (50/s) | EN-034 (50/s) | EN-034 (20/s, CI) |
+|---|---:|---:|---:|
+| ingreso: código | 500 ms | 360 ms | 130 ms |
+| ingreso: matrícula | 530 ms | 270 ms | 98 ms |
+
 Al terminar: `docker compose -f docker-compose.carga.yml -p carga down` y
 `npx -y supabase@2 stop`.

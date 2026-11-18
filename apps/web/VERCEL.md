@@ -1,3 +1,7 @@
+> **Histórico (18/11/2026):** la web ya no se sirve desde Vercel y `vercel.json` se borró. La
+> reescritura de la SPA y las cabeceras viven ahora en `deploy/nginx.conf` y
+> `deploy/cabeceras.conf`; lo que sigue explica por qué existen.
+
 # Por qué existe `vercel.json`
 
 La web es una SPA: el enrutado lo hace React en el navegador, no el servidor.

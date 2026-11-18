@@ -26,6 +26,18 @@
   --pub-tenue: #999999;
   --pub-acento: #e8a700;
   --pub-acento-vivo: #ffbb1f;
+  /* Separados del acento porque en claro no pueden ser el mismo ámbar: el de
+     los rellenos sobre blanco no se lee como texto (2,1) ni como borde. En
+     oscuro valen lo de siempre. */
+  --pub-acento-texto: var(--pub-acento);
+  --pub-acento-linea: var(--pub-acento);
+  --pub-sobre-acento: #0a0a0a;
+  --pub-velo: rgb(255 255 255 / 9%);
+  --pub-velo-fuerte: rgb(255 255 255 / 16%);
+  --pub-borde-campo: #6b6b6b;
+  --pub-error: #ff9d8f;
+  --pub-error-fondo: #2b1513;
+  --pub-error-texto: #ffc2b8;
 
   /* Una sola familia, auto-alojada: se descarga solo cuando algo de aquí la
      pide, así que el examen y el panel nunca la cargan. */
@@ -92,7 +104,7 @@ html:has(.publica) {
 }
 
 .publica :focus-visible {
-  outline: 3px solid var(--pub-acento);
+  outline: 3px solid var(--pub-acento-linea);
   outline-offset: 4px;
 }
 
@@ -124,7 +136,7 @@ html:has(.publica) {
 }
 
 .publica .marca span {
-  color: var(--pub-acento);
+  color: var(--pub-acento-texto);
 }
 
 .publica .navegacion {
@@ -162,7 +174,7 @@ html:has(.publica) {
   border: 0;
   border-radius: 999px;
   background: var(--pub-acento);
-  color: var(--pub-lienzo);
+  color: var(--pub-sobre-acento);
   font-family: var(--pub-letra);
   font-size: var(--pub-texto-cuerpo);
   font-weight: 650;
@@ -584,7 +596,7 @@ html:has(.publica) {
   padding: 0 1.25rem;
   border: 0;
   border-radius: 999px;
-  background: rgb(255 255 255 / 9%);
+  background: var(--pub-velo);
   color: var(--pub-blanco);
   font-family: var(--pub-letra);
   font-size: var(--pub-texto-cuerpo);
@@ -597,7 +609,7 @@ html:has(.publica) {
 }
 
 .publica .pub-opcion:hover {
-  background: rgb(255 255 255 / 16%);
+  background: var(--pub-velo-fuerte);
 }
 
 .publica .pub-opcion:active {
@@ -772,7 +784,7 @@ html:has(.publica) {
   padding-top: 0.3em;
   font-size: var(--pub-texto-nota);
   font-weight: 650;
-  color: var(--pub-acento);
+  color: var(--pub-acento-texto);
 }
 
 .publica .pub-recorrido h3 {
@@ -870,7 +882,7 @@ html:has(.publica) {
   top: calc(var(--pub-alto-cabecera) + 2rem);
   padding: clamp(1.75rem, 3vw, 2.5rem);
   background: var(--pub-acento);
-  color: var(--pub-lienzo);
+  color: var(--pub-sobre-acento);
 }
 
 .publica .pub-cifra strong {
@@ -955,7 +967,7 @@ html:has(.publica) {
 }
 
 .publica .pub-pie-marca span {
-  color: var(--pub-acento);
+  color: var(--pub-acento-texto);
 }
 
 .publica .pub-pie-lineas {
@@ -1025,7 +1037,7 @@ html:has(.publica) {
 }
 
 .publica .pub-legal li::marker {
-  color: var(--pub-acento);
+  color: var(--pub-acento-texto);
 }
 
 .publica .pub-legal strong {
@@ -1079,7 +1091,7 @@ html:has(.publica) {
 /* El punto hace de cursor: ámbar, tras la última letra escrita, y parpadea
    cuando el título está completo. A saltos y no en fundido, como un cursor. */
 .publica .pub-tecleado-punto {
-  color: var(--pub-acento);
+  color: var(--pub-acento-texto);
 }
 
 .publica .pub-tecleado-espera {
@@ -1141,7 +1153,7 @@ html:has(.publica) {
   width: 100%;
   min-height: 3.25rem;
   padding: 0 1rem;
-  border: 1px solid #6b6b6b;
+  border: 1px solid var(--pub-borde-campo);
   border-radius: 10px;
   background: var(--pub-lienzo);
   color: var(--pub-blanco);
@@ -1158,12 +1170,12 @@ html:has(.publica) {
 }
 
 .publica .pub-campo input:focus-visible {
-  border-color: var(--pub-acento);
+  border-color: var(--pub-acento-linea);
   outline-offset: 2px;
 }
 
 .publica .pub-campo input[aria-invalid='true'] {
-  border-color: #ff9d8f;
+  border-color: var(--pub-error);
 }
 
 /* El botón de mostrar va dentro del campo, a la derecha, y el texto del
@@ -1194,25 +1206,25 @@ html:has(.publica) {
 }
 
 .publica .pub-campo-ver:hover {
-  background: rgb(255 255 255 / 9%);
+  background: var(--pub-velo);
 }
 
 /* Contraste: #ff9d8f sobre la superficie 8,8; el ámbar 8,5. */
 .publica .pub-campo-error {
-  color: #ff9d8f;
+  color: var(--pub-error);
   font-size: var(--pub-texto-nota);
 }
 
 .publica .pub-campo-nota {
-  color: var(--pub-acento);
+  color: var(--pub-acento-texto);
   font-size: var(--pub-texto-nota);
 }
 
 /* #ffc2b8 sobre #2b1513: 11,4. */
 .publica .pub-error {
   padding: 0.875rem 1rem;
-  background: #2b1513;
-  color: #ffc2b8;
+  background: var(--pub-error-fondo);
+  color: var(--pub-error-texto);
 }
 
 .publica .pub-acceso-entrar {
@@ -1417,4 +1429,46 @@ html:has(.publica) {
    ve, para que escribirlo no mueva nada (ver `Tecleado` en Login.tsx). */
 .publica .pub-tecleado-resto {
   visibility: hidden;
+}
+
+/* ===========================================================================
+   Tema claro (18/11/2026)
+   ===========================================================================
+
+   Con `data-tema="claro"` en <html> (ver `lib/tema.ts`). La tipografía, la
+   composición y el ámbar de los rellenos no cambian; el lienzo pasa a un
+   blanco roto y el texto a tinta. La burbuja de cristal conserva su borde
+   iridiscente: sobre claro se ve igual de bien.
+
+   Contraste sobre el lienzo #fafaf9 / la superficie #ffffff (AA pide 4,5):
+     títulos #0a0a0a 19,0 / 19,8    texto #3f3f46 10,0 / 10,4    tenue #5c5c66 6,3 / 6,6
+     ámbar del texto #8a5a00 5,7 / 5,9    #0a0a0a sobre el ámbar #e8a700 9,1
+     error #b42318 6,3 / 6,6    borde de campo #8b8b94 3,3 / 3,4
+   =========================================================================== */
+
+:root[data-tema='claro'] .publica {
+  --pub-lienzo: #fafaf9;
+  --pub-superficie: #ffffff;
+  --pub-blanco: #0a0a0a;
+  --pub-tinta: #3f3f46;
+  --pub-tenue: #5c5c66;
+  --pub-acento-texto: #8a5a00;
+  --pub-acento-linea: #a87700;
+  --pub-velo: rgb(10 10 10 / 6%);
+  --pub-velo-fuerte: rgb(10 10 10 / 11%);
+  --pub-borde-campo: #8b8b94;
+  --pub-error: #b42318;
+  --pub-error-fondo: #fef3f2;
+  --pub-error-texto: #8f1d14;
+  color-scheme: light;
+}
+
+:root[data-tema='claro']:has(.publica) {
+  background: #fafaf9;
+}
+
+/* La opción elegida es un relleno de tinta con texto claro, al revés que en
+   oscuro, para que siga destacando sobre el lienzo claro. */
+:root[data-tema='claro'] .publica .pub-opcion[aria-pressed='true'] {
+  color: #fafaf9;
 }

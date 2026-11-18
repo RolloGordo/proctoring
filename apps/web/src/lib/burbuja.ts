@@ -75,6 +75,9 @@ uniform float uPixel;
 uniform float uLejania;
 uniform float uFundido;
 uniform vec2 uOla;
+// 1 en modo claro: el agua del interior va clara y lo lejano se aclara en vez
+// de oscurecerse, porque el texto que cruza es oscuro.
+uniform float uClaro;
 
 float azar(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -210,6 +213,8 @@ void main() {
   vec2 claroEn = vec2(-0.16, 0.1) + 0.14 * vec2(sin(t * 0.47), cos(t * 0.38)) - uOla * 0.5;
   float claro = smoothstep(1.0, 0.0, length(n + torcido * 0.6 - claroEn));
   vec3 humo = vec3(0.03 + 0.38 * claro) * (1.0 - 0.6 * smoothstep(0.55, 0.95, rr));
+  vec3 humoClaro = vec3(0.86 + 0.12 * claro) * (1.0 - 0.1 * smoothstep(0.55, 0.95, rr));
+  humo = mix(humo, humoClaro, uClaro);
   vec3 vacia = vec3(
     mix(humo.r, tR.r * 0.9, tR.a),
     mix(humo.g, tG.g * 0.9, tG.a),
@@ -218,7 +223,7 @@ void main() {
 
   vec3 color = mix(conFoto, vacia, uVacia);
   // Lejos (entre dos anclas) se oscurece, para que el texto que cruza se lea.
-  color *= 1.0 - 0.55 * uLejania;
+  color = mix(color * (1.0 - 0.55 * uLejania), mix(color, vec3(1.0), 0.55 * uLejania), uClaro);
   color = color * (1.0 - fresnel * 0.85) + reflejo;
 
   // El filo: una línea fina y clara justo en el borde, con la dispersión de
@@ -380,7 +385,8 @@ export function montarBurbuja(
     pixel: u('uPixel'),
     lejania: u('uLejania'),
     fundido: u('uFundido'),
-    ola: u('uOla')
+    ola: u('uOla'),
+    claro: u('uClaro')
   }
   gl.uniform1i(uni.fotoA, 0)
   gl.uniform1i(uni.fotoB, 1)
@@ -692,6 +698,7 @@ export function montarBurbuja(
     gl.uniform1f(uni.cerca, t.cerca)
     gl.uniform1f(uni.pixel, 1 / t.r)
     gl.uniform1f(uni.lejania, t.lejania)
+    gl.uniform1f(uni.claro, document.documentElement.dataset['tema'] === 'claro' ? 1 : 0)
     gl.uniform2f(uni.ola, t.ola.x, t.ola.y)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
   }

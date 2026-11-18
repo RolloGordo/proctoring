@@ -79,3 +79,24 @@
     align-items: stretch;
   }
 }
+
+/* Modo claro: una franja gris clara con la tinta de la casa. El enlace pasa al
+   ámbar oscuro, que es el que se lee sobre claro.
+   Contraste, medido: #18181b sobre #ececed 15,0 · enlace #8a5a00 5,0. */
+:root[data-tema='claro'] .aviso-almacenamiento {
+  background: #ececed;
+  color: #18181b;
+}
+
+:root[data-tema='claro'] .aviso-almacenamiento strong {
+  color: #09090b;
+}
+
+:root[data-tema='claro'] .aviso-almacenamiento a {
+  color: #8a5a00;
+}
+
+:root[data-tema='claro'] .aviso-almacenamiento button:focus-visible,
+:root[data-tema='claro'] .aviso-almacenamiento a:focus-visible {
+  outline-color: #a87700;
+}

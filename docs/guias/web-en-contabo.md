@@ -67,3 +67,21 @@ Let's Encrypt la primera vez que alguien entra.
 
 **Ojo con la renovación:** antes del 18/11/2027 hay que renovarlo (de pago) o volver a los alias de
 `sslip.io`, que siguen funcionando sin hacer nada.
+
+## Endurecimiento tras la migración (18/11/2026)
+
+Revisión de seguridad con ataques simulados contra `proctoring-upao.app` y `api.proctoring-upao.app`:
+
+| Qué | Cómo queda |
+|---|---|
+| TLS | Solo 1.2 y 1.3, cifrados AEAD con ECDHE (`/etc/dokploy/traefik/dynamic/proctoring-tls.yml`). Sin SNI válido no hay certificado (`sniStrict`). Se apagaron los CBC-SHA1 que aceptaba por defecto. |
+| Cabeceras | HSTS y sin `Server` en **todo** HTTPS: el middleware `proctoring-seguridad@file` va en el entrypoint `websecure` de `traefik.yml`, no en cada router (Dokploy reescribe los routers al cambiar dominios y lo perdía). |
+| Tamaño de petición | 4 MB como máximo antes de llegar a la API (`proctoring-limite-cuerpo@file`); lo más grande legítimo es un QTI de 1 MB. Antes un cuerpo de 12 MB llegaba entero a uvicorn. |
+| Archivos ocultos | `/.env`, `/.git/…` responden 404 (`deploy/nginx.conf`); antes 200 con `index.html`. No filtraban nada, pero confundían a los escáneres. |
+| Tokens | `alg: none`, firma HS256 falsa, basura y sin token: 401 en todas las rutas. |
+| CORS | Solo `proctoring-upao.app` y el alias de sslip.io; Vercel se quitó. |
+| Frecuencia | `POST /sessions/join`: 429 a partir del décimo intento seguido. |
+| Puertos | Desde fuera, solo 22, 80 y 443. |
+| Supabase | RLS en todas las tablas, sin buckets públicos, todo registro nuevo es `student`. |
+| Dependencias | `npm audit` y `pip-audit` sin hallazgos tras subir `filelock` y `setuptools` en `services/ai`. |
+| SSH | Solo llave, `admin` con la contraseña bloqueada, fail2ban (5 fallos en 10 min → 1 h). |

@@ -68,6 +68,20 @@
   --exito: #5ad394;
   --exito-fondo: #10241a;
 
+  /* Lo que antes iba fijo en las reglas de abajo. En oscuro valen lo mismo que
+     antes; el tema claro (al final del fichero) les da su propio valor. */
+  --linea-marco: #1c1c1c;
+  --linea-fila: #1f1f1f;
+  --superficie-hover: #151515;
+  --fila-hover: #181818;
+  --superficie-flotante: #1a1a1a;
+  --tinta-fuerte: #ffffff;
+  --tinta-sobre-accion: #141414;
+  --amarillo-texto: var(--amarillo);
+  --ambar-texto: #ffd27a;
+  --ambar-linea: #5a4410;
+  --exito-linea: #1f5a3c;
+
   /* Una sola familia en toda la casa: la Archivo de la portada. */
   --sistema: 'Archivo Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   /* `--titulo` y `--texto` valen `var(--sistema)` en `:root`, pero ya
@@ -100,7 +114,7 @@ html:has(.tema-oscuro) body {
   gap: 0;
   padding: var(--e5) var(--e3);
   background: var(--papel-gris);
-  border-right: 1px solid #1c1c1c;
+  border-right: 1px solid var(--linea-marco);
   color: var(--tinta);
 }
 
@@ -110,7 +124,7 @@ html:has(.tema-oscuro) body {
 }
 
 .tema-oscuro .marca span {
-  color: var(--amarillo);
+  color: var(--amarillo-texto);
 }
 
 .tema-oscuro .lateral-rol {
@@ -144,7 +158,7 @@ html:has(.tema-oscuro) body {
 
 .tema-oscuro .lateral-grupo-examen {
   padding-top: var(--e5);
-  border-top: 1px solid #1c1c1c;
+  border-top: 1px solid var(--linea-marco);
 }
 
 .tema-oscuro .lateral-nav a {
@@ -163,7 +177,7 @@ html:has(.tema-oscuro) body {
 }
 
 .tema-oscuro .lateral-nav a:hover {
-  background: #151515;
+  background: var(--superficie-hover);
   color: var(--tinta);
 }
 
@@ -171,7 +185,7 @@ html:has(.tema-oscuro) body {
    ámbar se guarda para lo que hay que hacer. */
 .tema-oscuro .lateral-nav a.activo {
   background: var(--papel-hundido);
-  color: #ffffff;
+  color: var(--tinta-fuerte);
   font-weight: 550;
 }
 
@@ -179,7 +193,7 @@ html:has(.tema-oscuro) body {
    enlaces del menú y el texto cae en la misma vertical. */
 .tema-oscuro .lateral-pie {
   padding: var(--e4) 0 0;
-  border-top: 1px solid #1c1c1c;
+  border-top: 1px solid var(--linea-marco);
 }
 
 .tema-oscuro .lateral-correo {
@@ -215,12 +229,12 @@ html:has(.tema-oscuro) body {
 
 .tema-oscuro .lateral-pie .boton-texto:hover:not(:disabled),
 .tema-oscuro .lateral-cambio:hover {
-  background: #151515;
+  background: var(--superficie-hover);
   color: var(--tinta);
 }
 
 .tema-oscuro .lateral-cambio {
-  color: var(--amarillo);
+  color: var(--amarillo-texto);
 }
 
 /* ---------- El lienzo ---------- */
@@ -270,7 +284,7 @@ html:has(.tema-oscuro) body {
   min-height: 2.25rem;
   padding: 0 var(--e4);
   border-radius: 999px;
-  color: #141414;
+  color: var(--tinta-sobre-accion);
   font-weight: 600;
   transition:
     background-color 120ms ease-out,
@@ -364,11 +378,11 @@ html:has(.tema-oscuro) body {
 }
 
 .tema-oscuro .tabla td {
-  border-bottom-color: #1f1f1f;
+  border-bottom-color: var(--linea-fila);
 }
 
 .tema-oscuro .tabla tbody tr:hover {
-  background: #181818;
+  background: var(--fila-hover);
 }
 
 .tema-oscuro .celda-titulo > a {
@@ -409,9 +423,9 @@ html:has(.tema-oscuro) body {
 }
 
 .tema-oscuro .chip-en_curso {
-  color: #ffd27a;
+  color: var(--ambar-texto);
   background: var(--amarillo-tenue);
-  border-color: #5a4410;
+  border-color: var(--ambar-linea);
 }
 
 .tema-oscuro .etiqueta {
@@ -423,8 +437,8 @@ html:has(.tema-oscuro) body {
 
 .tema-oscuro .codigo-acceso {
   background: var(--amarillo-tenue);
-  border-color: #5a4410;
-  color: #ffd27a;
+  border-color: var(--ambar-linea);
+  color: var(--ambar-texto);
 }
 
 /* ---------- Avisos ----------
@@ -440,7 +454,7 @@ html:has(.tema-oscuro) body {
 /* Algo que salió bien («tu docente te admitió»): verde. `.tema-oscuro
    .aviso` es más específica y lo pintaba de rojo, como un error. */
 .tema-oscuro .aviso-exito {
-  border-color: #1f5a3c;
+  border-color: var(--exito-linea);
   background: var(--exito-fondo);
   color: var(--exito);
 }
@@ -479,7 +493,7 @@ html:has(.tema-oscuro) body {
 /* La decisión que rige el caso, con su borde ámbar: aquí `.tema-oscuro
    .tarjeta` es más específica que `.decision-vigente` y se lo quitaba. */
 .tema-oscuro .tarjeta.decision-vigente {
-  border-color: #5a4410;
+  border-color: var(--ambar-linea);
 }
 
 /* ---------- Selectores sueltos ----------
@@ -513,7 +527,7 @@ html:has(.tema-oscuro) body {
 
 .tema-oscuro .examen-cabecera {
   background: var(--papel-gris);
-  border-bottom: 1px solid #1c1c1c;
+  border-bottom: 1px solid var(--linea-marco);
 }
 
 .tema-oscuro .examen-cabecera .marca {
@@ -541,14 +555,14 @@ html:has(.tema-oscuro) body {
    lleva sombra, porque flotan de verdad. Traían blanco y azul marino fijos. */
 .tema-oscuro .aviso-supervision-flotante {
   border-color: var(--linea-fuerte);
-  background: #1a1a1a;
+  background: var(--superficie-flotante);
   color: var(--tinta);
   box-shadow: var(--sombra-alta); /* taste-skill-ignore: flota sobre el examen */
 }
 
 .tema-oscuro .aviso-supervision-icono {
   background: var(--amarillo-tenue);
-  color: #ffd27a;
+  color: var(--ambar-texto);
 }
 
 .tema-oscuro .indicador-camara-examen {
@@ -728,7 +742,7 @@ html:has(.tema-oscuro) body {
   gap: var(--e4);
   min-height: 3.5rem;
   padding: var(--e3) 0;
-  border-top: 1px solid #1f1f1f;
+  border-top: 1px solid var(--linea-fila);
 }
 
 .tema-oscuro .inicio-fila-texto {
@@ -771,7 +785,7 @@ html:has(.tema-oscuro) body {
   ); /* taste-skill-ignore: es un código de acceso, se teclea letra a letra */
   font-size: 0.875rem;
   letter-spacing: 0.08em;
-  color: #ffd27a;
+  color: var(--ambar-texto);
 }
 
 .tema-oscuro .inicio-fila-dato .tenue {
@@ -788,7 +802,7 @@ html:has(.tema-oscuro) body {
 .tema-oscuro .inicio-vacio {
   margin: 0;
   padding: var(--e4) 0 var(--e3);
-  border-top: 1px solid #1f1f1f;
+  border-top: 1px solid var(--linea-fila);
   color: var(--tinta-suave);
 }
 
@@ -908,7 +922,7 @@ html:has(.tema-oscuro) body {
 @media (max-width: 900px) {
   .tema-oscuro .app-movil {
     background: var(--papel-gris);
-    border-bottom: 1px solid #1c1c1c;
+    border-bottom: 1px solid var(--linea-marco);
   }
 
   .tema-oscuro .app-movil .boton-texto {
@@ -916,7 +930,7 @@ html:has(.tema-oscuro) body {
   }
 
   .tema-oscuro .lateral {
-    border-right: 1px solid #262626;
+    border-right: 1px solid var(--linea);
   }
 }
 
@@ -1135,6 +1149,7 @@ html:has(.tema-oscuro) body {
 .tema-oscuro .portada-editor-acciones .boton-secundario {
   background: rgb(14 14 14 / 82%);
   border-color: rgb(255 255 255 / 18%);
+  color: #f2f2f2;
   backdrop-filter: blur(8px);
 }
 
@@ -1230,4 +1245,77 @@ html:has(.tema-oscuro) body {
 .tema-oscuro .resultados-nombre {
   font-weight: 600;
   color: var(--tinta);
+}
+
+/* ===========================================================================
+   Tema claro (pedido del profesor, 18/11/2026)
+   ===========================================================================
+
+   Se activa con `data-tema="claro"` en <html> (ver `lib/tema.ts`). Es la misma
+   casa: Archivo, el ámbar de la marca en la acción principal y el rojo solo
+   para `high`. Solo cambian los valores de las variables, así que todas las
+   pantallas cambian a la vez y las reglas de arriba no se tocan.
+
+   Contraste medido (AA pide 4,5 en texto y 3 en bordes de campos y foco),
+   sobre la tarjeta #ffffff / la página #f4f4f5:
+     tinta  #18181b 17,7 / 16,1    media #3f3f46 10,4 / 9,5    suave #5c5c66 6,6 / 6,0
+     ámbar del texto #8a5a00 5,9 / 5,4          botón: #141414 sobre #e8a700 8,7
+     alta #b42318 6,1 sobre su fondo · media #a8430a 5,8 · éxito #067647 5,4
+     borde de campo #8b8b94 3,4 · foco #a87700 4,0 / 3,6
+   =========================================================================== */
+
+:root[data-tema='claro'] .tema-oscuro {
+  --amarillo: #a87700;
+  --amarillo-oscuro: #8a5a00;
+  --amarillo-tenue: #fdf3d7;
+
+  --accion: #e8a700;
+  --accion-hover: #ffbb1f;
+
+  --tinta: #18181b;
+  --tinta-media: #3f3f46;
+  --tinta-suave: #5c5c66;
+
+  --papel: #ffffff;
+  --papel-gris: #f4f4f5;
+  --papel-hundido: #ebebed;
+
+  --linea: #e4e4e7;
+  --linea-fuerte: #8b8b94;
+
+  --alta: #b42318;
+  --alta-fondo: #fef3f2;
+  --alta-linea: #fecdc9;
+
+  --media: #a8430a;
+  --media-fondo: #fffaeb;
+  --media-linea: #fedf89;
+
+  --baja: #475467;
+  --baja-fondo: #f4f4f5;
+  --baja-linea: #e4e4e7;
+
+  --exito: #067647;
+  --exito-fondo: #ecfdf3;
+
+  --linea-marco: #e4e4e7;
+  --linea-fila: #ececef;
+  --superficie-hover: #ebebed;
+  --fila-hover: #f7f7f8;
+  --superficie-flotante: #ffffff;
+  --tinta-fuerte: #09090b;
+  --tinta-sobre-accion: #141414;
+  --amarillo-texto: #8a5a00;
+  --ambar-texto: #8a5a00;
+  --ambar-linea: #f0d48a;
+  --exito-linea: #abefc6;
+
+  --sombra-alta: 0 12px 32px rgb(16 24 40 / 14%);
+
+  color-scheme: light;
+}
+
+:root[data-tema='claro']:has(.tema-oscuro),
+:root[data-tema='claro']:has(.tema-oscuro) body {
+  background: #f4f4f5;
 }
