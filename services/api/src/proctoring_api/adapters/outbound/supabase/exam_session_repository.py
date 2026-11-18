@@ -34,6 +34,14 @@ COLUMNS = (
     "cancelled_at, status"
 )
 
+#: Los modulos de la sesion, embebidos en la misma consulta (PostgREST sigue la
+#: clave foranea `session_modules.session_id`). Leer una sesion para entrar a un
+#: examen eran dos idas y vueltas —la fila y luego sus modulos— justo en el pico
+#: de ingreso, cuando llegan los 60 estudiantes de un curso a la vez: la prueba
+#: de carga del CI (ADR-0011) lo dejaba en un p95 de 400-560 ms. Ahora es una.
+MODULES_EMBED = f"{MODULES_TABLE}(module, enabled, settings)"
+COLUMNS_WITH_MODULES = f"{COLUMNS}, {MODULES_EMBED}"
+
 
 class SupabaseExamSessionRepository:
     """Implementacion de `ExamSessionRepository` contra PostgreSQL via PostgREST."""
@@ -80,18 +88,7 @@ class SupabaseExamSessionRepository:
             self._owner_cache.pop(session_id, None)
 
     def find_by_id(self, session_id: UUID) -> ExamSession | None:
-        response = (
-            self._client.table(SESSIONS_TABLE)
-            .select(COLUMNS)
-            .eq("id", str(session_id))
-            .limit(1)
-            .execute()
-        )
-        rows = cast("list[dict[str, Any]]", response.data)
-        if not rows:
-            return None
-
-        return _to_entity(rows[0], self._modules_of(session_id))
+        return self._find_one_with_modules("id", str(session_id))
 
     def find_teacher_id(self, session_id: UUID) -> UUID | None:
         with self._lock:
@@ -174,19 +171,7 @@ class SupabaseExamSessionRepository:
         return [_to_entity(row, by_session.get(row["id"], {})) for row in rows]
 
     def find_by_access_code(self, access_code: str) -> ExamSession | None:
-        response = (
-            self._client.table(SESSIONS_TABLE)
-            .select(COLUMNS)
-            .eq("access_code", access_code)
-            .limit(1)
-            .execute()
-        )
-        rows = cast("list[dict[str, Any]]", response.data)
-        if not rows:
-            return None
-
-        session = _to_entity(rows[0], {})
-        return _to_entity(rows[0], self._modules_of(session.id))
+        return self._find_one_with_modules("access_code", access_code)
 
     def access_code_exists(self, access_code: str) -> bool:
         response = (
@@ -198,19 +183,30 @@ class SupabaseExamSessionRepository:
         )
         return bool(cast("list[dict[str, Any]]", response.data))
 
-    def _modules_of(self, session_id: UUID) -> dict[SupervisionModule, dict[str, Any]]:
+    def _find_one_with_modules(self, column: str, value: str) -> ExamSession | None:
+        """Una sesion y sus modulos en **una sola** consulta."""
         response = (
-            self._client.table(MODULES_TABLE)
-            .select("module, enabled, settings")
-            .eq("session_id", str(session_id))
+            self._client.table(SESSIONS_TABLE)
+            .select(COLUMNS_WITH_MODULES)
+            .eq(column, value)
+            .limit(1)
             .execute()
         )
         rows = cast("list[dict[str, Any]]", response.data)
-        return {
-            SupervisionModule(row["module"]): row.get("settings") or {}
-            for row in rows
-            if row.get("enabled", True)
-        }
+        if not rows:
+            return None
+
+        row = rows[0]
+        embedded = cast("list[dict[str, Any]]", row.get(MODULES_TABLE) or [])
+        return _to_entity(row, _enabled_modules(embedded))
+
+
+def _enabled_modules(rows: Sequence[dict[str, Any]]) -> dict[SupervisionModule, dict[str, Any]]:
+    return {
+        SupervisionModule(row["module"]): row.get("settings") or {}
+        for row in rows
+        if row.get("enabled", True)
+    }
 
 
 def _parse(value: Any) -> datetime | None:

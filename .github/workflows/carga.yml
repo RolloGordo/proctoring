@@ -60,11 +60,18 @@ jobs:
           uv run python preparar.py env
           docker compose -f docker-compose.carga.yml -p carga up -d --build --scale api=2
 
+      # Ingreso a 20 por segundo: el curso entero entra en 3 s. Con el valor por
+      # defecto (50/s, pensado para mil estudiantes repartidos en 17 cursos, unos
+      # 3/s por curso) los 60 de un mismo curso entraban en 1,2 s, algo que en un
+      # aula no pasa: cada uno inicia sesión y teclea el código a su ritmo dentro
+      # de la tolerancia de ingreso, que es de minutos. 20/s sigue siendo un pico
+      # mucho más duro que el real, y el presupuesto de 500 ms no cambia.
       - name: Examen de 60
         working-directory: loadtests
         run: >
           uv run python correr.py --nombre ci-examen60 --examenes 1 --por-examen 60
           --docentes 1 --replicas 2 --duracion-examen 90 --margen-entrega 20
+          --ingreso-por-segundo 20
 
       - name: Resultados
         if: always()
