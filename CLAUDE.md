@@ -52,7 +52,7 @@ Product Owner y Portfolio Manager: docente Walter Cueva Chávez. El docente eval
 
 **Ambientes:**
 - **Local:** `docker compose up` (api, ai, redis) + Supabase CLI o un proyecto Supabase gratuito de desarrollo; web con Vite (`localhost:5173`); API `localhost:8000`; IA `localhost:8001`; Redis `localhost:6379`.
-- **Producción:** web en Vercel, API en Render, IA en Hugging Face Spaces (Docker), Redis administrado (Upstash), Supabase Cloud, instalador de la app en GitHub Releases. Todo en planes gratuitos.
+- **Producción:** un VPS de Contabo con Dokploy (Traefik + Docker Swarm) sirve la web (`https://proctoring-upao.app`), la API (`https://api.proctoring-upao.app`), el worker de IA y Redis; Supabase Cloud; instalador de la app en GitHub Releases. El dominio es del GitHub Student Pack (Name.com, gratis hasta el 18/11/2027). Vercel, Render y Upstash se dejaron de usar en noviembre de 2026 (ver `docs/guias/web-en-contabo.md`).
 
 ## 4. Estructura del repositorio (monorepo)
 

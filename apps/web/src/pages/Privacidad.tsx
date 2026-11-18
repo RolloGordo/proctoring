@@ -132,12 +132,11 @@ export function Privacidad() {
           </p>
           <ul>
             <li>Supabase: base de datos, cuentas y archivos. Servidores en São Paulo, Brasil.</li>
-            <li>Render: los servidores de la aplicación y del análisis de audio.</li>
-            <li>Vercel: la página web.</li>
             <li>
-              Upstash: la cola de trabajos de análisis. Servidores en Virginia, Estados Unidos.
+              Contabo: el servidor donde corren la página web, la aplicación y el análisis de audio.
+              La transcripción de los fragmentos de voz se hace en ese mismo servidor, sin enviarlos
+              a terceros. Estados Unidos.
             </li>
-            <li>Deepgram: la transcripción de los fragmentos de audio. Estados Unidos.</li>
           </ul>
           <p>
             Ninguno de estos proveedores está en el Perú, así que tus datos se transfieren a otros

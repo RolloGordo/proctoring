@@ -46,9 +46,8 @@ export default defineConfig({
     // Habilitan `SharedArrayBuffer`, que es lo que deja a onnxruntime-web
     // correr el wasm con varios hilos.
     //
-    // OJO, y esto hay que resolverlo antes de desplegar: **solo valen aqui**.
-    // En Vercel no estan, asi que el VAD correra con un solo hilo y mas lento
-    // que en desarrollo. Cualquier latencia medida en local es optimista.
+    // En produccion las pone nginx (`deploy/cabeceras.conf`), con COEP
+    // `credentialless`; estas son solo las del servidor de desarrollo.
     // Ponerlas tambien en produccion no es gratis: con COEP, los recursos de
     // otro origen que no declaren CORP dejan de cargar, y las capturas de
     // evidencia vienen de Supabase Storage.

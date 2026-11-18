@@ -1960,3 +1960,88 @@
   background: var(--alta-fondo);
   color: var(--alta);
 }
+
+/* ---------- El botón de modo claro / oscuro ----------
+   Discreto: un control de preferencia, no una acción. Toma los colores del
+   tema en el que está (panel, examen o portada) y deja ver el foco. */
+.boton-tema {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  min-height: 2.25rem;
+  padding: 0 var(--e3);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tinta);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--transicion), border-color var(--transicion);
+}
+
+.boton-tema:hover {
+  background: var(--papel-hundido);
+}
+
+.boton-tema:focus-visible {
+  outline: 2px solid var(--amarillo);
+  outline-offset: 2px;
+}
+
+.boton-tema-icono {
+  flex: none;
+}
+
+/* En la barra lateral va arriba del correo, alineado con el resto. */
+.lateral-pie .boton-tema {
+  margin: 0 var(--e3) var(--e3);
+}
+
+/* En el teléfono la barra lateral está plegada: el botón vive en la cabecera,
+   solo con el icono para no apretar la marca contra «Menú». */
+.boton-tema-movil {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .boton-tema-movil {
+    display: inline-flex;
+    margin-left: auto;
+    margin-right: var(--e2);
+  }
+
+  .boton-tema-movil span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.examen-cabecera-lado {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e4);
+}
+
+/* La portada tiene sus propias variables. */
+.publica .boton-tema {
+  border-color: var(--pub-borde-campo);
+  color: var(--pub-blanco);
+  font-family: var(--pub-letra);
+  font-size: var(--pub-texto-nota);
+}
+
+.publica .boton-tema:hover {
+  background: var(--pub-velo);
+}
+
+.publica .boton-tema:focus-visible {
+  outline: 3px solid var(--pub-acento-linea);
+}
