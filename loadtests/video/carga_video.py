@@ -185,6 +185,7 @@ async def main() -> int:
     a.add_argument("--video", type=Path, help=".y4m con la grabación (sin él: cámara de prueba)")
     a.add_argument("--audio", type=Path, help=".wav con voz")
     a.add_argument("--entrada-por-segundo", type=float, default=1.0)
+    a.add_argument("--canal", help="navegador instalado en vez del de Playwright (p. ej. chrome)")
     a.add_argument("--salida", type=Path, default=AQUI.parent / "resultados" / "video.json")
     args = a.parse_args()
 
@@ -212,7 +213,7 @@ async def main() -> int:
         llegada = len(personas) / args.entrada_por_segundo
         hasta = inicio + llegada + args.minutos * 60
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(headless=True, args=banderas)
+            browser = await pw.chromium.launch(headless=True, args=banderas, channel=args.canal)
             estudiantes = [Estudiante(i, examen, p) for i, p in enumerate(personas)]
             fps: list[float] = []
             tareas = [asyncio.create_task(docente_mirando(browser, examen, hasta, fps))]
