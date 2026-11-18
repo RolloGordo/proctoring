@@ -35,23 +35,35 @@ navegador ──► Traefik (HTTPS, Let's Encrypt, HSTS) ──► web × 2 (ngi
    dominio nuevo.
 7. Recién entonces apagar el proyecto de Vercel.
 
-## El dominio del GitHub Student Developer Pack
+## El dominio: `proctoring-upao.app` (desde el 18/11/2026)
 
-Con el correo de la UPAO y el pack aprobado (1 a 7 días), se puede pedir gratis:
+Registrado en **Name.com** con la oferta del GitHub Student Developer Pack: gratis hasta el
+**18/11/2027** (la renovación cuesta 26,99 USD; la renovación automática se deja apagada).
 
-- **Namecheap:** un `.me` gratis por un año, con SSL incluido (no hace falta: Traefik ya lo da).
-- **.TECH (get.tech):** un `.tech` gratis por un año.
-- **Name.com:** un dominio de los que ofrezca el pack en ese momento.
+| Servicio | URL |
+|---|---|
+| Web (docente y examen) | `https://proctoring-upao.app` |
+| API | `https://api.proctoring-upao.app` |
 
-Cualquiera sirve. En el panel del registrador basta con dos registros DNS:
+Los dominios `web.86-48-18-81.sslip.io` y `api.86-48-18-81.sslip.io` siguen respondiendo como
+alias para los instaladores ya repartidos; se retiran cuando todos tengan el instalador nuevo.
+
+**Por qué `.app`:** está en la lista de precarga HSTS de los navegadores, así que ninguno lo abre por
+HTTP, ni siquiera la primera vez (sin ventana para un ataque de rebaja a HTTP). `.dev` y `.page`
+también lo están; `.me`, `.tech` y el resto no.
+
+**Seguridad de la cuenta del registrador:** 2FA, bloqueo de transferencia y privacidad WHOIS
+activados. Si se pierde el control del DNS, se pierde el sitio: la cuenta es solo del PM.
+
+**DNS** (solo estos registros, sin comodín `*`):
 
 | Tipo | Nombre | Valor |
 |---|---|---|
 | A | `@` | `86.48.18.81` |
 | A | `api` | `86.48.18.81` |
 
-Y el IPv6 si se quiere (`AAAA` a `2605:a144:2374:4408::1`). Traefik pide el certificado solo la
-primera vez que alguien entra.
+El panel de Name.com no ofrece registros CAA; no son imprescindibles. Traefik pide el certificado de
+Let's Encrypt la primera vez que alguien entra.
 
-**Ojo con la renovación:** el dominio es gratis el primer año. Antes de que venza hay que renovarlo
-(de pago) o volver al subdominio de `sslip.io`, que sigue funcionando sin hacer nada.
+**Ojo con la renovación:** antes del 18/11/2027 hay que renovarlo (de pago) o volver a los alias de
+`sslip.io`, que siguen funcionando sin hacer nada.
