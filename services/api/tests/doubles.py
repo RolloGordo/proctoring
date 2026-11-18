@@ -15,6 +15,18 @@ from __future__ import annotations
 from typing import Any
 
 
+def _valor(row: dict[str, Any], column: str) -> Any:
+    """El valor de una columna, o de una clave de JSON con `columna->>clave`.
+
+    Como en PostgREST, `->>` devuelve el valor como texto, y `None` si falta.
+    """
+    if "->>" not in column:
+        return row.get(column)
+    columna, clave = column.split("->>", 1)
+    documento = row.get(columna)
+    return documento.get(clave) if isinstance(documento, dict) else None
+
+
 class FakeResponse:
     def __init__(self, data: list[dict[str, Any]]) -> None:
         self.data = data
@@ -80,7 +92,7 @@ class FakeQueryBuilder:
             row
             for row in self._table.rows
             # PostgREST compara en texto por la URL, asi que el doble hace lo mismo.
-            if all(str(row.get(column)) == str(value) for column, value in self._filters)
+            if all(str(_valor(row, column)) == str(value) for column, value in self._filters)
         ]
         # Orden estable: del último criterio al primero.
         for column, desc in reversed(self._orders):

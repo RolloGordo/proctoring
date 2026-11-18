@@ -37,6 +37,10 @@ class Severity(StrEnum):
     HIGH = "high"
 
 
+#: Orden de las severidades, para comparar cual es mayor.
+SEVERITY_RANK: dict[Severity, int] = {Severity.LOW: 0, Severity.MEDIUM: 1, Severity.HIGH: 2}
+
+
 def default_severity(event_type: EventType, duration_ms: int) -> Severity:
     """Severidad inicial de un evento recien registrado.
 

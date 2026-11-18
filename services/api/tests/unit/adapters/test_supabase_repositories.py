@@ -147,6 +147,22 @@ class TestEventRepository:
         assert len(repository.list_by_session(SESSION)) == 2
         assert len(repository.list_by_session(SESSION, STUDENT)) == 1
 
+    def test_lists_the_reports_of_one_episode(self, repository: SupabaseEventRepository) -> None:
+        for student_id, episode in ((STUDENT, "ep-1"), (STUDENT, "ep-2"), (OTHER_STUDENT, "ep-1")):
+            repository.save(
+                ProctoringEvent.create(
+                    session_id=SESSION,
+                    student_id=student_id,
+                    event_type=EventType.FACE_ABSENT,
+                    started_at=STARTED_AT,
+                    metadata={"episode_id": episode},
+                )
+            )
+
+        found = repository.list_by_episode(SESSION, STUDENT, "ep-1")
+
+        assert [(e.student_id, e.episode_id) for e in found] == [(STUDENT, "ep-1")]
+
     def test_ordered_by_started_at_ascending(self, repository: SupabaseEventRepository) -> None:
         for hour in (16, 14, 15):
             repository.save(

@@ -122,3 +122,71 @@ def test_alerts_come_back_newest_first(
     alerts = alert_repository.list_by_session(SESSION)
     assert len(alerts) == 3
     assert [a.created_at for a in alerts] == sorted([a.created_at for a in alerts], reverse=True)
+
+
+class TestEpisodeReports:
+    """Una condicion larga se informa varias veces con el mismo `episode_id`.
+
+    Es el fallo de la prueba de carga del 18/11/2026: tres minutos sin rostro
+    llegaban como un solo evento de 3 s y el docente no recibia nada.
+    """
+
+    @staticmethod
+    def report(duration_ms: int, episode: str = "ep-1", closed: bool = False) -> RegisterEventInput:
+        return an_input(
+            EventType.FACE_ABSENT,
+            duration_ms,
+            metadata={"episode_id": episode, "episode_closed": closed},
+        )
+
+    def test_a_long_absence_alerts_once_per_level_while_it_lasts(
+        self, use_case: RegisterEvent, alert_repository: InMemoryAlertRepository
+    ) -> None:
+        # Los informes que manda el cliente en una ausencia de tres minutos.
+        durations = [3_000, 5_000, 10_000, 15_000, 20_000, 25_000, 30_000, 60_000, 90_000]
+        results = [use_case.execute(self.report(d)) for d in durations]
+        use_case.execute(self.report(180_000, closed=True))
+
+        alerts = alert_repository.list_by_session(SESSION)
+        assert sorted(a.severity for a in alerts) == [Severity.HIGH, Severity.MEDIUM]
+        # Medio al cruzar los 5 s y alto al cruzar los 15 s: mientras pasa.
+        by_severity = {a.severity: a.event_id for a in alerts}
+        assert by_severity[Severity.MEDIUM] == results[1].id
+        assert by_severity[Severity.HIGH] == results[3].id
+
+    def test_every_report_is_kept_as_evidence(
+        self,
+        use_case: RegisterEvent,
+        event_repository: InMemoryEventRepository,
+    ) -> None:
+        for d in (3_000, 5_000, 180_000):
+            use_case.execute(self.report(d))
+
+        assert [e.duration_ms for e in event_repository.list_by_session(SESSION)] == [
+            3_000,
+            5_000,
+            180_000,
+        ]
+
+    def test_a_report_that_does_not_raise_severity_still_says_its_severity(
+        self, use_case: RegisterEvent
+    ) -> None:
+        use_case.execute(self.report(15_000))
+
+        assert use_case.execute(self.report(20_000)).severity is Severity.HIGH
+
+    def test_two_episodes_alert_separately(
+        self, use_case: RegisterEvent, alert_repository: InMemoryAlertRepository
+    ) -> None:
+        use_case.execute(self.report(6_000, episode="ep-1"))
+        use_case.execute(self.report(6_000, episode="ep-2"))
+
+        assert len(alert_repository.list_by_session(SESSION)) == 2
+
+    def test_events_without_episode_alert_as_before(
+        self, use_case: RegisterEvent, alert_repository: InMemoryAlertRepository
+    ) -> None:
+        use_case.execute(an_input(EventType.FACE_ABSENT, 6_000))
+        use_case.execute(an_input(EventType.FACE_ABSENT, 6_000))
+
+        assert len(alert_repository.list_by_session(SESSION)) == 2

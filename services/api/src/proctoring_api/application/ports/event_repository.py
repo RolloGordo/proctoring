@@ -27,6 +27,16 @@ class EventRepository(Protocol):
         """
         ...
 
+    def list_by_episode(
+        self, session_id: UUID, student_id: UUID, episode_id: str
+    ) -> Sequence[ProctoringEvent]:
+        """Los informes ya guardados de un episodio (`metadata.episode_id`).
+
+        Los necesita el registro de eventos para avisar al docente solo cuando
+        un episodio sube de severidad, y no en cada informe.
+        """
+        ...
+
     def list_by_session(
         self, session_id: UUID, student_id: UUID | None = None
     ) -> Sequence[ProctoringEvent]:
