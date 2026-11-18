@@ -8,7 +8,7 @@ terminar el corte. La web sigue en Vercel y los datos en Supabase Cloud.
 |---|---|
 | Plan | Contabo Cloud VPS 6: 6 vCPU, 12 GB, 200 GB SSD, EE. UU. Este. Mes a mes |
 | Sistema | Ubuntu 24.04, Docker 28 en Swarm, Dokploy v0.31 (Traefik en 80/443) |
-| API | `https://api.86-48-18-81.sslip.io` — 3 réplicas, 1 CPU y 768 MB cada una |
+| API | `https://api.proctoring-upao.app` (alias `api.86-48-18-81.sslip.io`) — 3 réplicas, 1 CPU y 768 MB cada una |
 | Worker de IA | 2 réplicas, 2 CPU y 2 GB cada una. Whisper `small`, similitud ONNX int8, motor facial OpenCV |
 | Redis | 1 instancia interna, con contraseña. Cola de trabajos y límite de peticiones compartido |
 
