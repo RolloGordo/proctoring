@@ -7,8 +7,9 @@
  */
 
 import { ESPERA_SONDEO_MS } from './conexion'
+import { baseApi } from './baseApi'
 
-const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+const BASE = baseApi()
 
 export type EventType =
   | 'focus_lost'

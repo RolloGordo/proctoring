@@ -2,8 +2,9 @@
 import { ApiError } from '../lib/api'
 import { urlDeSubidaFirmada } from '../lib/identidad'
 import type { ContextoEmision } from './emisor'
+import { baseApi } from '../lib/baseApi'
 
-const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+const BASE = baseApi()
 
 export async function uploadAudio(audio: Blob, context: ContextoEmision): Promise<string> {
   if (!audio.size || audio.size > 8_000_000) throw new ApiError(400, 'Fragmento de audio inválido.')

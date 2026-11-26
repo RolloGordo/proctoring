@@ -7,6 +7,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
 ARG VITE_API_URL
+# dominio=url de su API, para servir el mismo build en .app y .me (lib/baseApi.ts).
+ARG VITE_API_POR_DOMINIO
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
 RUN npm run build
