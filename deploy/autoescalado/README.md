@@ -27,6 +27,10 @@ uv run --no-project --with pytest python -m pytest deploy/autoescalado
 En el VPS, como servicio de systemd (`proctoring-autoescalado.service`). Escala el servicio Swarm de la
 API con `docker service scale`; Traefik reparte entre las réplicas nuevas sin configuración extra.
 
+**Está encendido siempre** (decisión del PM, 26/11/2026): arranca con el servidor (`enable`) y, si el
+proceso se detiene por cualquier motivo, systemd lo vuelve a levantar a los 10 s (`Restart=always`, sin
+tope de reintentos). No se apaga para exámenes de prueba ni demostraciones.
+
 El número de réplicas que guarda Dokploy (3) no cambia: tras un redespliegue la API arranca con 3 y el
 autoescalador la ajusta en los siguientes minutos.
 
