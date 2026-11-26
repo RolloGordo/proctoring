@@ -32,7 +32,7 @@ import { escucharReconexionCamara } from './reconexionCamara'
 import type { SenalDetectada } from './tipos'
 import { EmisorDeSenales } from './emisor'
 import { publicarFotogramas, type AjustesMonitoreo, type Publicacion } from './monitoreo'
-import { SeguimientoCondicion } from './seguimiento'
+import { SeguimientoCondicion, senalDeEpisodio } from './seguimiento'
 import type { Detector } from './tipos'
 
 /**
@@ -425,16 +425,21 @@ export function useSupervision({
               )
             )
               notificar(detector.evento)
+            const primerInforme = !seguimiento.informado
             const episodio = seguimiento.actualizar(veredicto.activa, ahoraMs)
             if (episodio) {
-              if (cuenta) cuenta.episodios += 1
-              emisor.emitir({
-                evento: detector.evento,
-                inicioMs: episodio.inicioMs,
-                duracionMs: episodio.duracionMs,
-                metadata: ultimaMetadata.get(detector.nombre) ?? {},
-                image: capturador?.consumir()
-              })
+              if (cuenta && primerInforme) cuenta.episodios += 1
+              emisor.emitir(
+                senalDeEpisodio(
+                  detector.evento,
+                  episodio,
+                  ultimaMetadata.get(detector.nombre),
+                  // La foto va en el primer informe y en el final, no en los
+                  // parciales: `consumir()` reinicia el capturador, y llamarlo
+                  // en cada informe sacaría una foto nueva cada pocos segundos.
+                  primerInforme || episodio.cerrado ? capturador?.consumir() : undefined
+                )
+              )
             } else if (!seguimiento.activa && capturador) {
               // El episodio era demasiado corto: no se guarda ninguna captura.
               capturador.reiniciar()
@@ -472,13 +477,14 @@ export function useSupervision({
         const episodio = seguimiento.cerrar()
         const detector = detectores.find((d) => d.nombre === nombre)
         if (episodio && detector && !detector.ownsSegments) {
-          emisor.emitir({
-            evento: detector.evento,
-            inicioMs: episodio.inicioMs,
-            duracionMs: episodio.duracionMs,
-            metadata: ultimaMetadata.get(nombre) ?? {},
-            image: capturas.get(nombre)?.consumir()
-          })
+          emisor.emitir(
+            senalDeEpisodio(
+              detector.evento,
+              episodio,
+              ultimaMetadata.get(nombre),
+              capturas.get(nombre)?.consumir()
+            )
+          )
         }
         detector?.detener?.()
       }

@@ -27,6 +27,14 @@ GRUPOS = {
     "supabase_rest": "postgrest",
     "supabase_kong": "kong",
     "supabase_auth": "auth",
+    "supabase_realtime": "realtime",
+    "supabase_storage": "storage",
+    "carga-ia": "worker IA",
+    # Producción, que sigue encendida durante la prueba (y es lo que se mide
+    # en la del borde).
+    "dokploy-traefik": "prod: traefik",
+    "web-5gzl1w": "prod: web",
+    "api-m4kgbc": "prod: api",
 }
 
 

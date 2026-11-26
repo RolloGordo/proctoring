@@ -68,6 +68,27 @@ Let's Encrypt la primera vez que alguien entra.
 **Ojo con la renovación:** antes del 18/11/2027 hay que renovarlo (de pago) o volver a los alias de
 `sslip.io`, que siguen funcionando sin hacer nada.
 
+## Segundo dominio: `proctoring-upao.me` (desde el 26/11/2026)
+
+La red de la universidad bloquea `.app` y `.dev`: desde el campus la web no abría. Se añadió
+`proctoring-upao.me` (**Namecheap**, oferta del Student Pack, gratis hasta el **26/11/2027**,
+renovación automática apagada, privacidad WHOIS, bloqueo y 2FA). **Los dos dominios responden a la
+vez**, con la misma web y la misma API:
+
+| Servicio | `.app` | `.me` |
+|---|---|---|
+| Web | `https://proctoring-upao.app` | `https://proctoring-upao.me` |
+| API | `https://api.proctoring-upao.app` | `https://api.proctoring-upao.me` |
+
+- **Cada web llama a la API de su propio dominio** (`apps/web/src/lib/baseApi.ts`, con
+  `VITE_API_POR_DOMINIO`). Si la `.me` llamara a la API `.app`, en el campus cargaría la página y
+  fallarían todas sus llamadas.
+- **La app de escritorio desde la 1.1.4** abre `proctoring-upao.me`.
+- **`.me` no está en la precarga HSTS**: la primera visita por HTTP la redirige Traefik a HTTPS, y
+  desde ahí la cabecera HSTS (un año) obliga al navegador a no volver a HTTP.
+- DNS: los mismos dos registros A (`@` y `api` → `86.48.18.81`). No pulsar «Setup GitHub Pages» en
+  Namecheap: apunta el dominio a GitHub.
+
 ## Endurecimiento tras la migración (18/11/2026)
 
 Revisión de seguridad con ataques simulados contra `proctoring-upao.app` y `api.proctoring-upao.app`:

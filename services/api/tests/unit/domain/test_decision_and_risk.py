@@ -188,3 +188,44 @@ class TestRiesgo:
         assert riesgo.level is RiskLevel.LOW
         assert riesgo.signals[0].max_severity is Severity.MEDIUM
         assert riesgo.signals[0].points == 8
+
+
+def informe(
+    duracion_ms: int, episodio: str, tipo: EventType = EventType.FACE_ABSENT
+) -> ProctoringEvent:
+    return ProctoringEvent.create(
+        session_id=uuid4(),
+        student_id=uuid4(),
+        event_type=tipo,
+        started_at=datetime(2026, 11, 18, 15, 0, tzinfo=UTC),
+        duration_ms=duracion_ms,
+        metadata={"episode_id": episodio},
+    )
+
+
+class TestRiesgoPorEpisodio:
+    def test_los_informes_de_un_episodio_cuentan_una_vez_con_su_duracion_final(self) -> None:
+        # Tres minutos sin rostro, informados mientras duraban.
+        informes = [informe(d, "ep-1") for d in (3_000, 5_000, 15_000, 60_000, 180_000)]
+
+        riesgo = assess_risk(informes)
+
+        (senal,) = riesgo.signals
+        assert senal.count == 1
+        assert senal.total_duration_ms == 180_000
+        assert senal.max_severity is Severity.HIGH
+
+    def test_dos_episodios_son_dos_senales(self) -> None:
+        riesgo = assess_risk(
+            [informe(3_000, "ep-1"), informe(6_000, "ep-1"), informe(4_000, "ep-2")]
+        )
+
+        assert riesgo.signals[0].count == 2
+        assert riesgo.signals[0].total_duration_ms == 10_000
+
+    def test_el_mismo_id_en_otro_tipo_de_senal_es_otro_episodio(self) -> None:
+        riesgo = assess_risk(
+            [informe(16_000, "ep-1"), informe(16_000, "ep-1", EventType.FOCUS_LOST)]
+        )
+
+        assert sorted(s.count for s in riesgo.signals) == [1, 1]

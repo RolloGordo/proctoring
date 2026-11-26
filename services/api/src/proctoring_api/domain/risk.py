@@ -24,8 +24,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
-from proctoring_api.domain.event import EventType, ProctoringEvent
-from proctoring_api.domain.severity import Severity, default_severity
+from proctoring_api.domain.event import EventType, ProctoringEvent, one_per_episode
+from proctoring_api.domain.severity import SEVERITY_RANK, Severity, default_severity
 
 #: Cuánto suma una señal según su severidad. Una señal leve casi no pesa; una alta
 #: (otra persona, control remoto) pesa lo bastante como para no pasar inadvertida.
@@ -84,10 +84,14 @@ def risk_level(score: int) -> RiskLevel:
 
 
 def assess_risk(events: Sequence[ProctoringEvent]) -> RiskAssessment:
-    """Calcula el riesgo a partir de los eventos de un estudiante en una sesión."""
-    order = {Severity.LOW: 0, Severity.MEDIUM: 1, Severity.HIGH: 2}
+    """Calcula el riesgo a partir de los eventos de un estudiante en una sesión.
+
+    Cada episodio cuenta **una vez**, con su informe más largo (`one_per_episode`):
+    una ausencia de tres minutos se informa varias veces mientras dura, pero es
+    una sola señal.
+    """
     grouped: dict[EventType, list[tuple[Severity, int]]] = {}
-    for event in events:
+    for event in one_per_episode(events):
         severity = default_severity(event.event_type, event.duration_ms)
         grouped.setdefault(event.event_type, []).append((severity, event.duration_ms))
 
@@ -100,7 +104,7 @@ def assess_risk(events: Sequence[ProctoringEvent]) -> RiskAssessment:
                 count=len(items),
                 total_duration_ms=sum(duration for _, duration in items),
                 points=min(raw_points, MAX_POINTS_PER_SIGNAL),
-                max_severity=max((s for s, _ in items), key=lambda s: order[s]),
+                max_severity=max((s for s, _ in items), key=lambda s: SEVERITY_RANK[s]),
             )
         )
 

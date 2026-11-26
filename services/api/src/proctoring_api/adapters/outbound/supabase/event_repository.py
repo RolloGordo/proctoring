@@ -46,6 +46,23 @@ class SupabaseEventRepository:
         rows = cast("list[dict[str, Any]]", response.data)
         return _to_entity(rows[0]) if rows else None
 
+    def list_by_episode(
+        self, session_id: UUID, student_id: UUID, episode_id: str
+    ) -> Sequence[ProctoringEvent]:
+        # Un episodio tiene pocos informes (una docena en tres minutos), y el
+        # indice por sesion y estudiante ya acota la busqueda: no hace falta
+        # un indice sobre la clave de JSON.
+        response = (
+            self._client.table(TABLE)
+            .select(COLUMNS)
+            .eq("session_id", str(session_id))
+            .eq("student_id", str(student_id))
+            .eq("metadata->>episode_id", episode_id)
+            .execute()
+        )
+        rows = cast("list[dict[str, Any]]", response.data)
+        return [_to_entity(row) for row in rows]
+
     def list_by_session(
         self, session_id: UUID, student_id: UUID | None = None
     ) -> Sequence[ProctoringEvent]:
