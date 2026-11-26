@@ -9,6 +9,8 @@
 Description=Autoescalador horizontal de la API de Proctoring
 After=docker.service
 Requires=docker.service
+# Sin tope de reinicios: tiene que estar encendido siempre.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -19,7 +21,7 @@ ExecStart=/usr/bin/python3 /home/ubuntu/autoescalado/autoescalador.py \
   --min 2 --max 5 --subir 70 --bajar 25 --intervalo 15 \
   --registro /home/ubuntu/autoescalado/produccion.csv \
   --comando "docker service scale --detach api-m4kgbc={n}"
-Restart=on-failure
+Restart=always
 RestartSec=10
 
 [Install]
