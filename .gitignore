@@ -151,3 +151,7 @@ supabase/signing_keys.json
 loadtests/.datos/
 loadtests/.venv/
 loadtests/resultados/
+
+# Resultados crudos de las baterías de pruebas (los informes van en PDF aparte).
+pruebas-out/
+pruebas/**/capturas*/
